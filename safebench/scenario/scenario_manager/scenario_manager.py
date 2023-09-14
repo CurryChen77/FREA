@@ -102,6 +102,6 @@ class ScenarioManager(object):
                 # update behavior of triggered scenarios
                 for running_scenario in self.triggered_scenario: 
                     # update behavior of agents in scenario
-                    running_scenario.update_behavior(scenario_action)
+                    running_scenario.update_behavior(scenario_action)  # passing the scenario action to the scenes
 
             self.update_running_status()

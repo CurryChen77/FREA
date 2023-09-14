@@ -305,11 +305,11 @@ class RouteScenario():
 
     def update_info(self):
         ego_state = self._get_actor_state(self.ego_vehicle)
-        actor_info = [ego_state]
+        actor_info = [ego_state]  # the first info belongs to the ego vehicle
         for s_i in self.list_scenarios:
-            for a_i in s_i.other_actors:
+            for a_i in s_i.other_actors:  # The order of the other actors follows the order in the .json file
                 actor_state = self._get_actor_state(a_i)
-                actor_info.append(actor_state)
+                actor_info.append(actor_state)  # add the info of the other actor to the list
 
         actor_info = np.array(actor_info)
         # get the info of the ego vehicle and the other actors

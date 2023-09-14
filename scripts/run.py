@@ -71,7 +71,7 @@ if __name__ == '__main__':
                 assert scenario_config['num_scenario'] == 1, 'the num_scenario can only be one for scenic now'
                 runner = ScenicRunner(agent_config, scenario_config)
             else:
-                runner = CarlaRunner(agent_config, scenario_config)
+                runner = CarlaRunner(agent_config, scenario_config)  # create the main runner
 
             # start running
             try:

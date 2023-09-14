@@ -76,7 +76,7 @@ class ScenarioOperation(object):
         # control.throttle = 1.0
         self.other_actors[i].apply_control(control)
 
-    def drive_to_target_followlane(self, i ,target_transform, target_speed):
+    def drive_to_target_followlane(self, i, target_transform, target_speed):
         # 'i' represents id/order of specific actor in other_actors list
         cur_vehicle_control = self.vehicle_controller.get(self.other_actors[i].id)
         control = cur_vehicle_control.run_step(target_speed, target_transform)

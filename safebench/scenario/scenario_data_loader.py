@@ -55,7 +55,7 @@ class ScenarioDataLoader:
             for config in config_lists:
                 self.routes.append(calculate_interpolate_trajectory(config, world))
 
-        self.num_total_scenario = len(config_lists)
+        self.num_total_scenario = len(config_lists)  # the number of scenarios in one town map
         self.reset_idx_counter()
 
     def reset_idx_counter(self):

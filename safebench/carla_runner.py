@@ -42,13 +42,13 @@ class CarlaRunner:
         self.save_video = scenario_config['save_video']
 
         self.render = scenario_config['render']
-        self.num_scenario = scenario_config['num_scenario']
+        self.num_scenario = scenario_config['num_scenario']                              # default 2
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
-        self.scenario_category = scenario_config['scenario_category']
+        self.scenario_category = scenario_config['scenario_category']                    # default planning
 
         # continue training flag
-        self.continue_agent_training = scenario_config['continue_agent_training']
-        self.continue_scenario_training = scenario_config['continue_scenario_training']
+        self.continue_agent_training = scenario_config['continue_agent_training']        # default False
+        self.continue_scenario_training = scenario_config['continue_scenario_training']  # default False
 
         # apply settings to carla
         self.client = carla.Client('localhost', scenario_config['port'])
@@ -58,7 +58,7 @@ class CarlaRunner:
 
         self.env_params = {
             'auto_ego': scenario_config['auto_ego'],
-            'obs_type': agent_config['obs_type'],
+            'obs_type': agent_config['obs_type'],                      # default 0 (only 4 dimensions states )
             'scenario_category': self.scenario_category,
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'warm_up_steps': 9,                                        # number of ticks after spawning the vehicles
@@ -82,9 +82,9 @@ class CarlaRunner:
 
         # pass config from scenario to agent
         agent_config['mode'] = scenario_config['mode']
-        agent_config['ego_action_dim'] = scenario_config['ego_action_dim']
-        agent_config['ego_state_dim'] = scenario_config['ego_state_dim']
-        agent_config['ego_action_limit'] = scenario_config['ego_action_limit']
+        agent_config['ego_action_dim'] = scenario_config['ego_action_dim']      # default 2 dimensions (acc, steering)
+        agent_config['ego_state_dim'] = scenario_config['ego_state_dim']        # default 4 dimensions
+        agent_config['ego_action_limit'] = scenario_config['ego_action_limit']  # default 1.0
 
         # define logger
         logger_kwargs = setup_logger_kwargs(
@@ -181,7 +181,8 @@ class CarlaRunner:
         replay_buffer = Buffer(self.num_scenario, self.mode, self.buffer_capacity)
 
         for e_i in tqdm(range(start_episode, self.train_episode)):
-            # sample scenarios
+            # sample scenarios in this town (one town could contain multiple scenarios)
+            # simulate multiple scenarios in parallel
             sampled_scenario_configs, _ = data_loader.sampler()
             # reset the index counter to create endless loader
             data_loader.reset_idx_counter()
@@ -304,9 +305,9 @@ class CarlaRunner:
         self.logger.save_eval_results()
 
     def run(self):
-        # get scenario data of different maps
+        # get scenario data of different maps, and cluster config according to the town
         config_by_map = scenario_parse(self.scenario_config, self.logger)
-        for m_i in config_by_map.keys():
+        for m_i in config_by_map.keys():  # for each town, the same town could include different scenario templates
             # initialize map and render
             self._init_world(m_i)
             self._init_renderer()

@@ -70,7 +70,7 @@ class RouteParser(object):
 
             waypoint_list = []  # the list of waypoints that can be found on this route
             for waypoint in route.iter('waypoint'):
-                if len(waypoint_list) == 0:
+                if len(waypoint_list) == 0:  # the initial waypoint needs to be saved transform and pose
                     pitch = float(waypoint.attrib['pitch'])
                     roll = float(waypoint.attrib['roll'])
                     yaw = float(waypoint.attrib['yaw'])
@@ -80,6 +80,7 @@ class RouteParser(object):
                     initial_pose = carla.Transform(carla.Location(x, y, z), carla.Rotation(roll=roll, pitch=pitch, yaw=yaw))
                     new_config.initial_transform = initial_pose
                     new_config.initial_pose = initial_pose
+                # save all the waypoints in the route file
                 waypoint_list.append(carla.Location(x=float(waypoint.attrib['x']), y=float(waypoint.attrib['y']), z=float(waypoint.attrib['z'])))
 
             new_config.trajectory = waypoint_list

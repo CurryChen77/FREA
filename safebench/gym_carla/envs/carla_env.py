@@ -300,17 +300,17 @@ class CarlaEnv(gym.Env):
                     ego_action = ego_action['ego_action']
 
                 # pass scenario action into manager
-                self.scenario_manager.get_update(timestamp, scenario_action)
+                self.scenario_manager.get_update(timestamp, scenario_action)  # update scenario using scenario_action
                 self.is_running = self.scenario_manager._running
 
                 # Calculate acceleration and steering
                 if not self.auto_ego:
                     if self.discrete:
-                        acc = self.discrete_act[0][ego_action // self.n_steer]
-                        steer = self.discrete_act[1][ego_action % self.n_steer]
+                        acc = self.discrete_act[0][ego_action // self.n_steer]  # 'discrete_acc': [-3.0, 0.0, 3.0]
+                        steer = self.discrete_act[1][ego_action % self.n_steer]  # 'discrete_steer': [-0.2, 0.0, 0.2]
                     else:
-                        acc = ego_action[0]
-                        steer = ego_action[1]
+                        acc = ego_action[0]  # continuous action: acc
+                        steer = ego_action[1]  # continuous action: steering
 
                     # normalize and clip the action
                     acc = acc * self.acc_max
@@ -326,7 +326,7 @@ class CarlaEnv(gym.Env):
                         throttle = 0
                         brake = np.clip(-acc / 8, 0, 1)
 
-                    # apply control
+                    # apply ego control
                     act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
                     self.ego_vehicle.apply_control(act)
             else:
@@ -363,6 +363,8 @@ class CarlaEnv(gym.Env):
             self.vehicle_velocities.pop(0)
 
         # route planner
+        # self.waypoints: the waypoints from the waypoints buffer, needed to be followed
+        # self.vehicle_front: whether there got a vehicle in the ego's route and within a certain distance (bool)
         self.waypoints, _, _, _, _, self.vehicle_front, = self.routeplanner.run_step()
 
         # Update timesteps
@@ -375,13 +377,13 @@ class CarlaEnv(gym.Env):
         # state information
         info = {
             'waypoints': self.waypoints,
-            'route_waypoints': self.route_waypoints,
+            'route_waypoints': self.route_waypoints,  # the global route waypoints
             'vehicle_front': self.vehicle_front,
             'cost': self._get_cost()
         }
 
         # info from scenarios
-        info.update(self.scenario_manager.background_scenario.update_info())
+        info.update(self.scenario_manager.background_scenario.update_info())  # add the info of all the actors
         return info
 
     def _init_traffic_light(self):

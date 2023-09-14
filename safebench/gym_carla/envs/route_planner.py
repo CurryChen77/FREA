@@ -96,6 +96,7 @@ class RoutePlanner():
             self._waypoints_queue.append((next_waypoint, road_option))
 
     def run_step(self):
+        # the following target means the next one
         waypoints, target_road_option, current_waypoint, target_waypoint = self._get_waypoints()
         red_light, vehicle_front = self._get_hazard()
         # red_light = False
@@ -126,7 +127,7 @@ class RoutePlanner():
 
         # current vehicle waypoint
         self._current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
-        # target waypoint
+        # target waypoint the next waypoint
         self._target_waypoint, self._target_road_option = self._waypoint_buffer[0]
 
         # purge the queue of obsolete waypoints

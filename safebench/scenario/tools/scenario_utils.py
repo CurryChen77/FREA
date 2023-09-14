@@ -42,13 +42,16 @@ def scenario_parse(config, logger):
     """
     ROOT_DIR = config['ROOT_DIR']
     logger.log(">> Parsing scenario route and data")
+    # specific scenario type files ('adv_behavior_single.json')
     list_of_scenario_config = osp.join(ROOT_DIR, config['scenario_type_dir'], config['scenario_type'])
+    # route.xml file formatter('sceanrio_01_route_01.xml') specify one route in one map
     route_file_formatter = osp.join(ROOT_DIR, config['route_dir'], 'scenario_%02d_routes/scenario_%02d_route_%02d.xml')
+    # route scenario.json file formatter ('sceanrio_01.json') specify one scenario template ("OtherLeadingVehicle")
     scenario_file_formatter = osp.join(ROOT_DIR, config['route_dir'], 'scenarios/scenario_%02d.json')
 
     # scenario_id, method, route_id, risk_level
     with open(list_of_scenario_config, 'r') as f:
-        data_full = json.loads(f.read())
+        data_full = json.loads(f.read())  # one specific type of generation method (adv_init_state.json)
         # filter the list if any parameter is specified
         if config['scenario_id'] is not None:
             logger.log('>> Selecting scenario_id: ' + str(config['scenario_id']))
@@ -63,6 +66,7 @@ def scenario_parse(config, logger):
 
     config_by_map = {}
     for item in data_full:
+        # for each data_id, which specify one route under one scenario template
         route_file = route_file_formatter % (item['scenario_id'], item['scenario_id'], item['route_id'])
         scenario_file = scenario_file_formatter % item['scenario_id']
         parsed_configs = RouteParser.parse_routes_file(route_file, scenario_file)
