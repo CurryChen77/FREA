@@ -49,7 +49,7 @@ class RouteScenario():
         along which several smaller scenarios are triggered
     """
 
-    def __init__(self, world, config, ego_id, logger, max_running_step):
+    def __init__(self, world, config, ego_id, max_running_step, logger):
         self.world = world
         self.logger = logger
         self.config = config
@@ -57,9 +57,11 @@ class RouteScenario():
         self.max_running_step = max_running_step
         self.timeout = 60
 
-        self.route, self.ego_vehicle, scenario_definitions = self._update_route_and_ego(timeout=self.timeout)
+        self.route, self.ego_vehicle, scenario_definitions = self._update_route_and_ego(timeout=self.timeout)  # TODO don't need scenario_definitions
+        # self.route, self.ego_vehicle, _ = self._update_route_and_ego(timeout=self.timeout)
         self.background_actors = []
-        self.list_scenarios = self._build_scenario_instances(scenario_definitions)
+        # scenario_definitions contains the possible scenarios along the pre-defined route
+        self.list_scenarios = self._build_scenario_instances(scenario_definitions)  # TODO could be directly removed
         self.criteria = self._create_criteria()
 
     def _update_route_and_ego(self, timeout=None):
@@ -83,7 +85,8 @@ class RouteScenario():
         else:
             route = interpolate_trajectory(self.world, self.config.trajectory)
             ego_vehicle = self._spawn_ego_vehicle(route[0][0], self.config.auto_ego)
-        
+
+        # The below things can be removed
         # scan route to get exactly 1 scenario definition
         possible_scenarios, _ = RouteParser.scan_route_for_scenarios(
             self.config.town,
@@ -207,7 +210,7 @@ class RouteScenario():
         return list_of_actors
 
     def initialize_actors(self):
-        amount = 0 
+        amount = 0
         new_actors = CarlaDataProvider.request_new_batch_actors(
             'vehicle.*', 
             amount, 

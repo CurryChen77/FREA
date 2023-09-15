@@ -11,6 +11,7 @@ Description:
 import gym
 import numpy as np
 import pygame
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
 class VectorWrapper():
@@ -29,7 +30,10 @@ class VectorWrapper():
         self.env_list = []
         self.action_space_list = []
         for i in range(self.num_scenario):
-            env = carla_env(env_params, birdeye_render=birdeye_render, display=display, world=world, logger=logger)
+            # each small scenario corresponds to a carla_env create the ObservationWrapper()
+            env = carla_env(
+                env_params, birdeye_render=birdeye_render, display=display,
+                world=world, logger=logger)
             self.env_list.append(env)
             self.action_space_list.append(env.action_space)
 
@@ -58,13 +62,19 @@ class VectorWrapper():
             static_obs_list.append(static_obs)
         return static_obs_list
 
-    def reset(self, scenario_configs, scenario_init_action):
+    def reset(self, scenario_configs, scenario_init_action, background_vehicles):
         # create scenarios and ego vehicles
         obs_list = []
         info_list = []
+        self.background_vehicles=background_vehicles
         for s_i in range(len(scenario_configs)):
+            # for each scenario in the town
             config = scenario_configs[s_i]
-            obs, info = self.env_list[s_i].reset(config=config, env_id=s_i, scenario_init_action=scenario_init_action[s_i])
+            obs, info = self.env_list[s_i].reset(
+                config=config,
+                env_id=s_i,
+                scenario_init_action=scenario_init_action[s_i],
+                background_vehicles=background_vehicles)
             obs_list.append(obs)
             info_list.append(info)
 
@@ -147,19 +157,34 @@ class VectorWrapper():
         else:
             return False
 
+    def clean_background_vehicles(self):
+        # remove background vehicles
+        self.logger.log(f'>> cleaning {len(self.background_vehicles)} backgound_agents', color='green')
+        for s_i in range(len(self.background_vehicles)):
+            if self.background_vehicles[s_i].type_id.startswith('vehicle'):
+                self.background_vehicles[s_i].set_autopilot(enabled=False)
+            if CarlaDataProvider.actor_id_exists(self.background_vehicles[s_i].id):
+                CarlaDataProvider.remove_actor_by_id(self.background_vehicles[s_i].id)
+
     def clean_up(self):
         # stop sensor objects
         for e_i in range(self.num_scenario):
             self.env_list[e_i].clean_up()
+
+        # clean up the background vehicles on the whole map
+        self.clean_background_vehicles()
 
         # tick to ensure that all destroy commands are executed
         self.world.tick()
 
 
 class ObservationWrapper(gym.Wrapper):
+    """
+        The wrapped carla environment.
+    """
     def __init__(self, env, obs_type):
         super().__init__(env)
-        self._env = env
+        self._env = env  # carla environment
 
         self.is_running = False
         self.obs_type = obs_type
@@ -247,7 +272,7 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, logger=
             env_params=env_params, 
             birdeye_render=birdeye_render,
             display=display, 
-            world=world, 
+            world=world,
             logger=logger,
         ), 
         obs_type=env_params['obs_type']

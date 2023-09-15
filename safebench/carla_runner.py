@@ -43,6 +43,7 @@ class CarlaRunner:
 
         self.render = scenario_config['render']
         self.num_scenario = scenario_config['num_scenario']                              # default 2
+        self.num_background_agents = scenario_config['num_background_agents']
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.scenario_category = scenario_config['scenario_category']                    # default planning
 
@@ -58,26 +59,26 @@ class CarlaRunner:
 
         self.env_params = {
             'auto_ego': scenario_config['auto_ego'],
-            'obs_type': agent_config['obs_type'],                      # default 0 (only 4 dimensions states )
+            'obs_type': agent_config['obs_type'],                           # default 0 (only 4 dimensions states )
             'scenario_category': self.scenario_category,
             'ROOT_DIR': scenario_config['ROOT_DIR'],
-            'warm_up_steps': 9,                                        # number of ticks after spawning the vehicles
-            'disable_lidar': True,                                     # show bird-eye view lidar or not
-            'display_size': 128,                                       # screen size of one bird-eye view window
-            'obs_range': 32,                                           # observation range (meter)
-            'd_behind': 12,                                            # distance behind the ego vehicle (meter)
-            'max_past_step': 1,                                        # the number of past steps to draw
-            'discrete': False,                                         # whether to use discrete control space
-            'discrete_acc': [-3.0, 0.0, 3.0],                          # discrete value of accelerations
-            'discrete_steer': [-0.2, 0.0, 0.2],                        # discrete value of steering angles
-            'continuous_accel_range': [-3.0, 3.0],                     # continuous acceleration range
-            'continuous_steer_range': [-0.3, 0.3],                     # continuous steering angle range
-            'max_episode_step': scenario_config['max_episode_step'],   # maximum timesteps per episode
-            'max_waypt': 12,                                           # maximum number of waypoints
-            'lidar_bin': 0.125,                                        # bin size of lidar sensor (meter)
-            'out_lane_thres': 4,                                       # threshold for out of lane (meter)
-            'desired_speed': 8,                                        # desired speed (m/s)
-            'image_sz': 1024,                                          # TODO: move to config of od scenario
+            'warm_up_steps': 9,                                             # number of ticks after spawning the vehicles
+            'disable_lidar': True,                                          # show bird-eye view lidar or not
+            'display_size': 128,                                            # screen size of one bird-eye view window
+            'obs_range': 32,                                                # observation range (meter)
+            'd_behind': 12,                                                 # distance behind the ego vehicle (meter)
+            'max_past_step': 1,                                             # the number of past steps to draw
+            'discrete': False,                                              # whether to use discrete control space
+            'discrete_acc': [-3.0, 0.0, 3.0],                               # discrete value of accelerations
+            'discrete_steer': [-0.2, 0.0, 0.2],                             # discrete value of steering angles
+            'continuous_accel_range': [-3.0, 3.0],                          # continuous acceleration range
+            'continuous_steer_range': [-0.3, 0.3],                          # continuous steering angle range
+            'max_episode_step': scenario_config['max_episode_step'],        # maximum timesteps per episode
+            'max_waypt': 12,                                                # maximum number of waypoints
+            'lidar_bin': 0.125,                                             # bin size of lidar sensor (meter)
+            'out_lane_thres': 4,                                            # threshold for out of lane (meter)
+            'desired_speed': 8,                                             # desired speed (m/s)
+            'image_sz': 1024,                                               # TODO: move to config of od scenario
         }
 
         # pass config from scenario to agent
@@ -175,6 +176,18 @@ class CarlaRunner:
         }
         self.birdeye_render = BirdeyeRender(self.world, self.birdeye_params, logger=self.logger)
 
+    def generate_background_agents(self):
+        self.logger.log(f'>> generating {self.num_background_agents} backgound_agents', color='green')
+        background_vehicles = CarlaDataProvider.request_new_batch_actors(
+            model='vehicle.*',
+            amount=self.num_background_agents,
+            spawn_points=None,
+            autopilot=True,
+            random_location=True,
+            rolename='background'
+        )
+        return background_vehicles
+
     def train(self, data_loader, start_episode=0):
         # general buffer for both agent and scenario
         Buffer = RouteReplayBuffer if self.scenario_category == 'planning' else PerceptionReplayBuffer
@@ -182,15 +195,17 @@ class CarlaRunner:
 
         for e_i in tqdm(range(start_episode, self.train_episode)):
             # sample scenarios in this town (one town could contain multiple scenarios)
-            # simulate multiple scenarios in parallel
+            # simulate multiple scenarios in parallel (usually 2 scenarios)
             sampled_scenario_configs, _ = data_loader.sampler()
             # reset the index counter to create endless loader
             data_loader.reset_idx_counter()
+            # generate the traffic flow
+            background_vehicles = self.generate_background_agents()
 
             # get static obs and then reset with init action 
-            static_obs = self.env.get_static_obs(sampled_scenario_configs)
-            scenario_init_action, additional_dict = self.scenario_policy.get_init_action(static_obs)
-            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action)
+            static_obs = self.env.get_static_obs(sampled_scenario_configs)  # TODO continuous traffic flow don't need static obs
+            scenario_init_action, additional_dict = self.scenario_policy.get_init_action(static_obs)  # TODO don't need init action
+            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action, background_vehicles)
             replay_buffer.store_init([static_obs, scenario_init_action], additional_dict=additional_dict)
 
             # get ego vehicle from scenario
@@ -247,12 +262,14 @@ class CarlaRunner:
             # sample scenarios
             sampled_scenario_configs, num_sampled_scenario = data_loader.sampler()
             num_finished_scenario += num_sampled_scenario
+            # generate the traffic flow
+            background_vehicles = self.generate_background_agents()
 
             # reset envs with new config, get init action from scenario policy, and run scenario
             static_obs = self.env.get_static_obs(sampled_scenario_configs)
             self.scenario_policy.load_model(sampled_scenario_configs)
             scenario_init_action, _ = self.scenario_policy.get_init_action(static_obs, deterministic=True)
-            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action)
+            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action, background_vehicles)
 
             # get ego vehicle from scenario
             self.agent_policy.set_ego_and_route(self.env.get_ego_vehicles(), infos)
@@ -312,14 +329,17 @@ class CarlaRunner:
             self._init_world(m_i)
             self._init_renderer()
 
+            # generate traffic flow
+            self.background_vehicles = self.generate_background_agents()
+
             # create scenarios within the vectorized wrapper
             self.env = VectorWrapper(
                 self.env_params, 
                 self.scenario_config, 
                 self.world, 
                 self.birdeye_render, 
-                self.display, 
-                self.logger
+                self.display,
+                self.logger,
             )
 
             # prepare data loader and buffer

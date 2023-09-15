@@ -156,7 +156,7 @@ class CarlaEnv(gym.Env):
                 world=self.world, 
                 config=config, 
                 ego_id=env_id, 
-                max_running_step=self.max_episode_step, 
+                max_running_step=self.max_episode_step,
                 logger=self.logger
             )
         elif self.scenario_category == 'scenic':
@@ -172,7 +172,7 @@ class CarlaEnv(gym.Env):
 
         # init scenario
         self.ego_vehicle = scenario.ego_vehicle
-        self.scenario_manager.load_scenario(scenario)
+        self.scenario_manager.load_scenario(scenario)  # TODO scenario mannager can be modified to select the cloest bv and control it
 
     def _run_scenario(self, scenario_init_action):
         self.scenario_manager.run_scenario(scenario_init_action)
@@ -209,13 +209,14 @@ class CarlaEnv(gym.Env):
         }
         return state
 
-    def reset(self, config, env_id, scenario_init_action):
+    def reset(self, config, env_id, scenario_init_action, background_vehicles):
         self.config = config
         self.env_id = env_id
+        self.background_vehicles = background_vehicles
 
         # create sensors, load and run scenarios
         self._create_sensors()
-        self._create_scenario(config, env_id)
+        self._create_scenario(config, env_id)  # TODO modify to only contain route information
         self._run_scenario(scenario_init_action)
         self._attach_sensor()
 

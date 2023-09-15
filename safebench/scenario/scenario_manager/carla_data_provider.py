@@ -534,7 +534,13 @@ class CarlaDataProvider(object):
             _spawn_point.location.x = spawn_point.location.x
             _spawn_point.location.y = spawn_point.location.y
             _spawn_point.location.z = spawn_point.location.z + 0.2
+            # TODO if cannot spawn actor, then change the x position of the actor
             actor = CarlaDataProvider._world.try_spawn_actor(blueprint, _spawn_point)
+            if actor is None:
+                print("WARNING: Can't spawn actor on the origin spawn point, so modify x position")
+                while not actor:
+                    actor = CarlaDataProvider._world.try_spawn_actor(blueprint, _spawn_point)
+                    _spawn_point.location.x += 0.5
 
         if actor is None:
             raise RuntimeError("Error: Cannot spawn actor {} at position {}".format(model, spawn_point.location))
