@@ -62,11 +62,10 @@ class VectorWrapper():
             static_obs_list.append(static_obs)
         return static_obs_list
 
-    def reset(self, scenario_configs, scenario_init_action, background_vehicles):
+    def reset(self, scenario_configs, scenario_init_action, search_radius):
         # create scenarios and ego vehicles
         obs_list = []
         info_list = []
-        self.background_vehicles=background_vehicles
         for s_i in range(len(scenario_configs)):
             # for each scenario in the town
             config = scenario_configs[s_i]
@@ -74,7 +73,7 @@ class VectorWrapper():
                 config=config,
                 env_id=s_i,
                 scenario_init_action=scenario_init_action[s_i],
-                background_vehicles=background_vehicles)
+                search_radius=search_radius)
             obs_list.append(obs)
             info_list.append(info)
 
@@ -119,7 +118,8 @@ class VectorWrapper():
                 obs, reward, done, info = current_env.step_after_tick()
 
                 # store scenario id to help agent decide which policy should be used
-                info['scenario_id'] = e_i
+                info[0]['scenario_id'] = e_i
+                info[1]['scenario_id'] = e_i
 
                 # check if env is done
                 if done:
@@ -156,6 +156,8 @@ class VectorWrapper():
             return True
         else:
             return False
+    def set_background_vehicles(self, background_vehicles):
+        self.background_vehicles = background_vehicles
 
     def clean_background_vehicles(self):
         # remove background vehicles
@@ -235,7 +237,9 @@ class ObservationWrapper(gym.Wrapper):
     def _preprocess_obs(self, obs):
         # only use the 4-dimensional state space
         if self.obs_type == 0:
-            return obs['state'][:4].astype(np.float64)
+            actor_state = obs['actor_state'].flatten().astype(np.float64)  # the actor state of surrounding actor
+            state = obs['state'][:4].astype(np.float64)  # the state of chasing the predefined route
+            return np.hstack((state, actor_state))
         # concat the 4-dimensional state space and lane info
         elif self.obs_type == 1:
             new_obs = np.array([

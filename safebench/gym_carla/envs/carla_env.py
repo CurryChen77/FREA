@@ -33,6 +33,7 @@ from safebench.scenario.scenario_definition.perception_scenario import Perceptio
 from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.tools.route_manipulation import interpolate_trajectory
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
 class CarlaEnv(gym.Env):
@@ -209,14 +210,26 @@ class CarlaEnv(gym.Env):
         }
         return state
 
-    def reset(self, config, env_id, scenario_init_action, background_vehicles):
+    def reset(self, config, env_id, scenario_init_action, search_radius):
         self.config = config
         self.env_id = env_id
-        self.background_vehicles = background_vehicles
 
         # create sensors, load and run scenarios
         self._create_sensors()
         self._create_scenario(config, env_id)  # TODO modify to only contain route information
+
+        # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
+        self.search_radius = search_radius
+        self.ego_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.ego_vehicle, self.search_radius)
+        if self.ego_nearby_vehicles:
+            self.controlled_bv = self.ego_nearby_vehicles[0]  # the cloest vehicle to ego is the controlled bv
+            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.controlled_bv, self.search_radius)
+            # update the nearby vehicle
+        else:
+            self.controlled_bv = None
+            self.controlled_bv_nearby_vehicles = None
+        self.scenario_manager.background_scenario.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
+
         self._run_scenario(scenario_init_action)
         self._attach_sensor()
 
@@ -245,7 +258,7 @@ class CarlaEnv(gym.Env):
         self.time_step = 0
         self.reset_step += 1
 
-        # applying setting can tick the world and get data from sensros
+        # applying setting can tick the world and get data from sensors
         # removing this block will cause error: AttributeError: 'NoneType' object has no attribute 'raw_data'
         self.settings = self.world.get_settings()
         self.world.apply_settings(self.settings)
@@ -368,11 +381,26 @@ class CarlaEnv(gym.Env):
         # self.vehicle_front: whether there got a vehicle in the ego's route and within a certain distance (bool)
         self.waypoints, _, _, _, _, self.vehicle_front, = self.routeplanner.run_step()
 
+        # update the sorted nearby vehicles
+        self.ego_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.ego_vehicle, self.search_radius)
+        if self.ego_nearby_vehicles:
+            self.controlled_bv = self.ego_nearby_vehicles[0]  # the cloest vehicle to ego is the controlled bv
+            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.controlled_bv, self.search_radius)
+            # update the nearby vehicle
+        else:
+            self.controlled_bv = None
+            self.controlled_bv_nearby_vehicles = None
+
+        origin_info = self._get_info()
+        # update the nearby vehicle
+        self.scenario_manager.background_scenario.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
+        updated_controlled_bv_info = self._get_info()
+
         # Update timesteps
         self.time_step += 1
         self.total_step += 1
 
-        return (self._get_obs(), self._get_reward(), self._terminal(), self._get_info())
+        return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_controlled_bv_info])
     
     def _get_info(self):
         # state information
@@ -441,6 +469,30 @@ class CarlaEnv(gym.Env):
             actor_velocity_dict[actor.id] = actor.get_velocity()
         return actor_trajectory_dict, actor_acceleration_dict, actor_angular_velocity_dict, actor_velocity_dict
 
+    def _get_actor_state(self, actor):
+        actor_trans = actor.get_transform()
+        actor_x = actor_trans.location.x
+        actor_y = actor_trans.location.y
+        actor_yaw = actor_trans.rotation.yaw / 180 * np.pi
+        yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
+        velocity = actor.get_velocity()
+        acc = actor.get_acceleration()
+        return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
+
+    def get_actor_state(self, desired_nearby_vehicles=4):
+        ego_state = self._get_actor_state(self.ego_vehicle)
+        actor_state = [ego_state]
+        for i, actor in enumerate(self.ego_nearby_vehicles):
+            if i < desired_nearby_vehicles:
+                actor_state.append(self._get_actor_state(actor))
+            else:
+                break
+        while len(actor_state)-1 < desired_nearby_vehicles:
+            actor_state.append([0] * len(ego_state))
+
+        actor_state = np.array(actor_state)
+        return actor_state
+
     def _get_obs(self):
         # State observation
         ego_trans = self.ego_vehicle.get_transform()
@@ -455,6 +507,8 @@ class CarlaEnv(gym.Env):
         speed = np.sqrt(v.x**2 + v.y**2)
         acc = self.ego_vehicle.get_acceleration()
         state = np.array([lateral_dis, -delta_yaw, speed, self.vehicle_front])
+
+        actor_state = self.get_actor_state()
 
         if self.scenario_category != 'perception': 
             # set ego information for birdeye_render
@@ -524,6 +578,7 @@ class CarlaEnv(gym.Env):
                 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
                 'birdeye': birdeye.astype(np.uint8),
                 'state': state.astype(np.float32),
+                'actor_state': actor_state.astype(np.float32),
             }
         else:
             """ Get the observations for object detection. """

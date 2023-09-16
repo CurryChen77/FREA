@@ -15,7 +15,7 @@ carla_runner.py中的self._init_world(m_i)用于生成静态场景，诸如天�
 
 ### 各类文件作用
 1. [Scenario_type](safebench/scenario/config/scenario_type)中的.json文件包含某一生成场景算法(adv_behavior_single, adv_init_state等)，所有的**Scenario_id, route_id**组合，使用时通过.yaml文件确定在哪些**scenario模板**以及**哪些地图的哪些route**进行部署, 
-  其中针对同一scenario以及route可能重复多次，但其data_id不同
+    其中针对同一scenario以及route可能重复多次，但其data_id不同
 2. **确定Scenario_id (Scenario模板): **[scenario_01.json](safebench/scenario/scenario_data/route/scenarios)文件表示，某一scenario template (8种template)在所有的7张地图(Town_Safebench_Light,Town1~Town6)中，可能在哪些地图中出现，且周围的环境车辆的初始位置信息，如果available_event_configurations为空，则代表在该地图下，不可能发生该scenario。例如scenario_01.json表示DynamicObjectCrossing这一场景只会在Town_Safebench_Light地图和Town5地图下可能出现
 3. **确定route_id (某一地图某一Route): **[Scenario_01_routes](safebench/scenario/scenario_data/route/scenario_01_routes)文件夹中的Scenario_01_route_xx.xml文件表示在可能的地图中（scenario_01例子中，为Town_Safebench_Light地图和Town5地图）发生DynamicObjectCrossing这一场景的route (包含起始点(保留位姿)，终止点，以及路径中离散的关键点)
 4. 天气情况由[scenario_01_routes](./safebench/scenario/scenario_data/route/scenario_01_routes)中的.xml文件指定，也可由[carla_runner.py](safebench/carla_runner.py)中的self._init_world 函数设置
@@ -99,7 +99,9 @@ else:
 
 #### Scenario agent
 
-state来源于info而不是Ego的obs
+##### 原始周车state
+
+周车的state来源于info而不是Ego的obs
 
 info包括
 
@@ -130,6 +132,14 @@ def _get_actor_state(actor):
 ```
 
 other actors的顺序遵循scenario_01.json文件中关于other_actor的顺序
+
+##### 改进后周车state
+
+根据离自车的远近更新的info中的9个维度的state（来源于_get_actor_state）
+
+在env.reset和env.update时都会更新一次
+
+TODO需要将以自车为中心改为，以被控舟车为中心
 
 ### Action
 

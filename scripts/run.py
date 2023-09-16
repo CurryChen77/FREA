@@ -26,7 +26,8 @@ if __name__ == '__main__':
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.realpath(__file__)))))
 
     parser.add_argument('--max_episode_step', type=int, default=300)
-    parser.add_argument('--num_background_agents', type=int, default=20)
+    parser.add_argument('--num_background_agents', type=int, default=40)
+    parser.add_argument('--search_radius', type=int, default=100, help='the radius for agent to search other agents')
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval'])
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='dummy.yaml')

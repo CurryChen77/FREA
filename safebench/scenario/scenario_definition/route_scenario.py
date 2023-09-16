@@ -306,18 +306,32 @@ class RouteScenario():
         acc = actor.get_acceleration()
         return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
 
-    def update_info(self):
-        ego_state = self._get_actor_state(self.ego_vehicle)
-        actor_info = [ego_state]  # the first info belongs to the ego vehicle
-        for s_i in self.list_scenarios:
-            for a_i in s_i.other_actors:  # The order of the other actors follows the order in the .json file
-                actor_state = self._get_actor_state(a_i)
-                actor_info.append(actor_state)  # add the info of the other actor to the list
+    def update_controlled_bv_nearby_vehicles(self, controlled_bv, controlled_bv_nearby_vehicles):
+        self.controlled_bv = controlled_bv
+        self.controlled_bv_nearby_vehicles = controlled_bv_nearby_vehicles
 
-        actor_info = np.array(actor_info)
-        # get the info of the ego vehicle and the other actors
+    def update_info(self, desired_nearby_vehicle=4):
+        if self.controlled_bv: # the controlled bv is not None
+            controlled_bv_state = self._get_actor_state(self.controlled_bv)
+            actor_info = [controlled_bv_state]  # the first info belongs to the ego vehicle
+            for i, actor in enumerate(self.controlled_bv_nearby_vehicles):
+                if i < desired_nearby_vehicle:
+                    actor_info.append(self._get_actor_state(actor))  # add the info of the other actor to the list
+                else:
+                    # avoiding too many nearby vehicles
+                    break
+            while len(actor_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+                actor_info.append([0] * len(controlled_bv_state))
+
+                # for s_i in self.list_scenarios:
+                #     for a_i in s_i.other_actors:  # The order of the other actors follows the order in the .json file
+                #         actor_state = self._get_actor_state(a_i)
+                #         actor_info.append(actor_state)  # add the info of the other actor to the list
+            actor_info = np.array(actor_info)
+        else:
+            actor_info = None
         return {
-            'actor_info': actor_info
+            'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
     def clean_up(self):

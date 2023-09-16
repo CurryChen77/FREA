@@ -15,6 +15,7 @@ import math
 import re
 from numpy import random
 from six import iteritems
+import numpy as np
 
 import carla
 
@@ -683,6 +684,37 @@ class CarlaDataProvider(object):
             CarlaDataProvider._carla_actor_pool[actor.id] = actor
             CarlaDataProvider.register_actor(actor)
         return actors
+
+    @staticmethod
+    def get_nearby_vehicles(world, center_vehicle, radius=50):
+        center_location = center_vehicle.get_location()
+
+        # get all the vehicles on the world
+        all_vehicles = world.get_actors().filter('vehicle.*')
+
+        # store the nearby vehicle information [vehicle, distance]
+        nearby_vehicles_info = []
+
+        # calculate the predifine vehicle's location
+        center_np_location = np.array([center_location.x, center_location.y, center_location.z])
+
+        for vehicle in all_vehicles:
+            if vehicle.id != center_vehicle.id:  # except the center vehicle
+                vehicle_location = vehicle.get_location()
+                # 预先计算其他车辆的位置
+                vehicle_np_location = np.array([vehicle_location.x, vehicle_location.y, vehicle_location.z])
+                distance = np.linalg.norm(center_np_location - vehicle_np_location)
+                if distance <= radius:
+                    nearby_vehicles_info.append([vehicle, distance])
+
+        # sort the nearby vehicles according to the distance in ascending order
+        nearby_vehicles_info.sort(key=lambda x: x[1])
+
+        # return the nearby vehicles list
+        nearby_vehicles = [info[0] for info in nearby_vehicles_info]
+
+        return nearby_vehicles
+
 
     @staticmethod
     def get_actors():

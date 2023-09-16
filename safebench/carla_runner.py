@@ -43,7 +43,8 @@ class CarlaRunner:
 
         self.render = scenario_config['render']
         self.num_scenario = scenario_config['num_scenario']                              # default 2
-        self.num_background_agents = scenario_config['num_background_agents']
+        self.num_background_agents = scenario_config['num_background_agents']            # default 30 background agents
+        self.search_radius = scenario_config['search_radius']                            # default 20 meters
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.scenario_category = scenario_config['scenario_category']                    # default planning
 
@@ -199,13 +200,15 @@ class CarlaRunner:
             sampled_scenario_configs, _ = data_loader.sampler()
             # reset the index counter to create endless loader
             data_loader.reset_idx_counter()
+
             # generate the traffic flow
             background_vehicles = self.generate_background_agents()
+            self.env.set_background_vehicles(background_vehicles)
 
             # get static obs and then reset with init action 
             static_obs = self.env.get_static_obs(sampled_scenario_configs)  # TODO continuous traffic flow don't need static obs
             scenario_init_action, additional_dict = self.scenario_policy.get_init_action(static_obs)  # TODO don't need init action
-            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action, background_vehicles)
+            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action, self.search_radius)
             replay_buffer.store_init([static_obs, scenario_init_action], additional_dict=additional_dict)
 
             # get ego vehicle from scenario
@@ -219,8 +222,11 @@ class CarlaRunner:
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=False)
 
                 # apply action to env and get obs
-                next_obs, rewards, dones, infos = self.env.step(ego_actions=ego_actions, scenario_actions=scenario_actions)
-                replay_buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=infos)
+                next_obs, rewards, dones, multi_infos = self.env.step(ego_actions=ego_actions, scenario_actions=scenario_actions)
+                # the infos contain [original infos and updated controlled bv infos], so need to store the original infos
+                training_infos = [info[0] for info in multi_infos]  # origin infos for training
+                infos = [info[1] for info in multi_infos]  # updated infos for transition
+                replay_buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=training_infos)
                 obs = copy.deepcopy(next_obs)
                 episode_reward.append(np.mean(rewards))
 
@@ -264,12 +270,13 @@ class CarlaRunner:
             num_finished_scenario += num_sampled_scenario
             # generate the traffic flow
             background_vehicles = self.generate_background_agents()
+            self.env.set_background_vehicles(background_vehicles)
 
             # reset envs with new config, get init action from scenario policy, and run scenario
             static_obs = self.env.get_static_obs(sampled_scenario_configs)
             self.scenario_policy.load_model(sampled_scenario_configs)
             scenario_init_action, _ = self.scenario_policy.get_init_action(static_obs, deterministic=True)
-            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action, background_vehicles)
+            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action, self.search_radius)
 
             # get ego vehicle from scenario
             self.agent_policy.set_ego_and_route(self.env.get_ego_vehicles(), infos)
@@ -281,7 +288,8 @@ class CarlaRunner:
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=True)
 
                 # apply action to env and get obs
-                obs, rewards, _, infos = self.env.step(ego_actions=ego_actions, scenario_actions=scenario_actions)
+                obs, rewards, _, multi_infos = self.env.step(ego_actions=ego_actions, scenario_actions=scenario_actions)
+                infos = [info[1] for info in multi_infos]  # updated infos for transition
 
                 # save video
                 if self.save_video:
@@ -328,9 +336,6 @@ class CarlaRunner:
             # initialize map and render
             self._init_world(m_i)
             self._init_renderer()
-
-            # generate traffic flow
-            self.background_vehicles = self.generate_background_agents()
 
             # create scenarios within the vectorized wrapper
             self.env = VectorWrapper(
