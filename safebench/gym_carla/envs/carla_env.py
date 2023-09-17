@@ -90,11 +90,12 @@ class CarlaEnv(gym.Env):
 
         if self.scenario_category in ['planning', 'scenic']:
             self.obs_size = int(self.obs_range/self.lidar_bin)
+            # TODO updating 'actor_state'
             observation_space_dict = {
                 'camera': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
                 'lidar': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
                 'birdeye': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
-                'state': spaces.Box(np.array([-2, -1, -5, 0], dtype=np.float32), np.array([2, 1, 30, 1], dtype=np.float32), dtype=np.float32)
+                'state': spaces.Box(np.array([-2, -1, -5, 0], dtype=np.float32), np.array([2, 1, 30, 1], dtype=np.float32), dtype=np.float32),
             }
         elif self.scenario_category == 'perception':
             self.obs_size = env_params['image_sz']
@@ -173,10 +174,10 @@ class CarlaEnv(gym.Env):
 
         # init scenario
         self.ego_vehicle = scenario.ego_vehicle
-        self.scenario_manager.load_scenario(scenario)  # TODO scenario mannager can be modified to select the cloest bv and control it
+        self.scenario_manager.load_scenario(scenario)  # The scenario manager only controls the RouteScenario
 
-    def _run_scenario(self, scenario_init_action):
-        self.scenario_manager.run_scenario(scenario_init_action)
+    def _run_scenario(self):
+        self.scenario_manager.run_scenario()  # not actually using
 
     def _parse_route(self, config):
         # interp waypoints as init waypoints
@@ -210,13 +211,13 @@ class CarlaEnv(gym.Env):
         }
         return state
 
-    def reset(self, config, env_id, scenario_init_action, search_radius):
+    def reset(self, config, env_id, search_radius):
         self.config = config
         self.env_id = env_id
 
         # create sensors, load and run scenarios
         self._create_sensors()
-        self._create_scenario(config, env_id)  # TODO modify to only contain route information
+        self._create_scenario(config, env_id)  # create the RouteScenario and using scenario manager to manage it
 
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         self.search_radius = search_radius
@@ -228,9 +229,9 @@ class CarlaEnv(gym.Env):
         else:
             self.controlled_bv = None
             self.controlled_bv_nearby_vehicles = None
-        self.scenario_manager.background_scenario.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
+        self.scenario_manager.route_scenario.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
 
-        self._run_scenario(scenario_init_action)
+        self._run_scenario()  # was used for generating the initial state of the scenario. Being abandoned now
         self._attach_sensor()
 
         # route planner for ego vehicle
@@ -310,7 +311,7 @@ class CarlaEnv(gym.Env):
                     world_2_camera = np.array(self.camera_sensor.get_transform().get_inverse_matrix())
                     fov = self.camera_bp.get_attribute('fov').as_float()
                     image_w, image_h = self.obs_size, self.obs_size
-                    self.scenario_manager.background_scenario.evaluate(ego_action, world_2_camera, image_w, image_h, fov, self.camera_img)
+                    self.scenario_manager.route_scenario.evaluate(ego_action, world_2_camera, image_w, image_h, fov, self.camera_img)
                     ego_action = ego_action['ego_action']
 
                 # pass scenario action into manager
@@ -393,7 +394,7 @@ class CarlaEnv(gym.Env):
 
         origin_info = self._get_info()
         # update the nearby vehicle
-        self.scenario_manager.background_scenario.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
+        self.scenario_manager.route_scenario.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
         updated_controlled_bv_info = self._get_info()
 
         # Update timesteps
@@ -412,7 +413,7 @@ class CarlaEnv(gym.Env):
         }
 
         # info from scenarios
-        info.update(self.scenario_manager.background_scenario.update_info())  # add the info of all the actors
+        info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
         return info
 
     def _init_traffic_light(self):
@@ -479,7 +480,7 @@ class CarlaEnv(gym.Env):
         acc = actor.get_acceleration()
         return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
 
-    def get_actor_state(self, desired_nearby_vehicles=4):
+    def get_actor_state(self, desired_nearby_vehicles=3):
         ego_state = self._get_actor_state(self.ego_vehicle)
         actor_state = [ego_state]
         for i, actor in enumerate(self.ego_nearby_vehicles):

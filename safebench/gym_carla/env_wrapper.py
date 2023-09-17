@@ -22,7 +22,7 @@ class VectorWrapper():
     def __init__(self, env_params, scenario_config, world, birdeye_render, display, logger):
         self.logger = logger
         self.world = world
-        self.num_scenario = scenario_config['num_scenario']
+        self.num_scenario = scenario_config['num_scenario']  # default 2
         self.ROOT_DIR = scenario_config['ROOT_DIR']
         self.frame_skip = scenario_config['frame_skip']  
         self.render = scenario_config['render']
@@ -62,7 +62,7 @@ class VectorWrapper():
             static_obs_list.append(static_obs)
         return static_obs_list
 
-    def reset(self, scenario_configs, scenario_init_action, search_radius):
+    def reset(self, scenario_configs, search_radius):
         # create scenarios and ego vehicles
         obs_list = []
         info_list = []
@@ -72,7 +72,7 @@ class VectorWrapper():
             obs, info = self.env_list[s_i].reset(
                 config=config,
                 env_id=s_i,
-                scenario_init_action=scenario_init_action[s_i],
+                # scenario_init_action=scenario_init_action[s_i],
                 search_radius=search_radius)
             obs_list.append(obs)
             info_list.append(info)

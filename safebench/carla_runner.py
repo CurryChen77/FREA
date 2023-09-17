@@ -206,10 +206,10 @@ class CarlaRunner:
             self.env.set_background_vehicles(background_vehicles)
 
             # get static obs and then reset with init action 
-            static_obs = self.env.get_static_obs(sampled_scenario_configs)  # TODO continuous traffic flow don't need static obs
-            scenario_init_action, additional_dict = self.scenario_policy.get_init_action(static_obs)  # TODO don't need init action
-            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action, self.search_radius)
-            replay_buffer.store_init([static_obs, scenario_init_action], additional_dict=additional_dict)
+            # static_obs = self.env.get_static_obs(sampled_scenario_configs)  # TODO continuous traffic flow don't need static obs
+            # scenario_init_action, additional_dict = self.scenario_policy.get_init_action(static_obs)  # TODO don't need init action
+            obs, infos = self.env.reset(sampled_scenario_configs, self.search_radius)
+            # replay_buffer.store_init([static_obs, scenario_init_action], additional_dict=additional_dict)
 
             # get ego vehicle from scenario
             self.agent_policy.set_ego_and_route(self.env.get_ego_vehicles(), infos)
@@ -223,9 +223,11 @@ class CarlaRunner:
 
                 # apply action to env and get obs
                 next_obs, rewards, dones, multi_infos = self.env.step(ego_actions=ego_actions, scenario_actions=scenario_actions)
+
                 # the infos contain [original infos and updated controlled bv infos], so need to store the original infos
                 training_infos = [info[0] for info in multi_infos]  # origin infos for training
                 infos = [info[1] for info in multi_infos]  # updated infos for transition
+
                 replay_buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=training_infos)
                 obs = copy.deepcopy(next_obs)
                 episode_reward.append(np.mean(rewards))
@@ -273,10 +275,10 @@ class CarlaRunner:
             self.env.set_background_vehicles(background_vehicles)
 
             # reset envs with new config, get init action from scenario policy, and run scenario
-            static_obs = self.env.get_static_obs(sampled_scenario_configs)
+            # static_obs = self.env.get_static_obs(sampled_scenario_configs)
             self.scenario_policy.load_model(sampled_scenario_configs)
-            scenario_init_action, _ = self.scenario_policy.get_init_action(static_obs, deterministic=True)
-            obs, infos = self.env.reset(sampled_scenario_configs, scenario_init_action, self.search_radius)
+            # scenario_init_action, _ = self.scenario_policy.get_init_action(static_obs, deterministic=True)
+            obs, infos = self.env.reset(sampled_scenario_configs, self.search_radius)
 
             # get ego vehicle from scenario
             self.agent_policy.set_ego_and_route(self.env.get_ego_vehicles(), infos)

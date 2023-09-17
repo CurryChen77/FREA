@@ -16,6 +16,7 @@ from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.tools.scenario_utils import calculate_distance_locations
 
 
+
 class ScenarioManager(object):
     """
         Dynamic version scenario manager class. This class holds all functionality
@@ -29,7 +30,7 @@ class ScenarioManager(object):
 
     def _reset(self):
         #self.scenario = None
-        self.background_scenario = None
+        self.route_scenario = None
         self.ego_vehicle = None
         self.scenario_list = None
         self.triggered_scenario = set()
@@ -39,35 +40,35 @@ class ScenarioManager(object):
         GameTime.restart()
 
     def clean_up(self):
-        if self.background_scenario is not None:
-            self.background_scenario.clean_up()
+        if self.route_scenario is not None:
+            self.route_scenario.clean_up()
 
     def load_scenario(self, scenario):
         self._reset()
-        self.background_scenario = scenario
+        self.route_scenario = scenario  # the RouteScenario
         self.ego_vehicle = scenario.ego_vehicle
-        self.scenario_list = scenario.list_scenarios
+        self.scenario_instance = scenario.scenario_instance  # the adv behavior single scenario instance
 
-    def run_scenario(self, scenario_init_action):
+    def run_scenario(self):
         self._running = True
-        self._init_scenarios(scenario_init_action)
+        self._init_scenarios()  # not actually using
 
-    def _init_scenarios(self, scenario_init_action):
-        # spawn background actors
-        self.background_scenario.initialize_actors()
-        
+    def _init_scenarios(self):
+        # spawn route actors for each scenario
+        self.route_scenario.initialize_actors()  # not actually using
+
         # spawn actors for each scenario along this route
-        for running_scenario in self.scenario_list:
+        # for running_scenario in self.scenario_list:
             # some scenario passes actions when creating behavior
-            running_scenario.create_behavior(scenario_init_action)
+            # running_scenario.create_behavior(scenario_init_action)
             # init actors after passing in init actions
-            running_scenario.initialize_actors()
+            # running_scenario.initialize_actors()
     
     def stop_scenario(self):
         self._running = False
 
     def update_running_status(self):
-        record, stop = self.background_scenario.get_running_status(self.running_record)
+        record, stop = self.route_scenario.get_running_status(self.running_record)
         self.running_record.append(record)
         if stop:
             self._running = False
@@ -77,31 +78,8 @@ class ScenarioManager(object):
             self._timestamp_last_run = timestamp.elapsed_seconds
             GameTime.on_carla_tick(timestamp)
             CarlaDataProvider.on_carla_tick()
-            
-            if self.scenic:
-                # update behavior of triggered scenarios
-                for running_scenario in self.scenario_list: 
-                    # update behavior of agents in scenario
-                    running_scenario.update_behavior(scenario_action)
-            else:
-                # check whether the scenario should be triggered
-                for spawned_scenario in self.scenario_list:
-                    ego_location = CarlaDataProvider.get_location(self.ego_vehicle)
-                    cur_distance = None
-                    reference_location = None
-                    if spawned_scenario.reference_actor:
-                        reference_location = CarlaDataProvider.get_location(spawned_scenario.reference_actor)
-                    if reference_location:
-                        cur_distance = calculate_distance_locations(ego_location, reference_location)
 
-                    if cur_distance and cur_distance < spawned_scenario.trigger_distance_threshold:
-                        if spawned_scenario not in self.triggered_scenario:
-                            self.logger.log(">> Trigger scenario: " + spawned_scenario.name)
-                            self.triggered_scenario.add(spawned_scenario)
-
-                # update behavior of triggered scenarios
-                for running_scenario in self.triggered_scenario: 
-                    # update behavior of agents in scenario
-                    running_scenario.update_behavior(scenario_action)  # passing the scenario action to the scenes
+            # update the scenario instance receiving the scenario action
+            self.scenario_instance.update_behavior(scenario_action)
 
             self.update_running_status()

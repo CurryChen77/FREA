@@ -28,7 +28,7 @@ from safebench.scenario.tools.scenario_utils import (
     convert_json_to_actor, 
     convert_transform_to_location
 )
-
+from safebench.scenario.scenario_definition.adv_behavior_single import AdvBehaviorSingle
 from safebench.scenario.scenario_definition.atomic_criteria import (
     Status,
     CollisionTest,
@@ -56,22 +56,25 @@ class RouteScenario():
         self.ego_id = ego_id
         self.max_running_step = max_running_step
         self.timeout = 60
+        self.ego_max_driven_distance = 200
 
-        self.route, self.ego_vehicle, scenario_definitions = self._update_route_and_ego(timeout=self.timeout)  # TODO don't need scenario_definitions
-        # self.route, self.ego_vehicle, _ = self._update_route_and_ego(timeout=self.timeout)
+        # create the route and ego's position (the start point of the route)
+        self.route, self.ego_vehicle = self._update_route_and_ego(timeout=self.timeout)
+        # self.route, self.ego_vehicle, scenario_definitions = self._update_route_and_ego(timeout=self.timeout)
         self.background_actors = []
         # scenario_definitions contains the possible scenarios along the pre-defined route
-        self.list_scenarios = self._build_scenario_instances(scenario_definitions)  # TODO could be directly removed
+        # self.list_scenarios = self._build_scenario_instances(scenario_definitions)  # remove the scenario_definitions
         self.criteria = self._create_criteria()
+        self.scenario_instance = AdvBehaviorSingle(self.world, self.ego_vehicle, None, 60)  # create the scenario instance
 
     def _update_route_and_ego(self, timeout=None):
-        # transform the scenario file into a dictionary
-        if self.config.scenario_file is not None:
-            world_annotations = RouteParser.parse_annotations_file(self.config.scenario_file)
-        else:
-            world_annotations = self.config.scenario_config
+        # # transform the scenario file into a dictionary
+        # if self.config.scenario_file is not None:
+        #     world_annotations = RouteParser.parse_annotations_file(self.config.scenario_file)
+        # else:
+        #     world_annotations = self.config.scenario_config
 
-            # prepare route's trajectory (interpolate and add the GPS route)
+        # prepare route's trajectory (interpolate and add the GPS route)
         ego_vehicle = None
         route = None
         scenario_id = self.config.scenario_id
@@ -86,29 +89,28 @@ class RouteScenario():
             route = interpolate_trajectory(self.world, self.config.trajectory)
             ego_vehicle = self._spawn_ego_vehicle(route[0][0], self.config.auto_ego)
 
-        # The below things can be removed
-        # scan route to get exactly 1 scenario definition
-        possible_scenarios, _ = RouteParser.scan_route_for_scenarios(
-            self.config.town,
-            route,
-            world_annotations,
-            scenario_id=scenario_id
-        )
-        
-        scenarios_definitions = []
-        for trigger in possible_scenarios.keys():
-            scenarios_definitions.extend(possible_scenarios[trigger])
-
-        assert len(scenarios_definitions) >= 1, f"There should be at least 1 scenario definition in the route"
-
-        # select the first trigger point along the route
-        scenarios_definition_id = 0
-        min_match_position = 1e5
-        for idx, scenarios_definition in enumerate(scenarios_definitions):
-            if scenarios_definition['match_position'] < min_match_position:
-                min_match_position = scenarios_definition['match_position']
-                scenarios_definition_id = idx
-        scenarios_definitions = [scenarios_definitions[scenarios_definition_id]]
+        # # scan route to get exactly 1 scenario definition
+        # possible_scenarios, _ = RouteParser.scan_route_for_scenarios(
+        #     self.config.town,
+        #     route,
+        #     world_annotations,
+        #     scenario_id=scenario_id
+        # )
+        #
+        # scenarios_definitions = []
+        # for trigger in possible_scenarios.keys():
+        #     scenarios_definitions.extend(possible_scenarios[trigger])
+        #
+        # assert len(scenarios_definitions) >= 1, f"There should be at least 1 scenario definition in the route"
+        #
+        # # select the first trigger point along the route
+        # scenarios_definition_id = 0
+        # min_match_position = 1e5
+        # for idx, scenarios_definition in enumerate(scenarios_definitions):
+        #     if scenarios_definition['match_position'] < min_match_position:
+        #         min_match_position = scenarios_definition['match_position']
+        #         scenarios_definition_id = idx
+        # scenarios_definitions = [scenarios_definitions[scenarios_definition_id]]
 
         # TODO: ego route will be overwritten by other scenarios
         CarlaDataProvider.set_ego_vehicle_route(convert_transform_to_location(route))
@@ -116,7 +118,7 @@ class RouteScenario():
 
         # Timeout of scenario in seconds
         self.timeout = self._estimate_route_timeout(route) if timeout is None else timeout
-        return route, ego_vehicle, scenarios_definitions
+        return route, ego_vehicle
 
     def _estimate_route_timeout(self, route):
         route_length = 0.0  # in meters
@@ -152,62 +154,62 @@ class RouteScenario():
                 elevate_transform.location.z += 0.1
         return ego_vehicle
 
-    def _build_scenario_instances(self, scenario_definitions):
-        """
-            Based on the parsed route and possible scenarios, build all the scenario classes.
-        """
-        scenario_instance_list = []
-        for _, definition in enumerate(scenario_definitions):
-            # get the class of the scenario
-            scenario_path = [
-                'safebench.scenario.scenario_definition',
-                self.config.scenario_folder,
-                definition['name'],
-            ]
-            scenario_class = class_from_path('.'.join(scenario_path))
+    # def _build_scenario_instances(self, scenario_definitions):
+    #     """
+    #         Based on the parsed route and possible scenarios, build all the scenario classes.
+    #     """
+    #     scenario_instance_list = []
+    #     for _, definition in enumerate(scenario_definitions):
+    #         # get the class of the scenario
+    #         scenario_path = [
+    #             'safebench.scenario.scenario_definition',
+    #             self.config.scenario_folder,
+    #             definition['name'],
+    #         ]
+    #         scenario_class = class_from_path('.'.join(scenario_path))
+    #
+    #         # create the other actors that are going to appear
+    #         if definition['other_actors'] is not None:
+    #             list_of_actor_conf_instances = self._get_actors_instances(definition['other_actors'])
+    #         else:
+    #             list_of_actor_conf_instances = []
+    #
+    #         # create an actor configuration for the ego-vehicle trigger position
+    #         egoactor_trigger_position = convert_json_to_transform(definition['trigger_position'])
+    #         route_config = RouteScenarioConfig()
+    #         route_config.other_actors = list_of_actor_conf_instances
+    #         route_config.trigger_points = [egoactor_trigger_position]
+    #         route_config.parameters = self.config.parameters
+    #         route_config.num_scenario = self.config.num_scenario
+    #         if self.config.weather is not None:
+    #             route_config.weather = self.config.weather
+    #
+    #         try:
+    #             scenario_instance = scenario_class(self.world, self.ego_vehicle, route_config, timeout=self.timeout)
+    #         except Exception as e:
+    #             traceback.print_exc()
+    #             print("Skipping scenario '{}' due to setup error: {}".format(definition['name'], e))
+    #             continue
+    #
+    #         scenario_instance_list.append(scenario_instance)
+    #     return scenario_instance_list
 
-            # create the other actors that are going to appear
-            if definition['other_actors'] is not None:
-                list_of_actor_conf_instances = self._get_actors_instances(definition['other_actors'])
-            else:
-                list_of_actor_conf_instances = []
-
-            # create an actor configuration for the ego-vehicle trigger position
-            egoactor_trigger_position = convert_json_to_transform(definition['trigger_position'])
-            route_config = RouteScenarioConfig()
-            route_config.other_actors = list_of_actor_conf_instances
-            route_config.trigger_points = [egoactor_trigger_position]
-            route_config.parameters = self.config.parameters
-            route_config.num_scenario = self.config.num_scenario
-            if self.config.weather is not None:
-                route_config.weather = self.config.weather
-
-            try:
-                scenario_instance = scenario_class(self.world, self.ego_vehicle, route_config, timeout=self.timeout)
-            except Exception as e:   
-                traceback.print_exc()
-                print("Skipping scenario '{}' due to setup error: {}".format(definition['name'], e))
-                continue
-
-            scenario_instance_list.append(scenario_instance)
-        return scenario_instance_list
-
-    def _get_actors_instances(self, list_of_antagonist_actors):
-        def get_actors_from_list(list_of_actor_def):
-            # receives a list of actor definitions and creates an actual list of ActorConfigurationObjects
-            sublist_of_actors = []
-            for actor_def in list_of_actor_def:
-                sublist_of_actors.append(convert_json_to_actor(actor_def))
-            return sublist_of_actors
-
-        list_of_actors = []
-        if 'front' in list_of_antagonist_actors:
-            list_of_actors += get_actors_from_list(list_of_antagonist_actors['front'])
-        if 'left' in list_of_antagonist_actors:
-            list_of_actors += get_actors_from_list(list_of_antagonist_actors['left'])
-        if 'right' in list_of_antagonist_actors:
-            list_of_actors += get_actors_from_list(list_of_antagonist_actors['right'])
-        return list_of_actors
+    # def _get_actors_instances(self, list_of_antagonist_actors):
+    #     def get_actors_from_list(list_of_actor_def):
+    #         # receives a list of actor definitions and creates an actual list of ActorConfigurationObjects
+    #         sublist_of_actors = []
+    #         for actor_def in list_of_actor_def:
+    #             sublist_of_actors.append(convert_json_to_actor(actor_def))
+    #         return sublist_of_actors
+    #
+    #     list_of_actors = []
+    #     if 'front' in list_of_antagonist_actors:
+    #         list_of_actors += get_actors_from_list(list_of_antagonist_actors['front'])
+    #     if 'left' in list_of_antagonist_actors:
+    #         list_of_actors += get_actors_from_list(list_of_antagonist_actors['left'])
+    #     if 'right' in list_of_antagonist_actors:
+    #         list_of_actors += get_actors_from_list(list_of_antagonist_actors['right'])
+    #     return list_of_actors
 
     def initialize_actors(self):
         amount = 0
@@ -265,17 +267,26 @@ class RouteScenario():
             stop = True
             self.logger.log('>> Scenario stops due to max steps', color='yellow')
 
-        for scenario in self.list_scenarios:
-            # only check when evaluating
-            if self.config.scenario_id != 0:  
-                if running_status['driven_distance'] >= scenario.ego_max_driven_distance:
-                    stop = True
-                    self.logger.log('>> Scenario stops due to max driven distance', color='yellow')
-                    break
-            if running_status['current_game_time'] >= scenario.timeout:
+        # only check when evaluating
+        if self.config.scenario_id != 0:
+            if running_status['driven_distance'] >= self.ego_max_driven_distance:
                 stop = True
-                self.logger.log('>> Scenario stops due to timeout', color='yellow') 
-                break
+                self.logger.log('>> Scenario stops due to max driven distance', color='yellow')
+        if running_status['current_game_time'] >= self.timeout:
+            stop = True
+            self.logger.log('>> Scenario stops due to timeout', color='yellow')
+
+        # for scenario in self.list_scenarios:
+        #     # only check when evaluating
+        #     if self.config.scenario_id != 0:
+        #         if running_status['driven_distance'] >= scenario.ego_max_driven_distance:
+        #             stop = True
+        #             self.logger.log('>> Scenario stops due to max driven distance', color='yellow')
+        #             break
+        #     if running_status['current_game_time'] >= scenario.timeout:
+        #         stop = True
+        #         self.logger.log('>> Scenario stops due to timeout', color='yellow')
+        #         break
 
         return running_status, stop
 
@@ -310,8 +321,8 @@ class RouteScenario():
         self.controlled_bv = controlled_bv
         self.controlled_bv_nearby_vehicles = controlled_bv_nearby_vehicles
 
-    def update_info(self, desired_nearby_vehicle=4):
-        if self.controlled_bv: # the controlled bv is not None
+    def update_info(self, desired_nearby_vehicle=3):
+        if self.controlled_bv:  # the controlled bv is not None
             controlled_bv_state = self._get_actor_state(self.controlled_bv)
             actor_info = [controlled_bv_state]  # the first info belongs to the ego vehicle
             for i, actor in enumerate(self.controlled_bv_nearby_vehicles):

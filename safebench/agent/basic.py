@@ -53,9 +53,9 @@ class CarlaBasicAgent(BasePolicy):
         self.controller_list = []
         for e_i in range(len(ego_vehicles)):
             controller = BasicAgent(self.ego_vehicles[e_i], target_speed=self.target_speed, opt_dict=self.opt_dict)
-            dest_waypoint = info[e_i]['route_waypoints'][-1]
+            dest_waypoint = info[e_i]['route_waypoints'][-1]  # the destination of the ego vehicle
             location = dest_waypoint.transform.location
-            controller.set_destination(location) # set route for each controller
+            controller.set_destination(location)  # set route for each controller
             self.controller_list.append(controller)
 
     def train(self, replay_buffer):
