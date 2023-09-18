@@ -156,6 +156,7 @@ class VectorWrapper():
             return True
         else:
             return False
+
     def set_background_vehicles(self, background_vehicles):
         self.background_vehicles = background_vehicles
 
@@ -237,9 +238,7 @@ class ObservationWrapper(gym.Wrapper):
     def _preprocess_obs(self, obs):
         # only use the 4-dimensional state space
         if self.obs_type == 0:
-            actor_state = obs['actor_state'].flatten().astype(np.float64)  # the actor state of surrounding actor
-            state = obs['state'][:4].astype(np.float64)  # the state of chasing the predefined route
-            return np.hstack((state, actor_state))
+            return obs['state'][:4].astype(np.float64)  # the state of chasing the predefined route
         # concat the 4-dimensional state space and lane info
         elif self.obs_type == 1:
             new_obs = np.array([

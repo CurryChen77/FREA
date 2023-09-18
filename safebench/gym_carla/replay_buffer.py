@@ -130,7 +130,7 @@ class RouteReplayBuffer:
         prepared_infos = {}
 
         # get the length of each sub-buffer
-        samples_per_trajectory = self.buffer_capacity // self.num_scenario # assume average over all sub-buffer
+        samples_per_trajectory = self.buffer_capacity // self.num_scenario  # assume average over all sub-buffer
         for s_i in range(self.num_scenario):
             # select the latest samples starting from the end of buffer
             num_trajectory = len(self.buffer_rewards[s_i])

@@ -229,7 +229,7 @@ class CarlaEnv(gym.Env):
         else:
             self.controlled_bv = None
             self.controlled_bv_nearby_vehicles = None
-        self.scenario_manager.route_scenario.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
+        self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
 
         self._run_scenario()  # was used for generating the initial state of the scenario. Being abandoned now
         self._attach_sensor()
@@ -394,7 +394,7 @@ class CarlaEnv(gym.Env):
 
         origin_info = self._get_info()
         # update the nearby vehicle
-        self.scenario_manager.route_scenario.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
+        self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
         updated_controlled_bv_info = self._get_info()
 
         # Update timesteps
@@ -480,8 +480,9 @@ class CarlaEnv(gym.Env):
         acc = actor.get_acceleration()
         return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
 
-    def get_actor_state(self, desired_nearby_vehicles=3):
+    def get_surrounding_actor_state(self, desired_nearby_vehicles=3):
         ego_state = self._get_actor_state(self.ego_vehicle)
+
         actor_state = [ego_state]
         for i, actor in enumerate(self.ego_nearby_vehicles):
             if i < desired_nearby_vehicles:
@@ -500,7 +501,8 @@ class CarlaEnv(gym.Env):
         ego_x = ego_trans.location.x
         ego_y = ego_trans.location.y
         ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
-        lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)
+        # get the distance from ego position to the second waypoint
+        lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)  #
         yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
         delta_yaw = np.arcsin(np.cross(w, yaw))
 
@@ -509,7 +511,7 @@ class CarlaEnv(gym.Env):
         acc = self.ego_vehicle.get_acceleration()
         state = np.array([lateral_dis, -delta_yaw, speed, self.vehicle_front])
 
-        actor_state = self.get_actor_state()
+        # actor_state = self.get_surrounding_actor_state()
 
         if self.scenario_category != 'perception': 
             # set ego information for birdeye_render
@@ -579,7 +581,8 @@ class CarlaEnv(gym.Env):
                 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
                 'birdeye': birdeye.astype(np.uint8),
                 'state': state.astype(np.float32),
-                'actor_state': actor_state.astype(np.float32),
+                # 'actor_state': actor_state.astype(np.float32),
+                # 'preview_point': np.array(self.waypoints[2]).astype(np.float32),
             }
         else:
             """ Get the observations for object detection. """

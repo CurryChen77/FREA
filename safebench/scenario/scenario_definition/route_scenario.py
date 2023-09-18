@@ -62,6 +62,8 @@ class RouteScenario():
         self.route, self.ego_vehicle = self._update_route_and_ego(timeout=self.timeout)
         # self.route, self.ego_vehicle, scenario_definitions = self._update_route_and_ego(timeout=self.timeout)
         self.background_actors = []
+        self.controlled_bv = None
+        self.controlled_bv_nearby_vehicles = None
         # scenario_definitions contains the possible scenarios along the pre-defined route
         # self.list_scenarios = self._build_scenario_instances(scenario_definitions)  # remove the scenario_definitions
         self.criteria = self._create_criteria()
@@ -317,10 +319,6 @@ class RouteScenario():
         acc = actor.get_acceleration()
         return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
 
-    def update_controlled_bv_nearby_vehicles(self, controlled_bv, controlled_bv_nearby_vehicles):
-        self.controlled_bv = controlled_bv
-        self.controlled_bv_nearby_vehicles = controlled_bv_nearby_vehicles
-
     def update_info(self, desired_nearby_vehicle=3):
         if self.controlled_bv:  # the controlled bv is not None
             controlled_bv_state = self._get_actor_state(self.controlled_bv)
@@ -340,7 +338,7 @@ class RouteScenario():
                 #         actor_info.append(actor_state)  # add the info of the other actor to the list
             actor_info = np.array(actor_info)
         else:
-            actor_info = None
+            actor_info = np.zeros((desired_nearby_vehicle+1, 9))  # need to have the same size like normal actor info
         return {
             'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
@@ -350,9 +348,10 @@ class RouteScenario():
         for _, criterion in self.criteria.items():
             criterion.terminate()
 
-        # each scenario remove its own actors
-        for scenario in self.list_scenarios:
-            scenario.clean_up()
+        # # each scenario remove its own actors
+        # for scenario in self.list_scenarios:
+        #     scenario.clean_up()
+        self.scenario_instance.clean_up()
 
         # remove background vehicles
         for s_i in range(len(self.background_actors)):

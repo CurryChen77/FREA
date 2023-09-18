@@ -164,6 +164,12 @@ else:
 
   **目前仅为一维（target speed scale）,可改为两维，类似ego，在update_behavior上修改acc以及steering。通过控制self.other_actors[]列表控制具体的车辆**
 
-## 细节备忘
+## TODO
 
-1. 每次self.env.reset时，生成的scenario是在给定route上，距离自车最近的trigger points基础上生成的
+1. Agent 的state如何设置，原先的state中只包含前车是否存在的bool值，以及追寻next waypoint的state，不包含周车的state。直接类似info加入actor的9维值会导致在计算distribution时mu 和log std时出现None，**实质为通过linear层后**输入的数值不稳定或梯度爆炸导致，actor state无法与原先的4维state兼容，仅考虑preview point也会出现Nan，但Scenario policy使用SAC时，同样模型，只包含actor state不会出现Nan
+1. 考虑控制周车也采用类似自车的算法？即SAC，输出具体的throttle和steering
+
+
+
+
+
