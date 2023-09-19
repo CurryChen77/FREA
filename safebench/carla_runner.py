@@ -43,7 +43,6 @@ class CarlaRunner:
 
         self.render = scenario_config['render']
         self.num_scenario = scenario_config['num_scenario']                              # default 2
-        self.num_background_agents = scenario_config['num_background_agents']            # default 30 background agents
         self.search_radius = scenario_config['search_radius']                            # default 20 meters
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.scenario_category = scenario_config['scenario_category']                    # default planning
@@ -177,18 +176,6 @@ class CarlaRunner:
         }
         self.birdeye_render = BirdeyeRender(self.world, self.birdeye_params, logger=self.logger)
 
-    def generate_background_agents(self):
-        self.logger.log(f'>> generating {self.num_background_agents} backgound_agents', color='green')
-        background_vehicles = CarlaDataProvider.request_new_batch_actors(
-            model='vehicle.*',
-            amount=self.num_background_agents,
-            spawn_points=None,
-            autopilot=True,
-            random_location=True,
-            rolename='background'
-        )
-        return background_vehicles
-
     def train(self, data_loader, start_episode=0):
         # general buffer for both agent and scenario
         Buffer = RouteReplayBuffer if self.scenario_category == 'planning' else PerceptionReplayBuffer
@@ -201,15 +188,7 @@ class CarlaRunner:
             # reset the index counter to create endless loader
             data_loader.reset_idx_counter()
 
-            # generate the traffic flow
-            background_vehicles = self.generate_background_agents()
-            self.env.set_background_vehicles(background_vehicles)
-
-            # get static obs and then reset with init action 
-            # static_obs = self.env.get_static_obs(sampled_scenario_configs)  # TODO continuous traffic flow don't need static obs
-            # scenario_init_action, additional_dict = self.scenario_policy.get_init_action(static_obs)  # TODO don't need init action
             obs, infos = self.env.reset(sampled_scenario_configs, self.search_radius)
-            # replay_buffer.store_init([static_obs, scenario_init_action], additional_dict=additional_dict)
 
             # get ego vehicle from scenario
             self.agent_policy.set_ego_and_route(self.env.get_ego_vehicles(), infos)
@@ -224,7 +203,7 @@ class CarlaRunner:
                 # apply action to env and get obs
                 next_obs, rewards, dones, multi_infos = self.env.step(ego_actions=ego_actions, scenario_actions=scenario_actions)
 
-                # the infos contain [original infos and updated controlled bv infos], so need to store the original infos
+                # infos contain [original infos and updated controlled bv infos], so need to store the original infos
                 training_infos = [info[0] for info in multi_infos]  # origin infos for training
                 infos = [info[1] for info in multi_infos]  # updated infos for transition
 
@@ -270,14 +249,8 @@ class CarlaRunner:
             # sample scenarios
             sampled_scenario_configs, num_sampled_scenario = data_loader.sampler()
             num_finished_scenario += num_sampled_scenario
-            # generate the traffic flow
-            background_vehicles = self.generate_background_agents()
-            self.env.set_background_vehicles(background_vehicles)
 
-            # reset envs with new config, get init action from scenario policy, and run scenario
-            # static_obs = self.env.get_static_obs(sampled_scenario_configs)
             self.scenario_policy.load_model(sampled_scenario_configs)
-            # scenario_init_action, _ = self.scenario_policy.get_init_action(static_obs, deterministic=True)
             obs, infos = self.env.reset(sampled_scenario_configs, self.search_radius)
 
             # get ego vehicle from scenario

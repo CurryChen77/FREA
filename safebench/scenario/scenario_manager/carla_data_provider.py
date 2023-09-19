@@ -16,7 +16,7 @@ import re
 from numpy import random
 from six import iteritems
 import numpy as np
-
+import time
 import carla
 
 
@@ -677,6 +677,8 @@ class CarlaDataProvider(object):
             if spawn_point:
                 batch.append(SpawnActor(blueprint, spawn_point).then(SetAutopilot(FutureActor, autopilot, CarlaDataProvider._traffic_manager_port)))
 
+        time.sleep(0.2)  # TODO need to sleep for a while for the batch_sync operation
+
         actors = CarlaDataProvider.handle_actor_batch(batch, tick)
         for actor in actors:
             if actor is None:
@@ -684,6 +686,20 @@ class CarlaDataProvider(object):
             CarlaDataProvider._carla_actor_pool[actor.id] = actor
             CarlaDataProvider.register_actor(actor)
         return actors
+
+    @staticmethod
+    def get_nearby_spawn_points(center_vehicle, radius=100, intensity=0.7):
+        nearby_spawn_points = []
+        total_spawn_points = list(CarlaDataProvider.get_map(CarlaDataProvider._world).get_spawn_points())
+        center_location = center_vehicle.get_location()
+        for spawn_point in total_spawn_points:
+            spawn_point_location = spawn_point.location
+            distance = center_location.distance(spawn_point_location)
+            if distance < radius:
+                nearby_spawn_points.append(spawn_point)
+        CarlaDataProvider._rng.shuffle(nearby_spawn_points)
+        nearby_spawn_points = nearby_spawn_points[:int(len(nearby_spawn_points)*intensity)]  # sampling part of the nearby spawn points
+        return nearby_spawn_points
 
     @staticmethod
     def get_nearby_vehicles(world, center_vehicle, radius=50):

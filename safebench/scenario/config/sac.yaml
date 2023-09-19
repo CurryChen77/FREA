@@ -9,7 +9,7 @@ route_id: null
 
 # parameters for agent policy
 ego_action_dim: 2
-ego_state_dim: 40 # 4 + 4*9  --4 + over all agents (ego and surrounding) * agent state (9 dim)
+ego_state_dim: 4
 ego_action_limit: 1.0
 
 # parameters for scenario policy
@@ -19,7 +19,7 @@ ego_action_limit: 1.0
 
 # for scenario id 8
 scenario_state_dim: 36 # 4*9 - actor number * actor info dim
-scenario_action_dim: 1
+scenario_action_dim: 2
 
 # for SAC policy model
 model_path: 'safebench/scenario/scenario_data/model_ckpt/sac'

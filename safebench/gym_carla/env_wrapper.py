@@ -174,9 +174,6 @@ class VectorWrapper():
         for e_i in range(self.num_scenario):
             self.env_list[e_i].clean_up()
 
-        # clean up the background vehicles on the whole map
-        self.clean_background_vehicles()
-
         # tick to ensure that all destroy commands are executed
         self.world.tick()
 

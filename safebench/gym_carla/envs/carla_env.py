@@ -55,6 +55,7 @@ class CarlaEnv(gym.Env):
         self.is_running = True
         self.env_id = None
         self.ego_vehicle = None
+        self.env_params = env_params
         self.auto_ego = env_params['auto_ego']
 
         self.collision_sensor = None
@@ -64,8 +65,8 @@ class CarlaEnv(gym.Env):
         self.lidar_height = 2.1
         
         # scenario manager
-        use_scenic = True if  env_params['scenario_category'] == 'scenic' else False
-        self.scenario_manager = ScenarioManager(self.logger, use_scenic=use_scenic)
+        use_scenic = True if env_params['scenario_category'] == 'scenic' else False
+        self.scenario_manager = ScenarioManager(env_params, self.logger, use_scenic=use_scenic)
 
         # for birdeye view and front view visualization
         self.display_size = env_params['display_size']
@@ -159,6 +160,7 @@ class CarlaEnv(gym.Env):
                 config=config, 
                 ego_id=env_id, 
                 max_running_step=self.max_episode_step,
+                env_params=self.env_params,
                 logger=self.logger
             )
         elif self.scenario_category == 'scenic':
@@ -219,6 +221,9 @@ class CarlaEnv(gym.Env):
         self._create_sensors()
         self._create_scenario(config, env_id)  # create the RouteScenario and using scenario manager to manage it
 
+        self._run_scenario()  # generate the initial background vehicles
+        self._attach_sensor()
+
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         self.search_radius = search_radius
         self.ego_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.ego_vehicle, self.search_radius)
@@ -230,9 +235,6 @@ class CarlaEnv(gym.Env):
             self.controlled_bv = None
             self.controlled_bv_nearby_vehicles = None
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
-
-        self._run_scenario()  # was used for generating the initial state of the scenario. Being abandoned now
-        self._attach_sensor()
 
         # route planner for ego vehicle
         self.route_waypoints = self._parse_route(config)

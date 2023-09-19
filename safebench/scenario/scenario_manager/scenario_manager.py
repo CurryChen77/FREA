@@ -23,7 +23,8 @@ class ScenarioManager(object):
         required to initialize, trigger, update and stop a scenario.
     """
 
-    def __init__(self, logger, use_scenic=False):
+    def __init__(self, env_params, logger, use_scenic=False):
+        self.env_params = env_params
         self.logger = logger
         self.scenic = use_scenic
         self._reset()
@@ -57,11 +58,11 @@ class ScenarioManager(object):
 
     def run_scenario(self):
         self._running = True
-        self._init_scenarios()  # not actually using
+        self._init_scenarios()
 
     def _init_scenarios(self):
         # spawn route actors for each scenario
-        self.route_scenario.initialize_actors()  # not actually using
+        self.route_scenario.initialize_actors()
 
         # spawn actors for each scenario along this route
         # for running_scenario in self.scenario_list:
@@ -86,7 +87,6 @@ class ScenarioManager(object):
             CarlaDataProvider.on_carla_tick()
 
             # update the scenario instance receiving the scenario action
-            # print("successfully controlling the choosen bv")
-            # self.scenario_instance.update_behavior(scenario_action)  # TODO passing the controlled bv to update its behavior
+            self.scenario_instance.update_behavior(self.controlled_bv, scenario_action)
 
             self.update_running_status()

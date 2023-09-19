@@ -49,7 +49,7 @@ class RouteScenario():
         along which several smaller scenarios are triggered
     """
 
-    def __init__(self, world, config, ego_id, max_running_step, logger):
+    def __init__(self, world, config, ego_id, max_running_step, env_params, logger):
         self.world = world
         self.logger = logger
         self.config = config
@@ -67,7 +67,7 @@ class RouteScenario():
         # scenario_definitions contains the possible scenarios along the pre-defined route
         # self.list_scenarios = self._build_scenario_instances(scenario_definitions)  # remove the scenario_definitions
         self.criteria = self._create_criteria()
-        self.scenario_instance = AdvBehaviorSingle(self.world, self.ego_vehicle, None, 60)  # create the scenario instance
+        self.scenario_instance = AdvBehaviorSingle(self.world, self.ego_vehicle, env_params)  # create the scenario instance
 
     def _update_route_and_ego(self, timeout=None):
         # # transform the scenario file into a dictionary
@@ -213,18 +213,24 @@ class RouteScenario():
     #         list_of_actors += get_actors_from_list(list_of_antagonist_actors['right'])
     #     return list_of_actors
 
+    def get_nearby_spawn_points(self):
+        spawn_points = CarlaDataProvider.get_nearby_spawn_points(self.ego_vehicle)
+        amount = len(spawn_points)
+        return amount, spawn_points
+
     def initialize_actors(self):
-        amount = 0
+        amount, spawn_points = self.get_nearby_spawn_points()
         new_actors = CarlaDataProvider.request_new_batch_actors(
-            'vehicle.*', 
-            amount, 
-            carla.Transform(), 
+            model='vehicle.*',
+            amount=amount,
+            spawn_points=spawn_points,
             autopilot=True, 
-            random_location=True, 
+            random_location=False,
             rolename='background'
         )
         if new_actors is None:
             raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
+        self.logger.log(f'>> successfully spawning {len(new_actors)} vehicles', color='yellow')
         for _actor in new_actors:
             self.background_actors.append(_actor)
 
@@ -359,4 +365,5 @@ class RouteScenario():
                 self.background_actors[s_i].set_autopilot(enabled=False)
             if CarlaDataProvider.actor_id_exists(self.background_actors[s_i].id):
                 CarlaDataProvider.remove_actor_by_id(self.background_actors[s_i].id)
+        self.logger.log(f'>> cleaning {len(self.background_actors)} vehicles', color='yellow')
         self.background_actors = []
