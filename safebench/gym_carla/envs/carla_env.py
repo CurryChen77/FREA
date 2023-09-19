@@ -10,7 +10,7 @@ Description:
     This work is licensed under the terms of the MIT license.
     For a copy, see <https://opensource.org/licenses/MIT>
 '''
-
+import math
 import random
 
 import numpy as np
@@ -63,6 +63,9 @@ class CarlaEnv(gym.Env):
         self.camera_sensor = None
         self.lidar_data = None
         self.lidar_height = 2.1
+
+        self.controlled_bv = None
+        self.controlled_bv_nearby_vehicles = None
         
         # scenario manager
         use_scenic = True if env_params['scenario_category'] == 'scenic' else False
@@ -399,6 +402,14 @@ class CarlaEnv(gym.Env):
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
         updated_controlled_bv_info = self._get_info()
 
+        # Visualize the controlled bv
+        controlled_bv_transform = CarlaDataProvider.get_transform(self.controlled_bv)
+        self.world.debug.draw_string(
+            controlled_bv_transform.location + carla.Location(z=2),
+            text='CBV',
+            life_time=0.01
+        )
+
         # Update timesteps
         self.time_step += 1
         self.total_step += 1
@@ -518,6 +529,8 @@ class CarlaEnv(gym.Env):
         if self.scenario_category != 'perception': 
             # set ego information for birdeye_render
             self.birdeye_render.set_hero(self.ego_vehicle, self.ego_vehicle.id)
+            if self.controlled_bv:
+                self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)
             self.birdeye_render.vehicle_polygons = self.vehicle_polygons
             self.birdeye_render.walker_polygons = self.walker_polygons
             self.birdeye_render.waypoints = self.waypoints

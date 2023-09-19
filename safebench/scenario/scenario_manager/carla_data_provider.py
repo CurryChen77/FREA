@@ -688,7 +688,7 @@ class CarlaDataProvider(object):
         return actors
 
     @staticmethod
-    def get_nearby_spawn_points(center_vehicle, radius=100, intensity=0.7):
+    def get_nearby_spawn_points(center_vehicle, radius=100, intensity=0.5):
         nearby_spawn_points = []
         total_spawn_points = list(CarlaDataProvider.get_map(CarlaDataProvider._world).get_spawn_points())
         center_location = center_vehicle.get_location()
@@ -711,15 +711,11 @@ class CarlaDataProvider(object):
         # store the nearby vehicle information [vehicle, distance]
         nearby_vehicles_info = []
 
-        # calculate the predifine vehicle's location
-        center_np_location = np.array([center_location.x, center_location.y, center_location.z])
-
         for vehicle in all_vehicles:
             if vehicle.id != center_vehicle.id:  # except the center vehicle
+                # the location of other vehicles
                 vehicle_location = vehicle.get_location()
-                # 预先计算其他车辆的位置
-                vehicle_np_location = np.array([vehicle_location.x, vehicle_location.y, vehicle_location.z])
-                distance = np.linalg.norm(center_np_location - vehicle_np_location)
+                distance = center_location.distance(vehicle_location)
                 if distance <= radius:
                     nearby_vehicles_info.append([vehicle, distance])
 
