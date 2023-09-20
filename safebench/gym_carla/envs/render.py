@@ -488,8 +488,8 @@ class BirdeyeRender(object):
                 color_value = max(0.8 - 0.8/lp*(i+1), 0)
                 if ID == self.hero_id or ID in self.heros_in_all_envs:
                     color = pygame.Color(255, math.floor(color_value*255), math.floor(color_value*255))  # red
-                elif ID == self.controlled_bv_id:  # TODO: can't update in real-time
-                    color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255))  # purple
+                # elif ID == self.controlled_bv_id:  # TODO: can't update in real-time
+                #     color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255))  # purple
                 else:
                     if actor_type == 'vehicle':
                         color = pygame.Color(math.floor(color_value*255), 255, math.floor(color_value*255)) # green

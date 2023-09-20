@@ -235,18 +235,19 @@ class SAC(BasePolicy):
             'value_net': self.value_net.state_dict(), 
             'Q_net': self.Q_net.state_dict()
         }
-        save_dir = os.path.join(self.model_path, str(self.scenario_id))
+        save_dir = os.path.join(self.model_path, str(self.scenario_id))  # TODO bug here, the scenario_id could be None
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.sac.{self.model_id}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
+    # load method that require 10 different model parameters, so the saving method still need to be changed
     def load_model(self, scenario_configs=None):
         if scenario_configs is not None:
             for config in scenario_configs:
                 scenario_id = config.scenario_id
-                model_file = config.parameters
+                model_file = config.parameters  # for each scenario and route, it got 10 different parameter name
                 model_filename = os.path.join(self.model_path, str(scenario_id), model_file)
                 if os.path.exists(model_filename):
                     self.logger.log(f'>> Loading {self.policy_type} model from {model_filename}')
@@ -258,6 +259,8 @@ class SAC(BasePolicy):
                 else:
                     self.logger.log(f'>> Fail to find {self.policy_type} model from {model_filename}', color='yellow')
 
+
+    # # the loading method corresponds to the episode saving method
     # def load_model(self, episode=None):
     #     if episode is None:
     #         episode = -1

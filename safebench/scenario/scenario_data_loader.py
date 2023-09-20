@@ -59,7 +59,8 @@ class ScenarioDataLoader:
         self.reset_idx_counter()
 
     def reset_idx_counter(self):
-        self.scenario_idx = list(range(self.num_total_scenario))
+        self.num_total_scenario = len(self.config_lists)
+        self.scenario_idx = list(range(self.num_total_scenario))  # the index for the scenario contained in this town
 
     def _select_non_overlap_idx_safebench(self, remaining_ids, sample_num):
         selected_idx = []
@@ -77,6 +78,7 @@ class ScenarioDataLoader:
         selected_idx = []
         selected_routes = []
         for s_i in remaining_ids:
+            # the selected sample_num of routes should not overlap with each other
             if not check_route_overlap(selected_routes, self.routes[s_i]):
                 selected_idx.append(s_i)
                 selected_routes.append(self.routes[s_i])
@@ -104,7 +106,9 @@ class ScenarioDataLoader:
         selected_scenario = []
         for s_i in selected_idx:
             selected_scenario.append(self.config_lists[s_i])
-            self.scenario_idx.remove(s_i)
+            self.scenario_idx.remove(s_i)  # for evaluation
+        self.config_lists = [self.config_lists[i] for i in range(len(self.config_lists)) if i not in selected_idx]
+        self.routes = [self.routes[i] for i in range(len(self.routes)) if i not in selected_idx]
 
         assert len(selected_scenario) <= self.num_scenario, f"number of scenarios is larger than {self.num_scenario}"
         return selected_scenario, len(selected_scenario)

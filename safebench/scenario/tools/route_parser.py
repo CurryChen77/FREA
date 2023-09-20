@@ -56,7 +56,7 @@ class RouteParser(object):
 
         list_route_descriptions = []
         tree = ET.parse(route_filename)
-        for route in tree.iter("route"):
+        for route in tree.iter("route"):  # each route_file only contain one route element
             route_id = route.attrib['id']
             if single_route and route_id != single_route:
                 continue
@@ -83,7 +83,7 @@ class RouteParser(object):
                 # save all the waypoints in the route file
                 waypoint_list.append(carla.Location(x=float(waypoint.attrib['x']), y=float(waypoint.attrib['y']), z=float(waypoint.attrib['z'])))
 
-            new_config.trajectory = waypoint_list
+            new_config.trajectory = waypoint_list  # the config.trajectory is the waypoint list of the route
             list_route_descriptions.append(new_config)
 
         return list_route_descriptions
