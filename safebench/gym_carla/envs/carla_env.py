@@ -305,6 +305,21 @@ class CarlaEnv(gym.Env):
             array = array[:, :, ::-1]
             self.camera_img = array
 
+    def visualize(self):
+        # Visualize the controlled bv
+        cbv_transform = CarlaDataProvider.get_transform(self.controlled_bv)
+        cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
+        cbv_angle = math.radians(cbv_transform.rotation.yaw)
+        cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
+        self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.3, life_time=0.5)
+
+        # draw the waypoints
+        for i, wpt in enumerate(self.waypoints):
+            begin = carla.Location(x=wpt[0], y=wpt[1], z=0.5)
+            angle = math.radians(wpt[2])
+            end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
+            self.world.debug.draw_arrow(begin, end, arrow_size=0.3, life_time=0.4)
+
     def step_before_tick(self, ego_action, scenario_action):
         if self.world:
             snapshot = self.world.get_snapshot()
@@ -402,13 +417,7 @@ class CarlaEnv(gym.Env):
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
         updated_controlled_bv_info = self._get_info()
 
-        # Visualize the controlled bv
-        controlled_bv_transform = CarlaDataProvider.get_transform(self.controlled_bv)
-        self.world.debug.draw_string(
-            controlled_bv_transform.location + carla.Location(z=2),
-            text='CBV',
-            life_time=0.01
-        )
+        self.visualize()  # visualize the controlled bv and the waypoints in clients side
 
         # Update timesteps
         self.time_step += 1
