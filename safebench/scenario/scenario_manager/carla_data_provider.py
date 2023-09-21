@@ -698,7 +698,7 @@ class CarlaDataProvider(object):
             if distance < radius:
                 nearby_spawn_points.append(spawn_point)
         CarlaDataProvider._rng.shuffle(nearby_spawn_points)
-        picking_number = np.min(int(len(nearby_spawn_points)*intensity), upper_limit)
+        picking_number = min(int(len(nearby_spawn_points)*intensity), upper_limit)
         nearby_spawn_points = nearby_spawn_points[:picking_number]  # sampling part of the nearby spawn points
         return nearby_spawn_points
 
