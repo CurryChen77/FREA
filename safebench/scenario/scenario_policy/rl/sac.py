@@ -262,7 +262,8 @@ class SAC(BasePolicy):
 
     # the loading method corresponds to the episode saving method
     def load_model(self, episode=None):
-        load_dir = os.path.join(self.model_path, "all")  # TODO hardcode to "all
+        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
+        load_dir = os.path.join(self.model_path, scenario_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):

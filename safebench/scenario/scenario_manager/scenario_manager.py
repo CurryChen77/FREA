@@ -58,11 +58,11 @@ class ScenarioManager(object):
 
     def run_scenario(self):
         self._running = True
-        self._init_scenarios()
+        self._init_scenarios()  # generate the background vehicle
 
     def _init_scenarios(self):
         # spawn route actors for each scenario
-        self.route_scenario.initialize_actors()
+        self.route_scenario.initialize_actors()  # generate the background vehicle
 
         # spawn actors for each scenario along this route
         # for running_scenario in self.scenario_list:

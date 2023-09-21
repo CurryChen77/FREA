@@ -182,7 +182,7 @@ class CarlaEnv(gym.Env):
         self.scenario_manager.load_scenario(scenario)  # The scenario manager only controls the RouteScenario
 
     def _run_scenario(self):
-        self.scenario_manager.run_scenario()  # not actually using
+        self.scenario_manager.run_scenario()  # init the background vehicle
 
     def _parse_route(self, config):
         # interp waypoints as init waypoints
