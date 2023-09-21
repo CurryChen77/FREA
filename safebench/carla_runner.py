@@ -180,6 +180,7 @@ class CarlaRunner:
         # general buffer for both agent and scenario
         Buffer = RouteReplayBuffer if self.scenario_category == 'planning' else PerceptionReplayBuffer
         replay_buffer = Buffer(self.num_scenario, self.mode, self.buffer_capacity)
+        data_loader.set_mode("train")
 
         for e_i in tqdm(range(start_episode, self.train_episode)):
             # sample scenarios in this town (one town could contain multiple scenarios)
@@ -244,6 +245,7 @@ class CarlaRunner:
 
     def eval(self, data_loader):
         num_finished_scenario = 0
+        data_loader.set_mode("eval")
         data_loader.reset_idx_counter()
         while len(data_loader) > 0:
             # sample scenarios

@@ -45,7 +45,8 @@ def check_route_overlap(current_routes, route, distance_threshold=10):
 class ScenarioDataLoader:
     def __init__(self, config_lists, num_scenario, town, world):
         self.num_scenario = num_scenario
-        self.config_lists = config_lists
+        self.config_lists = config_lists  # can be changed during training
+        self.constant_config_lists = config_lists  # unchangeable
         self.town = town.lower()
         self.world = world
         self.routes = []
@@ -59,8 +60,18 @@ class ScenarioDataLoader:
         self.reset_idx_counter()
 
     def reset_idx_counter(self):
-        self.num_total_scenario = len(self.config_lists)
-        self.scenario_idx = list(range(self.num_total_scenario))  # the index for the scenario contained in this town
+        self.num_total_scenario = len(self.config_lists)  # for training: update num_scenarios after sampling
+        if self.num_total_scenario == 0:  # no more config_lists, need to start over
+            # create the new config_lists
+            self.config_lists = self.constant_config_lists
+            # update the num_total_scenario
+            self.num_total_scenario = len(self.config_lists)
+            # create the new routes
+            if 'safebench' not in self.town:
+                self.routes = []
+                for config in self.config_lists:
+                    self.routes.append(calculate_interpolate_trajectory(config, self.world))
+        self.scenario_idx = list(range(self.num_total_scenario))  # for evaluation
 
     def _select_non_overlap_idx_safebench(self, remaining_ids, sample_num):
         selected_idx = []
@@ -97,6 +108,9 @@ class ScenarioDataLoader:
     def __len__(self):
         return len(self.scenario_idx)
 
+    def set_mode(self, mode):
+        self.mode = mode
+
     def sampler(self):
         # sometimes the length of list is smaller than num_scenario
         sample_num = np.min([self.num_scenario, len(self.scenario_idx)])
@@ -104,11 +118,19 @@ class ScenarioDataLoader:
         # selected_idx = np.random.choice(self.scenario_idx, size=sample_num, replace=False)
         selected_idx = self._select_non_overlap_idx(self.scenario_idx, sample_num)
         selected_scenario = []
-        for s_i in selected_idx:
-            selected_scenario.append(self.config_lists[s_i])
-            self.scenario_idx.remove(s_i)  # for evaluation
-        self.config_lists = [self.config_lists[i] for i in range(len(self.config_lists)) if i not in selected_idx]
-        self.routes = [self.routes[i] for i in range(len(self.routes)) if i not in selected_idx]
+        if self.mode == "train":
+            for s_i in selected_idx:
+                selected_scenario.append(self.config_lists[s_i])
+                # self.scenario_idx.remove(s_i)  # for evaluation
+
+            # removing the selected scenario for the next sampling during training
+            self.config_lists = [self.config_lists[i] for i in range(len(self.config_lists)) if i not in selected_idx]
+            # removing the selected routes for the next sampling during training
+            self.routes = [self.routes[i] for i in range(len(self.routes)) if i not in selected_idx]
+        elif self.mode == "eval":
+            for s_i in selected_idx:
+                selected_scenario.append(self.constant_config_lists[s_i])
+                self.scenario_idx.remove(s_i)  # for evaluation
 
         assert len(selected_scenario) <= self.num_scenario, f"number of scenarios is larger than {self.num_scenario}"
         return selected_scenario, len(selected_scenario)

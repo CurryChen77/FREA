@@ -260,7 +260,7 @@ class SAC(BasePolicy):
                     self.logger.log(f'>> Fail to find {self.policy_type} model from {model_filename}', color='yellow')
 
 
-    # # the loading method corresponds to the episode saving method
+    # the loading method corresponds to the episode saving method
     # def load_model(self, episode=None):
     #     if episode is None:
     #         episode = -1

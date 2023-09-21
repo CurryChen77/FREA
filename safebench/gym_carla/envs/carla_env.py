@@ -311,14 +311,14 @@ class CarlaEnv(gym.Env):
         cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
         cbv_angle = math.radians(cbv_transform.rotation.yaw)
         cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
-        self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.3, life_time=0.5)
+        self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.2, color=carla.Color(0,0,255,0), life_time=0.5)
 
         # draw the waypoints
         for i, wpt in enumerate(self.waypoints):
-            begin = carla.Location(x=wpt[0], y=wpt[1], z=0.5)
+            begin = carla.Location(x=wpt[0], y=wpt[1], z=0.3)
             angle = math.radians(wpt[2])
             end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
-            self.world.debug.draw_arrow(begin, end, arrow_size=0.3, life_time=0.4)
+            self.world.debug.draw_arrow(begin, end, arrow_size=0.1, life_time=0.3)
 
     def step_before_tick(self, ego_action, scenario_action):
         if self.world:
