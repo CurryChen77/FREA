@@ -247,12 +247,12 @@ class CarlaRunner:
         num_finished_scenario = 0
         data_loader.set_mode("eval")
         data_loader.reset_idx_counter()
+        self.scenario_policy.load_model()  # if use overall model, the loading process only needs to be executed once
         while len(data_loader) > 0:
             # sample scenarios
             sampled_scenario_configs, num_sampled_scenario = data_loader.sampler()
             num_finished_scenario += num_sampled_scenario
 
-            self.scenario_policy.load_model(sampled_scenario_configs)
             obs, infos = self.env.reset(sampled_scenario_configs, self.search_radius)
 
             # get ego vehicle from scenario

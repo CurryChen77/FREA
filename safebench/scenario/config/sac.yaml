@@ -25,7 +25,7 @@ scenario_action_dim: 2
 model_path: 'safebench/scenario/scenario_data/model_ckpt/sac'
 model_id: 1
 train_episode: 2000
-save_freq: 1
+save_freq: 5
 eval_in_train_freq: 10
 buffer_capacity: 10000
 buffer_start_training: 100

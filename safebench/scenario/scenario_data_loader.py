@@ -60,8 +60,8 @@ class ScenarioDataLoader:
         self.reset_idx_counter()
 
     def reset_idx_counter(self):
-        self.num_total_scenario = len(self.config_lists)  # for training: update num_scenarios after sampling
-        if self.num_total_scenario == 0:  # no more config_lists, need to start over
+        self.num_total_scenario = len(self.config_lists)  # update num_scenarios after sampling
+        if self.num_total_scenario == 0:  # during training, if no more config_lists, need to start over
             # create the new config_lists
             self.config_lists = self.constant_config_lists
             # update the num_total_scenario
@@ -71,7 +71,7 @@ class ScenarioDataLoader:
                 self.routes = []
                 for config in self.config_lists:
                     self.routes.append(calculate_interpolate_trajectory(config, self.world))
-        self.scenario_idx = list(range(self.num_total_scenario))  # for evaluation
+        self.scenario_idx = list(range(self.num_total_scenario))  # both for training and evaluating
 
     def _select_non_overlap_idx_safebench(self, remaining_ids, sample_num):
         selected_idx = []
@@ -129,8 +129,8 @@ class ScenarioDataLoader:
             self.routes = [self.routes[i] for i in range(len(self.routes)) if i not in selected_idx]
         elif self.mode == "eval":
             for s_i in selected_idx:
-                selected_scenario.append(self.constant_config_lists[s_i])
-                self.scenario_idx.remove(s_i)  # for evaluation
+                selected_scenario.append(self.constant_config_lists[s_i])  # need to be a stable config list
+                self.scenario_idx.remove(s_i)  # use self.scenario_idx to represent the remaining_idx
 
         assert len(selected_scenario) <= self.num_scenario, f"number of scenarios is larger than {self.num_scenario}"
         return selected_scenario, len(selected_scenario)
