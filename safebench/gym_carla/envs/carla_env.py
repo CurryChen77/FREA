@@ -190,10 +190,10 @@ class CarlaEnv(gym.Env):
 
         # TODO: these waypoints can be directly got from scenario
         waypoints_list = []
-        carla_map = self.world.get_map()
+        self.carla_map = self.world.get_map()
         for node in route:
             loc = node[0].location
-            waypoint = carla_map.get_waypoint(loc, project_to_road=True, lane_type=carla.LaneType.Driving)
+            waypoint = self.carla_map.get_waypoint(loc, project_to_road=True, lane_type=carla.LaneType.Driving)
             waypoints_list.append(waypoint)
         return waypoints_list
 
@@ -242,7 +242,7 @@ class CarlaEnv(gym.Env):
         # route planner for ego vehicle
         self.route_waypoints = self._parse_route(config)
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.route_waypoints)
-        self.waypoints, _, _, _, _, self.vehicle_front, = self.routeplanner.run_step()
+        self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # change view point
         #location = carla.Location(x=100, y=100, z=300)
@@ -491,49 +491,64 @@ class CarlaEnv(gym.Env):
             actor_angular_velocity_dict[actor.id] = actor.get_angular_velocity()
             actor_velocity_dict[actor.id] = actor.get_velocity()
         return actor_trajectory_dict, actor_acceleration_dict, actor_angular_velocity_dict, actor_velocity_dict
-
-    def _get_actor_state(self, actor):
-        actor_trans = actor.get_transform()
-        actor_x = actor_trans.location.x
-        actor_y = actor_trans.location.y
-        actor_yaw = actor_trans.rotation.yaw / 180 * np.pi
-        yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
-        velocity = actor.get_velocity()
-        acc = actor.get_acceleration()
-        return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
-
-    def get_surrounding_actor_state(self, desired_nearby_vehicles=3):
-        ego_state = self._get_actor_state(self.ego_vehicle)
-
-        actor_state = [ego_state]
-        for i, actor in enumerate(self.ego_nearby_vehicles):
-            if i < desired_nearby_vehicles:
-                actor_state.append(self._get_actor_state(actor))
-            else:
-                break
-        while len(actor_state)-1 < desired_nearby_vehicles:
-            actor_state.append([0] * len(ego_state))
-
-        actor_state = np.array(actor_state)
-        return actor_state
+    #
+    # def _get_actor_state(self, actor):
+    #     actor_trans = actor.get_transform()
+    #     actor_x = actor_trans.location.x
+    #     actor_y = actor_trans.location.y
+    #     actor_yaw = actor_trans.rotation.yaw / 180 * np.pi
+    #     yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
+    #     velocity = actor.get_velocity()
+    #     # TODO simplify the state dimension
+    #     # return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
+    #     return np.arrary([actor_x, actor_y, actor_yaw, velocity.x, velocity.y])
+    #
+    # def get_surrounding_actor_state(self, desired_nearby_vehicles=3):
+    #     ego_state = self._get_actor_state(self.ego_vehicle)
+    #
+    #     actor_state = [ego_state]
+    #     for i, actor in enumerate(self.ego_nearby_vehicles):
+    #         if i < desired_nearby_vehicles:
+    #             actor_state.append(self._get_actor_state(actor))
+    #         else:
+    #             break
+    #     while len(actor_state)-1 < desired_nearby_vehicles:
+    #         actor_state.append([0] * len(ego_state))
+    #
+    #     actor_state = np.array(actor_state)
+    #     return actor_state
 
     def _get_obs(self):
-        # State observation
+        # Ego
         ego_trans = self.ego_vehicle.get_transform()
-        ego_x = ego_trans.location.x
-        ego_y = ego_trans.location.y
+        ego_location = ego_trans.location
         ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
-        # get the distance from ego position to the second waypoint
-        lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)  #
-        yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
-        delta_yaw = np.arcsin(np.cross(w, yaw))
-
         v = self.ego_vehicle.get_velocity()
-        speed = np.sqrt(v.x**2 + v.y**2)
-        acc = self.ego_vehicle.get_acceleration()
-        state = np.array([lateral_dis, -delta_yaw, speed, self.vehicle_front])
+        ego_speed = np.sqrt(v.x**2 + v.y**2)
 
-        # actor_state = self.get_surrounding_actor_state()
+        # pre waypoint
+        # get the distance from ego position to the second waypoint
+        pre_waypoint = self.waypoints[2]
+        pre_waypoint_w = np.array([np.cos(pre_waypoint[2]/180*np.pi), np.sin(pre_waypoint[2]/180*np.pi)])
+        waypoint_dis = ego_location.distance(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
+        # waypoint_lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)  #
+        yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
+        waypoint_delta_yaw = np.arcsin(np.cross(pre_waypoint_w, yaw))
+
+        # bv
+        controlled_bv_dis = ego_location.distance(self.controlled_bv.get_location())
+
+        # extre information
+        junction_waypoint = self.carla_map.get_waypoint(carla.Location(x=pre_waypoint[0],y=pre_waypoint[1]))
+        pre_waypoint_is_junction = junction_waypoint.is_junction
+
+        state = np.array([ego_location.x, ego_location.y, ego_yaw, ego_speed,  # ego
+                          waypoint_dis, -waypoint_delta_yaw,  # pre waypoint dis
+                          controlled_bv_dis,  # controlled bv dis
+                          self.vehicle_front,  # whether exist front vehicle
+                          pre_waypoint_is_junction,  # whether the pre waypoint is in the junction
+                          self.red_light_state,  # whether the ego encountered red light
+                          ])
 
         if self.scenario_category != 'perception': 
             # set ego information for birdeye_render
@@ -605,8 +620,6 @@ class CarlaEnv(gym.Env):
                 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
                 'birdeye': birdeye.astype(np.uint8),
                 'state': state.astype(np.float32),
-                # 'actor_state': actor_state.astype(np.float32),
-                # 'preview_point': np.array(self.waypoints[2]).astype(np.float32),
             }
         else:
             """ Get the observations for object detection. """
