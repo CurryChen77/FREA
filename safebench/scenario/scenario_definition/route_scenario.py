@@ -208,7 +208,7 @@ class RouteScenario():
         )
         if new_actors is None:
             raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
-        self.logger.log(f'>> successfully spawning {len(new_actors)} vehicles', color='yellow')
+        self.logger.log(f'>> successfully spawning {len(new_actors)} Autopilot vehicles', color='yellow')
         for _actor in new_actors:
             self.background_actors.append(_actor)
 

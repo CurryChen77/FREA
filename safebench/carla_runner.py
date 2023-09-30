@@ -283,7 +283,7 @@ class CarlaRunner:
                     reward_idx += 1
 
             # clean up all things
-            self.logger.log(">> All scenarios are completed. Clearning up all actors")
+            self.logger.log(">> All scenarios are completed. Cleaning up all actors")
             self.env.clean_up()
 
             # save video

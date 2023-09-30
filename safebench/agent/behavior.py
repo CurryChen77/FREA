@@ -18,7 +18,7 @@ class CarlaBehaviorAgent(BasePolicy):
     name = 'behavior'
     type = 'unlearnable'
 
-    """ This is just an example for testing, whcih always goes straight. """
+    """ This is just an example for testing, which always goes straight. """
     def __init__(self, config, logger):
         self.logger = logger
         self.num_scenario = config['num_scenario']
@@ -50,11 +50,18 @@ class CarlaBehaviorAgent(BasePolicy):
     def get_action(self, obs, infos, deterministic=False):
         actions = []
         for e_i in infos:
-            # select the controller that matches the scenario_id
-            control = self.controller_list[e_i['scenario_id']].run_step()
-            throttle = control.throttle
-            steer = control.steer
-            actions.append([throttle, steer]) 
+            # TODO the waypoint list in safebench and carla's behavior agent is different
+            # for the behavior agent, the goal may be reached (no more waypoints to chase), but safebench still got waypoints
+            if self.controller_list[e_i['scenario_id']].done():
+                self.logger.log('Reach the goal')
+                throttle = 0
+                steer = 0
+            else:
+                # select the controller that matches the scenario_id
+                control = self.controller_list[e_i['scenario_id']].run_step()
+                throttle = control.throttle
+                steer = control.steer
+            actions.append([throttle, steer])
         actions = np.array(actions, dtype=np.float32)
         return actions
 

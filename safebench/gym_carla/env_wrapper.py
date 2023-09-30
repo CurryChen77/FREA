@@ -157,17 +157,17 @@ class VectorWrapper():
         else:
             return False
 
-    def set_background_vehicles(self, background_vehicles):
-        self.background_vehicles = background_vehicles
-
-    def clean_background_vehicles(self):
-        # remove background vehicles
-        self.logger.log(f'>> cleaning {len(self.background_vehicles)} backgound_agents', color='green')
-        for s_i in range(len(self.background_vehicles)):
-            if self.background_vehicles[s_i].type_id.startswith('vehicle'):
-                self.background_vehicles[s_i].set_autopilot(enabled=False)
-            if CarlaDataProvider.actor_id_exists(self.background_vehicles[s_i].id):
-                CarlaDataProvider.remove_actor_by_id(self.background_vehicles[s_i].id)
+    # def set_background_vehicles(self, background_vehicles):
+    #     self.background_vehicles = background_vehicles
+    #
+    # def clean_background_vehicles(self):
+    #     # remove background vehicles
+    #     self.logger.log(f'>> cleaning {len(self.background_vehicles)} backgound_agents', color='green')
+    #     for s_i in range(len(self.background_vehicles)):
+    #         if self.background_vehicles[s_i].type_id.startswith('vehicle'):
+    #             self.background_vehicles[s_i].set_autopilot(enabled=False)
+    #         if CarlaDataProvider.actor_id_exists(self.background_vehicles[s_i].id):
+    #             CarlaDataProvider.remove_actor_by_id(self.background_vehicles[s_i].id)
 
     def clean_up(self):
         # stop sensor objects

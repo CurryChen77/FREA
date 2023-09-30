@@ -181,7 +181,7 @@ else:
 ## TODO
 
 1. Agent 的state如何设置，原先的state中只包含前车是否存在的bool值，以及追寻next waypoint的state，不包含周车的state。直接类似info加入actor的9维值会导致在计算distribution时mu 和log std时出现None，**实质为通过linear层后**输入的数值不稳定或梯度爆炸导致，actor state无法与原先的4维state兼容，仅考虑preview point也会出现Nan，但Scenario policy使用SAC时，同样模型，只包含actor state不会出现Nan
-1. 考虑控制周车也采用类似自车的算法？即SAC，输出具体的throttle和steering
+1. ego agent 中的behavior模块会出现self.incoming_waypoint没有is_junction的命令，即无self.incoming_waypoint，可能由于global route过短，导致过早停止，即出现无incoming_waypoints
 
 
 
