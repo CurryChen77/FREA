@@ -51,7 +51,7 @@ create_behavior function改变周车初始行为中的target speed (周车目标
 
 ### observation
 
-#### Ego agent
+#### Ego agent原始
 
 Ego agent obs包括
 
@@ -95,6 +95,20 @@ elif self.obs_type == 3:
     return {"img": obs['camera'], "states": obs['state'][:4].astype(np.float64)}
 else:
     raise NotImplementedError
+```
+
+#### Ego state 改进后
+
+包含10维state，包括自车信息，global route 信息，周车信息，以及路灯，交叉口等语义信息
+
+```python
+state = np.array([ego_location.x, ego_location.y, ego_yaw, ego_speed,  # ego
+                  waypoint_dis, -waypoint_delta_yaw,  # pre waypoint dis
+                  controlled_bv_dis,  # controlled bv dis
+                  self.vehicle_front,  # whether exist front vehicle
+                  pre_waypoint_is_junction,  # whether the pre waypoint is in the junction
+                  self.red_light_state,  # whether the ego encountered red light
+                  ])
 ```
 
 #### Scenario agent

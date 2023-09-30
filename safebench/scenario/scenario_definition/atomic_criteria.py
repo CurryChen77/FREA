@@ -293,6 +293,10 @@ class CollisionTest(Criterion):
         else:
             return
 
+        # TODO actor_location sometimes is None
+        if actor_location is None:
+            return
+
         collision_event = TrafficEvent(event_type=actor_type)
         collision_event.set_dict({
             'type': event.other_actor.type_id,

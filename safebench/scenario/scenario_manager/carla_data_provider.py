@@ -688,14 +688,14 @@ class CarlaDataProvider(object):
         return actors
 
     @staticmethod
-    def get_nearby_spawn_points(center_vehicle, radius=100, intensity=0.5, upper_limit=25):
+    def get_nearby_spawn_points(center_vehicle, radius=100, closest_dis=7, intensity=0.5, upper_limit=20):
         nearby_spawn_points = []
         total_spawn_points = list(CarlaDataProvider.get_map(CarlaDataProvider._world).get_spawn_points())
         center_location = center_vehicle.get_location()
         for spawn_point in total_spawn_points:
             spawn_point_location = spawn_point.location
             distance = center_location.distance(spawn_point_location)
-            if distance < radius:
+            if radius > distance > closest_dis:  # the init spawn point shouldn't be too close or too far
                 nearby_spawn_points.append(spawn_point)
         CarlaDataProvider._rng.shuffle(nearby_spawn_points)
         picking_number = min(int(len(nearby_spawn_points)*intensity), upper_limit)

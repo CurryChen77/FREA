@@ -130,6 +130,7 @@ class RouteScenario():
                 ego_vehicle.set_autopilot(autopilot, CarlaDataProvider.get_traffic_manager_port())
                 success = True
             except RuntimeError:
+                print("WARNING: Failed to spawn the ego vehicle, try to modify the z position of the spawn point")
                 elevate_transform.location.z += 0.1
         return ego_vehicle
 

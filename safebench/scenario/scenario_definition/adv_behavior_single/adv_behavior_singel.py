@@ -104,7 +104,8 @@ class AdvBehaviorSingle(BasicScenario):
         self.trigger_distance_threshold = 35
 
     def update_behavior(self, controlled_bv, scenario_action):
-        if controlled_bv is not None:
+        # if the controlled bv exists and the scenario policy isn't hardcoded
+        if controlled_bv is not None and scenario_action is not None:
             # create the action
             act = self.convert_actions(scenario_action)
             if self.prior_controlled_bv is None:  # the initial time
