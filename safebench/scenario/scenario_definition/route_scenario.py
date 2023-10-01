@@ -191,13 +191,19 @@ class RouteScenario():
     #         list_of_actors += get_actors_from_list(list_of_antagonist_actors['right'])
     #     return list_of_actors
 
-    def get_nearby_spawn_points(self):
-        spawn_points = CarlaDataProvider.get_nearby_spawn_points(self.ego_vehicle)
+    def get_location_nearby_spawn_points(self):
+        start_location = self.route[0][0].location
+        middle_location = self.route[len(self.route)//2][0].location
+        end_location = self.route[-1][0].location
+        start = CarlaDataProvider.get_location_nearby_spawn_points(start_location, radius=20, closest_dis=7)  # route start point
+        middle = CarlaDataProvider.get_location_nearby_spawn_points(middle_location, radius=40, intensity=0.8)  # route middle point
+        end = CarlaDataProvider.get_location_nearby_spawn_points(end_location, radius=30, intensity=0.7)  # route end point
+        spawn_points = list(set(start + middle + end))  # filter the overlapping
         amount = len(spawn_points)
         return amount, spawn_points
 
     def initialize_actors(self):
-        amount, spawn_points = self.get_nearby_spawn_points()
+        amount, spawn_points = self.get_location_nearby_spawn_points()
         new_actors = CarlaDataProvider.request_new_batch_actors(
             model='vehicle.*',
             amount=amount,
