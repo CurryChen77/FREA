@@ -717,6 +717,71 @@ class CarlaDataProvider(object):
         return nearby_spawn_points
 
     @staticmethod
+    def get_controlled_vehicle(world, ego_vehicle, radius=100):
+        min_dis = 10000
+        controlled_bv = None
+        ego_location = ego_vehicle.get_location()
+        ego_waypoint = world.get_map().get_waypoint(ego_location)
+        all_vehicles = world.get_actors().filter('vehicle.*')
+
+        # the ego vehicle is not in the junction
+        if not ego_waypoint.is_junction:
+            ego_view_waypoint = ego_waypoint
+            center_lane = None
+            # find the center_lane_marking
+            for _ in range(4):  # assume max 4 lanes along each roadside
+                if ego_view_waypoint and ego_view_waypoint.left_lane_marking.color == carla.LaneMarkingColor.Yellow:
+                    center_lane = ego_view_waypoint.left_lane_marking  # find the center lane marking
+                    break
+                else:
+                    ego_view_waypoint = ego_view_waypoint.get_left_lane()  # move view to the left lane
+            if center_lane and center_lane.type == carla.LaneMarkingType.SolidSolid:
+                # find all the lanes at the ego side
+                ego_view_waypoint = ego_waypoint  # update the ego_view
+                for _ in range(4):  # assume max 4 lanes along each roadside
+                    if ego_view_waypoint.lane_type == carla.LaneType.Driving:
+                        max_lane_id = ego_view_waypoint.lane_id
+                        ego_view_waypoint = ego_view_waypoint.get_right_lane()  # move view to the right lane
+                    else:
+                        break
+                if max_lane_id < 0:
+                    lane_id_list = list(range(max_lane_id, 0))
+                else:
+                    lane_id_list = list(range(1, max_lane_id+1))
+
+            for vehicle in all_vehicles:
+                if vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
+                    vehicle_location = vehicle.get_location()
+                    vehicle_waypoint = world.get_map().get_waypoint(vehicle_location)
+
+                    if center_lane and center_lane.type == carla.LaneMarkingType.SolidSolid:
+                        # the center lane is the solid yellow lane that don't allow crossing
+                        for lane_id in lane_id_list:  # for all the lane in ego roadside
+                            if lane_id == vehicle_waypoint.lane_id:  # if the vehicle is in the ego side
+                                distance = ego_location.distance(vehicle_location)
+                                if distance < radius and distance < min_dis:
+                                    controlled_bv = vehicle  # update the controlled bv
+                                    min_dis = distance  # update the min_dis
+
+                    else:  # the normal yellow lane mark or no yellow lane mark at all
+                        distance = ego_location.distance(vehicle_location)
+                        if distance < radius and distance < min_dis:
+                            controlled_bv = vehicle  # update the controlled bv
+                            min_dis = distance  # update the min_dis
+        # the ego vehicle is in the junction
+        else:
+            # TODO need to remove the vehicle waiting for the red light
+            for vehicle in all_vehicles:
+                if vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
+                    vehicle_location = vehicle.get_location()
+                    distance = ego_location.distance(vehicle_location)
+                    if distance < radius and distance < min_dis:
+                        controlled_bv = vehicle  # update the controlled bv
+                        min_dis = distance  # update the min_dis
+
+        return controlled_bv
+
+    @staticmethod
     def get_nearby_vehicles(world, center_vehicle, radius=50):
         center_location = center_vehicle.get_location()
 

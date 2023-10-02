@@ -229,13 +229,10 @@ class CarlaEnv(gym.Env):
 
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         self.search_radius = search_radius
-        self.ego_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.ego_vehicle, self.search_radius)
-        if self.ego_nearby_vehicles:
-            self.controlled_bv = self.ego_nearby_vehicles[0]  # the cloest vehicle to ego is the controlled bv
+        self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.world, self.ego_vehicle, self.search_radius)
+        if self.controlled_bv:
             self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.controlled_bv, self.search_radius)
-            # update the nearby vehicle
         else:
-            self.controlled_bv = None
             self.controlled_bv_nearby_vehicles = None
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
 
@@ -307,11 +304,12 @@ class CarlaEnv(gym.Env):
 
     def visualize(self):
         # Visualize the controlled bv
-        cbv_transform = CarlaDataProvider.get_transform(self.controlled_bv)
-        cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
-        cbv_angle = math.radians(cbv_transform.rotation.yaw)
-        cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
-        self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.2, color=carla.Color(0,0,255,0), life_time=0.5)
+        if self.controlled_bv:
+            cbv_transform = CarlaDataProvider.get_transform(self.controlled_bv)
+            cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
+            cbv_angle = math.radians(cbv_transform.rotation.yaw)
+            cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
+            self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.2, color=carla.Color(0,0,255,0), life_time=0.5)
 
         # draw the waypoints
         for i, wpt in enumerate(self.waypoints):
@@ -403,13 +401,10 @@ class CarlaEnv(gym.Env):
         self.waypoints, _, _, _, _, self.vehicle_front, = self.routeplanner.run_step()
 
         # update the sorted nearby vehicles
-        self.ego_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.ego_vehicle, self.search_radius)
-        if self.ego_nearby_vehicles:
-            self.controlled_bv = self.ego_nearby_vehicles[0]  # the cloest vehicle to ego is the controlled bv
+        self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.world, self.ego_vehicle, self.search_radius)
+        if self.controlled_bv:
             self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.controlled_bv, self.search_radius)
-            # update the nearby vehicle
         else:
-            self.controlled_bv = None
             self.controlled_bv_nearby_vehicles = None
 
         origin_info = self._get_info()
@@ -536,7 +531,10 @@ class CarlaEnv(gym.Env):
         waypoint_delta_yaw = np.arcsin(np.cross(pre_waypoint_w, yaw))
 
         # bv
-        controlled_bv_dis = ego_location.distance(self.controlled_bv.get_location())
+        if self.controlled_bv:
+            controlled_bv_dis = ego_location.distance(self.controlled_bv.get_location())
+        else:
+            controlled_bv_dis = None
 
         # extre information
         junction_waypoint = self.carla_map.get_waypoint(carla.Location(x=pre_waypoint[0],y=pre_waypoint[1]))
