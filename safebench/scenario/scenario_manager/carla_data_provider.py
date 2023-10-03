@@ -718,11 +718,23 @@ class CarlaDataProvider(object):
 
     @staticmethod
     def get_controlled_vehicle(world, ego_vehicle, radius=100):
-        min_dis = 10000
+        min_dis = 1000
         controlled_bv = None
-        ego_location = ego_vehicle.get_location()
+        ego_transform = ego_vehicle.get_transform()
+        ego_location = ego_transform.location
+        ego_forward_vector = ego_transform.rotation.get_forward_vector()
         ego_waypoint = world.get_map().get_waypoint(ego_location)
         all_vehicles = world.get_actors().filter('vehicle.*')
+
+        def _get_controlled_vehicle(vehicle_location, controlled_bv, radius, min_dis):
+            distance = ego_location.distance(vehicle_location)
+            relative_direction = (vehicle_location - ego_location) / distance
+            dot_product = ego_forward_vector.dot(relative_direction)  # the relative dot product
+            if distance < radius and distance < min_dis and dot_product > 0.0:
+                controlled_bv = vehicle  # update the controlled bv
+                min_dis = distance  # update the min_dis
+
+            return controlled_bv, min_dis
 
         # the ego vehicle is not in the junction
         if not ego_waypoint.is_junction:
@@ -758,27 +770,22 @@ class CarlaDataProvider(object):
                         # the center lane is the solid yellow lane that don't allow crossing
                         for lane_id in lane_id_list:  # for all the lane in ego roadside
                             if lane_id == vehicle_waypoint.lane_id:  # if the vehicle is in the ego side
-                                distance = ego_location.distance(vehicle_location)
-                                if distance < radius and distance < min_dis:
-                                    controlled_bv = vehicle  # update the controlled bv
-                                    min_dis = distance  # update the min_dis
-
+                                controlled_bv, min_dis = _get_controlled_vehicle(
+                                    vehicle_location, controlled_bv, radius, min_dis
+                                )
                     else:  # the normal yellow lane mark or no yellow lane mark at all
-                        distance = ego_location.distance(vehicle_location)
-                        if distance < radius and distance < min_dis:
-                            controlled_bv = vehicle  # update the controlled bv
-                            min_dis = distance  # update the min_dis
+                        controlled_bv, min_dis = _get_controlled_vehicle(
+                            vehicle_location, controlled_bv, radius, min_dis
+                        )
         # the ego vehicle is in the junction
         else:
             # TODO need to remove the vehicle waiting for the red light
             for vehicle in all_vehicles:
                 if vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
                     vehicle_location = vehicle.get_location()
-                    distance = ego_location.distance(vehicle_location)
-                    if distance < radius and distance < min_dis:
-                        controlled_bv = vehicle  # update the controlled bv
-                        min_dis = distance  # update the min_dis
-
+                    controlled_bv, min_dis = _get_controlled_vehicle(
+                        vehicle_location, controlled_bv, radius, min_dis
+                    )
         return controlled_bv
 
     @staticmethod
