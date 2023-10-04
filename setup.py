@@ -1,7 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 '''
-Date: 2023-01-25 19:36:50
-LastEditTime: 2023-03-06 00:20:47
-Description: 
+@File    ：setup.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/10/4
+@source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 '''
 
 from setuptools import setup, find_packages

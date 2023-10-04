@@ -1,13 +1,11 @@
-''' 
-Date: 2023-01-31 22:23:17
-LastEditTime: 2023-04-04 01:01:01
-Description: 
-    Copyright (c) 2022-2023 Safebench Team
-
-    This file is modified from <https://github.com/philtabor/Multi-Agent-Deep-Deterministic-Policy-Gradients>
-
-    This work is licensed under the terms of the MIT license.
-    For a copy, see <https://opensource.org/licenses/MIT>
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+'''
+@File    ：maddpg.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/10/4
+@source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 '''
 
 import torch as T

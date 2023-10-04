@@ -1,15 +1,11 @@
-''' 
-Date: 2023-01-31 22:23:17
-LastEditTime: 2023-03-22 17:26:29
-Description: 
-    Copyright (c) 2022-2023 Safebench Team
-
-    This work is licensed under the terms of the MIT license.
-    For a copy, see <https://opensource.org/licenses/MIT>
-
-    This file implements the method proposed in paper:
-        Multimodal Safety-Critical Scenarios Generation for Decision-Making Algorithms Evaluation
-        <https://arxiv.org/pdf/2009.08311.pdf>
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+'''
+@File    ：normalizing_flow_policy.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/10/4
+@source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 '''
 
 import os

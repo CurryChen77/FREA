@@ -137,3 +137,4 @@ dmypy.json
 .pyre/
 
 */log
+/safebench/scenario/scenario_definition/

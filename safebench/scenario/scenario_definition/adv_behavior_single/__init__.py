@@ -21,4 +21,3 @@ from .maneuver_opposite_direction import ManeuverOppositeDirection
 from .object_crash_intersection import VehicleTurningRoute
 from .object_crash_vehicle import DynamicObjectCrossing
 from .other_leading_vehicle import OtherLeadingVehicle
-from .adv_behavior_singel import AdvBehaviorSingle

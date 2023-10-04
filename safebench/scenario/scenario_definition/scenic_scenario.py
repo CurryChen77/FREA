@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+'''
+@File    ：scenic_scenario.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/10/4
+@source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
+'''
+
 import numpy as np
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_definition.atomic_criteria import Status

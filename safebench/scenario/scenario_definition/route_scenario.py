@@ -1,16 +1,12 @@
-''' 
-Date: 2023-01-31 22:23:17
-LastEditTime: 2023-04-03 20:22:30
-Description: 
-    Copyright (c) 2022-2023 Safebench Team
-
-    This file is modified from <https://github.com/carla-simulator/scenario_runner/blob/master/srunner/scenarios/route_scenario.py>
-    Copyright (c) 2018-2020 Intel Corporation
-
-    This work is licensed under the terms of the MIT license.
-    For a copy, see <https://opensource.org/licenses/MIT>
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 '''
-
+@File    ：route_scenario.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/10/4
+@source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
+'''
 import traceback
 
 import numpy as np
@@ -28,7 +24,7 @@ from safebench.scenario.tools.scenario_utils import (
     convert_json_to_actor, 
     convert_transform_to_location
 )
-from safebench.scenario.scenario_definition.adv_behavior_single import AdvBehaviorSingle
+from safebench.scenario.scenario_definition.adv_behavior_scenario import AdvBehaviorSingle
 from safebench.scenario.scenario_definition.atomic_criteria import (
     Status,
     CollisionTest,
