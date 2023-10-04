@@ -416,14 +416,43 @@ class CarlaEnv(gym.Env):
         self.total_step += 1
 
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_controlled_bv_info])
-    
+
+    def _get_min_dis_cost(self, tou=1.25):
+        if self.controlled_bv:
+            # find the min bv around the controlled bv, and calculate the distance
+            cbv_location = self.controlled_bv.get_location()
+            min_dis = 0
+            for nearby_vehicle in self.controlled_bv_nearby_vehicles:
+                if nearby_vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
+                    nearest_bv = nearby_vehicle
+                    nearest_bv_location = nearest_bv.get_location()
+                    min_dis = cbv_location.distance(nearest_bv_location)
+                    break
+            min_dis_cost = 0 if min_dis >= tou else -1  # the controlled bv shouldn't be too close to the other bvs
+        else:
+            min_dis_cost = 0
+        return min_dis_cost
+
+    def _get_mapped_cbv_speed(self):
+        if self.controlled_bv:
+            cbv_vel = self.controlled_bv.get_velocity()
+            v = math.sqrt(cbv_vel.x ** 2 + cbv_vel.y ** 2)
+            min_speed = 0
+            mapped_vel = (v - min_speed) / (self.desired_speed - min_speed)
+            mapped_vel = max(0.0, min(1.0, mapped_vel))
+        else:
+            mapped_vel = 0
+        return mapped_vel
+
     def _get_info(self):
         # state information
         info = {
             'waypoints': self.waypoints,
-            'route_waypoints': self.route_waypoints,  # the global route waypoints
+            'route_waypoints': self.route_waypoints,          # the global route waypoints
             'vehicle_front': self.vehicle_front,
-            'cost': self._get_cost()
+            'cost': self._get_cost(),
+            'min_dis_cost': self._get_min_dis_cost(),         # the min dis cost from the controlled bv to the rest bvs
+            'mapped_cbv_vel': self._get_mapped_cbv_speed()    # the mapped cbv velocity
         }
 
         # info from scenarios

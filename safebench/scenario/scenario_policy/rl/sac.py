@@ -1,11 +1,11 @@
-''' 
-Date: 2023-01-31 22:23:17
-LastEditTime: 2023-04-03 22:12:59
-Description: 
-    Copyright (c) 2022-2023 Safebench Team
-
-    This work is licensed under the terms of the MIT license.
-    For a copy, see <https://opensource.org/licenses/MIT>
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+'''
+@File    ：sac.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/10/4
+@source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 '''
 
 import os
@@ -184,8 +184,15 @@ class SAC(BasePolicy):
             bn_s = CUDA(torch.FloatTensor(batch['actor_info'])).reshape(self.batch_size, -1)
             bn_s_ = CUDA(torch.FloatTensor(batch['n_actor_info'])).reshape(self.batch_size, -1)
             bn_a = CUDA(torch.FloatTensor(batch['action']))
-            bn_r = CUDA(torch.FloatTensor(-batch['cost'])).unsqueeze(-1) # [B, 1]
-            bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1) # [B, 1]
+            # The reward of the scenario agent
+            # whether the cbv is too close to other bvs
+            bn_min_dis_cost = CUDA(torch.FloatTensor(batch['min_dis_cost'])).unsqueeze(-1)  # [B, 1]
+            # the speed of the controlled bv
+            bn_cbv_vel = CUDA(torch.FloatTensor(batch['mapped_cbv_vel'])).unsqueeze(-1)  # [B, 1]
+            # the ego collision
+            bn_collision_cost = CUDA(torch.FloatTensor(-batch['cost'])).unsqueeze(-1)  # [B, 1]
+            bn_r = bn_collision_cost + bn_min_dis_cost + bn_cbv_vel
+            bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
 
             target_value = self.Target_value_net(bn_s_)
             next_q_value = bn_r + bn_d * self.gamma * target_value
