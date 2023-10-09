@@ -714,7 +714,7 @@ class CarlaDataProvider(object):
         return nearby_spawn_points
 
     @staticmethod
-    def get_controlled_vehicle(world, ego_vehicle, radius=100):
+    def get_controlled_vehicle(world, ego_vehicle, radius=60):
         min_dis = 1000
         controlled_bv = None
         ego_transform = ego_vehicle.get_transform()
@@ -786,7 +786,7 @@ class CarlaDataProvider(object):
         return controlled_bv
 
     @staticmethod
-    def get_nearby_vehicles(world, center_vehicle, radius=50):
+    def get_nearby_vehicles(world, center_vehicle, radius=60):
         center_location = center_vehicle.get_location()
 
         # get all the vehicles on the world
@@ -810,7 +810,6 @@ class CarlaDataProvider(object):
         nearby_vehicles = [info[0] for info in nearby_vehicles_info]
 
         return nearby_vehicles
-
 
     @staticmethod
     def get_actors():

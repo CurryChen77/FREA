@@ -11,6 +11,7 @@
 # for planning scenario
 from safebench.agent.dummy import DummyAgent
 from safebench.agent.rl.sac import SAC
+from safebench.agent.rl.rc_sac import RCSAC
 from safebench.agent.rl.ddpg import DDPG
 from safebench.agent.rl.ppo import PPO
 from safebench.agent.rl.td3 import TD3
@@ -27,6 +28,7 @@ AGENT_POLICY_LIST = {
     'behavior': CarlaBehaviorAgent,
     'yolo': YoloAgent,
     'sac': SAC,
+    'rc_sac': RCSAC,
     'ddpg': DDPG,
     'ppo': PPO,
     'td3': TD3,

@@ -418,20 +418,20 @@ class CarlaEnv(gym.Env):
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_controlled_bv_info])
 
     def _get_min_dis_cost(self, tou=1.25):
-        if self.controlled_bv:
+        if self.controlled_bv and self.controlled_bv_nearby_vehicles:
             # find the min bv around the controlled bv, and calculate the distance
             cbv_location = self.controlled_bv.get_location()
-            min_dis = 0
             for nearby_vehicle in self.controlled_bv_nearby_vehicles:
                 if nearby_vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
                     nearest_bv = nearby_vehicle
                     nearest_bv_location = nearest_bv.get_location()
                     min_dis = cbv_location.distance(nearest_bv_location)
-                    break
+                    break  # the first nearby_vehicle in self.controlled_bv_nearby_vehicles is the closest, so can break
             min_dis_cost = 0 if min_dis >= tou else -1  # the controlled bv shouldn't be too close to the other bvs
         else:
             min_dis_cost = 0
-        return min_dis_cost
+            min_dis = 60  # the searching radius of the nearby_vehicle
+        return min_dis, min_dis_cost
 
     def _get_mapped_cbv_speed(self):
         if self.controlled_bv:
@@ -446,12 +446,14 @@ class CarlaEnv(gym.Env):
 
     def _get_info(self):
         # state information
+        min_dis, min_dis_cost = self._get_min_dis_cost()
         info = {
             'waypoints': self.waypoints,
             'route_waypoints': self.route_waypoints,          # the global route waypoints
             'vehicle_front': self.vehicle_front,
             'cost': self._get_cost(),
-            'min_dis_cost': self._get_min_dis_cost(),         # the min dis cost from the controlled bv to the rest bvs
+            'min_dis': min_dis,                               # the min dis from the controlled bv to the rest bvs
+            'min_dis_cost': min_dis_cost,                     # whether the min dis is lower than a threshold
             'mapped_cbv_vel': self._get_mapped_cbv_speed()    # the mapped cbv velocity
         }
 
@@ -545,7 +547,8 @@ class CarlaEnv(gym.Env):
         ego_location = ego_trans.location
         ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
         v = self.ego_vehicle.get_velocity()
-        ego_speed = np.sqrt(v.x**2 + v.y**2)
+        ego_speed = round(np.sqrt(v.x**2 + v.y**2), 2)
+
 
         # pre waypoint
         # get the distance from ego position to the second waypoint
@@ -554,19 +557,19 @@ class CarlaEnv(gym.Env):
         waypoint_dis = ego_location.distance(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
         # waypoint_lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)  #
         yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
-        waypoint_delta_yaw = np.arcsin(np.cross(pre_waypoint_w, yaw))
+        waypoint_delta_yaw = round(np.arcsin(np.cross(pre_waypoint_w, yaw)), 2)
 
         # bv
         if self.controlled_bv:
             controlled_bv_dis = ego_location.distance(self.controlled_bv.get_location())
         else:
-            controlled_bv_dis = None
+            controlled_bv_dis = 60  # the searching radius
 
         # extre information
         junction_waypoint = self.carla_map.get_waypoint(carla.Location(x=pre_waypoint[0],y=pre_waypoint[1]))
         pre_waypoint_is_junction = junction_waypoint.is_junction
 
-        state = np.array([ego_location.x, ego_location.y, ego_yaw, ego_speed,  # ego
+        state = np.array([ego_yaw, ego_speed,  # ego
                           waypoint_dis, -waypoint_delta_yaw,  # pre waypoint dis
                           controlled_bv_dis,  # controlled bv dis
                           self.vehicle_front,  # whether exist front vehicle
