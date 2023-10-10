@@ -95,9 +95,10 @@ class CarlaRunner:
 
         # define logger
         logger_kwargs = setup_logger_kwargs(
-            self.exp_name, 
+            self.exp_name,
             self.output_dir, 
             self.seed,
+            self.mode,
             agent=agent_config['policy_type'],
             scenario=scenario_config['policy_type'],
             safety_network=self.safety_network_name,
