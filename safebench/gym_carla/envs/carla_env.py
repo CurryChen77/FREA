@@ -569,13 +569,13 @@ class CarlaEnv(gym.Env):
         junction_waypoint = self.carla_map.get_waypoint(carla.Location(x=pre_waypoint[0],y=pre_waypoint[1]))
         pre_waypoint_is_junction = junction_waypoint.is_junction
 
-        state = np.array([ego_yaw, ego_speed,  # ego
+        state = np.array([ego_yaw, ego_speed,  # ego(remove loc, since it's useless and varying under different map)
                           waypoint_dis, -waypoint_delta_yaw,  # pre waypoint dis
                           controlled_bv_dis,  # controlled bv dis
                           self.vehicle_front,  # whether exist front vehicle
                           pre_waypoint_is_junction,  # whether the pre waypoint is in the junction
                           self.red_light_state,  # whether the ego encountered red light
-                          ])
+                          ])  # TODO need to add some road map information
 
         if self.scenario_category != 'perception': 
             # set ego information for birdeye_render

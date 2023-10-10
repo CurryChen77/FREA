@@ -18,3 +18,4 @@ cpprb==10.7.0
 pycocotools==2.0.6
 moviepy==1.0.3
 scikit-image==0.19.3
+nevergrad==0.14.0

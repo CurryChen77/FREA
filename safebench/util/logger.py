@@ -29,7 +29,7 @@ DEFAULT_DATA_DIR = osp.abspath(osp.dirname(osp.dirname(osp.dirname(__file__))))
 FORCE_DATESTAMP = False
 
 
-def setup_logger_kwargs(exp_name, output_dir, seed, datestamp=False, agent=None, scenario=None, scenario_category='planning'):
+def setup_logger_kwargs(exp_name, output_dir, seed, datestamp=False, agent=None, scenario=None, safety_network=None, scenario_category='planning'):
     # Datestamp forcing
     datestamp = datestamp or FORCE_DATESTAMP
 
@@ -38,18 +38,20 @@ def setup_logger_kwargs(exp_name, output_dir, seed, datestamp=False, agent=None,
     relpath = ''.join([ymd_time, exp_name])
 
     # specify agent policy and scenario policy in the experiment directory.
-    agent_scenario_exp_name = exp_name
+    agent_scenario_safety_net_exp_name = exp_name
     if agent is not None:
-        agent_scenario_exp_name = agent_scenario_exp_name + '_' + agent
+        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + agent
     if scenario is not None:
-        agent_scenario_exp_name = agent_scenario_exp_name + '_' + scenario
+        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + scenario
+    if safety_network is not None:
+        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + safety_network
 
     # Make a seed-specific subfolder in the experiment directory.
     if datestamp:
         hms_time = time.strftime("%Y-%m-%d_%H-%M-%S")
-        subfolder = ''.join([hms_time, '-', agent_scenario_exp_name, '_s', str(seed)])
+        subfolder = ''.join([hms_time, '-', agent_scenario_safety_net_exp_name, '_s', str(seed)])
     else:
-        subfolder = ''.join([agent_scenario_exp_name, '_seed_', str(seed)])
+        subfolder = ''.join([agent_scenario_safety_net_exp_name, '_seed_', str(seed)])
     relpath = osp.join(relpath, subfolder)
 
     data_dir = os.path.join(DEFAULT_DATA_DIR, output_dir)

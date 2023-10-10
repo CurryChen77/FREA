@@ -28,9 +28,11 @@ if __name__ == '__main__':
     parser.add_argument('--max_episode_step', type=int, default=300)
     parser.add_argument('--search_radius', type=int, default=100, help='the radius for agent to search other agents')
     parser.add_argument('--auto_ego', action='store_true')
-    parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval'])
+    parser.add_argument('--safety_eval', type=bool, default=True, help='whether to activate safety evaluation')
+    parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_safety_network'])
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='dummy.yaml')
     parser.add_argument('--scenario_cfg', nargs='*', type=str, default='standard.yaml')
+    parser.add_argument('--safety_network_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--continue_agent_training', '-cat', type=bool, default=False)
     parser.add_argument('--continue_scenario_training', '-cst', type=bool, default=False)
 
@@ -64,15 +66,26 @@ if __name__ == '__main__':
             scenario_config_path = osp.join(args.ROOT_DIR, 'safebench/scenario/config', scenario_cfg)
             scenario_config = load_config(scenario_config_path)
 
+            # if "train safety network mode" then must start safety eval
+            safety_eval = True if args.mode == 'train_safety_network' else args.safety_eval
+            if safety_eval:
+                # load safety network config
+                safety_network_config_path = osp.join(args.ROOT_DIR, 'safebench/safety_network/config', args.safety_network_cfg)
+                safety_network_config = load_config(safety_network_config_path)
+                safety_network_config.update(args_dict)
+            else:
+                safety_network_config = None
+
             # main entry with a selected mode
             agent_config.update(args_dict)
             scenario_config.update(args_dict)
+
             if scenario_config['policy_type'] == 'scenic':
                 from safebench.scenic_runner import ScenicRunner
                 assert scenario_config['num_scenario'] == 1, 'the num_scenario can only be one for scenic now'
                 runner = ScenicRunner(agent_config, scenario_config)
             else:
-                runner = CarlaRunner(agent_config, scenario_config)  # create the main runner
+                runner = CarlaRunner(agent_config, scenario_config, safety_network_config)  # create the main runner
 
             # start running
             try:

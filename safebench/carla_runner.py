@@ -21,6 +21,7 @@ from safebench.gym_carla.replay_buffer import RouteReplayBuffer, PerceptionRepla
 
 from safebench.agent import AGENT_POLICY_LIST
 from safebench.scenario import SCENARIO_POLICY_LIST
+from safebench.safety_network import SAFETY_NETWORK_LIST
 
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.scenario.scenario_data_loader import ScenarioDataLoader
@@ -31,9 +32,14 @@ from safebench.util.metric_util import get_route_scores, get_perception_scores
 
 
 class CarlaRunner:
-    def __init__(self, agent_config, scenario_config):
+    def __init__(self, agent_config, scenario_config, safety_network_config=None):
         self.scenario_config = scenario_config
         self.agent_config = agent_config
+        self.safety_network_config = safety_network_config
+        if safety_network_config:
+            self.safety_network_name = safety_network_config['type']
+        else:
+            self.safety_network_name = None
 
         self.seed = scenario_config['seed']
         self.exp_name = scenario_config['exp_name']
@@ -94,6 +100,7 @@ class CarlaRunner:
             self.seed,
             agent=agent_config['policy_type'],
             scenario=scenario_config['policy_type'],
+            safety_network=self.safety_network_name,
             scenario_category=self.scenario_category
         )
         self.logger = Logger(**logger_kwargs)
@@ -113,6 +120,13 @@ class CarlaRunner:
             self.train_episode = scenario_config['train_episode']
             self.logger.save_config(scenario_config)
             self.logger.create_training_dir()
+        elif self.mode == 'train_safety_network':
+            self.buffer_capacity = safety_network_config['buffer_capacity']
+            self.eval_in_train_freq = safety_network_config['eval_in_train_freq']
+            self.save_freq = safety_network_config['save_freq']
+            self.train_episode = safety_network_config['train_episode']
+            self.logger.save_config(safety_network_config)
+            self.logger.create_training_dir()
         elif self.mode == 'eval':
             self.save_freq = scenario_config['save_freq']
             self.logger.log('>> Evaluation Mode, skip config saving', 'yellow')
@@ -123,6 +137,8 @@ class CarlaRunner:
         # define agent and scenario
         self.logger.log('>> Agent Policy: ' + agent_config['policy_type'])
         self.logger.log('>> Scenario Policy: ' + scenario_config['policy_type'])
+        if self.safety_network_config:
+            self.logger.log('>> Safety network Policy: ' + safety_network_config['type'])
 
         if self.scenario_config['auto_ego']:
             self.logger.log('>> Using auto-polit for ego vehicle, action of policy will be ignored', 'yellow')
@@ -134,6 +150,8 @@ class CarlaRunner:
         # define agent and scenario policy
         self.agent_policy = AGENT_POLICY_LIST[agent_config['policy_type']](agent_config, logger=self.logger)
         self.scenario_policy = SCENARIO_POLICY_LIST[scenario_config['policy_type']](scenario_config, logger=self.logger)
+        if self.safety_network_config:
+            self.safety_network_policy = SAFETY_NETWORK_LIST[safety_network_config['type']](safety_network_config, logger=self.logger)
         if self.save_video:
             assert self.mode == 'eval', "only allow video saving in eval mode"
             self.logger.init_video_recorder()
@@ -217,6 +235,8 @@ class CarlaRunner:
                     self.agent_policy.train(replay_buffer)
                 elif self.mode == 'train_scenario' and self.scenario_policy.type == 'offpolicy':
                     self.scenario_policy.train(replay_buffer)
+                elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy':
+                    self.safety_network_policy.train(replay_buffer)
 
             # end up environment
             self.env.clean_up()
@@ -230,6 +250,8 @@ class CarlaRunner:
                 self.agent_policy.train(replay_buffer)
             elif self.mode == 'train_scenario' and self.scenario_policy.type in ['init_state', 'onpolicy']:
                 self.scenario_policy.train(replay_buffer)
+            elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'onpolicy':
+                self.safety_network_policy.train(replay_buffer)
 
             # eval during training
             if (e_i+1) % self.eval_in_train_freq == 0:
@@ -242,6 +264,8 @@ class CarlaRunner:
                     self.agent_policy.save_model(e_i)
                 if self.mode == 'train_scenario':
                     self.scenario_policy.save_model(e_i)
+                if self.mode == 'train_safety_network':
+                    self.safety_network_policy.save_model(e_i)
 
     def eval(self, data_loader):
         num_finished_scenario = 0
@@ -333,18 +357,35 @@ class CarlaRunner:
                 # self.scenario_policy.load_model()
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('eval')
+                if self.safety_network_config:
+                    self.safety_network_policy.load_model()
+                    self.safety_network_policy.set_mode('eval')
                 self.eval(data_loader)
             elif self.mode == 'train_agent':
                 start_episode = self.check_continue_training(self.agent_policy)
                 self.scenario_policy.load_model()
                 self.agent_policy.set_mode('train')
                 self.scenario_policy.set_mode('eval')
+                if self.safety_network_config:
+                    self.safety_network_policy.load_model()
+                    self.safety_network_policy.set_mode('eval')
                 self.train(data_loader, start_episode)
             elif self.mode == 'train_scenario':
                 start_episode = self.check_continue_training(self.scenario_policy)
                 self.agent_policy.load_model()
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('train')
+                if self.safety_network_config:
+                    self.safety_network_policy.load_model()
+                    self.safety_network_policy.set_mode('eval')
+                self.train(data_loader, start_episode)
+            elif self.mode == 'train_safety_network':
+                start_episode = self.check_continue_training(self.safety_network_policy)
+                self.agent_policy.load_model()
+                self.agent_policy.set_mode('eval')
+                self.scenario_policy.load_model()
+                self.scenario_policy.set_mode('eval')
+                self.safety_network_policy.set_mode('train')
                 self.train(data_loader, start_episode)
             else:
                 raise NotImplementedError(f"Unsupported mode: {self.mode}.")
