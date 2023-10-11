@@ -418,6 +418,7 @@ class CarlaEnv(gym.Env):
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_controlled_bv_info])
 
     def _get_min_dis_cost(self, tou=1.25):
+        min_dis = 60  # the searching radius of the nearby_vehicle
         if self.controlled_bv and self.controlled_bv_nearby_vehicles:
             # find the min bv around the controlled bv, and calculate the distance
             cbv_location = self.controlled_bv.get_location()
@@ -430,7 +431,6 @@ class CarlaEnv(gym.Env):
             min_dis_cost = 0 if min_dis >= tou else -1  # the controlled bv shouldn't be too close to the other bvs
         else:
             min_dis_cost = 0
-            min_dis = 60  # the searching radius of the nearby_vehicle
         return min_dis, min_dis_cost
 
     def _get_mapped_cbv_speed(self):

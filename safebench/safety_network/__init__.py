@@ -13,5 +13,5 @@ from safebench.safety_network.HJ_Reachability import HJR
 
 
 SAFETY_NETWORK_LIST = {
-    'HJ-Reachability': HJR
+    'HJR': HJR
 }

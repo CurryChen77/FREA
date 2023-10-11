@@ -27,6 +27,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--max_episode_step', type=int, default=300)
     parser.add_argument('--search_radius', type=int, default=100, help='the radius for agent to search other agents')
+    parser.add_argument('--traffic_intensity', type=list, default=[0.7, 0.9, 0.8], help='the traffic intensity of the start, middle, end route positions')
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--safety_eval', type=bool, default=True, help='whether to activate safety evaluation')
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_safety_network'])

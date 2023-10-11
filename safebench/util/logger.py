@@ -36,6 +36,7 @@ def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent
     # Make base path
     ymd_time = time.strftime("%Y-%m-%d_") if datestamp else ''
     relpath = ''.join([ymd_time, mode])
+    # relpath = ''.join([ymd_time, exp_name])
 
     # specify agent policy and scenario policy in the experiment directory.
     agent_scenario_safety_net_exp_name = exp_name

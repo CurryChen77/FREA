@@ -53,6 +53,7 @@ class RouteScenario():
         self.max_running_step = max_running_step
         self.timeout = 60
         self.ego_max_driven_distance = 200
+        self.traffic_intensity = config.traffic_intensity
 
         # create the route and ego's position (the start point of the route)
         self.route, self.ego_vehicle = self._update_route_and_ego(timeout=self.timeout)
@@ -191,9 +192,9 @@ class RouteScenario():
         start_location = self.route[0][0].location
         middle_location = self.route[len(self.route)//2][0].location
         end_location = self.route[-1][0].location
-        start = CarlaDataProvider.get_location_nearby_spawn_points(start_location, radius=20, closest_dis=7)  # route start point
-        middle = CarlaDataProvider.get_location_nearby_spawn_points(middle_location, radius=40, intensity=0.8)  # route middle point
-        end = CarlaDataProvider.get_location_nearby_spawn_points(end_location, radius=30, intensity=0.7)  # route end point
+        start = CarlaDataProvider.get_location_nearby_spawn_points(start_location, radius=20, closest_dis=7, intensity=self.traffic_intensity[0])  # route start point
+        middle = CarlaDataProvider.get_location_nearby_spawn_points(middle_location, radius=40, intensity=self.traffic_intensity[1])  # route middle point
+        end = CarlaDataProvider.get_location_nearby_spawn_points(end_location, radius=30, intensity=self.traffic_intensity[2])  # route end point
         spawn_points = list(set(start + middle + end))  # filter the overlapping
         amount = len(spawn_points)
         return amount, spawn_points

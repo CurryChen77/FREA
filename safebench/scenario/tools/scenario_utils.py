@@ -83,6 +83,7 @@ def scenario_parse(config, logger):
         parsed_config.route_id = item['route_id']
         parsed_config.risk_level = item['risk_level']
         parsed_config.parameters = item['parameters']
+        parsed_config.traffic_intensity = config['traffic_intensity']
         # parse the template directory from .yaml config of scenarios
         if 'texture_dir' in config.keys():
             parsed_config.texture_dir = config['texture_dir']

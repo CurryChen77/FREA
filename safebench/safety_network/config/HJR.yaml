@@ -1,5 +1,5 @@
 min_dis_threshold: 1.5
-type: "HJ-Reachability"
+type: "HJR"
 model_path: 'safebench/safety_network/model_ckpt/HJR'
 model_id: 0
 results_folder_path: ''
