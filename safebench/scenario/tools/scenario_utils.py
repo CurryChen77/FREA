@@ -19,9 +19,48 @@ import random
 
 import carla
 import xml.etree.ElementTree as ET
+import numpy as np
 
 from safebench.scenario.tools.route_parser import RouteParser, TRIGGER_THRESHOLD, TRIGGER_ANGLE_THRESHOLD
 from safebench.scenario.scenario_manager.scenario_config import ScenarioConfig
+
+
+def compute_R(rotation):
+    pitch_rad = np.radians(rotation.pitch)
+    yaw_rad = np.radians(rotation.yaw)
+    roll_rad = np.radians(rotation.roll)
+
+    Rx = np.array([[1, 0, 0],
+                   [0, np.cos(roll_rad), -np.sin(roll_rad)],
+                   [0, np.sin(roll_rad), np.cos(roll_rad)]])
+    Ry = np.array([[np.cos(pitch_rad), 0, np.sin(pitch_rad)],
+                   [0, 1, 0],
+                   [-np.sin(pitch_rad), 0, np.cos(pitch_rad)]])
+    Rz = np.array([[np.cos(yaw_rad), -np.sin(yaw_rad), 0],
+                   [np.sin(yaw_rad), np.cos(yaw_rad), 0],
+                   [0, 0, 1]])
+
+    rotation_matrix = Rx @ Ry @ Rz
+    return rotation_matrix
+
+
+def compute_box2origin(vehicle_box, vehicle_transform):
+    vehicle_location = vehicle_transform.location
+    bbox_location = vehicle_box.location
+    # the transition vector should be the sum of vehicle_location(global) and bbox_location(local)
+    t = np.array([
+        bbox_location.z + vehicle_location.x,
+        bbox_location.z + vehicle_location.y,
+        bbox_location.z + vehicle_location.z])
+    r = compute_R(vehicle_transform.rotation)  # the rotation matrix
+    extent = vehicle_box.extent
+    size = np.array([extent.x * 2, extent.y * 2, extent.z * 2])
+
+    box2origin = np.zeros((4, 4))
+    box2origin[:3, :3] = r
+    box2origin[:3, 3] = t
+    box2origin[3, 3] = 1.0
+    return box2origin, size
 
 
 def calculate_distance_transforms(transform_1, transform_2):

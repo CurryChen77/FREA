@@ -109,7 +109,9 @@ class HJR:
             batch = replay_buffer.sample(self.batch_size)
             bn_s_ = CUDA(torch.FloatTensor(batch['n_state']))  # next state
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
-            bn_min_dis = CUDA(torch.FloatTensor(batch['min_dis'])).unsqueeze(-1)  # [B, 1]
+            # the 5th column of the state is the min dis
+            bn_min_dis = CUDA(torch.FloatTensor(batch['state'][:, 4])).unsqueeze(-1)
+
             # h = threshold - min_dis, if h > 0 unsafe, else safe
             bn_h = torch.zeros_like(bn_min_dis).fill_(self.min_dis_threshold) - bn_min_dis
 

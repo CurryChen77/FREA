@@ -1,4 +1,4 @@
-min_dis_threshold: 1.5
+min_dis_threshold: 0.5
 type: "HJR"
 model_path: 'safebench/safety_network/model_ckpt/HJR'
 model_id: 0

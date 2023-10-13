@@ -157,7 +157,7 @@ class RouteReplayBuffer:
         # prepare batch 
         action = prepared_ego_actions if self.mode == 'train_agent' else prepared_scenario_actions
         batch = {
-            'action': np.stack(action)[sample_index],# action
+            'action': np.stack(action)[sample_index],                 # action
             'state': np.stack(prepared_obs)[sample_index, :],         # state
             'n_state': np.stack(prepared_next_obs)[sample_index, :],  # next state
             'reward': np.stack(prepared_rewards)[sample_index],       # reward

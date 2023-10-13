@@ -15,6 +15,8 @@ from six import iteritems
 import numpy as np
 import time
 import carla
+from distance3d import gjk, colliders
+from safebench.scenario.tools.scenario_utils import compute_box2origin
 
 
 def calculate_velocity(actor):
@@ -684,20 +686,6 @@ class CarlaDataProvider(object):
             CarlaDataProvider.register_actor(actor)
         return actors
 
-    @staticmethod
-    def get_vehicle_nearby_spawn_points(center_vehicle, radius=100, closest_dis=7, intensity=0.5, upper_limit=25):
-        nearby_spawn_points = []
-        total_spawn_points = list(CarlaDataProvider.get_map(CarlaDataProvider._world).get_spawn_points())
-        center_location = center_vehicle.get_location()
-        for spawn_point in total_spawn_points:
-            spawn_point_location = spawn_point.location
-            distance = center_location.distance(spawn_point_location)
-            if radius > distance > closest_dis:  # the init spawn point shouldn't be too close or too far
-                nearby_spawn_points.append(spawn_point)
-        CarlaDataProvider._rng.shuffle(nearby_spawn_points)
-        picking_number = min(int(len(nearby_spawn_points)*intensity), upper_limit)
-        nearby_spawn_points = nearby_spawn_points[:picking_number]  # sampling part of the nearby spawn points
-        return nearby_spawn_points
 
     @staticmethod
     def get_location_nearby_spawn_points(center_location, radius=40, closest_dis=0, intensity=0.5, upper_limit=15):
@@ -810,6 +798,22 @@ class CarlaDataProvider(object):
         nearby_vehicles = [info[0] for info in nearby_vehicles_info]
 
         return nearby_vehicles
+
+    @staticmethod
+    def get_min_distance_across_bboxes(veh1, veh2):
+        veh1_bbox = veh1.bounding_box
+        veh2_bbox = veh2.bounding_box
+        veh1_transform = veh1.get_transform()
+        veh2_transform = veh2.get_transform()
+
+        box2origin_veh1, size_veh1 = compute_box2origin(veh1_bbox, veh1_transform)
+        box2origin_veh2, size_veh2 = compute_box2origin(veh2_bbox, veh2_transform)
+        # min distance
+        box_collider_veh1 = colliders.Box(box2origin_veh1, size_veh1)
+        box_collider_veh2 = colliders.Box(box2origin_veh2, size_veh2)
+        dist, closest_point_box, closest_point_box2, _ = gjk.gjk(
+            box_collider_veh1, box_collider_veh2)
+        return dist
 
     @staticmethod
     def get_actors():

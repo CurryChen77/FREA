@@ -60,13 +60,6 @@ class ScenarioManager(object):
     def _init_scenarios(self):
         # spawn route actors for each scenario
         self.route_scenario.initialize_actors()  # generate the background vehicle
-
-        # spawn actors for each scenario along this route
-        # for running_scenario in self.scenario_list:
-            # some scenario passes actions when creating behavior
-            # running_scenario.create_behavior(scenario_init_action)
-            # init actors after passing in init actions
-            # running_scenario.initialize_actors()
     
     def stop_scenario(self):
         self._running = False
