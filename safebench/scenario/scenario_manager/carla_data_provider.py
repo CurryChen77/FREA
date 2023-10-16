@@ -45,6 +45,7 @@ class CarlaDataProvider(object):
     _sync_flag = False
     _spawn_points = None
     _spawn_index = 0
+    _ego_min_dis = 0
     _blueprint_library = None
     _ego_vehicle_route = None
     _traffic_manager_port = 8000
@@ -215,6 +216,20 @@ class CarlaDataProvider(object):
         # We are intentionally not throwing here
         print('{}.get_transform_after_tick: {} not found!' .format(__name__, actor))
         return None
+
+    # @staticmethod
+    # def set_ego_min_dis(ego_min_dis):
+    #     """
+    #         Set the Ego min distance across nearby vehicles
+    #     """
+    #     CarlaDataProvider._ego_min_dis = ego_min_dis
+    #
+    # @staticmethod
+    # def get_ego_min_dis():
+    #     """
+    #         Get the Ego min distance across nearby vehicles
+    #     """
+    #     return CarlaDataProvider._ego_min_dis
 
     @staticmethod
     def set_client(client):
@@ -753,10 +768,15 @@ class CarlaDataProvider(object):
         return actors
 
     @staticmethod
-    def get_ego_min_dis(ego_vehicle, search_radius):
+    def cal_ego_min_dis(ego_vehicle, search_radius):
         nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(ego_vehicle, search_radius)
         # min distance between vehicle bboxes
-        ego_min_dis = CarlaDataProvider.get_min_distance_across_bboxes(ego_vehicle, nearby_vehicles[0])
+        ego_min_dis = 10
+        for i in range(3):
+            # the closest vehicle using center point may not be the closest vehicle using bboxs
+            dis = CarlaDataProvider.get_min_distance_across_bboxes(ego_vehicle, nearby_vehicles[i])
+            if dis < ego_min_dis:
+                ego_min_dis = dis
         return ego_min_dis
 
     @staticmethod

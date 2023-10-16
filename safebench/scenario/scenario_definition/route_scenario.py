@@ -237,7 +237,8 @@ class RouteScenario():
         # collision with other objects
         if running_status['collision'] == Status.FAILURE:
             stop = True
-            self.logger.log('>> Scenario stops due to collision', color='yellow')
+            ego_min_dis = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, 50)  # TODO
+            self.logger.log(f'>> Scenario stops due to collision, ego min dis = {ego_min_dis}', color='yellow')
 
         # out of the road detection
         if running_status['off_road'] == Status.FAILURE:
@@ -297,7 +298,7 @@ class RouteScenario():
 
     @staticmethod
     def _get_actor_state(actor):
-        actor_trans = actor.get_transform()
+        actor_trans = CarlaDataProvider.get_transform_after_tick(actor)
         actor_x = actor_trans.location.x
         actor_y = actor_trans.location.y
         actor_yaw = actor_trans.rotation.yaw / 180 * np.pi

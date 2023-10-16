@@ -53,7 +53,6 @@ class CarlaBehaviorAgent(BasePolicy):
             # TODO the waypoint list in safebench and carla's behavior agent is different
             # for the behavior agent, the goal may be reached (no more waypoints to chase), but safebench still got waypoints
             if self.controller_list[e_i['scenario_id']].done():
-                self.logger.log('Reach the goal')
                 throttle = 0
                 steer = 0
             else:

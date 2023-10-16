@@ -136,10 +136,11 @@ class CarlaRunner:
             raise NotImplementedError(f"Unsupported mode: {self.mode}.")
 
         # define agent and scenario
-        self.logger.log('>> Agent Policy: ' + agent_config['policy_type'])
-        self.logger.log('>> Scenario Policy: ' + scenario_config['policy_type'])
+        self.logger.log('>> Mode: ' + self.mode, color="yellow")
+        self.logger.log('>> Agent Policy: ' + agent_config['policy_type'], color="yellow")
+        self.logger.log('>> Scenario Policy: ' + scenario_config['policy_type'], color="yellow")
         if self.safety_network_config:
-            self.logger.log('>> Safety network Policy: ' + safety_network_config['type'])
+            self.logger.log('>> Safety network Policy: ' + safety_network_config['type'], color="yellow")
 
         if self.scenario_config['auto_ego']:
             self.logger.log('>> Using auto-polit for ego vehicle, action of policy will be ignored', 'yellow')

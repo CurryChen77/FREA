@@ -168,7 +168,7 @@ class Logger:
         self.output_dir = output_dir or "/tmp/experiments/%i" % int(time.time())
         self.log('>> ' + '-' * 40)
         if osp.exists(self.output_dir):
-            self.log(">> Log path %s already exists! Storing info there anyway." % self.output_dir, 'yellow')
+            self.log(">> Log path %s already exists! Storing info there anyway." % self.output_dir, 'green')
         else:
             os.makedirs(self.output_dir)
         self.output_file = open(osp.join(self.output_dir, output_fname), 'a')
