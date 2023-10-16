@@ -114,7 +114,7 @@ class AdvBehaviorSingle(BasicScenario):
                     controlled_bv.set_autopilot(enabled=False)  # get ready to be controlled
                     self.prior_controlled_bv = controlled_bv  # update the prior controlled bv
 
-            self.prior_controlled_bv.apply_control(act)
+            self.prior_controlled_bv.apply_control(act)  # apply the control of the cbv on the next tick
 
     def check_stop_condition(self):
         # stop when actor runs a specific distance

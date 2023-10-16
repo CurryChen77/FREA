@@ -19,7 +19,7 @@ class VectorWrapper():
         The interface to control a list of environments.
     """
 
-    def __init__(self, env_params, scenario_config, world, birdeye_render, display, logger):
+    def __init__(self, env_params, scenario_config, world, birdeye_render, display, search_radius, logger):
         self.logger = logger
         self.world = world
         self.num_scenario = scenario_config['num_scenario']  # default 2
@@ -33,7 +33,7 @@ class VectorWrapper():
             # each small scenario corresponds to a carla_env create the ObservationWrapper()
             env = carla_env(
                 env_params, birdeye_render=birdeye_render, display=display,
-                world=world, logger=logger)
+                world=world, search_radius=search_radius, logger=logger)
             self.env_list.append(env)
             self.action_space_list.append(env.action_space)
 
@@ -62,7 +62,7 @@ class VectorWrapper():
             static_obs_list.append(static_obs)
         return static_obs_list
 
-    def reset(self, scenario_configs, search_radius):
+    def reset(self, scenario_configs):
         # create scenarios and ego vehicles
         obs_list = []
         info_list = []
@@ -72,8 +72,8 @@ class VectorWrapper():
             obs, info = self.env_list[s_i].reset(
                 config=config,
                 env_id=s_i,
-                # scenario_init_action=scenario_init_action[s_i],
-                search_radius=search_radius)
+                # scenario_init_action=scenario_init_action[s_i]
+                )
             obs_list.append(obs)
             info_list.append(info)
 
@@ -265,7 +265,7 @@ class ObservationWrapper(gym.Wrapper):
         self._env.clear_up()
 
 
-def carla_env(env_params, birdeye_render=None, display=None, world=None, logger=None):
+def carla_env(env_params, birdeye_render=None, display=None, world=None, search_radius=0, logger=None):
     return ObservationWrapper(
         gym.make(
             'carla-v0', 
@@ -273,6 +273,7 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, logger=
             birdeye_render=birdeye_render,
             display=display, 
             world=world,
+            search_radius=search_radius,
             logger=logger,
         ), 
         obs_type=env_params['obs_type']

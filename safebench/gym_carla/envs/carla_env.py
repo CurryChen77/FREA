@@ -37,7 +37,7 @@ class CarlaEnv(gym.Env):
     """ 
         An OpenAI-gym style interface for CARLA simulator. 
     """
-    def __init__(self, env_params, birdeye_render=None, display=None, world=None, logger=None):
+    def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
         self.config = None
@@ -63,6 +63,7 @@ class CarlaEnv(gym.Env):
 
         self.controlled_bv = None
         self.controlled_bv_nearby_vehicles = None
+        self.search_radius = search_radius
         
         # scenario manager
         use_scenic = True if env_params['scenario_category'] == 'scenic' else False
@@ -213,7 +214,7 @@ class CarlaEnv(gym.Env):
         }
         return state
 
-    def reset(self, config, env_id, search_radius):
+    def reset(self, config, env_id):
         self.config = config
         self.env_id = env_id
 
@@ -224,11 +225,13 @@ class CarlaEnv(gym.Env):
         self._run_scenario()  # generate the initial background vehicles
         self._attach_sensor()
 
+        # first update the info in the CarlaDataProvider
+        CarlaDataProvider.on_carla_after_tick()
+
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
-        self.search_radius = search_radius
-        self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.world, self.ego_vehicle, self.search_radius)
+        self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
         if self.controlled_bv:
-            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.controlled_bv, self.search_radius)
+            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
         else:
             self.controlled_bv_nearby_vehicles = None
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
@@ -302,7 +305,7 @@ class CarlaEnv(gym.Env):
     def visualize(self):
         # Visualize the controlled bv
         if self.controlled_bv:
-            cbv_transform = CarlaDataProvider.get_transform(self.controlled_bv)
+            cbv_transform = CarlaDataProvider.get_transform_after_tick(self.controlled_bv)
             cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
             cbv_angle = math.radians(cbv_transform.rotation.yaw)
             cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
@@ -329,8 +332,8 @@ class CarlaEnv(gym.Env):
                     self.scenario_manager.route_scenario.evaluate(ego_action, world_2_camera, image_w, image_h, fov, self.camera_img)
                     ego_action = ego_action['ego_action']
 
-                # pass scenario action into manager
-                self.scenario_manager.get_update(timestamp, scenario_action)  # update scenario using scenario_action
+                # update the cbv's action and the previous time step information on CarlaDataProvider
+                self.scenario_manager.get_update(timestamp, scenario_action)
                 self.is_running = self.scenario_manager._running
 
                 # Calculate acceleration and steering
@@ -358,7 +361,7 @@ class CarlaEnv(gym.Env):
 
                     # apply ego control
                     act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
-                    self.ego_vehicle.apply_control(act)
+                    self.ego_vehicle.apply_control(act)  # apply action of the ego vehicle on the next tick
             else:
                 self.logger.log('>> Can not get snapshot!', color='red')
                 raise Exception()
@@ -392,6 +395,9 @@ class CarlaEnv(gym.Env):
         while len(self.vehicle_velocities) > self.max_past_step:
             self.vehicle_velocities.pop(0)
 
+        # After tick, update all the actors' velocity map, location map and transform map
+        CarlaDataProvider.on_carla_after_tick()
+
         # route planner
         # self.waypoints: the waypoints from the waypoints buffer, needed to be followed
         # self.vehicle_front: whether there got a vehicle in the ego's route and within a certain distance (bool)
@@ -400,16 +406,16 @@ class CarlaEnv(gym.Env):
         origin_info = self._get_info()
 
         # update the sorted nearby vehicles
-        self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.world, self.ego_vehicle, self.search_radius)
+        self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
         if self.controlled_bv:
-            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.controlled_bv, self.search_radius)
+            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
         else:
             self.controlled_bv_nearby_vehicles = None
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
 
         updated_controlled_bv_info = self._get_info()  # the updated cbv's info
 
-        self.visualize()  # visualize the controlled bv and the waypoints in clients side
+        self.visualize()  # visualize the controlled bv and the waypoints in clients side after tick
 
         # Update timesteps
         self.time_step += 1
@@ -417,39 +423,12 @@ class CarlaEnv(gym.Env):
 
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_controlled_bv_info])
 
-    def _get_ego_min_dis(self):
-        nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.world, self.ego_vehicle, self.search_radius)
-        # min distance between vehicle bboxes
-        ego_min_dis = CarlaDataProvider.get_min_distance_across_bboxes(self.ego_vehicle, nearby_vehicles[0])
-        return ego_min_dis
-
-    def _get_cbv_min_dis_cost(self, tou=1.25):
-        min_dis = self.search_radius  # the searching radius of the nearby_vehicle
-        if self.controlled_bv and self.controlled_bv_nearby_vehicles:
-            for nearby_vehicle in self.controlled_bv_nearby_vehicles:
-                if nearby_vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
-                    # the min distance between bounding boxes of two vehicles
-                    min_dis = CarlaDataProvider.get_min_distance_across_bboxes(self.controlled_bv, nearby_vehicle)
-                    break  # the first nearby_vehicle in self.controlled_bv_nearby_vehicles is the closest, so can break
-            min_dis_cost = 0 if min_dis >= tou else -1  # the controlled bv shouldn't be too close to the other bvs
-        else:
-            min_dis_cost = 0
-        return min_dis, min_dis_cost
-
-    def _get_mapped_cbv_speed(self):
-        if self.controlled_bv:
-            cbv_vel = self.controlled_bv.get_velocity()
-            v = math.sqrt(cbv_vel.x ** 2 + cbv_vel.y ** 2)
-            min_speed = 0
-            mapped_vel = (v - min_speed) / (self.desired_speed - min_speed)
-            mapped_vel = max(0.0, min(1.0, mapped_vel))
-        else:
-            mapped_vel = 0
-        return mapped_vel
-
     def _get_info(self):
-        # state information
-        cbv_min_dis, cbv_min_dis_cost = self._get_cbv_min_dis_cost()      # the min dis from the cbv to the rest bvs
+        # the info related to the controlled bv
+        # the min dis from the cbv to the rest bvs
+        cbv_min_dis, cbv_min_dis_cost = CarlaDataProvider.get_cbv_min_dis_cost(self.controlled_bv,
+                                                                               self.search_radius,
+                                                                               self.controlled_bv_nearby_vehicles)
         info = {
             'waypoints': self.waypoints,
             'route_waypoints': self.route_waypoints,          # the global route waypoints
@@ -457,7 +436,7 @@ class CarlaEnv(gym.Env):
             'cost': self._get_cost(),                         # the collision cost -1 means collision happens
             'cbv_min_dis': cbv_min_dis,                       # the min dis from the controlled bv to the rest bvs
             'cbv_min_dis_cost': cbv_min_dis_cost,             # whether the min dis is lower than a threshold
-            'mapped_cbv_vel': self._get_mapped_cbv_speed()    # the mapped cbv velocity
+            'mapped_cbv_vel': CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)    # the mapped cbv velocity
         }
 
         # info from scenarios
@@ -546,11 +525,12 @@ class CarlaEnv(gym.Env):
 
     def _get_obs(self):
         # Ego
-        ego_trans = self.ego_vehicle.get_transform()
+        ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
+        # ego_trans = self.ego_vehicle.get_transform()
         ego_location = ego_trans.location
         ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
-        v = self.ego_vehicle.get_velocity()
-        ego_speed = round(np.sqrt(v.x**2 + v.y**2), 2)
+        ego_speed = CarlaDataProvider.get_velocity_after_tick(self.ego_vehicle)
+        ego_speed = round(ego_speed, 2)
 
         # pre waypoint
         # get the distance from ego position to the second waypoint
@@ -560,15 +540,15 @@ class CarlaEnv(gym.Env):
         # waypoint_lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)  #
         yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
         waypoint_delta_yaw = round(np.arcsin(np.cross(pre_waypoint_w, yaw)), 2)
-
+        ego_min_dis = CarlaDataProvider.get_ego_min_dis(self.ego_vehicle, self.search_radius)
 
         # extre information
-        junction_waypoint = self.carla_map.get_waypoint(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
+        junction_waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
         pre_waypoint_is_junction = junction_waypoint.is_junction
 
         state = np.array([ego_yaw, ego_speed,  # ego(remove loc, since it's useless and varying under different map)
                           waypoint_dis, waypoint_delta_yaw,  # pre waypoint distance
-                          self._get_ego_min_dis(),  # controlled bv dis
+                          ego_min_dis,  # controlled bv dis
                           self.vehicle_front,  # whether exist front vehicle
                           pre_waypoint_is_junction,  # whether the pre waypoint is in the junction
                           self.red_light_state,  # whether the ego encountered red light

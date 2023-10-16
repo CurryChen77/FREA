@@ -13,7 +13,6 @@ from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.tools.scenario_utils import calculate_distance_locations
 
 
-
 class ScenarioManager(object):
     """
         Dynamic version scenario manager class. This class holds all functionality
@@ -74,6 +73,7 @@ class ScenarioManager(object):
         if self._timestamp_last_run < timestamp.elapsed_seconds and self._running:
             self._timestamp_last_run = timestamp.elapsed_seconds
             GameTime.on_carla_tick(timestamp)
+            # update the CarlaDateProvider information before tick (the state of the previous time step)
             CarlaDataProvider.on_carla_tick()
 
             # update the scenario instance receiving the scenario action

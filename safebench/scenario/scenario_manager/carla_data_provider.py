@@ -33,6 +33,9 @@ class CarlaDataProvider(object):
     _actor_velocity_map = {}
     _actor_location_map = {}
     _actor_transform_map = {}
+    _actor_velocity_map_after_tick = {}   # the new map to store the velocity of all the actors in the world after tick
+    _actor_location_map_after_tick = {}   # the new map to store the location of all the actors in the world after tick
+    _actor_transform_map_after_tick = {}  # the new map to store the transform of all the actors in the world after tick
     _traffic_light_map = {}
     _carla_actor_pool = {}
     _global_osc_parameters = {}
@@ -57,16 +60,19 @@ class CarlaDataProvider(object):
             raise KeyError("Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
         else:
             CarlaDataProvider._actor_velocity_map[actor] = 0.0
+            CarlaDataProvider._actor_velocity_map_after_tick[actor] = 0.0  # register new actor velocity map
 
         if actor in CarlaDataProvider._actor_location_map:
             raise KeyError("Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
         else:
             CarlaDataProvider._actor_location_map[actor] = None
+            CarlaDataProvider._actor_location_map_after_tick[actor] = None  # register new actor location map
 
         if actor in CarlaDataProvider._actor_transform_map:
             raise KeyError("Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
         else:
             CarlaDataProvider._actor_transform_map[actor] = None
+            CarlaDataProvider._actor_transform_map_after_tick[actor] = None  # register new actor transform map
 
     @staticmethod
     def update_osc_global_params(parameters):
@@ -112,6 +118,27 @@ class CarlaDataProvider(object):
             print("WARNING: CarlaDataProvider couldn't find the world")
 
     @staticmethod
+    def on_carla_after_tick():
+        """
+            Callback from CARLA after the tick
+        """
+        for actor in CarlaDataProvider._actor_velocity_map_after_tick:
+            if actor is not None and actor.is_alive:
+                CarlaDataProvider._actor_velocity_map_after_tick[actor] = calculate_velocity(actor)
+
+        for actor in CarlaDataProvider._actor_location_map_after_tick:
+            if actor is not None and actor.is_alive:
+                CarlaDataProvider._actor_location_map_after_tick[actor] = actor.get_location()
+
+        for actor in CarlaDataProvider._actor_transform_map_after_tick:
+            if actor is not None and actor.is_alive:
+                CarlaDataProvider._actor_transform_map_after_tick[actor] = actor.get_transform()
+
+        world = CarlaDataProvider._world
+        if world is None:
+            print("WARNING: CarlaDataProvider couldn't find the world")
+
+    @staticmethod
     def get_velocity(actor):
         """
             returns the absolute velocity for the given actor
@@ -148,6 +175,45 @@ class CarlaDataProvider(object):
 
         # We are intentionally not throwing here
         print('{}.get_transform: {} not found!' .format(__name__, actor))
+        return None
+
+    @staticmethod
+    def get_velocity_after_tick(actor):
+        """
+            returns the absolute velocity for the given actor
+        """
+        for key in CarlaDataProvider._actor_velocity_map_after_tick:
+            if key.id == actor.id:
+                return CarlaDataProvider._actor_velocity_map_after_tick[key]
+
+        # We are intentionally not throwing here
+        print('{}.get_velocity_after_tick: {} not found!' .format(__name__, actor))
+        return 0.0
+
+    @staticmethod
+    def get_location_after_tick(actor):
+        """
+            returns the location for the given actor
+        """
+        for key in CarlaDataProvider._actor_location_map_after_tick:
+            if key.id == actor.id:
+                return CarlaDataProvider._actor_location_map_after_tick[key]
+
+        # We are intentionally not throwing here
+        print('{}.get_location_after_tick: {} not found!' .format(__name__, actor))
+        return None
+
+    @staticmethod
+    def get_transform_after_tick(actor):
+        """
+            returns the transform for the given actor
+        """
+        for key in CarlaDataProvider._actor_transform_map_after_tick:
+            if key.id == actor.id:
+                return CarlaDataProvider._actor_transform_map_after_tick[key]
+
+        # We are intentionally not throwing here
+        print('{}.get_transform_after_tick: {} not found!' .format(__name__, actor))
         return None
 
     @staticmethod
@@ -686,12 +752,43 @@ class CarlaDataProvider(object):
             CarlaDataProvider.register_actor(actor)
         return actors
 
+    @staticmethod
+    def get_ego_min_dis(ego_vehicle, search_radius):
+        nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(ego_vehicle, search_radius)
+        # min distance between vehicle bboxes
+        ego_min_dis = CarlaDataProvider.get_min_distance_across_bboxes(ego_vehicle, nearby_vehicles[0])
+        return ego_min_dis
+
+    @staticmethod
+    def get_cbv_min_dis_cost(controlled_bv, search_radius, controlled_bv_nearby_vehicles, tou=1.25):
+        min_dis = search_radius  # the searching radius of the nearby_vehicle
+        if controlled_bv and controlled_bv_nearby_vehicles:
+            for nearby_vehicle in controlled_bv_nearby_vehicles:
+                if nearby_vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
+                    # the min distance between bounding boxes of two vehicles
+                    min_dis = CarlaDataProvider.get_min_distance_across_bboxes(controlled_bv, nearby_vehicle)
+                    break  # the first nearby_vehicle in self.controlled_bv_nearby_vehicles is the closest, so can break
+            min_dis_cost = 0 if min_dis >= tou else -1  # the controlled bv shouldn't be too close to the other bvs
+        else:
+            min_dis_cost = 0
+        return min_dis, min_dis_cost
+
+    @staticmethod
+    def get_mapped_cbv_speed(controlled_bv, desired_speed):
+        if controlled_bv:
+            v = CarlaDataProvider.get_velocity_after_tick(controlled_bv)
+            min_speed = 0
+            mapped_vel = (v - min_speed) / (desired_speed - min_speed)
+            mapped_vel = max(0.0, min(1.0, mapped_vel))
+        else:
+            mapped_vel = 0
+        return mapped_vel
 
     @staticmethod
     def get_location_nearby_spawn_points(center_location, radius=40, closest_dis=0, intensity=0.5, upper_limit=15):
         nearby_spawn_points = []
-        total_spawn_points = list(CarlaDataProvider.get_map(CarlaDataProvider._world).get_spawn_points())
-        for spawn_point in total_spawn_points:
+        CarlaDataProvider.generate_spawn_points()
+        for spawn_point in CarlaDataProvider._spawn_points:
             spawn_point_location = spawn_point.location
             distance = center_location.distance(spawn_point_location)
             if radius > distance >= closest_dis:  # the init spawn point shouldn't be too close or too far
@@ -702,14 +799,14 @@ class CarlaDataProvider(object):
         return nearby_spawn_points
 
     @staticmethod
-    def get_controlled_vehicle(world, ego_vehicle, radius=60):
+    def get_controlled_vehicle(ego_vehicle, radius=60):
         min_dis = 1000
         controlled_bv = None
-        ego_transform = ego_vehicle.get_transform()
+        ego_transform = CarlaDataProvider.get_transform_after_tick(ego_vehicle)
         ego_location = ego_transform.location
         ego_forward_vector = ego_transform.rotation.get_forward_vector()
-        ego_waypoint = world.get_map().get_waypoint(ego_location)
-        all_vehicles = world.get_actors().filter('vehicle.*')
+        ego_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_location)
+        all_vehicles = CarlaDataProvider._world.get_actors().filter('vehicle.*')
 
         def _get_controlled_vehicle(vehicle_location, controlled_bv, radius, min_dis):
             distance = ego_location.distance(vehicle_location)
@@ -748,8 +845,8 @@ class CarlaDataProvider(object):
 
             for vehicle in all_vehicles:
                 if vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
-                    vehicle_location = vehicle.get_location()
-                    vehicle_waypoint = world.get_map().get_waypoint(vehicle_location)
+                    vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
+                    vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(vehicle_location)
 
                     if center_lane and center_lane.type == carla.LaneMarkingType.SolidSolid:
                         # the center lane is the solid yellow lane that don't allow crossing
@@ -767,18 +864,18 @@ class CarlaDataProvider(object):
             # TODO need to remove the vehicle waiting for the red light
             for vehicle in all_vehicles:
                 if vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
-                    vehicle_location = vehicle.get_location()
+                    vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
                     controlled_bv, min_dis = _get_controlled_vehicle(
                         vehicle_location, controlled_bv, radius, min_dis
                     )
         return controlled_bv
 
     @staticmethod
-    def get_nearby_vehicles(world, center_vehicle, radius=60):
-        center_location = center_vehicle.get_location()
+    def get_nearby_vehicles(center_vehicle, radius=60):
+        center_location = CarlaDataProvider.get_location_after_tick(center_vehicle)
 
         # get all the vehicles on the world
-        all_vehicles = world.get_actors().filter('vehicle.*')
+        all_vehicles = CarlaDataProvider._world.get_actors().filter('vehicle.*')
 
         # store the nearby vehicle information [vehicle, distance]
         nearby_vehicles_info = []
@@ -786,7 +883,7 @@ class CarlaDataProvider(object):
         for vehicle in all_vehicles:
             if vehicle.id != center_vehicle.id:  # except the center vehicle
                 # the location of other vehicles
-                vehicle_location = vehicle.get_location()
+                vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
                 distance = center_location.distance(vehicle_location)
                 if distance <= radius:
                     nearby_vehicles_info.append([vehicle, distance])
@@ -803,8 +900,8 @@ class CarlaDataProvider(object):
     def get_min_distance_across_bboxes(veh1, veh2):
         veh1_bbox = veh1.bounding_box
         veh2_bbox = veh2.bounding_box
-        veh1_transform = veh1.get_transform()
-        veh2_transform = veh2.get_transform()
+        veh1_transform = CarlaDataProvider.get_transform_after_tick(veh1)
+        veh2_transform = CarlaDataProvider.get_transform_after_tick(veh2)
 
         box2origin_veh1, size_veh1 = compute_box2origin(veh1_bbox, veh1_transform)
         box2origin_veh2, size_veh2 = compute_box2origin(veh2_bbox, veh2_transform)
@@ -921,6 +1018,9 @@ class CarlaDataProvider(object):
         CarlaDataProvider._actor_velocity_map.clear()
         CarlaDataProvider._actor_location_map.clear()
         CarlaDataProvider._actor_transform_map.clear()
+        CarlaDataProvider._actor_velocity_map_after_tick.clear()   # clean the velocity map of actor after tick
+        CarlaDataProvider._actor_location_map_after_tick.clear()   # clean the location map of actor after tick
+        CarlaDataProvider._actor_transform_map_after_tick.clear()  # clean the transform map of actor after tick
         CarlaDataProvider._traffic_light_map.clear()
         CarlaDataProvider._map = None
         CarlaDataProvider._world = None

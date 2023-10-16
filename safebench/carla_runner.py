@@ -208,7 +208,7 @@ class CarlaRunner:
             # reset the index counter to create endless loader
             data_loader.reset_idx_counter()
 
-            obs, infos = self.env.reset(sampled_scenario_configs, self.search_radius)
+            obs, infos = self.env.reset(sampled_scenario_configs)
 
             # get ego vehicle from scenario
             self.agent_policy.set_ego_and_route(self.env.get_ego_vehicles(), infos)
@@ -278,7 +278,7 @@ class CarlaRunner:
             sampled_scenario_configs, num_sampled_scenario = data_loader.sampler()
             num_finished_scenario += num_sampled_scenario
 
-            obs, infos = self.env.reset(sampled_scenario_configs, self.search_radius)
+            obs, infos = self.env.reset(sampled_scenario_configs)
 
             # get ego vehicle from scenario
             self.agent_policy.set_ego_and_route(self.env.get_ego_vehicles(), infos)
@@ -346,6 +346,7 @@ class CarlaRunner:
                 self.world, 
                 self.birdeye_render, 
                 self.display,
+                self.search_radius,
                 self.logger,
             )
 
