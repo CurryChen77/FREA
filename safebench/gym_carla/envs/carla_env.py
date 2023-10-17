@@ -540,7 +540,9 @@ class CarlaEnv(gym.Env):
         # waypoint_lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)  #
         yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
         waypoint_delta_yaw = round(np.arcsin(np.cross(pre_waypoint_w, yaw)), 2)
+        # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
         ego_min_dis = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+        CarlaDataProvider.set_ego_min_dis(ego_min_dis)
 
         # extre information
         junction_waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))

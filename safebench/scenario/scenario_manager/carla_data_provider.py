@@ -217,19 +217,19 @@ class CarlaDataProvider(object):
         print('{}.get_transform_after_tick: {} not found!' .format(__name__, actor))
         return None
 
-    # @staticmethod
-    # def set_ego_min_dis(ego_min_dis):
-    #     """
-    #         Set the Ego min distance across nearby vehicles
-    #     """
-    #     CarlaDataProvider._ego_min_dis = ego_min_dis
-    #
-    # @staticmethod
-    # def get_ego_min_dis():
-    #     """
-    #         Get the Ego min distance across nearby vehicles
-    #     """
-    #     return CarlaDataProvider._ego_min_dis
+    @staticmethod
+    def set_ego_min_dis(ego_min_dis):
+        """
+            Set the Ego min distance across nearby vehicles
+        """
+        CarlaDataProvider._ego_min_dis = ego_min_dis
+
+    @staticmethod
+    def get_ego_min_dis():
+        """
+            Get the Ego min distance across nearby vehicles
+        """
+        return CarlaDataProvider._ego_min_dis
 
     @staticmethod
     def set_client(client):

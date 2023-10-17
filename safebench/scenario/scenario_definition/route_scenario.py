@@ -54,6 +54,7 @@ class RouteScenario():
         self.timeout = 60
         self.ego_max_driven_distance = 200
         self.traffic_intensity = config.traffic_intensity
+        self.search_radius = config.search_radius
 
         # create the route and ego's position (the start point of the route)
         self.route, self.ego_vehicle = self._update_route_and_ego(timeout=self.timeout)
@@ -211,7 +212,7 @@ class RouteScenario():
         )
         if new_actors is None:
             raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
-        self.logger.log(f'>> successfully spawning {len(new_actors)} Autopilot vehicles', color='yellow')
+        self.logger.log(f'>> successfully spawning {len(new_actors)} Autopilot vehicles', color='green')
         for _actor in new_actors:
             self.background_actors.append(_actor)
 
@@ -234,11 +235,12 @@ class RouteScenario():
             running_status[criterion_name] = criterion.update()
 
         stop = False
+        collision = False
         # collision with other objects
         if running_status['collision'] == Status.FAILURE:
             stop = True
-            ego_min_dis = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, 50)  # TODO
-            self.logger.log(f'>> Scenario stops due to collision, ego min dis = {ego_min_dis}', color='yellow')
+            collision = True
+            self.logger.log(f'>> Scenario stops due to collision', color='yellow')
 
         # out of the road detection
         if running_status['off_road'] == Status.FAILURE:
@@ -278,7 +280,7 @@ class RouteScenario():
         #         self.logger.log('>> Scenario stops due to timeout', color='yellow')
         #         break
 
-        return running_status, stop
+        return running_status, stop, collision
 
     def _create_criteria(self):
         criteria = {}

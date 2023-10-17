@@ -23,6 +23,7 @@ class ScenarioManager(object):
         self.env_params = env_params
         self.logger = logger
         self.scenic = use_scenic
+        self._collision = False
         self._reset()
 
     def _reset(self):
@@ -32,6 +33,7 @@ class ScenarioManager(object):
         self.scenario_list = None
         self.triggered_scenario = set()
         self._running = False
+        self._collision = False
         self._timestamp_last_run = 0.0
         self.running_record = []
         GameTime.restart()
@@ -64,10 +66,12 @@ class ScenarioManager(object):
         self._running = False
 
     def update_running_status(self):
-        record, stop = self.route_scenario.get_running_status(self.running_record)
+        record, stop, collision = self.route_scenario.get_running_status(self.running_record)
         self.running_record.append(record)
         if stop:
             self._running = False
+            if collision:
+                self._collision = True
 
     def get_update(self, timestamp, scenario_action):
         if self._timestamp_last_run < timestamp.elapsed_seconds and self._running:
