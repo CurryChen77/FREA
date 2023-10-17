@@ -17,7 +17,7 @@ class DummyAgent(BasePolicy):
     name = 'dummy'
     type = 'unlearnable'
 
-    """ This is just an example for testing, whcih always goes straight. """
+    """ This is just an example for testing, which always goes straight. """
     def __init__(self, config, logger):
         self.logger = logger
         self.ego_action_dim = config['ego_action_dim']

@@ -1,4 +1,5 @@
 policy_type: 'td3'
+learnable: True
 model_path: 'safebench/agent/model_ckpt/td3'
 model_id: 0
 results_folder_path: ''

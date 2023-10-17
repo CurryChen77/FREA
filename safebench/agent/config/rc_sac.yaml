@@ -1,4 +1,5 @@
 policy_type: 'rc_sac'
+learnable: True
 model_path: 'safebench/agent/model_ckpt/rc_sac'
 model_id: 0
 results_folder_path: ''

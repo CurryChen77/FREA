@@ -65,6 +65,7 @@ class CarlaRunner:
 
         self.env_params = {
             'auto_ego': scenario_config['auto_ego'],
+            'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
             'obs_type': agent_config['obs_type'],                           # default 0 (only 4 dimensions states )
             'scenario_category': self.scenario_category,
             'ROOT_DIR': scenario_config['ROOT_DIR'],

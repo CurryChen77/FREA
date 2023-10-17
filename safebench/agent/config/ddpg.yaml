@@ -1,4 +1,5 @@
 policy_type: 'ddpg'
+learnable: True
 model_path: 'safebench/agent/model_ckpt/ddpg'
 model_id: 0
 results_folder_path: ''

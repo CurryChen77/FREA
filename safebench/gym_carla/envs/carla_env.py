@@ -70,6 +70,7 @@ class CarlaEnv(gym.Env):
         self.scenario_manager = ScenarioManager(env_params, self.logger, use_scenic=use_scenic)
 
         # for birdeye view and front view visualization
+        self.ego_agent_learnable = env_params['ego_agent_learnable']
         self.display_size = env_params['display_size']
         self.obs_range = env_params['obs_range']
         self.d_behind = env_params['d_behind']
@@ -311,12 +312,13 @@ class CarlaEnv(gym.Env):
             cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
             self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.2, color=carla.Color(0,0,255,0), life_time=0.2)
 
-        # draw the waypoints
-        for i, wpt in enumerate(self.waypoints):
-            begin = carla.Location(x=wpt[0], y=wpt[1], z=0.3)
-            angle = math.radians(wpt[2])
-            end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
-            self.world.debug.draw_arrow(begin, end, arrow_size=0.1, life_time=0.2)
+        # if the ego agent is learnable then, draw the waypoints
+        if self.ego_agent_learnable:
+            for i, wpt in enumerate(self.waypoints):
+                begin = carla.Location(x=wpt[0], y=wpt[1], z=0.3)
+                angle = math.radians(wpt[2])
+                end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
+                self.world.debug.draw_arrow(begin, end, arrow_size=0.1, life_time=0.2)
 
     def step_before_tick(self, ego_action, scenario_action):
         if self.world:

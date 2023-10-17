@@ -1,4 +1,5 @@
 policy_type: 'ppo'
+learnable: True
 model_path: 'safebench/agent/model_ckpt/ppo'
 model_id: 0
 results_folder_path: ''
