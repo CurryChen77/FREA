@@ -312,9 +312,9 @@ class CarlaEnv(gym.Env):
             cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
             self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.2, color=carla.Color(0,0,255,0), life_time=0.2)
 
-        # if the ego agent is learnable then, draw the waypoints
+        # if the ego agent is learnable then, draw the target waypoints
         if self.ego_agent_learnable:
-            for i, wpt in enumerate(self.waypoints):
+            for wpt in self.waypoints:
                 begin = carla.Location(x=wpt[0], y=wpt[1], z=0.3)
                 angle = math.radians(wpt[2])
                 end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
@@ -340,29 +340,37 @@ class CarlaEnv(gym.Env):
 
                 # Calculate acceleration and steering
                 if not self.auto_ego:
-                    if self.discrete:
-                        acc = self.discrete_act[0][ego_action // self.n_steer]  # 'discrete_acc': [-3.0, 0.0, 3.0]
-                        steer = self.discrete_act[1][ego_action % self.n_steer]  # 'discrete_steer': [-0.2, 0.0, 0.2]
+                    if not self.ego_agent_learnable:
+                        # the rule based action
+                        throttle = ego_action[0]
+                        steer = ego_action[1]
+                        brake = 0.5 if throttle == 0 and steer == 0 else 0
+                        act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
                     else:
-                        acc = ego_action[0]  # continuous action: acc
-                        steer = ego_action[1]  # continuous action: steering
+                        # the learnable agent action
+                        if self.discrete:
+                            acc = self.discrete_act[0][ego_action // self.n_steer]  # 'discrete_acc': [-3.0, 0.0, 3.0]
+                            steer = self.discrete_act[1][ego_action % self.n_steer]  # 'discrete_steer': [-0.2, 0.0, 0.2]
+                        else:
+                            acc = ego_action[0]  # continuous action: acc
+                            steer = ego_action[1]  # continuous action: steering
 
-                    # normalize and clip the action
-                    acc = acc * self.acc_max
-                    steer = steer * self.steering_max
-                    acc = max(min(self.acc_max, acc), -self.acc_max)
-                    steer = max(min(self.steering_max, steer), -self.steering_max)
+                        # normalize and clip the action
+                        acc = acc * self.acc_max
+                        steer = steer * self.steering_max
+                        acc = max(min(self.acc_max, acc), -self.acc_max)
+                        steer = max(min(self.steering_max, steer), -self.steering_max)
 
-                    # Convert acceleration to throttle and brake
-                    if acc > 0:
-                        throttle = np.clip(acc / 3, 0, 1)
-                        brake = 0
-                    else:
-                        throttle = 0
-                        brake = np.clip(-acc / 8, 0, 1)
+                        # Convert acceleration to throttle and brake
+                        if acc > 0:
+                            throttle = np.clip(acc / 3, 0, 1)
+                            brake = 0
+                        else:
+                            throttle = 0
+                            brake = np.clip(-acc / 8, 0, 1)
 
-                    # apply ego control
-                    act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
+                        # apply ego control
+                        act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
                     self.ego_vehicle.apply_control(act)  # apply action of the ego vehicle on the next tick
             else:
                 self.logger.log('>> Can not get snapshot!', color='red')
@@ -498,32 +506,6 @@ class CarlaEnv(gym.Env):
             actor_angular_velocity_dict[actor.id] = actor.get_angular_velocity()
             actor_velocity_dict[actor.id] = actor.get_velocity()
         return actor_trajectory_dict, actor_acceleration_dict, actor_angular_velocity_dict, actor_velocity_dict
-    #
-    # def _get_actor_state(self, actor):
-    #     actor_trans = actor.get_transform()
-    #     actor_x = actor_trans.location.x
-    #     actor_y = actor_trans.location.y
-    #     actor_yaw = actor_trans.rotation.yaw / 180 * np.pi
-    #     yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
-    #     velocity = actor.get_velocity()
-    #     # TODO simplify the state dimension
-    #     # return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
-    #     return np.arrary([actor_x, actor_y, actor_yaw, velocity.x, velocity.y])
-    #
-    # def get_surrounding_actor_state(self, desired_nearby_vehicles=3):
-    #     ego_state = self._get_actor_state(self.ego_vehicle)
-    #
-    #     actor_state = [ego_state]
-    #     for i, actor in enumerate(self.ego_nearby_vehicles):
-    #         if i < desired_nearby_vehicles:
-    #             actor_state.append(self._get_actor_state(actor))
-    #         else:
-    #             break
-    #     while len(actor_state)-1 < desired_nearby_vehicles:
-    #         actor_state.append([0] * len(ego_state))
-    #
-    #     actor_state = np.array(actor_state)
-    #     return actor_state
 
     def _get_obs(self):
         # Ego
