@@ -12,32 +12,24 @@ from PIL import Image
 from pathlib import Path
 from collections import deque, defaultdict
 
-from scenario_runner.srunner.scenariomanager.carla_data_provider import CarlaDataProvider
-from leaderboard.leaderboard.autoagents import autonomous_agent, autonomous_agent_local
+
 from safebench.agent.expert.nav_planner import PIDController, interpolate_trajectory
 from safebench.agent.expert.nav_planner import RoutePlanner_new as RoutePlanner
-from safebench.agent.agent_utils.coordinate_utils import preprocess_compass, inverse_conversion_2d
-
-DATA_SAVE_PATH = os.environ.get('DATA_SAVE_PATH', None)
-LOG_SAVE_PATH = os.environ.get('LOG_SAVE_PATH', None)
-
-def get_entry_point():
-    return 'AutoPilot'
+from safebench.agent.agent_utils.coordinate_utils import inverse_conversion_2d
+from safebench.scenario.tools.route_manipulation import downsample_route
 
 
-class AutoPilot(autonomous_agent_local.AutonomousAgent):
-    def setup(self, path_to_conf_file, route_index=None, cfg=None, exec_or_inter=None):
-        self.track = autonomous_agent.Track.MAP
-        self.config_path = path_to_conf_file
+class AutoPilot(object):
+    def __init__(self, ego_vehicle):
         self.step = -1
         self.initialized = False
         self.save_path = None
-        self.route_index = route_index
 
-        self.datagen = int(os.environ.get('DATAGEN', 0)) == 1
+        self._vehicle = ego_vehicle
+        self._world = self._vehicle.get_world()
+        self.world_map = self._world.get_map()
 
         self.render_bev = False # TODO
-        self.exec_or_inter = exec_or_inter
 
         # self.gps_buffer = deque(maxlen=1) # Stores the last x updated gps signals. #TODO
 
@@ -48,13 +40,13 @@ class AutoPilot(autonomous_agent_local.AutonomousAgent):
         self.vehicle_model = EgoModel(dt=(1.0 / self.frame_rate))
 
         # Configuration
-        self.visualize = int(os.environ['DEBUG_CHALLENGE'])
+        self.visualize = 1
         self.save_freq = self.frame_rate_sim//2
 
         # Controllers
         # self.steer_buffer_size = 1     # Number of elements to average steering over
-        self.target_speed_slow = 3.0	# Speed at junctions, m/s
-        self.target_speed_fast = 4.0	# Speed outside junctions, m/s
+        self.target_speed_slow = 14.0	# Speed at junctions, m/s
+        self.target_speed_fast = 20.0	# Speed outside junctions, m/s
         self.clip_delta = 0.25			# Max angular error for turn controller
         self.clip_throttle = 0.75		# Max throttle (0-1)
         self.steer_damping = 0.5		# Steer multiplicative reduction while braking
@@ -135,32 +127,18 @@ class AutoPilot(autonomous_agent_local.AutonomousAgent):
         
         self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
 
-        if DATA_SAVE_PATH is not None:
-            now = datetime.datetime.now()
-            string = Path(cfg.routes).stem + '_'
-            string += f'route{self.route_index}_'
-            string += '_'.join(map(lambda x: '%02d' % x, (now.month, now.day, now.hour, now.minute, now.second)))
+    def set_global_plan(self, global_plan_gps, global_plan_world_coord):
+        """
+        Set the plan (route) for the agent
+        """
+        ds_ids = downsample_route(global_plan_world_coord, 50)
+        self._global_plan_world_coord = [(global_plan_world_coord[x][0], global_plan_world_coord[x][1]) for x in ds_ids]
+        self._global_plan = [global_plan_gps[x] for x in ds_ids]
 
-            print (string)
-
-            self.save_path = Path(os.environ['DATA_SAVE_PATH']) / string
-            self.save_path.mkdir(parents=True, exist_ok=False)
-
-            (self.save_path / 'measurements').mkdir()
-        
-        if LOG_SAVE_PATH is not None:
-            self.log_path = Path(os.environ['LOG_SAVE_PATH'])
-            self.log_path.mkdir(parents=True, exist_ok=True)
-
-
-    def _init(self, hd_map):
-        # Near node
-        self.world_map = carla.Map("RouteMap", hd_map[1]['opendrive'])
+    def set_planner(self, global_plan_gps, global_plan_world_coord):
+        self.set_global_plan(global_plan_gps, global_plan_world_coord)
         trajectory = [item[0].location for item in self._global_plan_world_coord]
         self.dense_route, _ = interpolate_trajectory(self.world_map, trajectory)
-        
-        print("Sparse Waypoints:", len(self._global_plan))
-        print("Dense Waypoints:", len(self.dense_route))
 
         self._waypoint_planner = RoutePlanner(3.5, 50)
         self._waypoint_planner.set_route(self.dense_route, True)
@@ -174,63 +152,12 @@ class AutoPilot(autonomous_agent_local.AutonomousAgent):
         self._command_planner = RoutePlanner(7.5, 50)
         self._command_planner.set_route(self._global_plan, True)
 
-        # Privileged
-        self._vehicle = CarlaDataProvider.get_hero_actor()
-        self._world = self._vehicle.get_world()
-
-        self.keep_ids = None
-
-        self.initialized = True
-
-    def sensors(self):
-        result = [{
-                    'type': 'sensor.opendrive_map',
-                    'reading_frequency': 1e-6,
-                    'id': 'hd_map'
-                    },
-                {
-                    'type': 'sensor.other.imu',
-                    'x': 0.0, 'y': 0.0, 'z': 0.0,
-                    'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-                    'sensor_tick': 0.05,
-                    'id': 'imu'
-                    },
-                {
-                    'type': 'sensor.other.gnss',
-                    'x': 0.0, 'y': 0.0, 'z': 0.0,
-                    'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-                    'sensor_tick': 0.01,
-                    'id': 'gps'
-                    },
-                {
-                    'type': 'sensor.speedometer',
-                    'reading_frequency': 20,
-                    'id': 'speed'
-                    }
-                ]
-
-
-        return result
-
-    def tick(self, input_data):
-        gps = input_data['gps'][1][:2]
-        speed = input_data['speed'][1]['speed']
-        compass = input_data['imu'][1][-1]
-        if (math.isnan(compass) == True): # simulation bug
-            compass = 0.0
-
-        
-        result = {
-                'gps': gps,
-                'speed': speed,
-                'compass': compass,
-                }
-
-        return result
-
-    def tick_autopilot(self, input_data):
-        speed = input_data['speed'][1]['speed']
-        compass = preprocess_compass(input_data['imu'][1][-1])
+    def tick_autopilot(self):
+        # speed = input_data['speed'][1]['speed']
+        v = self._vehicle.get_velocity()
+        speed = np.sqrt(v.x ** 2 + v.y ** 2)
+        # compass = preprocess_compass(input_data['imu'][1][-1])
+        compass = np.deg2rad(self._vehicle.get_transform().rotation.yaw)
 
         pos = self._vehicle.get_location()
         gps = np.array([pos.x, pos.y])
@@ -243,29 +170,15 @@ class AutoPilot(autonomous_agent_local.AutonomousAgent):
 
         return result
 
-    def run_step(self, input_data, timestamp, keep_ids=None, sensors=None):
+    def run_step(self):
         self.step += 1
-        self.keep_ids = keep_ids
-        if not self.initialized:
-            if ('hd_map' in input_data.keys()):
-                self._init(input_data['hd_map'])
-            else:
-                control = carla.VehicleControl()
-                control.steer = 0.0
-                control.throttle = 0.0
-                control.brake = 1.0
-                return control
-
-
-
-        control = self._get_control(input_data)
+        control = self._get_control()
         return control
 
-
-    def _get_control(self, input_data, steer=None, throttle=None,
+    def _get_control(self, steer=None, throttle=None,
                         vehicle_hazard=None, light_hazard=None, walker_hazard=None, stop_sign_hazard=None):
 
-        tick_data = self.tick_autopilot(input_data)
+        tick_data = self.tick_autopilot()
         pos = tick_data['gps']
 
         self._waypoint_planner.load()
@@ -275,7 +188,6 @@ class AutoPilot(autonomous_agent_local.AutonomousAgent):
         _, near_command = waypoint_route[1] if len(waypoint_route) > 1 else waypoint_route[0]  # needs HD map
 
         self.remaining_route = waypoint_route
-
 
         # insert missing controls
         if vehicle_hazard is None or light_hazard is None or walker_hazard is None or stop_sign_hazard is None:
@@ -502,15 +414,7 @@ class AutoPilot(autonomous_agent_local.AutonomousAgent):
 
         all_vehicles = actors.filter('*vehicle*')
 
-        # print(f'expert: {self.keep_ids}')
-        vehicles = []
-        if self.keep_ids is not None:
-            for vehicle in all_vehicles:
-                # print(vehicle.id)
-                if vehicle.id in self.keep_ids:
-                    vehicles.append(vehicle)
-        else:
-            vehicles = all_vehicles
+        vehicles = all_vehicles
 
         # print(f'{len(vehicles)} vehicles')
 
@@ -889,12 +793,7 @@ class AutoPilot(autonomous_agent_local.AutonomousAgent):
         all_vehicles = actors.filter('*vehicle*')
         
         vehicles = []
-        if self.keep_ids is not None:
-            for vehicle in all_vehicles:
-                if vehicle.id in self.keep_ids:
-                    vehicles.append(vehicle)
-        else:
-            vehicles = all_vehicles
+        vehicles = all_vehicles
 
        
         # -----------------------------------------------------------

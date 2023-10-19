@@ -289,7 +289,6 @@ def interpolate_trajectory(world_map, waypoints_trajectory, hop_resolution=1.0, 
     """
 
     grp = GlobalRoutePlanner(world_map, hop_resolution)
-    grp.setup()
     # Obtain route plan
     route = []
     for i in range(len(waypoints_trajectory) - 1):   # Goes until the one before the last.

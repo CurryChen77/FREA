@@ -71,7 +71,8 @@ class CarlaBasicAgent(BasePolicy):
             control = self.controller_list[e_i['scenario_id']].run_step()
             throttle = control.throttle
             steer = control.steer
-            actions.append([throttle, steer]) 
+            brake = control.brake
+            actions.append([throttle, steer, brake])
         actions = np.array(actions, dtype=np.float32)
         return actions
 

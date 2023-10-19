@@ -63,6 +63,8 @@ class CarlaEnv(gym.Env):
 
         self.controlled_bv = None
         self.controlled_bv_nearby_vehicles = None
+        self.gps_route = None
+        self.route = None
         self.search_radius = search_radius
         
         # scenario manager
@@ -185,7 +187,9 @@ class CarlaEnv(gym.Env):
 
     def _parse_route(self, config):
         # interp waypoints as init waypoints
-        route = interpolate_trajectory(self.world, config.trajectory)
+        gps_route, route = interpolate_trajectory(self.world, config.trajectory)
+        self.gps_route = gps_route
+        self.route = route
 
         # TODO: these waypoints can be directly got from scenario
         waypoints_list = []
@@ -201,7 +205,7 @@ class CarlaEnv(gym.Env):
             This function returns static observation used for static scenario generation
         """
         # get route
-        route = interpolate_trajectory(self.world, config.trajectory, 5.0)
+        _, route = interpolate_trajectory(self.world, config.trajectory, 5.0)
 
         # get [x, y] along the route
         waypoint_xy = []
@@ -344,7 +348,7 @@ class CarlaEnv(gym.Env):
                         # the rule based action
                         throttle = ego_action[0]
                         steer = ego_action[1]
-                        brake = 0.5 if throttle == 0 and steer == 0 else 0
+                        brake = ego_action[2]
                         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
                     else:
                         # the learnable agent action
@@ -442,6 +446,8 @@ class CarlaEnv(gym.Env):
         info = {
             'waypoints': self.waypoints,
             'route_waypoints': self.route_waypoints,          # the global route waypoints
+            'gps_route': self.gps_route,                      # the global gps route
+            'route': self.route,                              # the global route
             'vehicle_front': self.vehicle_front,
             'cost': self._get_cost(),                         # the collision cost -1 means collision happens
             'cbv_min_dis': cbv_min_dis,                       # the min dis from the controlled bv to the rest bvs

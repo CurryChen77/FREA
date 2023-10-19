@@ -19,7 +19,7 @@ def calculate_interpolate_trajectory(config, world):
     origin_waypoints_loc = []
     for loc in config.trajectory:
         origin_waypoints_loc.append(loc)
-    route = interpolate_trajectory(world, origin_waypoints_loc, 5.0)
+    _, route = interpolate_trajectory(world, origin_waypoints_loc, 5.0)
 
     # get [x, y] along the route
     waypoint_xy = []

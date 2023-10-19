@@ -17,6 +17,7 @@ from safebench.agent.rl.ppo import PPO
 from safebench.agent.rl.td3 import TD3
 from safebench.agent.basic import CarlaBasicAgent
 from safebench.agent.behavior import CarlaBehaviorAgent
+from safebench.agent.expert.expert import CarlaExpertAgent
 
 # for perception scenario
 from safebench.agent.object_detection.yolov5 import YoloAgent
@@ -33,4 +34,5 @@ AGENT_POLICY_LIST = {
     'ppo': PPO,
     'td3': TD3,
     'faster_rcnn': FasterRCNNAgent,
+    'expert': CarlaExpertAgent
 }

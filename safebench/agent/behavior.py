@@ -55,12 +55,14 @@ class CarlaBehaviorAgent(BasePolicy):
             if self.controller_list[e_i['scenario_id']].done():
                 throttle = 0
                 steer = 0
+                brake = 0.5
             else:
                 # select the controller that matches the scenario_id
                 control = self.controller_list[e_i['scenario_id']].run_step(debug=True)
                 throttle = control.throttle
                 steer = control.steer
-            actions.append([throttle, steer])
+                brake = control.brake
+            actions.append([throttle, steer, brake])
         actions = np.array(actions, dtype=np.float32)
         return actions
 

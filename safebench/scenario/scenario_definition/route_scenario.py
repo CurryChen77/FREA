@@ -81,12 +81,12 @@ class RouteScenario():
         if scenario_id == 0:
             vehicle_spawn_points = get_valid_spawn_points(self.world)
             for random_transform in vehicle_spawn_points:
-                route = interpolate_trajectory(self.world, [random_transform])
+                _, route = interpolate_trajectory(self.world, [random_transform])
                 ego_vehicle = self._spawn_ego_vehicle(route[0][0], self.config.auto_ego)
                 if ego_vehicle is not None:
                     break
         else:
-            route = interpolate_trajectory(self.world, self.config.trajectory)
+            _, route = interpolate_trajectory(self.world, self.config.trajectory)
             ego_vehicle = self._spawn_ego_vehicle(route[0][0], self.config.auto_ego)
 
         # TODO: ego route will be overwritten by other scenarios
