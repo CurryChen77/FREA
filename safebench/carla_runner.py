@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from safebench.gym_carla.env_wrapper import VectorWrapper
 from safebench.gym_carla.envs.render import BirdeyeRender
-from safebench.gym_carla.replay_buffer import RouteReplayBuffer, PerceptionReplayBuffer
+from safebench.gym_carla.replay_buffer import RouteReplayBuffer
 
 from safebench.agent import AGENT_POLICY_LIST
 from safebench.scenario import SCENARIO_POLICY_LIST
@@ -28,7 +28,7 @@ from safebench.scenario.scenario_data_loader import ScenarioDataLoader
 from safebench.scenario.tools.scenario_utils import scenario_parse
 
 from safebench.util.logger import Logger, setup_logger_kwargs
-from safebench.util.metric_util import get_route_scores, get_perception_scores
+from safebench.util.metric_util import get_route_scores
 
 
 class CarlaRunner:
@@ -199,7 +199,7 @@ class CarlaRunner:
 
     def train(self, data_loader, start_episode=0):
         # general buffer for both agent and scenario
-        Buffer = RouteReplayBuffer if self.scenario_category == 'planning' else PerceptionReplayBuffer
+        Buffer = RouteReplayBuffer if self.scenario_category == 'planning' else None
         replay_buffer = Buffer(self.num_scenario, self.mode, self.buffer_capacity)
         data_loader.set_mode("train")
 
@@ -324,7 +324,7 @@ class CarlaRunner:
                 self.logger.log('\t Env id ' + str(s_i) + ': ' + str(np.mean(score_list[s_i])), 'yellow')
 
             # calculate evaluation results
-            score_function = get_route_scores if self.scenario_category == 'planning' else get_perception_scores
+            score_function = get_route_scores if self.scenario_category == 'planning' else None
             all_running_results = self.logger.add_eval_results(records=self.env.running_results)
             all_scores = score_function(all_running_results)
             self.logger.add_eval_results(scores=all_scores)

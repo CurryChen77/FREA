@@ -50,19 +50,3 @@ class RouteScenarioConfig(object):
     friction = None
 
 
-class PerceptionScenarioConfig(object):
-    """
-        configuration of a PerceptionScenario
-    """
-    other_actors = []
-    trigger_points = []
-    route_var_name = None
-    subtype = None
-    parameters = None
-    weather = carla.WeatherParameters()
-    num_scenario = None
-    friction = None
-    ego_id = 0
-    texture_dir = None
-
-

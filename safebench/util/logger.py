@@ -18,7 +18,7 @@ import joblib
 import numpy as np
 import yaml
 
-from safebench.util.run_util import VideoRecorder, VideoRecorder_Perception
+from safebench.util.run_util import VideoRecorder
 
 
 # Where experiment outputs are saved by default:
@@ -325,8 +325,6 @@ class Logger:
     def init_video_recorder(self):
         if self.scenario_category == 'planning':
             self.video_recorder = VideoRecorder(self.output_dir, logger=self)
-        elif self.scenario_category == 'perception':
-            self.video_recorder = VideoRecorder_Perception(self.output_dir, logger=self)
 
     def add_frame(self, frame):
         self.video_recorder.add_frame(frame)

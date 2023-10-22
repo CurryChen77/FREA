@@ -19,20 +19,15 @@ from safebench.agent.basic import CarlaBasicAgent
 from safebench.agent.behavior import CarlaBehaviorAgent
 from safebench.agent.expert.expert import CarlaExpertAgent
 
-# for perception scenario
-from safebench.agent.object_detection.yolov5 import YoloAgent
-from safebench.agent.object_detection.faster_rcnn import FasterRCNNAgent
 
 AGENT_POLICY_LIST = {
     'dummy': DummyAgent,
     'basic': CarlaBasicAgent,
     'behavior': CarlaBehaviorAgent,
-    'yolo': YoloAgent,
     'sac': SAC,
     'rc_sac': RCSAC,
     'ddpg': DDPG,
     'ppo': PPO,
     'td3': TD3,
-    'faster_rcnn': FasterRCNNAgent,
     'expert': CarlaExpertAgent
 }
