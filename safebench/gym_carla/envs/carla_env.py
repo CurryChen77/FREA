@@ -26,7 +26,6 @@ from safebench.gym_carla.envs.misc import (
     get_preview_lane_dis
 )
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
-from safebench.scenario.scenario_definition.perception_scenario import PerceptionScenario
 from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.tools.route_manipulation import interpolate_trajectory
@@ -150,15 +149,7 @@ class CarlaEnv(gym.Env):
         self.logger.log(f">> Loading scenario data id: {config.data_id}")
 
         # create scenario accoridng to different types
-        if self.scenario_category == 'perception':
-            scenario = PerceptionScenario(
-                world=self.world, 
-                config=config, 
-                ROOT_DIR=self.ROOT_DIR, 
-                ego_id=env_id, 
-                logger=self.logger,
-            )
-        elif self.scenario_category == 'planning':
+        if self.scenario_category == 'planning':
             scenario = RouteScenario(
                 world=self.world, 
                 config=config, 
