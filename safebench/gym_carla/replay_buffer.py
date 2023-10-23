@@ -167,7 +167,7 @@ class RouteReplayBuffer:
         # add additional information to the batch
         batch_info = {} 
         for k_i in prepared_infos.keys():
-            if k_i == 'route_waypoints':
+            if k_i == 'route_waypoints' or k_i == 'gps_route' or k_i == 'route':
                 continue
             batch_info[k_i] = np.stack(prepared_infos[k_i])[sample_index-1]
             batch_info['n_' + k_i] = np.stack(prepared_infos[k_i])[sample_index]

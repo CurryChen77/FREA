@@ -3,7 +3,7 @@ learnable: False
 model_path: ''
 model_id: 0
 results_folder_path: ''
-obs_type: 0
+obs_type: 'no_obs'
 
 target_speed: 30
 

@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+'''
+@File    ：autopilot.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/10/22
+@source  ：This file is modified from <https://github.com/autonomousvision/plant/tree/1bfb695910d816e70f53521aa263648072edea8e>
+'''
+
 import os
 import json
 import gzip
@@ -136,7 +146,8 @@ class AutoPilot(object):
         self._global_plan = [global_plan_gps[x] for x in ds_ids]
 
     def set_planner(self, global_plan_gps, global_plan_world_coord):
-        self.set_global_plan(global_plan_gps, global_plan_world_coord)
+        self.set_global_plan(global_plan_gps, global_plan_world_coord)  # set the global plan
+
         trajectory = [item[0].location for item in self._global_plan_world_coord]
         self.dense_route, _ = interpolate_trajectory(self.world_map, trajectory)
 
@@ -152,15 +163,17 @@ class AutoPilot(object):
         self._command_planner = RoutePlanner(7.5, 50)
         self._command_planner.set_route(self._global_plan, True)
 
-    def tick_autopilot(self):
-        # speed = input_data['speed'][1]['speed']
-        v = self._vehicle.get_velocity()
-        speed = np.sqrt(v.x ** 2 + v.y ** 2)
-        # compass = preprocess_compass(input_data['imu'][1][-1])
-        compass = np.deg2rad(self._vehicle.get_transform().rotation.yaw)
-
-        pos = self._vehicle.get_location()
-        gps = np.array([pos.x, pos.y])
+    def tick_autopilot(self, input_data=None):
+        if input_data is not None:
+            speed = input_data['speed']
+            gps = input_data['gps']
+            compass = input_data['compass']
+        else:
+            v = self._vehicle.get_velocity()
+            speed = np.sqrt(v.x ** 2 + v.y ** 2)
+            compass = np.deg2rad(self._vehicle.get_transform().rotation.yaw)
+            pos = self._vehicle.get_location()
+            gps = np.array([pos.x, pos.y])
 
         result = {
             'gps': gps,
@@ -170,15 +183,15 @@ class AutoPilot(object):
 
         return result
 
-    def run_step(self):
+    def run_step(self, input_data=None):
         self.step += 1
-        control = self._get_control()
+        control = self._get_control(input_data)
         return control
 
-    def _get_control(self, steer=None, throttle=None,
-                        vehicle_hazard=None, light_hazard=None, walker_hazard=None, stop_sign_hazard=None):
+    def _get_control(self, input_data=None, steer=None, throttle=None,
+                     vehicle_hazard=None, light_hazard=None, walker_hazard=None, stop_sign_hazard=None):
 
-        tick_data = self.tick_autopilot()
+        tick_data = self.tick_autopilot(input_data)
         pos = tick_data['gps']
 
         self._waypoint_planner.load()
@@ -226,7 +239,6 @@ class AutoPilot(object):
         self.throttle = control.throttle
         self.brake = control.brake
         self.target_speed = target_speed
-
 
         command_route = self._command_planner.run_step(pos)
         # Consider that the route might end

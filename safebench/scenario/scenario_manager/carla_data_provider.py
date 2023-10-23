@@ -125,7 +125,7 @@ class CarlaDataProvider(object):
         """
         for actor in CarlaDataProvider._actor_velocity_map_after_tick:
             if actor is not None and actor.is_alive:
-                CarlaDataProvider._actor_velocity_map_after_tick[actor] = calculate_velocity(actor)
+                CarlaDataProvider._actor_velocity_map_after_tick[actor] = calculate_velocity(actor)  # m/s
 
         for actor in CarlaDataProvider._actor_location_map_after_tick:
             if actor is not None and actor.is_alive:
@@ -777,7 +777,7 @@ class CarlaDataProvider(object):
             dis = CarlaDataProvider.get_min_distance_across_bboxes(ego_vehicle, nearby_vehicles[i])
             if dis < ego_min_dis:
                 ego_min_dis = dis
-        return ego_min_dis
+        return ego_min_dis, nearby_vehicles
 
     @staticmethod
     def get_cbv_min_dis_cost(controlled_bv, search_radius, controlled_bv_nearby_vehicles, tou=1.25):

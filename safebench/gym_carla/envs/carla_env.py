@@ -32,11 +32,12 @@ from safebench.scenario.tools.route_manipulation import interpolate_trajectory
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
+
 class CarlaEnv(gym.Env):
     """ 
         An OpenAI-gym style interface for CARLA simulator. 
     """
-    def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0, logger=None):
+    def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0, obs_type=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
         self.config = None
@@ -65,6 +66,7 @@ class CarlaEnv(gym.Env):
         self.gps_route = None
         self.route = None
         self.search_radius = search_radius
+        self.obs_type = obs_type
         
         # scenario manager
         use_scenic = True if env_params['scenario_category'] == 'scenic' else False
@@ -95,17 +97,17 @@ class CarlaEnv(gym.Env):
         if self.scenario_category in ['planning', 'scenic']:
             self.obs_size = int(self.obs_range/self.lidar_bin)
             # TODO updating 'actor_state'
-            observation_space_dict = {
-                'camera': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
-                'lidar': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
-                'birdeye': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
-                'state': spaces.Box(np.array([-2, -1, -5, 0], dtype=np.float32), np.array([2, 1, 30, 1], dtype=np.float32), dtype=np.float32),
-            }
+            # observation_space_dict = {
+            #     'camera': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
+            #     'lidar': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
+            #     'birdeye': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
+            #     'state': spaces.Box(np.array([-2, -1, -5, 0], dtype=np.float32), np.array([2, 1, 30, 1], dtype=np.float32), dtype=np.float32),
+            # }
         else:
             raise ValueError(f'Unknown scenario category: {self.scenario_category}')
 
         # define obs space
-        self.observation_space = spaces.Dict(observation_space_dict)
+        # self.observation_space = spaces.Dict(observation_space_dict)
 
         # action and observation spaces
         self.discrete = env_params['discrete']
@@ -185,25 +187,6 @@ class CarlaEnv(gym.Env):
             waypoint = self.carla_map.get_waypoint(loc, project_to_road=True, lane_type=carla.LaneType.Driving)
             waypoints_list.append(waypoint)
         return waypoints_list
-
-    def get_static_obs(self, config):
-        """
-            This function returns static observation used for static scenario generation
-        """
-        # get route
-        _, route = interpolate_trajectory(self.world, config.trajectory, 5.0)
-
-        # get [x, y] along the route
-        waypoint_xy = []
-        for transform_tuple in route:
-            waypoint_xy.append([transform_tuple[0].location.x, transform_tuple[0].location.y])
-        
-        # combine state obs    
-        state = {
-            'route': np.array(waypoint_xy),   # [n, 2]
-            'target_speed': self.desired_speed,
-        }
-        return state
 
     def reset(self, config, env_id):
         self.config = config
@@ -493,38 +476,6 @@ class CarlaEnv(gym.Env):
         return actor_trajectory_dict, actor_acceleration_dict, actor_angular_velocity_dict, actor_velocity_dict
 
     def _get_obs(self):
-        # Ego
-        ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
-        # ego_trans = self.ego_vehicle.get_transform()
-        ego_location = ego_trans.location
-        ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
-        ego_speed = CarlaDataProvider.get_velocity_after_tick(self.ego_vehicle)
-        ego_speed = round(ego_speed, 2)
-
-        # pre waypoint
-        # get the distance from ego position to the second waypoint
-        pre_waypoint = self.waypoints[2]
-        pre_waypoint_w = np.array([np.cos(pre_waypoint[2]/180*np.pi), np.sin(pre_waypoint[2]/180*np.pi)])
-        waypoint_dis = ego_location.distance(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
-        # waypoint_lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)  #
-        yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
-        waypoint_delta_yaw = round(np.arcsin(np.cross(pre_waypoint_w, yaw)), 2)
-        # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
-        ego_min_dis = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
-        CarlaDataProvider.set_ego_min_dis(ego_min_dis)
-
-        # extre information
-        junction_waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
-        pre_waypoint_is_junction = junction_waypoint.is_junction
-
-        state = np.array([ego_yaw, ego_speed,  # ego(remove loc, since it's useless and varying under different map)
-                          waypoint_dis, waypoint_delta_yaw,  # pre waypoint distance
-                          ego_min_dis,  # controlled bv dis
-                          self.vehicle_front,  # whether exist front vehicle
-                          pre_waypoint_is_junction,  # whether the pre waypoint is in the junction
-                          self.red_light_state,  # whether the ego encountered red light
-                          ])
-
         # set ego information for birdeye_render
         self.birdeye_render.set_hero(self.ego_vehicle, self.ego_vehicle.id)
         if self.controlled_bv:
@@ -589,13 +540,75 @@ class CarlaEnv(gym.Env):
             camera_surface = rgb_to_display_surface(camera, self.display_size)
             self.display.blit(camera_surface, (self.display_size, self.env_id*self.display_size))
 
-        obs = {
-            'camera': camera.astype(np.uint8),
-            'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
-            'birdeye': birdeye.astype(np.uint8),
-            'state': state.astype(np.float32),
-        }
+        # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
+        ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+        CarlaDataProvider.set_ego_min_dis(ego_min_dis)
+
+        if self.obs_type == 'ego_state':
+            # Ego state
+            ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
+            ego_loc = ego_trans.location
+            ego_pos = np.array([ego_loc.x, ego_loc.y])
+            ego_speed = CarlaDataProvider.get_velocity_after_tick(self.ego_vehicle)  # m/s
+            ego_compass = np.deg2rad(ego_trans.rotation.yaw)  # the yaw angle in radius
+            ego_state = {
+                'gps': ego_pos,
+                'speed': ego_speed,
+                'compass': ego_compass
+            }
+            obs = {
+                'camera': camera.astype(np.uint8),
+                'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
+                'birdeye': birdeye.astype(np.uint8),
+                'ego_state': ego_state,
+                'ego_min_dis': ego_min_dis
+            }
+        elif self.obs_type == 'simple_state':
+            # State observation
+            ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
+            ego_x = ego_trans.location.x
+            ego_y = ego_trans.location.y
+            ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
+            lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)
+            yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
+            delta_yaw = np.arcsin(np.cross(w, yaw))
+
+            v = self.ego_vehicle.get_velocity()
+            speed = np.sqrt(v.x ** 2 + v.y ** 2)
+            simple_state = np.array([lateral_dis, -delta_yaw, speed, self.vehicle_front])
+            obs = {
+                'camera': camera.astype(np.uint8),
+                'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
+                'birdeye': birdeye.astype(np.uint8),
+                'simple_state': simple_state.astype(np.float32),
+                'ego_min_dis': ego_min_dis
+            }
+        elif self.obs_type == 'no_obs':
+            obs = None
         return obs
+        # # 8 dimensions state
+        # ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
+        # ego_location = ego_trans.location
+        # ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
+        # speed = CarlaDataProvider.get_velocity_after_tick(self.ego_vehicle)
+        # ego_speed = round(speed, 2)
+        #
+        # # pre waypoint
+        # # get the distance from ego position to the second waypoint
+        # pre_waypoint = self.waypoints[2]
+        # pre_waypoint_w = np.array([np.cos(pre_waypoint[2]/180*np.pi), np.sin(pre_waypoint[2]/180*np.pi)])
+        # waypoint_dis = ego_location.distance(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
+        #
+        # yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
+        # waypoint_delta_yaw = round(np.arcsin(np.cross(pre_waypoint_w, yaw)), 2)
+        #
+        # # extre information
+        # junction_waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
+        # pre_waypoint_is_junction = junction_waypoint.is_junction
+        #
+        # state = np.array([
+        #     ego_yaw, ego_speed, waypoint_dis, waypoint_delta_yaw, ego_min_dis,
+        #     self.vehicle_front, pre_waypoint_is_junction, self.red_light_state])
 
     def _get_reward(self):
         """ Calculate the step reward. """

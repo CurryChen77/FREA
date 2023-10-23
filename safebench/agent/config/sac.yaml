@@ -3,7 +3,7 @@ learnable: True
 model_path: 'safebench/agent/model_ckpt/sac'
 model_id: 0
 results_folder_path: ''
-obs_type: 0
+obs_type: 'simple_state'
 
 train_episode: 2000
 eval_in_train_freq: 1

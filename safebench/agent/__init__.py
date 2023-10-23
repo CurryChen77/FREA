@@ -18,6 +18,7 @@ from safebench.agent.rl.td3 import TD3
 from safebench.agent.basic import CarlaBasicAgent
 from safebench.agent.behavior import CarlaBehaviorAgent
 from safebench.agent.expert.expert import CarlaExpertAgent
+from safebench.agent.PlanT.PlanT import PlanT
 
 
 AGENT_POLICY_LIST = {
@@ -29,5 +30,6 @@ AGENT_POLICY_LIST = {
     'ddpg': DDPG,
     'ppo': PPO,
     'td3': TD3,
-    'expert': CarlaExpertAgent
+    'expert': CarlaExpertAgent,
+    'plant': PlanT
 }

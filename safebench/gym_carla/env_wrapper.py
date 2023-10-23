@@ -55,13 +55,6 @@ class VectorWrapper():
                 ego_vehicles.append(env.ego_vehicle)
         return ego_vehicles
 
-    def get_static_obs(self, scenario_configs):
-        static_obs_list = []
-        for s_i in range(len(scenario_configs)):
-            static_obs = self.env_list[s_i].get_static_obs(scenario_configs[s_i])
-            static_obs_list.append(static_obs)
-        return static_obs_list
-
     def reset(self, scenario_configs):
         # create scenarios and ego vehicles
         obs_list = []
@@ -191,15 +184,12 @@ class ObservationWrapper(gym.Wrapper):
 
         self.is_running = False
         self.obs_type = obs_type
-        self._build_obs_space()
+        # self._build_obs_space()
 
         # build action space, assume the obs range from -1 to 1
         act_dim = 2
         act_lim = np.ones((act_dim), dtype=np.float32)
         self.action_space = gym.spaces.Box(-act_lim, act_lim, dtype=np.float32)
-
-    def get_static_obs(self, config):
-        return self._env.get_static_obs(config)
 
     def reset(self, **kwargs):
         obs, info = self._env.reset(**kwargs)
@@ -215,46 +205,35 @@ class ObservationWrapper(gym.Wrapper):
         obs = self._preprocess_obs(obs)
         return obs, reward, done, info
 
-    def _build_obs_space(self):
-        if self.obs_type == 0:
-            obs_dim = 4
-            # assume the obs range from -1 to 1
-            obs_lim = np.ones((obs_dim), dtype=np.float32)
-            self.observation_space = gym.spaces.Box(-obs_lim, obs_lim)
-        elif self.obs_type == 1:
-            obs_dim = 11
-            # assume the obs range from -1 to 1
-            obs_lim = np.ones((obs_dim), dtype=np.float32)
-            self.observation_space = gym.spaces.Box(-obs_lim, obs_lim)
-        elif self.obs_type == 2 or self.obs_type == 3:
-            # 4 state space + bev
-            obs_dim = 128  # TODO: should be the same as display_size
-            # assume the obs range from -1 to 1
-            obs_lim = np.ones((obs_dim), dtype=np.float32)
-            self.observation_space = gym.spaces.Box(-obs_lim, obs_lim)
-        else:
-            raise NotImplementedError
+    # def _build_obs_space(self):
+    #     if self.obs_type == 0:
+    #         obs_dim = 4
+    #         # assume the obs range from -1 to 1
+    #         obs_lim = np.ones((obs_dim), dtype=np.float32)
+    #         self.observation_space = gym.spaces.Box(-obs_lim, obs_lim)
+    #     elif self.obs_type == 1:
+    #         obs_dim = 11
+    #         # assume the obs range from -1 to 1
+    #         obs_lim = np.ones((obs_dim), dtype=np.float32)
+    #         self.observation_space = gym.spaces.Box(-obs_lim, obs_lim)
+    #     elif self.obs_type == 2 or self.obs_type == 3:
+    #         # 4 state space + bev
+    #         obs_dim = 128  # TODO: should be the same as display_size
+    #         # assume the obs range from -1 to 1
+    #         obs_lim = np.ones((obs_dim), dtype=np.float32)
+    #         self.observation_space = gym.spaces.Box(-obs_lim, obs_lim)
+    #     else:
+    #         raise NotImplementedError
 
     def _preprocess_obs(self, obs):
         # only use the 4-dimensional state space
-        if self.obs_type == 0:
-            return obs['state'][:8].astype(np.float64)  # the state of chasing the predefined route
-        # concat the 4-dimensional state space and lane info
-        elif self.obs_type == 1:
-            new_obs = np.array([
-                obs['state'][0], obs['state'][1], obs['state'][2], obs['state'][3],
-                obs['command'], 
-                obs['forward_vector'][0], obs['forward_vector'][1],
-                obs['node_forward'][0], obs['node_forward'][1],
-                obs['target_forward'][0], obs['target_forward'][1]
-            ])
-            return new_obs
-        # return a dictionary with bird-eye view image and state
-        elif self.obs_type == 2:
-            return {"img": obs['birdeye'], "states": obs['state'][:4].astype(np.float64)}
-        # return a dictionary with front-view image and state
-        elif self.obs_type == 3:
-            return {"img": obs['camera'], "states": obs['state'][:4].astype(np.float64)}
+        if self.obs_type == 'simple_state':
+            return obs['simple_state'][:4].astype(np.float64)
+        # include the pos, speed, compass(yaw angle)
+        elif self.obs_type == 'ego_state':
+            return obs['ego_state']
+        elif self.obs_type == 'no_obs':
+            return None
         else:
             raise NotImplementedError
 
@@ -277,6 +256,7 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, search_
             display=display, 
             world=world,
             search_radius=search_radius,
+            obs_type=env_params['obs_type'],
             logger=logger,
         ), 
         obs_type=env_params['obs_type']

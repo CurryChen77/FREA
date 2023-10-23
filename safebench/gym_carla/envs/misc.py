@@ -224,6 +224,7 @@ def set_carla_transform(pose):
     transform.rotation.yaw = pose[2]
     return transform
 
+
 def display_to_rgb(display, obs_size):
     """
         Transform image grabbed from pygame display to an rgb image uint8 matrix

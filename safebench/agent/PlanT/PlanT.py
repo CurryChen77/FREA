@@ -1,22 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 '''
-@File    ：expert.py
+@File    ：PlanT.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
-@Date    ：2023/10/22
-@source  ：This project is modified from <https://github.com/autonomousvision/plant/tree/1bfb695910d816e70f53521aa263648072edea8e>
+@Date    ：2023/10/23
 '''
 
 import numpy as np
 
 from safebench.agent.base_policy import BasePolicy
-from safebench.agent.expert.autopilot import AutoPilot
+from safebench.agent.PlanT.PlanT_agent import PlanTAgent
 
 
-class CarlaExpertAgent(BasePolicy):
-    name = 'expert'
-    type = 'unlearnable'
+class PlanT(BasePolicy):
+    name = 'plant'
+    type = 'learnable'
 
     """ This is just an example for testing, which always goes straight. """
     def __init__(self, config, logger):
@@ -32,7 +31,7 @@ class CarlaExpertAgent(BasePolicy):
         self.ego_vehicles = ego_vehicles
         self.controller_list = []
         for e_i, ego in enumerate(ego_vehicles):
-            controller = AutoPilot(ego)
+            controller = PlanTAgent(ego)
             gps_route = info[e_i]['gps_route']  # the gps route
             route = info[e_i]['route']  # the world coord route
             controller.set_planner(gps_route, route)  # set route for each controller
@@ -47,9 +46,9 @@ class CarlaExpertAgent(BasePolicy):
 
     def get_action(self, obs, infos, deterministic=False):
         actions = []
-        for i, e_i in enumerate(infos):
+        for e_i in infos:
             # select the controller that matches the scenario_id
-            control = self.controller_list[e_i['scenario_id']].run_step(obs[i])
+            control = self.controller_list[e_i['scenario_id']].run_step(obs)
             throttle = control.throttle
             steer = control.steer
             brake = control.brake
