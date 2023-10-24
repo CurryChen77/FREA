@@ -95,6 +95,8 @@ class CarlaRunner:
         agent_config['ego_state_dim'] = scenario_config['ego_state_dim']        # default 4 dimensions
         agent_config['ego_action_limit'] = scenario_config['ego_action_limit']  # default 1.0
 
+        CarlaDataProvider.set_ego_desired_speed(self.env_params['desired_speed'])
+
         # define logger
         logger_kwargs = setup_logger_kwargs(
             self.exp_name,

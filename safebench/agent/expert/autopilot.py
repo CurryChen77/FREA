@@ -35,6 +35,7 @@ class AutoPilot(object):
         self.config = config
         self.logger = logger
         self.step = -1
+        self.desired_speed = CarlaDataProvider.get_ego_desired_speed()
 
         self.save_path = None
 
@@ -54,8 +55,8 @@ class AutoPilot(object):
 
         # Controllers
         # self.steer_buffer_size = 1     # Number of elements to average steering over
-        self.target_speed_slow = 14.0	# Speed at junctions, m/s
-        self.target_speed_fast = 20.0	# Speed outside junctions, m/s
+        self.target_speed_slow = self.desired_speed-2	# Speed at junctions, m/s
+        self.target_speed_fast = self.desired_speed+2	# Speed outside junctions, m/s
         self.clip_delta = 0.25			# Max angular error for turn controller
         self.clip_throttle = 0.75		# Max throttle (0-1)
         self.steer_damping = 0.5		# Steer multiplicative reduction while braking

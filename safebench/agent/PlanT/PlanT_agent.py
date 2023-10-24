@@ -7,8 +7,7 @@
 @Date    ：2023/10/22
 @source  ：This file is modified from <https://github.com/autonomousvision/plant/tree/1bfb695910d816e70f53521aa263648072edea8e>
 '''
-
-
+import os
 import time
 from pathlib import Path
 import warnings
@@ -104,7 +103,7 @@ class PlanTAgent(DataAgent):
         else:
             LOAD_CKPT_PATH = self.config['model_ckpt_load_path']
 
-        self.logger.log(f">> Loading PlanT ego model from {LOAD_CKPT_PATH}")
+        self.logger.log(f">> Loading PlanT ego model from {os.path.basename(LOAD_CKPT_PATH)}")
 
         if Path(LOAD_CKPT_PATH).suffix == '.ckpt':
             self.net = LitHFLM.load_from_checkpoint(LOAD_CKPT_PATH, strict=False,  cfg=self.config)

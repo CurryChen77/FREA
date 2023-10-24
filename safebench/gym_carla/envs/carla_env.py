@@ -32,7 +32,6 @@ from safebench.scenario.tools.route_manipulation import interpolate_trajectory
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
-
 class CarlaEnv(gym.Env):
     """ 
         An OpenAI-gym style interface for CARLA simulator. 

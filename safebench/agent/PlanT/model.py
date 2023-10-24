@@ -16,14 +16,13 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from torch.nn.utils.rnn import pad_sequence
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from einops import rearrange
 
 from transformers import (
     AutoConfig,
     AutoModel,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class HFLM(nn.Module):
@@ -100,10 +99,6 @@ class HFLM(nn.Module):
 
         self.apply(self._init_weights)
 
-        logger.info(
-            "number of parameters: %e", sum(p.numel() for p in self.parameters())
-        )
-
 
     def _init_weights(self, module):
         if isinstance(module, (nn.Linear, nn.Embedding)):
@@ -113,7 +108,6 @@ class HFLM(nn.Module):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
 
     def configure_optimizers(self, train_config):
         """
@@ -175,7 +169,6 @@ class HFLM(nn.Module):
             optim_groups, lr=train_config.learning_rate, betas=train_config.betas
         )
         return optimizer
-
 
     def forward(self, idx, target=None, target_point=None, light_hazard=None):
 
@@ -303,7 +296,6 @@ class HFLM(nn.Module):
         else:
             return logits, targets, pred_wp, attn_map
 
-
     def pad_sequence_batch(self, x_batched):
         """
         Pads a batch of sequences to the longest sequence in the batch.
@@ -331,7 +323,6 @@ class HFLM(nn.Module):
 
         return input_batch
 
-
     def control_pid(self, waypoints, velocity, is_stuck=False):
         """Predicts vehicle control with a PID controller.
         Args:
@@ -344,9 +335,9 @@ class HFLM(nn.Module):
         waypoints[:, 0] += 1.3
         speed = velocity[0].data.cpu().numpy()
 
-        desired_speed = np.linalg.norm(waypoints[0] - waypoints[1]) * 2.0
+        desired_speed = np.linalg.norm(waypoints[0] - waypoints[1]) * 4.0  # near speed of 8 m/s
         if is_stuck:
-            desired_speed = np.array(4.0) # default speed of 14.4 km/h
+            desired_speed = np.array(CarlaDataProvider.get_ego_desired_speed())  # near speed of 8 m/s
 
         brake = desired_speed < 0.4 or (speed / desired_speed) > 1.1
 

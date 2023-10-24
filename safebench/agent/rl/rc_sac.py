@@ -263,7 +263,7 @@ class RCSAC(BasePolicy):
                             episode = cur_episode
         filepath = os.path.join(self.model_path, f'model.rcsac.{self.model_id}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading {self.name} model from {filepath}')
+            self.logger.log(f'>> Loading {self.name} model from {os.path.basename(filepath)}')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy_net.load_state_dict(checkpoint['policy_net'])

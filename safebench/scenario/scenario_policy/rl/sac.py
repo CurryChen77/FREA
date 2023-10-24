@@ -282,7 +282,7 @@ class SAC(BasePolicy):
 
         filepath = os.path.join(load_dir, f'model.sac.{self.model_id}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading scenario policy {self.name} model from {filepath}')
+            self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy_net.load_state_dict(checkpoint['policy_net'])

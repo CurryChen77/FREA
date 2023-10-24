@@ -46,6 +46,7 @@ class CarlaDataProvider(object):
     _spawn_points = None
     _spawn_index = 0
     _ego_min_dis = 0
+    _ego_desired_speed = 8
     _blueprint_library = None
     _ego_vehicle_route = None
     _traffic_manager_port = 8000
@@ -230,6 +231,20 @@ class CarlaDataProvider(object):
             Get the Ego min distance across nearby vehicles
         """
         return CarlaDataProvider._ego_min_dis
+
+    @staticmethod
+    def set_ego_desired_speed(ego_desired_speed):
+        """
+            Set the Ego min distance across nearby vehicles
+        """
+        CarlaDataProvider._ego_desired_speed = ego_desired_speed
+
+    @staticmethod
+    def get_ego_desired_speed():
+        """
+            Get the Ego min distance across nearby vehicles
+        """
+        return CarlaDataProvider._ego_desired_speed
 
     @staticmethod
     def set_client(client):
