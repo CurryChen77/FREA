@@ -27,19 +27,18 @@ from safebench.agent.expert.nav_planner import PIDController, interpolate_trajec
 from safebench.agent.expert.nav_planner import RoutePlanner_new as RoutePlanner
 from safebench.agent.agent_utils.coordinate_utils import inverse_conversion_2d
 from safebench.scenario.tools.route_manipulation import downsample_route
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
 class AutoPilot(object):
-    def __init__(self, ego_vehicle):
+    def __init__(self, config=None, logger=None):
+        self.config = config
+        self.logger = logger
         self.step = -1
-        self.initialized = False
+
         self.save_path = None
 
-        self._vehicle = ego_vehicle
-        self._world = self._vehicle.get_world()
-        self.world_map = self._world.get_map()
-
-        self.render_bev = False # TODO
+        self.render_bev = False  # TODO
 
         # self.gps_buffer = deque(maxlen=1) # Stores the last x updated gps signals. #TODO
 
@@ -145,7 +144,10 @@ class AutoPilot(object):
         self._global_plan_world_coord = [(global_plan_world_coord[x][0], global_plan_world_coord[x][1]) for x in ds_ids]
         self._global_plan = [global_plan_gps[x] for x in ds_ids]
 
-    def set_planner(self, global_plan_gps, global_plan_world_coord):
+    def set_planner(self, ego_vehicle,  global_plan_gps, global_plan_world_coord):
+        self._vehicle = ego_vehicle
+        self._world = CarlaDataProvider.get_world()
+        self.world_map = CarlaDataProvider.get_map()
         self.set_global_plan(global_plan_gps, global_plan_world_coord)  # set the global plan
 
         trajectory = [item[0].location for item in self._global_plan_world_coord]

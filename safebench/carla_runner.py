@@ -90,6 +90,7 @@ class CarlaRunner:
 
         # pass config from scenario to agent
         agent_config['mode'] = scenario_config['mode']
+        agent_config['num_scenario'] = scenario_config['num_scenario']
         agent_config['ego_action_dim'] = scenario_config['ego_action_dim']      # default 2 dimensions (acc, steering)
         agent_config['ego_state_dim'] = scenario_config['ego_state_dim']        # default 4 dimensions
         agent_config['ego_action_limit'] = scenario_config['ego_action_limit']  # default 1.0

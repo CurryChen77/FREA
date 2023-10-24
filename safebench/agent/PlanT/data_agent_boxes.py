@@ -26,28 +26,28 @@ from safebench.agent.agent_utils.coordinate_utils import normalize_angle
 
 # SHUFFLE_WEATHER = int(os.environ.get('SHUFFLE_WEATHER'))
 
-WEATHERS = {
-		'Clear': carla.WeatherParameters.ClearNoon,
-		'Cloudy': carla.WeatherParameters.CloudySunset,
-		'Wet': carla.WeatherParameters.WetSunset,
-		'MidRain': carla.WeatherParameters.MidRainSunset,
-		'WetCloudy': carla.WeatherParameters.WetCloudySunset,
-		'HardRain': carla.WeatherParameters.HardRainNoon,
-		'SoftRain': carla.WeatherParameters.SoftRainSunset,
-}
+# WEATHERS = {
+# 		'Clear': carla.WeatherParameters.ClearNoon,
+# 		'Cloudy': carla.WeatherParameters.CloudySunset,
+# 		'Wet': carla.WeatherParameters.WetSunset,
+# 		'MidRain': carla.WeatherParameters.MidRainSunset,
+# 		'WetCloudy': carla.WeatherParameters.WetCloudySunset,
+# 		'HardRain': carla.WeatherParameters.HardRainNoon,
+# 		'SoftRain': carla.WeatherParameters.SoftRainSunset,
+# }
 
-azimuths = [45.0 * i for i in range(8)]
+# azimuths = [45.0 * i for i in range(8)]
 
-daytimes = {
-	'Night': -80.0,
-	'Twilight': 0.0,
-	'Dawn': 5.0,
-	'Sunset': 15.0,
-	'Morning': 35.0,
-	'Noon': 75.0,
-}
+# daytimes = {
+# 	'Night': -80.0,
+# 	'Twilight': 0.0,
+# 	'Dawn': 5.0,
+# 	'Sunset': 15.0,
+# 	'Morning': 35.0,
+# 	'Noon': 75.0,
+# }
 
-WEATHERS_IDS = list(WEATHERS)
+# WEATHERS_IDS = list(WEATHERS)
 
 
 def get_entry_point():
@@ -55,215 +55,181 @@ def get_entry_point():
 
 
 class DataAgent(AutoPilot):
-    def __init__(self, ego_vehicle, cfg):
-        super().__init__(ego_vehicle)
+    def __init__(self, config=None, logger=None):
+        super().__init__()
 
         # self.args['device'] = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-        self.cfg = cfg
+        self.cfg = config
 
         self.map_precision = 10.0  # meters per point
         self.rdp_epsilon = 0.5  # epsilon for route shortening
 
         # radius in which other actors/map elements are considered
         # distance is from the center of the ego-vehicle and measured in 3D space
-        self.max_actor_distance = self.detection_radius # copy from expert
-        self.max_light_distance = self.light_radius # copy from expert
+        self.max_actor_distance = self.detection_radius  # copy from expert
+        self.max_light_distance = self.light_radius  # copy from expert
         self.max_route_distance = 30.0
         self.max_map_element_distance = 30.0
-
-        topology = [x[0] for x in self.world_map.get_topology()]
-        topology = sorted(topology, key=lambda w: w.transform.location.z)
-        self.polygons = []
-        for waypoint in topology:
-            waypoints = [waypoint]
-            nxt = waypoint.next(self.map_precision)[0]
-            while nxt.road_id == waypoint.road_id:
-                waypoints.append(nxt)
-                nxt = nxt.next(self.map_precision)[0]
-
-            left_marking = [self.lateral_shift(w.transform, -w.lane_width * 0.5) for w in waypoints]
-            right_marking = [self.lateral_shift(w.transform, w.lane_width * 0.5) for w in waypoints]
-            self.polygons.append(left_marking + [x for x in reversed(right_marking)])
         
         if self.save_path is not None:
             (self.save_path / 'boxes').mkdir()
-            
-            if self.cfg.SAVE_SENSORS:
-                (self.save_path / 'rgb').mkdir()
-                (self.save_path / 'rgb_augmented').mkdir()
-                (self.save_path / 'lidar').mkdir()
 
-    def set_planner(self, global_plan_gps, global_plan_world_coord):
-        super().set_planner(global_plan_gps, global_plan_world_coord)
+    def set_planner(self, ego_vehicle,  global_plan_gps, global_plan_world_coord):
+        super().set_planner(ego_vehicle, global_plan_gps, global_plan_world_coord)
 
-    def sensors(self):
-        result = super().sensors()
-        if self.save_path is not None and self.cfg.SAVE_SENSORS:
-            result += [{
-                'type': 'sensor.camera.rgb',
-                'x': self.cfg.camera_pos[0],
-                'y': self.cfg.camera_pos[1],
-                'z': self.cfg.camera_pos[2],
-                'roll': self.cfg.camera_rot_0[0],
-                'pitch': self.cfg.camera_rot_0[1],
-                'yaw': self.cfg.camera_rot_0[2],
-                'width': self.cfg.camera_width,
-                'height': self.cfg.camera_height,
-                'fov': self.cfg.camera_fov_data_collection,
-                'id': 'rgb_front'
-            }, {
-                'type': 'sensor.camera.rgb',
-                'x': self.cfg.camera_pos[0],
-                'y': self.cfg.camera_pos[1],
-                'z': self.cfg.camera_pos[2],
-                'roll': self.cfg.camera_rot_0[0],
-                'pitch': self.cfg.camera_rot_0[1],
-                'yaw': self.cfg.camera_rot_0[2],
-                'width': self.cfg.camera_width,
-                'height': self.cfg.camera_height,
-                'fov': self.cfg.camera_fov_data_collection,
-                'id': 'rgb_augmented'
-            }]
+        # topology = [x[0] for x in self.world_map.get_topology()]
+        # topology = sorted(topology, key=lambda w: w.transform.location.z)
+        # self.polygons = []
+        # for waypoint in topology:
+        #     waypoints = [waypoint]
+        #     nxt = waypoint.next(self.map_precision)[0]
+        #     while nxt.road_id == waypoint.road_id:
+        #         waypoints.append(nxt)
+        #         nxt = nxt.next(self.map_precision)[0]
+        #
+        #     left_marking = [self.lateral_shift(w.transform, -w.lane_width * 0.5) for w in waypoints]
+        #     right_marking = [self.lateral_shift(w.transform, w.lane_width * 0.5) for w in waypoints]
+        #     self.polygons.append(left_marking + [x for x in reversed(right_marking)])
 
-            result.append({
-                'type': 'sensor.lidar.ray_cast',
-                'x': self.cfg.lidar_pos[0],
-                'y': self.cfg.lidar_pos[1],
-                'z': self.cfg.lidar_pos[2],
-                'roll': self.cfg.lidar_rot[0],
-                'pitch': self.cfg.lidar_rot[1],
-                'yaw': self.cfg.lidar_rot[2],
-                'rotation_frequency': self.cfg.lidar_rotation_frequency,
-                'points_per_second': self.cfg.lidar_points_per_second,
-                'id': 'lidar'
-            })
-
-        return result
+    # def sensors(self):
+    #     result = super().sensors()
+    #     if self.save_path is not None and self.cfg.SAVE_SENSORS:
+    #         result += [{
+    #             'type': 'sensor.camera.rgb',
+    #             'x': self.cfg.camera_pos[0],
+    #             'y': self.cfg.camera_pos[1],
+    #             'z': self.cfg.camera_pos[2],
+    #             'roll': self.cfg.camera_rot_0[0],
+    #             'pitch': self.cfg.camera_rot_0[1],
+    #             'yaw': self.cfg.camera_rot_0[2],
+    #             'width': self.cfg.camera_width,
+    #             'height': self.cfg.camera_height,
+    #             'fov': self.cfg.camera_fov_data_collection,
+    #             'id': 'rgb_front'
+    #         }, {
+    #             'type': 'sensor.camera.rgb',
+    #             'x': self.cfg.camera_pos[0],
+    #             'y': self.cfg.camera_pos[1],
+    #             'z': self.cfg.camera_pos[2],
+    #             'roll': self.cfg.camera_rot_0[0],
+    #             'pitch': self.cfg.camera_rot_0[1],
+    #             'yaw': self.cfg.camera_rot_0[2],
+    #             'width': self.cfg.camera_width,
+    #             'height': self.cfg.camera_height,
+    #             'fov': self.cfg.camera_fov_data_collection,
+    #             'id': 'rgb_augmented'
+    #         }]
+    #
+    #         result.append({
+    #             'type': 'sensor.lidar.ray_cast',
+    #             'x': self.cfg.lidar_pos[0],
+    #             'y': self.cfg.lidar_pos[1],
+    #             'z': self.cfg.lidar_pos[2],
+    #             'roll': self.cfg.lidar_rot[0],
+    #             'pitch': self.cfg.lidar_rot[1],
+    #             'yaw': self.cfg.lidar_rot[2],
+    #             'rotation_frequency': self.cfg.lidar_rotation_frequency,
+    #             'points_per_second': self.cfg.lidar_points_per_second,
+    #             'id': 'lidar'
+    #         })
+    #
+    #     return result
 
     def tick(self, input_data):
         result = super().tick_autopilot(input_data)
 
-        if self.save_path is not None:
-            boxes = self.get_bev_boxes()
-            
-            if self.cfg.SAVE_SENSORS:
-                rgb = []
-                for pos in ['front']:
-                    rgb_cam = 'rgb_' + pos
-
-                    rgb.append(input_data[rgb_cam][1][:, :, :3])
-
-                rgb = np.concatenate(rgb, axis=1)
-
-                rgb_augmented = input_data['rgb_augmented'][1][:, :, :3]
-
-                lidar = input_data['lidar']
-            else:
-                rgb = None
-                rgb_augmented = None
-                lidar = None
-
-            
-        else:
-            rgb = None
-            rgb_augmented = None
-            boxes = None
-            lidar = None
-
-
-        result.update({'rgb': rgb,
-                        'rgb_augmented': rgb_augmented,
-                        'boxes': boxes,
-                        'lidar': lidar})
+        # if self.save_path is not None:
+        #     boxes = self.get_bev_boxes()
+        #
+        #     if self.cfg.SAVE_SENSORS:
+        #         rgb = []
+        #         for pos in ['front']:
+        #             rgb_cam = 'rgb_' + pos
+        #
+        #             rgb.append(input_data[rgb_cam][1][:, :, :3])
+        #
+        #         rgb = np.concatenate(rgb, axis=1)
+        #
+        #         rgb_augmented = input_data['rgb_augmented'][1][:, :, :3]
+        #
+        #         lidar = input_data['lidar']
+        #     else:
+        #         rgb = None
+        #         rgb_augmented = None
+        #         lidar = None
+        #
+        #
+        # else:
+        #     rgb = None
+        #     rgb_augmented = None
+        #     boxes = None
+        #     lidar = None
+        #
+        #
+        # result.update({'rgb': rgb,
+        #                 'rgb_augmented': rgb_augmented,
+        #                 'boxes': boxes,
+        #                 'lidar': lidar})
 
         return result
 
     @torch.no_grad()
-    def run_step(self, input_data, timestamp, sensors=None):
+    def run_step(self, input_data, sensors=None):
         # Must be called before run_step, so that the correct augmentation shift is
-        # Saved
-        if self.datagen:
-            self.augment_camera(sensors)
-        control = super().run_step(input_data, timestamp)
+        # # Saved
+        # if self.datagen:
+        #     self.augment_camera(sensors)
+        control = super().run_step(input_data)
 
-        if self.step % self.save_freq == 0:
-            if self.save_path is not None:
-                tick_data = self.tick(input_data)
-                self.save_sensors(tick_data)
+        # if self.step % self.save_freq == 0:
+        #     if self.save_path is not None:
+        #         tick_data = self.tick(input_data)
+        #         self.save_sensors(tick_data)
 
-            if SHUFFLE_WEATHER and self.step % self.save_freq == 0:
-                self.shuffle_weather()
-            
-            # _, _, _, _ = self.scenario_logger.log_step(self.waypoint_route[:10])
-            
         return control
 
+    # def augment_camera(self, sensors):
+    #     for sensor in sensors:
+    #         if 'rgb_augmented' in sensor[0]:
+    #             augmentation_translation = np.random.uniform(low=self.cfg.camera_translation_augmentation_min,
+    #                                                         high=self.cfg.camera_translation_augmentation_max)
+    #             augmentation_rotation = np.random.uniform(low=self.cfg.camera_rotation_augmentation_min,
+    #                                                     high=self.cfg.camera_rotation_augmentation_max)
+    #             self.augmentation_translation.append(augmentation_translation)
+    #             self.augmentation_rotation.append(augmentation_rotation)
+    #             camera_pos_augmented = carla.Location(x=self.cfg.camera_pos[0],
+    #                                                 y=self.cfg.camera_pos[1] + augmentation_translation,
+    #                                                 z=self.cfg.camera_pos[2])
+    #
+    #             camera_rot_augmented = carla.Rotation(pitch=self.cfg.camera_rot_0[0],
+    #                                                 yaw=self.cfg.camera_rot_0[1] + augmentation_rotation,
+    #                                                 roll=self.cfg.camera_rot_0[2])
+    #
+    #             camera_augmented_transform = carla.Transform(camera_pos_augmented, camera_rot_augmented)
+    #
+    #             sensor[1].set_transform(camera_augmented_transform)
 
-    def augment_camera(self, sensors):
-        for sensor in sensors:
-            if 'rgb_augmented' in sensor[0]:
-                augmentation_translation = np.random.uniform(low=self.cfg.camera_translation_augmentation_min,
-                                                            high=self.cfg.camera_translation_augmentation_max)
-                augmentation_rotation = np.random.uniform(low=self.cfg.camera_rotation_augmentation_min,
-                                                        high=self.cfg.camera_rotation_augmentation_max)
-                self.augmentation_translation.append(augmentation_translation)
-                self.augmentation_rotation.append(augmentation_rotation)
-                camera_pos_augmented = carla.Location(x=self.cfg.camera_pos[0],
-                                                    y=self.cfg.camera_pos[1] + augmentation_translation,
-                                                    z=self.cfg.camera_pos[2])
+    # def save_sensors(self, tick_data):
+    #     frame = self.step // self.save_freq
+    #
+    #     if self.cfg.SAVE_SENSORS:
+    #         # CV2 uses BGR internally so we need to swap the image channels before saving.
+    #         cv2.imwrite(str(self.save_path / 'rgb' / (f'{frame:04}.png')), tick_data['rgb'])
+    #         cv2.imwrite(str(self.save_path / 'rgb_augmented' / (f'{frame:04}.png')), tick_data['rgb_augmented'])
+    #         np.save(self.save_path / 'lidar' / ('%04d.npy' % frame), tick_data['lidar'], allow_pickle=True)
+    #
+    #     self.save_labels(self.save_path / 'boxes' / ('%04d.json' % frame), tick_data['boxes'])
+    #
+    # def save_labels(self, filename, result):
+    #     with open(filename, 'w') as f:
+    #         json.dump(result, f, indent=4)
+    #     return
 
-                camera_rot_augmented = carla.Rotation(pitch=self.cfg.camera_rot_0[0],
-                                                    yaw=self.cfg.camera_rot_0[1] + augmentation_rotation,
-                                                    roll=self.cfg.camera_rot_0[2])
-
-                camera_augmented_transform = carla.Transform(camera_pos_augmented, camera_rot_augmented)
-
-                sensor[1].set_transform(camera_augmented_transform)
-
-    def shuffle_weather(self):
-        # change weather for visual diversity
-        index = random.choice(range(len(WEATHERS)))
-        dtime, altitude = random.choice(list(daytimes.items()))
-        altitude = np.random.normal(altitude, 10)
-        self.weather_id = WEATHERS_IDS[index] + dtime
-
-        weather = WEATHERS[WEATHERS_IDS[index]]
-        weather.sun_altitude_angle = altitude
-        weather.sun_azimuth_angle = np.random.choice(azimuths)
-        self._world.set_weather(weather)
-
-        # night mode
-        vehicles = self._world.get_actors().filter('*vehicle*')
-        if weather.sun_altitude_angle < 0.0:
-            for vehicle in vehicles:
-                vehicle.set_light_state(carla.VehicleLightState(self._vehicle_lights))
-        else:
-            for vehicle in vehicles:
-                vehicle.set_light_state(carla.VehicleLightState.NONE)
-
-
-    def save_sensors(self, tick_data):
-        frame = self.step // self.save_freq
-        
-        if self.cfg.SAVE_SENSORS:
-            # CV2 uses BGR internally so we need to swap the image channels before saving.
-            cv2.imwrite(str(self.save_path / 'rgb' / (f'{frame:04}.png')), tick_data['rgb'])
-            cv2.imwrite(str(self.save_path / 'rgb_augmented' / (f'{frame:04}.png')), tick_data['rgb_augmented'])
-            np.save(self.save_path / 'lidar' / ('%04d.npy' % frame), tick_data['lidar'], allow_pickle=True)
-
-        self.save_labels(self.save_path / 'boxes' / ('%04d.json' % frame), tick_data['boxes'])
-        
-    def save_labels(self, filename, result):
-        with open(filename, 'w') as f:
-            json.dump(result, f, indent=4)
-        return
-
-    def save_points(self, filename, points):
-        points_to_save = deepcopy(points[1])
-        points_to_save[:, 1] = -points_to_save[:, 1]
-        np.save(filename, points_to_save)
-        return
+    # def save_points(self, filename, points):
+    #     points_to_save = deepcopy(points[1])
+    #     points_to_save[:, 1] = -points_to_save[:, 1]
+    #     np.save(filename, points_to_save)
+    #     return
     
     def destroy(self):
         pass
@@ -432,81 +398,81 @@ class DataAgent(AutoPilot):
             results.append(result)
 
 
-        if int(os.environ.get('DATAGEN')):
-            # -----------------------------------------------------------
-            # Traffic lights
-            # -----------------------------------------------------------
-
-            _traffic_lights = self.get_nearby_object(ego_location, tlights, self.max_light_distance)
-        
-            for light in _traffic_lights:
-                if   (light.state == carla.libcarla.TrafficLightState.Red):
-                    state = 0
-                elif (light.state == carla.libcarla.TrafficLightState.Yellow):
-                    state = 1 
-                elif (light.state == carla.libcarla.TrafficLightState.Green):
-                    state = 2
-                else: # unknown
-                    state = -1
-        
-                center_bounding_box = light.get_transform().transform(light.trigger_volume.location)
-                center_bounding_box = carla.Location(center_bounding_box.x, center_bounding_box.y, center_bounding_box.z)
-                length_bounding_box = carla.Vector3D(light.trigger_volume.extent.x, light.trigger_volume.extent.y, light.trigger_volume.extent.z)
-                transform = carla.Transform(center_bounding_box) # can only create a bounding box from a transform.location, not from a location
-                bounding_box = carla.BoundingBox(transform.location, length_bounding_box)
-
-                gloabl_rot = light.get_transform().rotation
-                bounding_box.rotation = carla.Rotation(pitch = light.trigger_volume.rotation.pitch + gloabl_rot.pitch,
-                                                    yaw   = light.trigger_volume.rotation.yaw   + gloabl_rot.yaw,
-                                                    roll  = light.trigger_volume.rotation.roll  + gloabl_rot.roll)
-                
-                light_rotation = transform.rotation
-                light_matrix = np.array(transform.get_matrix())
-
-                light_extent = bounding_box.extent
-                dx = np.array([light_extent.x, light_extent.y, light_extent.z]) * 2.
-                yaw =  light_rotation.yaw/180*np.pi
-
-                relative_yaw = normalize_angle(yaw - ego_yaw)
-                relative_pos = self.get_relative_transform(ego_matrix, light_matrix)
-
-                distance = np.linalg.norm(relative_pos)
-
-                result = {
-                    "class": "Light",
-                    "extent": [dx[2], dx[0], dx[1]], #TODO
-                    "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
-                    "yaw": relative_yaw,
-                    "distance": distance, 
-                    "state": state, 
-                    "id": int(light.id),
-                }
-                results.append(result)
-
-            # -----------------------------------------------------------
-            # Map elements
-            # -----------------------------------------------------------
-
-            for lane_id, poly in enumerate(self.polygons):
-                for point_id, point in enumerate(poly):
-                    if (point.location.distance(ego_location) < self.max_map_element_distance):
-                        point_matrix = np.array(point.get_matrix())
-
-                        yaw =  point.rotation.yaw/180*np.pi
-
-                        relative_yaw = yaw - ego_yaw
-                        relative_pos = self.get_relative_transform(ego_matrix, point_matrix)
-                        distance = np.linalg.norm(relative_pos)
-
-                        result = {
-                            "class": "Lane",
-                            "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
-                            "yaw": relative_yaw,
-                            "distance": distance,
-                            "point_id": int(point_id),
-                            "lane_id": int(lane_id),
-                        }
-                        results.append(result)
+        # if int(os.environ.get('DATAGEN')):
+        #     # -----------------------------------------------------------
+        #     # Traffic lights
+        #     # -----------------------------------------------------------
+        #
+        #     _traffic_lights = self.get_nearby_object(ego_location, tlights, self.max_light_distance)
+        #
+        #     for light in _traffic_lights:
+        #         if   (light.state == carla.libcarla.TrafficLightState.Red):
+        #             state = 0
+        #         elif (light.state == carla.libcarla.TrafficLightState.Yellow):
+        #             state = 1
+        #         elif (light.state == carla.libcarla.TrafficLightState.Green):
+        #             state = 2
+        #         else: # unknown
+        #             state = -1
+        #
+        #         center_bounding_box = light.get_transform().transform(light.trigger_volume.location)
+        #         center_bounding_box = carla.Location(center_bounding_box.x, center_bounding_box.y, center_bounding_box.z)
+        #         length_bounding_box = carla.Vector3D(light.trigger_volume.extent.x, light.trigger_volume.extent.y, light.trigger_volume.extent.z)
+        #         transform = carla.Transform(center_bounding_box) # can only create a bounding box from a transform.location, not from a location
+        #         bounding_box = carla.BoundingBox(transform.location, length_bounding_box)
+        #
+        #         gloabl_rot = light.get_transform().rotation
+        #         bounding_box.rotation = carla.Rotation(pitch = light.trigger_volume.rotation.pitch + gloabl_rot.pitch,
+        #                                             yaw   = light.trigger_volume.rotation.yaw   + gloabl_rot.yaw,
+        #                                             roll  = light.trigger_volume.rotation.roll  + gloabl_rot.roll)
+        #
+        #         light_rotation = transform.rotation
+        #         light_matrix = np.array(transform.get_matrix())
+        #
+        #         light_extent = bounding_box.extent
+        #         dx = np.array([light_extent.x, light_extent.y, light_extent.z]) * 2.
+        #         yaw =  light_rotation.yaw/180*np.pi
+        #
+        #         relative_yaw = normalize_angle(yaw - ego_yaw)
+        #         relative_pos = self.get_relative_transform(ego_matrix, light_matrix)
+        #
+        #         distance = np.linalg.norm(relative_pos)
+        #
+        #         result = {
+        #             "class": "Light",
+        #             "extent": [dx[2], dx[0], dx[1]], #TODO
+        #             "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
+        #             "yaw": relative_yaw,
+        #             "distance": distance,
+        #             "state": state,
+        #             "id": int(light.id),
+        #         }
+        #         results.append(result)
+        #
+        #     # -----------------------------------------------------------
+        #     # Map elements
+        #     # -----------------------------------------------------------
+        #
+        #     for lane_id, poly in enumerate(self.polygons):
+        #         for point_id, point in enumerate(poly):
+        #             if (point.location.distance(ego_location) < self.max_map_element_distance):
+        #                 point_matrix = np.array(point.get_matrix())
+        #
+        #                 yaw =  point.rotation.yaw/180*np.pi
+        #
+        #                 relative_yaw = yaw - ego_yaw
+        #                 relative_pos = self.get_relative_transform(ego_matrix, point_matrix)
+        #                 distance = np.linalg.norm(relative_pos)
+        #
+        #                 result = {
+        #                     "class": "Lane",
+        #                     "position": [relative_pos[0], relative_pos[1], relative_pos[2]],
+        #                     "yaw": relative_yaw,
+        #                     "distance": distance,
+        #                     "point_id": int(point_id),
+        #                     "lane_id": int(lane_id),
+        #                 }
+        #                 results.append(result)
                     
         return results
 
@@ -537,7 +503,7 @@ class DataAgent(AutoPilot):
         rot = ego_matrix[:3, :3].T
         relative_pos = rot @ relative_pos
         
-        # transform to right handed system
+        # transform to right-handed system
         relative_pos[1] = - relative_pos[1]
 
         # transform relative pos to virtual lidar system

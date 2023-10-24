@@ -8,11 +8,10 @@
 @source  ：This file is modified from <https://github.com/autonomousvision/plant/tree/1bfb695910d816e70f53521aa263648072edea8e>
 '''
 
-import os
-import json
+
 import time
 from pathlib import Path
-from omegaconf import OmegaConf
+import warnings
 from PIL import Image, ImageDraw, ImageOps
 import torch
 
@@ -28,28 +27,23 @@ from safebench.agent.PlanT.lit_module import LitHFLM
 
 from safebench.agent.expert.nav_planner import RoutePlanner_new as RoutePlanner
 
-def get_entry_point():
-    return 'PlanTAgent'
 
-SAVE_GIF = os.getenv("SAVE_GIF", 'False').lower() in ('true', '1', 't')
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+# def get_entry_point():
+#     return 'PlanTAgent'
+
+# SAVE_GIF = os.getenv("SAVE_GIF", 'False').lower() in ('true', '1', 't')
 
 
 class PlanTAgent(DataAgent):
-    def __init__(self, ego_vehicle, path_to_conf_file, cfg=None, exec_or_inter=None):
-        super().__init__(ego_vehicle, cfg)
-        self.cfg = cfg
-        self.exec_or_inter = exec_or_inter
+    def __init__(self, config, logger):
+        super().__init__(config=config)
+        self.config = config
+        self.logger = logger
+        self.exec_or_inter = config['exec_or_inter']
 
-        # first args than super setup is important!
-        args_file = open(os.path.join(path_to_conf_file, 'args.txt'), 'r')
-        self.args = json.load(args_file)
-        args_file.close()
-        self.cfg_agent = OmegaConf.create(self.args)
+        # print(f'Saving gif: {SAVE_GIF}')
 
-
-        print(f'Saving gif: {SAVE_GIF}')
-
-        
         # Filtering
         self.points = MerweScaledSigmaPoints(n=4,
                                             alpha=.00001,
@@ -91,50 +85,51 @@ class PlanTAgent(DataAgent):
         self.control.throttle = 0.0
         self.control.brake = 1.0
 
-        self.initialized = True
-
-        if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
-            self.save_path_mask = f'viz_img/{self.route_index}/masked'
-            self.save_path_org = f'viz_img/{self.route_index}/org'
-            Path(self.save_path_mask).mkdir(parents=True, exist_ok=True)
-            Path(self.save_path_org).mkdir(parents=True, exist_ok=True)
+        # if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
+        #     self.save_path_mask = f'viz_img/{self.route_index}/masked'
+        #     self.save_path_org = f'viz_img/{self.route_index}/org'
+        #     Path(self.save_path_mask).mkdir(parents=True, exist_ok=True)
+        #     Path(self.save_path_org).mkdir(parents=True, exist_ok=True)
 
 
         # exec_or_inter is used for the interpretability metric
         # exec is the model that executes the actions in carla
         # inter is the model that obtains attention scores and a ranking of the vehicles importance
-        if exec_or_inter is not None:
-            if exec_or_inter == 'exec':
-                LOAD_CKPT_PATH = cfg.exec_model_ckpt_load_path
-            elif exec_or_inter == 'inter':
-                LOAD_CKPT_PATH = cfg.inter_model_ckpt_load_path
+        LOAD_CKPT_PATH = None
+        if self.exec_or_inter is not None:
+            if self.exec_or_inter == 'exec':
+                LOAD_CKPT_PATH = self.config['exec_model_ckpt_load_path']
+            elif self.exec_or_inter == 'inter':
+                LOAD_CKPT_PATH = self.config['inter_model_ckpt_load_path']
         else:
-            LOAD_CKPT_PATH = cfg.model_ckpt_load_path
+            LOAD_CKPT_PATH = self.config['model_ckpt_load_path']
 
-        print(f'Loading model from {LOAD_CKPT_PATH}')
+        self.logger.log(f">> Loading PlanT ego model from {LOAD_CKPT_PATH}")
 
         if Path(LOAD_CKPT_PATH).suffix == '.ckpt':
-            self.net = LitHFLM.load_from_checkpoint(LOAD_CKPT_PATH)
+            self.net = LitHFLM.load_from_checkpoint(LOAD_CKPT_PATH, strict=False,  cfg=self.config)
         else:
             raise Exception(f'Unknown model type: {Path(LOAD_CKPT_PATH).suffix}')
         self.net.eval()
 
-    def set_planner(self, global_plan_gps, global_plan_world_coord):
-        super().set_planner(global_plan_gps, global_plan_world_coord)
+    def set_planner(self, ego_vehicle, global_plan_gps, global_plan_world_coord):
+        super().set_planner(ego_vehicle, global_plan_gps, global_plan_world_coord)
         self._route_planner = RoutePlanner(7.5, 50.0)
         self._route_planner.set_route(self._global_plan, True)
 
-    def sensors(self):
-        result = super().sensors()
-        return result
+    # def sensors(self):
+    #     result = super().sensors()
+    #     return result
 
     def tick(self, input_data):
         result = super().tick(input_data)
 
-        pos = self._route_planner.convert_gps_to_carla(input_data['gps'][1][:2])
-        speed = input_data['speed'][1]['speed']
-        compass = preprocess_compass(input_data['imu'][1][-1])
-
+        pos = input_data['gps']
+        speed = input_data['speed']
+        compass = input_data['compass']
+        # pos = self._route_planner.convert_gps_to_carla(input_data['gps'][1][:2])
+        # speed = input_data['speed'][1]['speed']
+        # compass = preprocess_compass(input_data['imu'][1][-1])
         
         if not self.filter_initialized:
             self.ukf.x = np.array([pos[0], pos[1], compass, speed])
@@ -163,29 +158,18 @@ class PlanTAgent(DataAgent):
         ego_target_point = inverse_conversion_2d(target_point, result['gps'], compass)
         result['target_point'] = tuple(ego_target_point)
 
-        if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
-            result['rgb_back'] = input_data['rgb_back']
-            result['sem_back'] = input_data['sem_back']
+        # if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
+        #     result['rgb_back'] = input_data['rgb_back']
+        #     result['sem_back'] = input_data['sem_back']
 
         return result
 
     @torch.no_grad()
-    def run_step(self, input_data, timestamp, sensors=None,  keep_ids=None):
+    def run_step(self, input_data,  keep_ids=None):
         # The input data contains [speed, imu(yaw angle), gps(x, y location)] sometimes include 'rgb_back', 'sem_back'
         self.keep_ids = keep_ids
 
         self.step += 1
-        if not self.initialized:
-            if ('hd_map' in input_data.keys()):
-                self._init(input_data['hd_map'])
-            else:
-                self.control = carla.VehicleControl()
-                self.control.steer = 0.0
-                self.control.throttle = 0.0
-                self.control.brake = 1.0
-                if self.exec_or_inter == 'inter':
-                    return [], None
-                return self.control
 
         # needed for traffic_light_hazard
         _ = super()._get_brake(stop_sign_hazard=0, vehicle_hazard=0, walker_hazard=0)
@@ -200,9 +184,8 @@ class PlanTAgent(DataAgent):
             return keep_vehicle_ids
         elif self.exec_or_inter == 'exec' or self.exec_or_inter is None:
             self.control = self._get_control(label_raw, tick_data)
-            
         
-        inital_frames_delay = 40
+        inital_frames_delay = 10
         if self.step < inital_frames_delay:
             self.control = carla.VehicleControl(0.0, 0.0, 1.0)
             
@@ -210,7 +193,8 @@ class PlanTAgent(DataAgent):
 
     def _get_control(self, label_raw, input_data):
         
-        gt_velocity = torch.FloatTensor([input_data['speed']]).unsqueeze(0)
+        gt_velocity = torch.FloatTensor([input_data['speed']])
+
         # input_data contains [speed, imu(yaw angle), gps(x, y location)]
         input_batch = self.get_input_batch(label_raw, input_data)
         x, y, _, tp, light = input_batch
@@ -230,27 +214,26 @@ class PlanTAgent(DataAgent):
         control.throttle = float(throttle)
         control.brake = float(brake)
 
-        viz_trigger = ((self.step % 20 == 0) and self.cfg.viz)
+        viz_trigger = ((self.step % 20 == 0) and self.cfg['viz'])
         if viz_trigger and self.step > 2:
             create_BEV(label_raw, light, tp, pred_wp)
 
         if self.exec_or_inter == 'inter':
-            attn_vector = get_attn_norm_vehicles(self.cfg.attention_score, self.data_car, attn_map)
-            keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.cfg.topk, attn_vector)
-            if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
-                draw_attention_bb_in_carla(self._world, keep_vehicle_ids, keep_vehicle_attn, self.frame_rate_sim)
-                if self.step % 1 == 0:
-                    get_masked_viz_3rd_person(self.save_path_org, self.save_path_mask, self.step, input_data)
-            
+            attn_vector = get_attn_norm_vehicles(self.cfg['attention_score'], self.data_car, attn_map)
+            keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.cfg['topk'], attn_vector)
+            # if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
+            #     draw_attention_bb_in_carla(self._world, keep_vehicle_ids, keep_vehicle_attn, self.frame_rate_sim)
+            #     if self.step % 1 == 0:
+            #         get_masked_viz_3rd_person(self.save_path_org, self.save_path_mask, self.step, input_data)
+
             return keep_vehicle_ids, attn_indices
 
         return control
     
-    
     def get_input_batch(self, label_raw, input_data):
         sample = {'input': [], 'output': [], 'brake': [], 'waypoints': [], 'target_point': [], 'light': []}
 
-        if self.cfg_agent.model.training.input_ego:
+        if self.config['training']['input_ego']:
             data = label_raw
         else:
             data = label_raw[1:] # remove first element (ego vehicle)
@@ -263,22 +246,21 @@ class PlanTAgent(DataAgent):
             float(x['speed'] * 3.6), # in km/h
             float(x['extent'][2]),
             float(x['extent'][1]),
-            ] for x in data if x['class'] == 'Car'] # and ((self.cfg_agent.model.training.remove_back and float(x['position'][0])-float(label_raw[0]['position'][0]) >= 0) or not self.cfg_agent.model.training.remove_back)]
-
+            ] for x in data if x['class'] == 'Car']
         # if we use the far_node as target waypoint we need the route as input
         data_route = [
             [
                 2., # type indicator for route
                 float(x['position'][0])-float(label_raw[0]['position'][0]),
                 float(x['position'][1])-float(label_raw[0]['position'][1]),
-                float(x['yaw'] * 180 / 3.14159265359), # in degrees
+                float(x['yaw'] * 180 / 3.14159265359),  # in degrees
                 float(x['id']),
                 float(x['extent'][2]),
                 float(x['extent'][1]),
             ] 
             for j, x in enumerate(data)
             if x['class'] == 'Route' 
-            and float(x['id']) < self.cfg_agent.model.training.max_NextRouteBBs]
+            and float(x['id']) < self.config['training']['max_NextRouteBBs']]
         
         # we split route segment slonger than 10m into multiple segments
         # improves generalization
@@ -290,15 +272,15 @@ class PlanTAgent(DataAgent):
             else:
                 data_route_split.append(route)
 
-        data_route = data_route_split[:self.cfg_agent.model.training.max_NextRouteBBs]
+        data_route = data_route_split[:self.config['training']['max_NextRouteBBs']]
 
-        assert len(data_route) <= self.cfg_agent.model.training.max_NextRouteBBs, 'Too many routes'
+        assert len(data_route) <= self.config['training']['max_NextRouteBBs'], 'Too many routes'
 
-        if self.cfg_agent.model.training.get('remove_velocity', 'None') == 'input':
+        if self.config['training']['remove_velocity'] == 'input':
             for i in range(len(data_car)):
                 data_car[i][4] = 0.
 
-        if self.cfg_agent.model.training.get('route_only_wp', False) == True:
+        if self.config['training']['route_only_wp']:
             for i in range(len(data_route)):
                 data_route[i][3] = 0.
                 data_route[i][-2] = 0.
@@ -334,25 +316,24 @@ class PlanTAgent(DataAgent):
     def destroy(self):
         super().destroy()
             
-        if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
-            self.save_path_mask_vid = f'viz_vid/masked'
-            self.save_path_org_vid = f'viz_vid/org'
-            Path(self.save_path_mask_vid).mkdir(parents=True, exist_ok=True)
-            Path(self.save_path_org_vid).mkdir(parents=True, exist_ok=True)
-            out_name_mask = f"{self.save_path_mask_vid}/{self.route_index}.mp4"
-            out_name_org = f"{self.save_path_org_vid}/{self.route_index}.mp4"
-            cmd_mask = f"ffmpeg -r 25 -i {self.save_path_mask}/%d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {out_name_mask}"
-            cmd_org = f"ffmpeg -r 25 -i {self.save_path_org}/%d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {out_name_org}"
-            print(cmd_mask)
-            os.system(cmd_mask)
-            print(cmd_org)
-            os.system(cmd_org)
-            
-            # delete the images
-            os.system(f"rm -rf {Path(self.save_path_mask).parent}")
+        # if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
+        #     self.save_path_mask_vid = f'viz_vid/masked'
+        #     self.save_path_org_vid = f'viz_vid/org'
+        #     Path(self.save_path_mask_vid).mkdir(parents=True, exist_ok=True)
+        #     Path(self.save_path_org_vid).mkdir(parents=True, exist_ok=True)
+        #     out_name_mask = f"{self.save_path_mask_vid}/{self.route_index}.mp4"
+        #     out_name_org = f"{self.save_path_org_vid}/{self.route_index}.mp4"
+        #     cmd_mask = f"ffmpeg -r 25 -i {self.save_path_mask}/%d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {out_name_mask}"
+        #     cmd_org = f"ffmpeg -r 25 -i {self.save_path_org}/%d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {out_name_org}"
+        #     print(cmd_mask)
+        #     os.system(cmd_mask)
+        #     print(cmd_org)
+        #     os.system(cmd_org)
+        #
+        #     # delete the images
+        #     os.system(f"rm -rf {Path(self.save_path_mask).parent}")
             
         del self.net
-        
 
 
 def create_BEV(labels_org, gt_traffic_light_hazard, target_point, pred_wp, pix_per_m=5):
@@ -449,8 +430,6 @@ def create_BEV(labels_org, gt_traffic_light_hazard, target_point, pred_wp, pix_p
         color = 'green'
     img_final = ImageOps.expand(img_final, border=5, fill=color)
     
-    
-    
     ## add rgb image and lidar
     # all_images = np.concatenate((images_lidar, np.array(img_final)), axis=1)
     # all_images = np.concatenate((rgb_image, all_images), axis=0)
@@ -468,6 +447,7 @@ def get_coords(x, y, angle, vel):
     endy2 = y + length * math.sin(math.radians(angle))
 
     return x, y, endx2, endy2  
+
 
 def get_coords_BB(x, y, angle, extent_x, extent_y):
     endx1 = x - extent_x * math.sin(math.radians(angle)) - extent_y * math.cos(math.radians(angle))

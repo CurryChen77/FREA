@@ -36,19 +36,19 @@ class HFLM(nn.Module):
         self.num_attributes = 6  # x,y,yaw,speed/id, extent x, extent y
 
         precisions = [
-            self.config_all.model.pre_training.get("precision_pos", 4),
-            self.config_all.model.pre_training.get("precision_pos", 4),
-            self.config_all.model.pre_training.get("precision_angle", 4),
-            self.config_all.model.pre_training.get("precision_speed", 4),
-            self.config_all.model.pre_training.get("precision_pos", 4),
-            self.config_all.model.pre_training.get("precision_pos", 4),
+            self.config_all['pre_training'].get("precision_pos", 4),
+            self.config_all['pre_training'].get("precision_pos", 4),
+            self.config_all['pre_training'].get("precision_angle", 4),
+            self.config_all['pre_training'].get("precision_speed", 4),
+            self.config_all['pre_training'].get("precision_pos", 4),
+            self.config_all['pre_training'].get("precision_pos", 4),
         ]
 
         self.vocab_size = [2**i for i in precisions]
 
         # model
         config = AutoConfig.from_pretrained(
-            self.config_net.hf_checkpoint
+            self.config_net['hf_checkpoint']
         )  # load config from hugging face model
         n_embd = config.hidden_size
         self.model = AutoModel.from_config(config=config)
@@ -73,12 +73,12 @@ class HFLM(nn.Module):
         self.obj_emb = nn.ModuleList(
             [nn.Linear(self.num_attributes, n_embd) for _ in range(self.object_types)]
         )
-        self.drop = nn.Dropout(config_net.embd_pdrop)
+        self.drop = nn.Dropout(config_net['embd_pdrop'])
 
         # decoder head forecasting
         if (
-            self.config_all.model.pre_training.get("pretraining", "none") == "forecast"
-            or self.config_all.model.training.get("pretraining_path", "none") != "none"
+            self.config_all['pre_training'].get("pretraining", "none") == "forecast"
+            or self.config_all['training'].get("pretraining_path", "none") != "none"
         ):
             # one head for each attribute type -> we have different precision per attribute
             self.heads = nn.ModuleList(
@@ -179,7 +179,7 @@ class HFLM(nn.Module):
 
     def forward(self, idx, target=None, target_point=None, light_hazard=None):
 
-        if self.config_all.model.pre_training.get("pretraining", "none") == "none":
+        if self.config_all['pre_training'].get("pretraining", "none") == "none":
             assert (
                 target_point is not None
             ), "target_point must be provided for wp output"
@@ -236,8 +236,8 @@ class HFLM(nn.Module):
 
         # forecasting encoding
         if (
-            self.config_all.model.pre_training.get("pretraining", "none") == "forecast"
-            or self.config_all.model.training.get("pretraining_path", "none") != "none"
+            self.config_all['pre_training'].get("pretraining", "none") == "forecast"
+            or self.config_all['training'].get("pretraining_path", "none") != "none"
         ):
             car_mask_output = (output_batch_type == 1).unsqueeze(-1)
             non_car_mask_output = (output_batch_type != 1).unsqueeze(-1)
@@ -264,8 +264,8 @@ class HFLM(nn.Module):
 
             # if we do pre-training (not multitask) we don't need wp for pre-trining step so we can return here
             if (
-                self.config_all.model.pre_training.get("pretraining", "none") == "forecast"
-                and self.config_all.model.pre_training.get("multitask", False) == False
+                self.config_all['pre_training'].get("pretraining", "none") == "forecast"
+                and self.config_all['pre_training'].get("multitask", False) == False
             ):
                 return logits, targets
         else:
@@ -283,7 +283,7 @@ class HFLM(nn.Module):
         x = x.type_as(z)
 
         # autoregressive generation of output waypoints
-        for _ in range(self.config_all.model.training.pred_len):
+        for _ in range(self.config_all['training']['pred_len']):
             x_in = torch.cat([x, target_point], dim=1)
             z = self.wp_decoder(x_in, z)
             dx = self.wp_output(z)
@@ -296,8 +296,8 @@ class HFLM(nn.Module):
         pred_wp[:, :, 0] = pred_wp[:, :, 0] - 1.3
 
         if (
-            self.config_all.model.pre_training.get("pretraining", "none") == "forecast"
-            and self.config_all.model.pre_training.get("multitask", False) == True
+            self.config_all['pre_training'].get("pretraining", "none") == "forecast"
+            and self.config_all['pre_training'].get("multitask", False) == True
         ):
             return logits, targets, pred_wp, attn_map
         else:
@@ -342,7 +342,6 @@ class HFLM(nn.Module):
         waypoints = waypoints[0].data.cpu().numpy()
         # when training we transform the waypoints to lidar coordinate, so we need to change is back when control
         waypoints[:, 0] += 1.3
-
         speed = velocity[0].data.cpu().numpy()
 
         desired_speed = np.linalg.norm(waypoints[0] - waypoints[1]) * 2.0
@@ -352,6 +351,7 @@ class HFLM(nn.Module):
         brake = desired_speed < 0.4 or (speed / desired_speed) > 1.1
 
         delta = np.clip(desired_speed - speed, 0.0, 0.25)
+
         throttle = self.speed_controller.step(delta)
         throttle = np.clip(throttle, 0.0, 0.75)
         throttle = throttle if not brake else 0.0

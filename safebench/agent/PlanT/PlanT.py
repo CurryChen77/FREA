@@ -19,24 +19,23 @@ class PlanT(BasePolicy):
 
     """ This is just an example for testing, which always goes straight. """
     def __init__(self, config, logger):
+        self.config = config
         self.logger = logger
-
         self.model_path = config['model_path']
         self.mode = 'train'
         self.continue_episode = 0
         self.route = None
         self.controller_list = []
+        for _ in range(config['num_scenario']):
+            controller = PlanTAgent(self.config, self.logger)  # initialize the controller
+            self.controller_list.append(controller)
 
     def set_ego_and_route(self, ego_vehicles, info):
         self.ego_vehicles = ego_vehicles
-        self.controller_list = []
-        for e_i, ego in enumerate(ego_vehicles):
-            controller = PlanTAgent(ego)
-            gps_route = info[e_i]['gps_route']  # the gps route
-            route = info[e_i]['route']  # the world coord route
-            controller.set_planner(gps_route, route)  # set route for each controller
-
-            self.controller_list.append(controller)
+        for i, ego in enumerate(ego_vehicles):
+            gps_route = info[i]['gps_route']  # the gps route
+            route = info[i]['route']  # the world coord route
+            self.controller_list[i].set_planner(ego, gps_route, route)  # set route for each controller
 
     def train(self, replay_buffer):
         pass
@@ -46,9 +45,9 @@ class PlanT(BasePolicy):
 
     def get_action(self, obs, infos, deterministic=False):
         actions = []
-        for e_i in infos:
+        for i, e_i in enumerate(infos):
             # select the controller that matches the scenario_id
-            control = self.controller_list[e_i['scenario_id']].run_step(obs)
+            control = self.controller_list[e_i['scenario_id']].run_step(obs[i])
             throttle = control.throttle
             steer = control.steer
             brake = control.brake

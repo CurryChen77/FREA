@@ -30,15 +30,15 @@ class LitHFLM(pl.LightningModule):
         self.cfg = cfg
 
         self.last_epoch = 0
-        self.cfg_train = self.cfg.model.training
-        self.model = HFLM(self.cfg.model.network, self.cfg)
+        self.cfg_train = self.cfg['training']
+        self.model = HFLM(self.cfg['network'], self.cfg)
 
         # Loss functions
         self.criterion = nn.CrossEntropyLoss()
         self.criterion_forecast = nn.CrossEntropyLoss(ignore_index=-999)
         
         # Metrics
-        if self.cfg.model.pre_training.get("pretraining", "none") == "forecast":
+        if self.cfg['pre_training'].get("pretraining", "none") == "forecast":
             self.metrics_forecasting_acc = nn.ModuleList(
                 [Accuracy() for i in range(self.model.num_attributes)]
             )
@@ -49,10 +49,10 @@ class LitHFLM(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        optimizer = self.model.configure_optimizers(self.cfg.model.training)
+        optimizer = self.model.configure_optimizers(self.cfg['training'])
         scheduler = MultiStepLR(
             optimizer,
-            milestones=[self.cfg.lrDecay_epoch, self.cfg.lrDecay_epoch + 10],
+            milestones=[self.cfg['lrDecay_epoch'], self.cfg['lrDecay_epoch'] + 10],
             gamma=0.1,
         )
         return [optimizer], [scheduler]
@@ -62,7 +62,7 @@ class LitHFLM(pl.LightningModule):
         x, y, wp, tp, light = batch
 
         # training with only waypoint loss
-        if self.cfg.model.pre_training.get("pretraining", "none") == "none":
+        if self.cfg['pre_training'].get("pretraining", "none") == "none":
             logits, pred_wp, _ = self(x, y, tp, light)
 
             loss_pred = F.l1_loss(pred_wp, wp)
@@ -74,13 +74,13 @@ class LitHFLM(pl.LightningModule):
                 on_step=False,
                 on_epoch=True,
                 prog_bar=False,
-                sync_dist=self.cfg.gpus > 1,
-                batch_size=self.cfg.model.training.batch_size,
+                sync_dist=self.cfg['gpus'] > 1,
+                batch_size=self.cfg['training']['batch_size'],
             )
 
-        elif self.cfg.model.pre_training.get("pretraining", "none") == "forecast":
+        elif self.cfg['pre_training'].get("pretraining", "none") == "forecast":
 
-            if self.cfg.model.pre_training.get("multitask", False) == True:
+            if self.cfg['pre_training'].get("multitask", False) == True:
                 # multitask training
                 logits, targets, pred_wp, _ = self(x, y, tp, light)
                 loss_wp = F.l1_loss(pred_wp, wp)
@@ -92,7 +92,7 @@ class LitHFLM(pl.LightningModule):
 
                 loss_all = (
                     1                                                           * loss_wp
-                    + self.cfg.model.pre_training.get("forecastLoss_weight", 0) * loss_forecast
+                    + self.cfg['pre_training'].get("forecastLoss_weight", 0) * loss_forecast
                 )
                 self.log(
                     "train/loss_forecast",
@@ -100,8 +100,8 @@ class LitHFLM(pl.LightningModule):
                     on_step=False,
                     on_epoch=True,
                     prog_bar=True,
-                    sync_dist=self.cfg.gpus > 1,
-                    batch_size=self.cfg.model.training.batch_size,
+                    sync_dist=self.cfg['gpus'] > 1,
+                    batch_size=self.cfg['training']['batch_size'],
                 )
                 self.log(
                     "train/loss_wp",
@@ -109,8 +109,8 @@ class LitHFLM(pl.LightningModule):
                     on_step=False,
                     on_epoch=True,
                     prog_bar=True,
-                    sync_dist=self.cfg.gpus > 1,
-                    batch_size=self.cfg.model.training.batch_size,
+                    sync_dist=self.cfg['gpus'] > 1,
+                    batch_size=self.cfg['training']['batch_size'],
                 )
 
             else:
@@ -129,8 +129,8 @@ class LitHFLM(pl.LightningModule):
                 on_step=False,
                 on_epoch=True,
                 prog_bar=True,
-                sync_dist=self.cfg.gpus > 1,
-                batch_size=self.cfg.model.training.batch_size,
+                sync_dist=self.cfg['gpus'] > 1,
+                batch_size=self.cfg['training']['batch_size'],
             )
 
             for i, name in enumerate(
@@ -144,8 +144,8 @@ class LitHFLM(pl.LightningModule):
                     on_step=False,
                     on_epoch=True,
                     prog_bar=False,
-                    sync_dist=self.cfg.gpus > 1,
-                    batch_size=self.cfg.model.training.batch_size,
+                    sync_dist=self.cfg['gpus'] > 1,
+                    batch_size=self.cfg['training']['batch_size'],
                 )
 
                 mask = targets[i].squeeze() != -999
@@ -158,8 +158,8 @@ class LitHFLM(pl.LightningModule):
                     on_step=False,
                     on_epoch=True,
                     prog_bar=False,
-                    sync_dist=self.cfg.gpus > 1,
-                    batch_size=self.cfg.model.training.batch_size,
+                    sync_dist=self.cfg['gpus'] > 1,
+                    batch_size=self.cfg['training']['batch_size'],
                 )
 
         return loss_all
@@ -167,7 +167,7 @@ class LitHFLM(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
 
-        if self.cfg.model.pre_training.get("pretraining", "none") == "forecast":
+        if self.cfg['pre_training'].get("pretraining", "none") == "forecast":
             # TODO: add proper validation set for multitask
             pass
 
@@ -186,8 +186,8 @@ class LitHFLM(pl.LightningModule):
                 on_step=False,
                 on_epoch=True,
                 prog_bar=True,
-                sync_dist=self.cfg.gpus > 1,
-                batch_size=self.cfg.model.training.batch_size,
+                sync_dist=self.cfg['gpus'] > 1,
+                batch_size=self.cfg['training']['batch_size'],
             )
             self.log(
                 "val/loss_pred",
@@ -195,8 +195,8 @@ class LitHFLM(pl.LightningModule):
                 on_step=False,
                 on_epoch=True,
                 prog_bar=False,
-                sync_dist=self.cfg.gpus > 1,
-                batch_size=self.cfg.model.training.batch_size,
+                sync_dist=self.cfg['gpus'] > 1,
+                batch_size=self.cfg['training']['batch_size'],
             )
 
             self.last_epoch = self.current_epoch
@@ -204,5 +204,5 @@ class LitHFLM(pl.LightningModule):
 
     def on_after_backward(self):
         torch.nn.utils.clip_grad_norm_(
-            self.model.parameters(), self.cfg_train.grad_norm_clip
+            self.model.parameters(), self.cfg_train['grad_norm_clip']
         )

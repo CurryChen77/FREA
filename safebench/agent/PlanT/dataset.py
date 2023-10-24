@@ -501,10 +501,10 @@ def generate_batch(data_batch):
 
     waypoints_batch = torch.tensor([sample["waypoints"] for sample in data_batch])
     tp_batch = torch.tensor(
-        [sample["target_point"] for sample in data_batch], dtype=torch.float32
+        np.array([sample["target_point"] for sample in data_batch]), dtype=torch.float32
     )
     light_batch = rearrange(
-        torch.tensor([sample["light"] for sample in data_batch]), "b -> b 1"
+        torch.tensor(np.array([sample["light"] for sample in data_batch])), "b -> b 1"
     )
 
     return input_batch, output_batch, waypoints_batch, tp_batch, light_batch
