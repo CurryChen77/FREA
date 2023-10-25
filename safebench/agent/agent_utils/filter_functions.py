@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-'''
+"""
 @File    ：filter_functions.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/22
 @source  ：This file is modified from <https://github.com/autonomousvision/plant/tree/1bfb695910d816e70f53521aa263648072edea8e>
-'''
+"""
 
 import numpy as np
 from collections import deque
@@ -49,20 +49,20 @@ def bicycle_model_forward(x, dt, steer, throttle, brake):
     return next_state_x
 
 def measurement_function_hx(vehicle_state):
-    '''
+    """
     For now we use the same internal state as the measurement state
     :param vehicle_state: VehicleState vehicle state variable containing an internal state of the vehicle from the filter
     :return: np array: describes the vehicle state as numpy array. 0: pos_x, 1: pos_y, 2: rotatoion, 3: speed
-    '''
+    """
     return vehicle_state
 
 def state_mean(state, Wm):
-    '''
+    """
     We use the arctan of the average of sin and cos of the angle to calculate the average of orientations.
     :param state: array of states to be averaged. First index is the timestep.
     :param Wm:
     :return:
-    '''
+    """
     x = np.zeros(4)
     sum_sin = np.sum(np.dot(np.sin(state[:, 2]), Wm))
     sum_cos = np.sum(np.dot(np.cos(state[:, 2]), Wm))
@@ -74,12 +74,12 @@ def state_mean(state, Wm):
     return x
 
 def measurement_mean(state, Wm):
-    '''
+    """
         We use the arctan of the average of sin and cos of the angle to calculate the average of orientations.
         :param state: array of states to be averaged. First index is the timestep.
         :param Wm:
         :return:
-        '''
+        """
     x = np.zeros(4)
     sum_sin = np.sum(np.dot(np.sin(state[:, 2]), Wm))
     sum_cos = np.sum(np.dot(np.cos(state[:, 2]), Wm))

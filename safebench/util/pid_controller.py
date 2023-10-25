@@ -1,16 +1,12 @@
-''' 
-Date: 2023-01-31 22:23:17
-LastEditTime: 2023-04-03 19:00:37
-Description: 
-    Copyright (c) 2022-2023 Safebench Team
-
-    This file is modified from <https://github.com/carla-simulator/scenario_runner/tree/master/srunner/tools>
-    Copyright (c) 2018-2020 Intel Corporation
-
-    This work is licensed under the terms of the MIT license.
-    For a copy, see <https://opensource.org/licenses/MIT>
-'''
-
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+"""
+@File    ：pid_controller.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/10/4
+@source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
+"""
 from collections import deque
 import math
 import numpy as np

@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-'''
+"""
 @File    ：PlanT.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/23
-'''
+"""
+import os
 
 import numpy as np
 
@@ -26,6 +27,8 @@ class PlanT(BasePolicy):
         self.continue_episode = 0
         self.route = None
         self.controller_list = []
+        self.ckpt_path = self.config['model_ckpt_load_path']
+        self.logger.log(f">> Loading PlanT ego model from {os.path.basename(self.ckpt_path)}")
         for _ in range(config['num_scenario']):
             controller = PlanTAgent(self.config, self.logger)  # initialize the controller
             self.controller_list.append(controller)

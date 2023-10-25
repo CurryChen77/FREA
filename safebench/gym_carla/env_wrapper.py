@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-'''
+"""
 @File    ：env_wrapper.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
-'''
+"""
 
 import gym
 import numpy as np
@@ -178,12 +178,13 @@ class ObservationWrapper(gym.Wrapper):
     """
         The wrapped carla environment.
     """
-    def __init__(self, env, obs_type):
+    def __init__(self, env, agent_obs_type, safety_network_obs_type):
         super().__init__(env)
         self._env = env  # carla environment
 
         self.is_running = False
-        self.obs_type = obs_type
+        self.agent_obs_type = agent_obs_type
+        self.safety_network_obs_type = safety_network_obs_type
         # self._build_obs_space()
 
         # build action space, assume the obs range from -1 to 1
@@ -227,12 +228,12 @@ class ObservationWrapper(gym.Wrapper):
 
     def _preprocess_obs(self, obs):
         # only use the 4-dimensional state space
-        if self.obs_type == 'simple_state':
+        if self.agent_obs_type == 'simple_state':
             return obs['simple_state'][:4].astype(np.float64)
         # include the pos, speed, compass(yaw angle)
-        elif self.obs_type == 'ego_state':
+        elif self.agent_obs_type == 'ego_state':
             return obs['ego_state']
-        elif self.obs_type == 'no_obs':
+        elif self.agent_obs_type == 'no_obs':
             return None
         else:
             raise NotImplementedError
@@ -256,8 +257,10 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, search_
             display=display, 
             world=world,
             search_radius=search_radius,
-            obs_type=env_params['obs_type'],
+            agent_obs_type=env_params['agent_obs_type'],
+            safety_network_obs_type=env_params['safety_network_obs_type'],
             logger=logger,
         ), 
-        obs_type=env_params['obs_type']
+        agent_obs_type=env_params['agent_obs_type'],
+        safety_network_obs_type=env_params['safety_network_obs_type']
     )

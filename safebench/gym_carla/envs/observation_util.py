@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-'''
+"""
 @File    ：observation_util.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/22
-'''
+"""
 
 
 import carla
@@ -148,7 +148,10 @@ def get_relative_transform(ego_matrix, vehicle_matrix):
     return relative_pos
 
 
-def get_bev_boxes(ego_veh, ego_nearby_vehicles, waypoint_planner, waypoint_route, pos=None):
+def get_bev_boxes(ego_veh, ego_nearby_vehicles, waypoints):
+    """
+        modify from the PlanT
+    """
     # -----------------------------------------------------------
     # Ego vehicle
     # -----------------------------------------------------------
@@ -156,7 +159,7 @@ def get_bev_boxes(ego_veh, ego_nearby_vehicles, waypoint_planner, waypoint_route
     # add vehicle velocity and brake flag
     ego_transform = CarlaDataProvider.get_transform_after_tick(ego_veh)
     ego_control = ego_veh.get_control()
-    ego_velocity = CarlaDataProvider.get_velocity_after_tick(ego_veh)
+    ego_velocity = ego_veh.get_velocity()
     ego_speed = get_forward_speed(transform=ego_transform, velocity=ego_velocity)  # In m/s
     ego_brake = ego_control.brake
     ego_rotation = ego_transform.rotation
@@ -202,7 +205,7 @@ def get_bev_boxes(ego_veh, ego_nearby_vehicles, waypoint_planner, waypoint_route
         relative_pos = get_relative_transform(ego_matrix, vehicle_matrix)
 
         vehicle_control = vehicle.get_control()
-        vehicle_velocity = CarlaDataProvider.get_velocity_after_tick(vehicle)
+        vehicle_velocity = vehicle.get_velocity()
         vehicle_speed = get_forward_speed(transform=vehicle_transform, velocity=vehicle_velocity)  # In m/s
         vehicle_brake = vehicle_control.brake
 
@@ -232,16 +235,8 @@ def get_bev_boxes(ego_veh, ego_nearby_vehicles, waypoint_planner, waypoint_route
     # -----------------------------------------------------------
     # Route rdp
     # -----------------------------------------------------------
-    if pos is not None:
-        # pos = self._get_position(input_data['gps'][1][:2])
-        # self.gps_buffer.append(pos)
-        # pos = np.average(self.gps_buffer, axis=0)  # Denoised position
-        waypoint_planner.load()
-        waypoint_route = waypoint_planner.run_step(pos)
-        waypoint_route = np.array([[node[0][0], node[0][1]] for node in waypoint_route])
-        waypoint_planner.save()
-
     max_len = 50
+    waypoint_route = np.array([[node[0], node[1]] for node in waypoints])
     if len(waypoint_route) < max_len:
         max_len = len(waypoint_route)
     shortened_route = rdp(waypoint_route[:max_len], epsilon=0.5)

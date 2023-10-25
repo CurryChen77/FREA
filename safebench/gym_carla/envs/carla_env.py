@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-'''
+"""
 @File    ：carla_env.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
-'''
+"""
 import math
 import random
 
@@ -30,13 +30,15 @@ from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenari
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.tools.route_manipulation import interpolate_trajectory
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
+from safebench.gym_carla.envs.observation_util import get_bev_boxes
 
 
 class CarlaEnv(gym.Env):
     """ 
         An OpenAI-gym style interface for CARLA simulator. 
     """
-    def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0, obs_type=None, logger=None):
+    def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0,
+                 agent_obs_type=None, safety_network_obs_type=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
         self.config = None
@@ -65,8 +67,9 @@ class CarlaEnv(gym.Env):
         self.gps_route = None
         self.route = None
         self.search_radius = search_radius
-        self.obs_type = obs_type
-        
+        self.agent_obs_type = agent_obs_type
+        self.safety_network_obs_type = safety_network_obs_type
+
         # scenario manager
         use_scenic = True if env_params['scenario_category'] == 'scenic' else False
         self.scenario_manager = ScenarioManager(env_params, self.logger, use_scenic=use_scenic)
@@ -543,7 +546,7 @@ class CarlaEnv(gym.Env):
         ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
         CarlaDataProvider.set_ego_min_dis(ego_min_dis)
 
-        if self.obs_type == 'ego_state':
+        if self.agent_obs_type == 'ego_state':
             # Ego state
             ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
             ego_loc = ego_trans.location
@@ -562,7 +565,7 @@ class CarlaEnv(gym.Env):
                 'ego_state': ego_state,
                 'ego_min_dis': ego_min_dis
             }
-        elif self.obs_type == 'simple_state':
+        elif self.agent_obs_type == 'simple_state':
             # State observation
             ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
             ego_x = ego_trans.location.x
@@ -582,32 +585,16 @@ class CarlaEnv(gym.Env):
                 'simple_state': simple_state.astype(np.float32),
                 'ego_min_dis': ego_min_dis
             }
-        elif self.obs_type == 'no_obs':
-            obs = None
+        elif self.agent_obs_type == 'no_obs':
+            obs = {}
+
+        # if train the safety network, need to add new state
+        if self.safety_network_obs_type:
+            # the obs is a list containing ego state dict, surrounding vehicles states, and road map states
+            safety_network_obs = get_bev_boxes(self.ego_vehicle, ego_nearby_vehicles, self.waypoints)
+            # TODO add the PlanT style tokenization method for the RL model
+
         return obs
-        # # 8 dimensions state
-        # ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
-        # ego_location = ego_trans.location
-        # ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
-        # speed = CarlaDataProvider.get_velocity_after_tick(self.ego_vehicle)
-        # ego_speed = round(speed, 2)
-        #
-        # # pre waypoint
-        # # get the distance from ego position to the second waypoint
-        # pre_waypoint = self.waypoints[2]
-        # pre_waypoint_w = np.array([np.cos(pre_waypoint[2]/180*np.pi), np.sin(pre_waypoint[2]/180*np.pi)])
-        # waypoint_dis = ego_location.distance(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
-        #
-        # yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
-        # waypoint_delta_yaw = round(np.arcsin(np.cross(pre_waypoint_w, yaw)), 2)
-        #
-        # # extre information
-        # junction_waypoint = CarlaDataProvider.get_map().get_waypoint(carla.Location(x=pre_waypoint[0], y=pre_waypoint[1], z=ego_location.z))
-        # pre_waypoint_is_junction = junction_waypoint.is_junction
-        #
-        # state = np.array([
-        #     ego_yaw, ego_speed, waypoint_dis, waypoint_delta_yaw, ego_min_dis,
-        #     self.vehicle_front, pre_waypoint_is_junction, self.red_light_state])
 
     def _get_reward(self):
         """ Calculate the step reward. """

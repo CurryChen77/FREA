@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-'''
+"""
 @File    ：autopilot.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/22
 @source  ：This file is modified from <https://github.com/autonomousvision/plant/tree/1bfb695910d816e70f53521aa263648072edea8e>
-'''
+"""
 
 import os
 import json
@@ -1057,12 +1057,12 @@ class AutoPilot(object):
         return carla.Vector3D(x=vector1.y * vector2.z - vector1.z * vector2.y, y=vector1.z * vector2.x - vector1.x * vector2.z, z=vector1.x * vector2.y - vector1.y * vector2.x)
 
     def get_separating_plane(self, rPos, plane, obb1, obb2):
-        ''' Checks if there is a seperating plane
+        """ Checks if there is a seperating plane
         rPos Vec3
         plane Vec3
         obb1  Bounding Box
         obb2 Bounding Box
-        '''
+        """
         return (abs(self.dot_product(rPos, plane)) > (abs(self.dot_product((obb1.rotation.get_forward_vector() * obb1.extent.x), plane)) +
                                                       abs(self.dot_product((obb1.rotation.get_right_vector()   * obb1.extent.y), plane)) +
                                                       abs(self.dot_product((obb1.rotation.get_up_vector()      * obb1.extent.z), plane)) +

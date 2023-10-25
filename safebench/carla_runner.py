@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-'''
+"""
 @File    ：carla_runner.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
-'''
+"""
 
 import copy
 
@@ -38,8 +38,10 @@ class CarlaRunner:
         self.safety_network_config = safety_network_config
         if safety_network_config:
             self.safety_network_name = safety_network_config['type']
+            safety_network_obs_type = safety_network_config['obs_type']
         else:
             self.safety_network_name = None
+            safety_network_obs_type = None
 
         self.seed = scenario_config['seed']
         self.exp_name = scenario_config['exp_name']
@@ -66,7 +68,8 @@ class CarlaRunner:
         self.env_params = {
             'auto_ego': scenario_config['auto_ego'],
             'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
-            'obs_type': agent_config['obs_type'],                           # default 0 (only 4 dimensions states )
+            'agent_obs_type': agent_config['obs_type'],                     # default 0 (only 4 dimensions states )
+            'safety_network_obs_type': safety_network_obs_type,             # if use safety network ,the default obs is PlanT
             'scenario_category': self.scenario_category,
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'warm_up_steps': 9,                                             # number of ticks after spawning the vehicles

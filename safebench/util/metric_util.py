@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+"""
+@File    ：metric_util.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/10/4
+@source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
+"""
+
 import joblib
 import math
 import numpy as np

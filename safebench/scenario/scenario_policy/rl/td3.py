@@ -216,7 +216,7 @@ class TD3(BasePolicy):
             'target_policy': self.target_policy.state_dict(),
         }
         filepath = os.path.join(self.model_path, f'model.td3.{self.model_id}.{episode:04}.torch')
-        self.logger.log(f'>> Saving scenario policy {self.name} model to {filepath}')
+        self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
