@@ -154,7 +154,7 @@ class HJR:
                             episode = cur_episode
         filepath = os.path.join(self.model_path, f'model.HJR.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading {self.name} model from {os.path.basename(filepath)}')
+            self.logger.log(f'>> Loading Safety network {self.name} from {os.path.basename(filepath)}')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.Qh_net.load_state_dict(checkpoint['Qh_net'])

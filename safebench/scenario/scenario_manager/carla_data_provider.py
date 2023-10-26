@@ -787,7 +787,8 @@ class CarlaDataProvider(object):
         nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(ego_vehicle, search_radius)
         # min distance between vehicle bboxes
         ego_min_dis = 10
-        for i in range(3):
+
+        for i in range(len(nearby_vehicles)):
             # the closest vehicle using center point may not be the closest vehicle using bboxs
             dis = CarlaDataProvider.get_min_distance_across_bboxes(ego_vehicle, nearby_vehicles[i])
             if dis < ego_min_dis:

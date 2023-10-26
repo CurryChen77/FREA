@@ -19,13 +19,14 @@ class VectorWrapper():
         The interface to control a list of environments.
     """
 
-    def __init__(self, env_params, scenario_config, world, birdeye_render, display, search_radius, logger):
+    def __init__(self, env_params, scenario_config, world, birdeye_render, display, search_radius, agent_state_encoder, logger):
         self.logger = logger
         self.world = world
         self.num_scenario = scenario_config['num_scenario']  # default 2
         self.ROOT_DIR = scenario_config['ROOT_DIR']
         self.frame_skip = scenario_config['frame_skip']  
         self.render = scenario_config['render']
+        self.agent_state_encoder = agent_state_encoder
 
         self.env_list = []
         self.action_space_list = []
@@ -33,7 +34,7 @@ class VectorWrapper():
             # each small scenario corresponds to a carla_env create the ObservationWrapper()
             env = carla_env(
                 env_params, birdeye_render=birdeye_render, display=display,
-                world=world, search_radius=search_radius, logger=logger)
+                world=world, search_radius=search_radius, agent_state_encoder=agent_state_encoder, logger=logger)
             self.env_list.append(env)
             self.action_space_list.append(env.action_space)
 
@@ -248,7 +249,7 @@ class ObservationWrapper(gym.Wrapper):
         self._env.clear_up()
 
 
-def carla_env(env_params, birdeye_render=None, display=None, world=None, search_radius=0, logger=None):
+def carla_env(env_params, birdeye_render=None, display=None, world=None, search_radius=0, agent_state_encoder=None, logger=None):
     return ObservationWrapper(
         gym.make(
             'carla-v0', 
@@ -258,9 +259,9 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, search_
             world=world,
             search_radius=search_radius,
             agent_obs_type=env_params['agent_obs_type'],
-            safety_network_obs_type=env_params['safety_network_obs_type'],
+            agent_state_encoder=agent_state_encoder,
             logger=logger,
         ), 
         agent_obs_type=env_params['agent_obs_type'],
-        safety_network_obs_type=env_params['safety_network_obs_type']
+        safety_network_obs_type=agent_state_encoder.obs_type if agent_state_encoder else None
     )

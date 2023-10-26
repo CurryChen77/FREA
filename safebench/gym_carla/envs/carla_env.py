@@ -30,7 +30,6 @@ from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenari
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.tools.route_manipulation import interpolate_trajectory
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
-from safebench.gym_carla.envs.observation_util import get_bev_boxes
 
 
 class CarlaEnv(gym.Env):
@@ -38,7 +37,7 @@ class CarlaEnv(gym.Env):
         An OpenAI-gym style interface for CARLA simulator. 
     """
     def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0,
-                 agent_obs_type=None, safety_network_obs_type=None, logger=None):
+                 agent_obs_type=None, agent_state_encoder=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
         self.config = None
@@ -68,7 +67,9 @@ class CarlaEnv(gym.Env):
         self.route = None
         self.search_radius = search_radius
         self.agent_obs_type = agent_obs_type
-        self.safety_network_obs_type = safety_network_obs_type
+        self.agent_state_encoder = agent_state_encoder
+
+        self.safety_network_obs_type = agent_state_encoder.obs_type if agent_state_encoder else None
 
         # scenario manager
         use_scenic = True if env_params['scenario_category'] == 'scenic' else False
@@ -98,13 +99,6 @@ class CarlaEnv(gym.Env):
 
         if self.scenario_category in ['planning', 'scenic']:
             self.obs_size = int(self.obs_range/self.lidar_bin)
-            # TODO updating 'actor_state'
-            # observation_space_dict = {
-            #     'camera': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
-            #     'lidar': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
-            #     'birdeye': spaces.Box(low=0, high=255, shape=(self.obs_size, self.obs_size, 3), dtype=np.uint8),
-            #     'state': spaces.Box(np.array([-2, -1, -5, 0], dtype=np.float32), np.array([2, 1, 30, 1], dtype=np.float32), dtype=np.float32),
-            # }
         else:
             raise ValueError(f'Unknown scenario category: {self.scenario_category}')
 
@@ -215,7 +209,7 @@ class CarlaEnv(gym.Env):
         # route planner for ego vehicle
         self.route_waypoints = self._parse_route(config)
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.route_waypoints)
-        self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
+        self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
 
         # change view point
         #location = carla.Location(x=100, y=100, z=300)
@@ -379,7 +373,7 @@ class CarlaEnv(gym.Env):
         # route planner
         # self.waypoints: the waypoints from the waypoints buffer, needed to be followed
         # self.vehicle_front: whether there got a vehicle in the ego's route and within a certain distance (bool)
-        self.waypoints, _, _, _, _, self.vehicle_front, = self.routeplanner.run_step()
+        self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         origin_info = self._get_info()
 
@@ -566,7 +560,7 @@ class CarlaEnv(gym.Env):
                 'ego_min_dis': ego_min_dis
             }
         elif self.agent_obs_type == 'simple_state':
-            # State observation
+            # default State observation from safebench
             ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
             ego_x = ego_trans.location.x
             ego_y = ego_trans.location.y
@@ -585,15 +579,26 @@ class CarlaEnv(gym.Env):
                 'simple_state': simple_state.astype(np.float32),
                 'ego_min_dis': ego_min_dis
             }
+        elif self.agent_obs_type == 'plant':
+            encoded_state = self.agent_state_encoder.get_encoded_state(
+                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
+            )
+            obs = {
+                'camera': camera.astype(np.uint8),
+                'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
+                'birdeye': birdeye.astype(np.uint8),
+                'encoded_state': encoded_state.astype(np.float32),
+                'ego_min_dis': ego_min_dis
+            }
         elif self.agent_obs_type == 'no_obs':
             obs = {}
-
-        # if train the safety network, need to add new state
-        if self.safety_network_obs_type:
+        # if train the safety network, need to add encoded state
+        if self.safety_network_obs_type and self.safety_network_obs_type == 'plant' and self.agent_obs_type != 'plant':
             # the obs is a list containing ego state dict, surrounding vehicles states, and road map states
-            safety_network_obs = get_bev_boxes(self.ego_vehicle, ego_nearby_vehicles, self.waypoints)
-            # TODO add the PlanT style tokenization method for the RL model
-
+            encoded_state = self.agent_state_encoder.get_encoded_state(
+                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
+            )
+            obs['encoded_state'] = encoded_state
         return obs
 
     def _get_reward(self):

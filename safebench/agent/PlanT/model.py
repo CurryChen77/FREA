@@ -255,7 +255,7 @@ class HFLM(nn.Module):
                 for target in targets
             ]
 
-            # if we do pre-training (not multitask) we don't need wp for pre-trining step so we can return here
+            # if we do pre-training (not multitask) we don't need wp for pre-training step, so we can return here
             if (
                 self.config_all['pre_training'].get("pretraining", "none") == "forecast"
                 and self.config_all['pre_training'].get("multitask", False) == False

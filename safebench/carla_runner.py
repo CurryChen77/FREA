@@ -14,7 +14,9 @@ import numpy as np
 import carla
 import pygame
 from tqdm import tqdm
+import os.path as osp
 
+from safebench.util.run_util import load_config
 from safebench.gym_carla.env_wrapper import VectorWrapper
 from safebench.gym_carla.envs.render import BirdeyeRender
 from safebench.gym_carla.replay_buffer import RouteReplayBuffer
@@ -22,6 +24,7 @@ from safebench.gym_carla.replay_buffer import RouteReplayBuffer
 from safebench.agent import AGENT_POLICY_LIST
 from safebench.scenario import SCENARIO_POLICY_LIST
 from safebench.safety_network import SAFETY_NETWORK_LIST
+from safebench.agent.agent_utils.agent_state_encoder import AgentStateEncoder
 
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.scenario.scenario_data_loader import ScenarioDataLoader
@@ -36,12 +39,7 @@ class CarlaRunner:
         self.scenario_config = scenario_config
         self.agent_config = agent_config
         self.safety_network_config = safety_network_config
-        if safety_network_config:
-            self.safety_network_name = safety_network_config['type']
-            safety_network_obs_type = safety_network_config['obs_type']
-        else:
-            self.safety_network_name = None
-            safety_network_obs_type = None
+        self.safety_network_name = safety_network_config['type'] if safety_network_config else None
 
         self.seed = scenario_config['seed']
         self.exp_name = scenario_config['exp_name']
@@ -69,7 +67,6 @@ class CarlaRunner:
             'auto_ego': scenario_config['auto_ego'],
             'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
             'agent_obs_type': agent_config['obs_type'],                     # default 0 (only 4 dimensions states )
-            'safety_network_obs_type': safety_network_obs_type,             # if use safety network ,the default obs is PlanT
             'scenario_category': self.scenario_category,
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'warm_up_steps': 9,                                             # number of ticks after spawning the vehicles
@@ -142,12 +139,22 @@ class CarlaRunner:
         else:
             raise NotImplementedError(f"Unsupported mode: {self.mode}.")
 
+        # define the ego state encoder if needed
+        self.agent_state_encoder = None
+        if (self.safety_network_config and self.safety_network_config['obs_type'] == 'plant') or self.agent_config['obs_type'] == 'plant':
+            # initial the agent state encoder
+            root_path = agent_config['ROOT_DIR']
+            state_encoder_path = osp.join(root_path, 'safebench/agent/config/state_encoder.yaml')
+            state_encoder_config = load_config(state_encoder_path)
+            self.agent_state_encoder = AgentStateEncoder(state_encoder_config, self.logger)
+
         # define agent and scenario
         self.logger.log('>> Mode: ' + self.mode, color="yellow")
         self.logger.log('>> Agent Policy: ' + agent_config['policy_type'], color="yellow")
         self.logger.log('>> Scenario Policy: ' + scenario_config['policy_type'], color="yellow")
-        if self.safety_network_config:
-            self.logger.log('>> Safety network Policy: ' + safety_network_config['type'], color="yellow")
+        self.logger.log('>> Safety network Policy: ' + safety_network_config['type'], color="yellow") if self.safety_network_config else None
+        self.logger.log('>> Using state encoder: ' + state_encoder_config['obs_type'], color="yellow") if self.agent_state_encoder else None
+
 
         if self.scenario_config['auto_ego']:
             self.logger.log('>> Using auto-polit for ego vehicle, action of policy will be ignored', 'yellow')
@@ -156,11 +163,12 @@ class CarlaRunner:
             raise Exception()
         self.logger.log('>> ' + '-' * 40)
 
-        # define agent and scenario policy
+        # define agent, scenario and safety network policy
         self.agent_policy = AGENT_POLICY_LIST[agent_config['policy_type']](agent_config, logger=self.logger)
         self.scenario_policy = SCENARIO_POLICY_LIST[scenario_config['policy_type']](scenario_config, logger=self.logger)
         if self.safety_network_config:
             self.safety_network_policy = SAFETY_NETWORK_LIST[safety_network_config['type']](safety_network_config, logger=self.logger)
+
         if self.save_video:
             assert self.mode == 'eval', "only allow video saving in eval mode"
             self.logger.init_video_recorder()
@@ -355,6 +363,7 @@ class CarlaRunner:
                 self.birdeye_render, 
                 self.display,
                 self.search_radius,
+                self.agent_state_encoder,
                 self.logger,
             )
 
@@ -370,6 +379,8 @@ class CarlaRunner:
                 if self.safety_network_config:
                     self.safety_network_policy.load_model()
                     self.safety_network_policy.set_mode('eval')
+                if self.agent_state_encoder:
+                    self.agent_state_encoder.load_ckpt()
                 self.eval(data_loader)
             elif self.mode == 'train_agent':
                 start_episode = self.check_continue_training(self.agent_policy)
@@ -379,6 +390,8 @@ class CarlaRunner:
                 if self.safety_network_config:
                     self.safety_network_policy.load_model()
                     self.safety_network_policy.set_mode('eval')
+                if self.agent_state_encoder:
+                    self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
             elif self.mode == 'train_scenario':
                 start_episode = self.check_continue_training(self.scenario_policy)
@@ -388,6 +401,8 @@ class CarlaRunner:
                 if self.safety_network_config:
                     self.safety_network_policy.load_model()
                     self.safety_network_policy.set_mode('eval')
+                if self.agent_state_encoder:
+                    self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
             elif self.mode == 'train_safety_network':
                 start_episode = self.check_continue_training(self.safety_network_policy)
@@ -396,6 +411,8 @@ class CarlaRunner:
                 self.scenario_policy.load_model()
                 self.scenario_policy.set_mode('eval')
                 self.safety_network_policy.set_mode('train')
+                if self.agent_state_encoder:
+                    self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
             else:
                 raise NotImplementedError(f"Unsupported mode: {self.mode}.")
