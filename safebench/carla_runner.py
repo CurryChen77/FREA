@@ -210,12 +210,10 @@ class CarlaRunner:
             'pixels_ahead_vehicle': pixels_ahead_vehicle,
         }
         self.birdeye_render = BirdeyeRender(self.world, self.birdeye_params, logger=self.logger)
-        self.logger.log(">> Finish pygame birdeye renderer initialization")
 
     def train(self, data_loader, start_episode=0):
         # general buffer for both agent and scenario
-        Buffer = RouteReplayBuffer if self.scenario_category == 'planning' else None
-        replay_buffer = Buffer(self.num_scenario, self.mode, self.buffer_capacity)
+        replay_buffer = RouteReplayBuffer(self.num_scenario, self.mode, self.agent_config, self.buffer_capacity)
         data_loader.set_mode("train")
 
         for e_i in tqdm(range(start_episode, self.train_episode)):
@@ -364,12 +362,15 @@ class CarlaRunner:
                 self.birdeye_render, 
                 self.display,
                 self.search_radius,
+                self.safety_network_config,
                 self.agent_state_encoder,
                 self.logger,
             )
+            self.logger.log(">> Finish scenario initialization")
 
             # prepare data loader and buffer
             data_loader = ScenarioDataLoader(config_by_map[m_i], self.num_scenario, m_i, self.world)
+            self.logger.log(">> Finish data loader preparation")
 
             # run with different modes
             if self.mode == 'eval':

@@ -52,9 +52,10 @@ class HJR:
         self.min_dis_threshold = config['min_dis_threshold']
         self.buffer_start_training = config['buffer_start_training']
         self.lr = config['lr']
+        self.obs_type = config['obs_type']
         self.continue_episode = 0
-        self.state_dim = config['ego_state_dim']
-        self.action_dim = config['ego_action_dim']
+        self.state_dim = config['state_dim']
+        self.action_dim = config['action_dim']
         self.acc_range = config['acc_range']
         self.steer_range = config['steer_range']
 
@@ -107,10 +108,16 @@ class HJR:
         for _ in range(self.train_iteration):
             # sample replay buffer
             batch = replay_buffer.sample(self.batch_size)
-            bn_s_ = CUDA(torch.FloatTensor(batch['n_state']))  # next state
+            if self.obs_type == 'plant':
+                bn_s_ = CUDA(torch.FloatTensor(batch['n_encoded_state'])).reshape(self.batch_size, -1)  # next state are the next encoded state
+            elif self.obs_type == 'actor_info':
+                bn_s_ = CUDA(torch.FloatTensor(batch['n_actor_info'])).reshape(self.batch_size, -1)  # the next state are the next actor infos
+            else:
+                bn_s_ = CUDA(torch.FloatTensor(batch['n_state']))  # using the next state for agent
+
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
             # the 5th column of the state is the min dis
-            bn_min_dis = CUDA(torch.FloatTensor(batch['state'][:, 4])).unsqueeze(-1)
+            bn_min_dis = CUDA(torch.FloatTensor(batch['ego_min_dis'])).unsqueeze(-1)
 
             # h = threshold - min_dis, if h > 0 unsafe, else safe
             bn_h = torch.zeros_like(bn_min_dis).fill_(self.min_dis_threshold) - bn_min_dis

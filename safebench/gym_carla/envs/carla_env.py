@@ -37,7 +37,7 @@ class CarlaEnv(gym.Env):
         An OpenAI-gym style interface for CARLA simulator. 
     """
     def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0,
-                 agent_obs_type=None, agent_state_encoder=None, logger=None):
+                 agent_obs_type=None, safety_network_config=None, agent_state_encoder=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
         self.config = None
@@ -65,11 +65,19 @@ class CarlaEnv(gym.Env):
         self.controlled_bv_nearby_vehicles = None
         self.gps_route = None
         self.route = None
+        self.ego_min_dis = None
+        self.ego_nearby_vehicles = None
+        self.encoded_state = None
         self.search_radius = search_radius
         self.agent_obs_type = agent_obs_type
         self.agent_state_encoder = agent_state_encoder
 
-        self.safety_network_obs_type = agent_state_encoder.obs_type if agent_state_encoder else None
+        if agent_state_encoder:
+            self.safety_network_obs_type = agent_state_encoder.obs_type
+        elif safety_network_config:
+            self.safety_network_obs_type = safety_network_config['obs_type']
+        else:
+            self.safety_network_obs_type = None
 
         # scenario manager
         use_scenic = True if env_params['scenario_category'] == 'scenic' else False
@@ -238,7 +246,7 @@ class CarlaEnv(gym.Env):
 
         for _ in range(self.warm_up_steps):
             self.world.tick()
-        return self._get_obs(), self._get_info()
+        return self._get_obs(), self._get_info(training=True)
 
     def _attach_sensor(self):
         # Add collision sensor
@@ -375,7 +383,7 @@ class CarlaEnv(gym.Env):
         # self.vehicle_front: whether there got a vehicle in the ego's route and within a certain distance (bool)
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
-        origin_info = self._get_info()
+        origin_info = self._get_info(training=True)  # for training
 
         # update the sorted nearby vehicles
         self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
@@ -385,7 +393,7 @@ class CarlaEnv(gym.Env):
             self.controlled_bv_nearby_vehicles = None
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
 
-        updated_controlled_bv_info = self._get_info()  # the updated cbv's info
+        updated_controlled_bv_info = self._get_info(training=False)  # the updated cbv's info, for transition
 
         self.visualize()  # visualize the controlled bv and the waypoints in clients side after tick
 
@@ -395,26 +403,41 @@ class CarlaEnv(gym.Env):
 
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_controlled_bv_info])
 
-    def _get_info(self):
-        # the info related to the controlled bv
-        # the min dis from the cbv to the rest bvs
-        cbv_min_dis, cbv_min_dis_cost = CarlaDataProvider.get_cbv_min_dis_cost(self.controlled_bv,
-                                                                               self.search_radius,
-                                                                               self.controlled_bv_nearby_vehicles)
-        info = {
-            'waypoints': self.waypoints,
-            'route_waypoints': self.route_waypoints,          # the global route waypoints
-            'gps_route': self.gps_route,                      # the global gps route
-            'route': self.route,                              # the global route
-            'vehicle_front': self.vehicle_front,
-            'cost': self._get_cost(),                         # the collision cost -1 means collision happens
-            'cbv_min_dis': cbv_min_dis,                       # the min dis from the controlled bv to the rest bvs
-            'cbv_min_dis_cost': cbv_min_dis_cost,             # whether the min dis is lower than a threshold
-            'mapped_cbv_vel': CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)    # the mapped cbv velocity
-        }
-
-        # info from scenarios
+    def _get_info(self, training=True):
+        info = {}
+        # info for scenario agents to take action (actor_infos)
         info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
+
+        if training:
+            # the info related to the controlled bv
+            # the min dis from the cbv to the rest bvs
+            cbv_min_dis, cbv_min_dis_cost = CarlaDataProvider.get_cbv_min_dis_cost(self.controlled_bv,
+                                                                                   self.search_radius,
+                                                                                   self.controlled_bv_nearby_vehicles)
+            info.update({
+                'cost': self._get_cost(),                         # the collision cost -1 means collision happens
+                'cbv_min_dis': cbv_min_dis,                       # the min dis from the controlled bv to the rest bvs
+                'cbv_min_dis_cost': cbv_min_dis_cost,             # whether the min dis is lower than a threshold
+                'mapped_cbv_vel': CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed),    # the mapped cbv velocity
+                'ego_min_dis': self.ego_min_dis,                  # the ego_min_dis with the rest bvs
+                'route_waypoints': self.route_waypoints,          # the global route waypoints
+                'gps_route': self.gps_route,                      # the global gps route
+                'route': self.route,                              # the global route
+            })
+
+            # if train the safety network, need to add encoded state
+            if self.safety_network_obs_type and self.safety_network_obs_type == 'plant' and self.agent_obs_type != 'plant':
+                # the first time to calculate the plant encoded state
+                encoded_state = self.agent_state_encoder.get_encoded_state(
+                    self.ego_vehicle, self.ego_nearby_vehicles, self.waypoints, self.red_light_state
+                )
+                encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
+                info['encoded_state'] = self.encoded_state if self.encoded_state is not None else encoded_state
+                self.encoded_state = encoded_state
+            elif self.safety_network_obs_type and self.safety_network_obs_type == 'plant' and self.agent_obs_type == 'plant':
+                # already got the plant encoded state in get_obs, so reuse it
+                info['encoded_state'] = self.encoded_state
+
         return info
 
     def _init_traffic_light(self):
@@ -538,6 +561,8 @@ class CarlaEnv(gym.Env):
 
         # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
         ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+        self.ego_min_dis = ego_min_dis
+        self.ego_nearby_vehicles = ego_nearby_vehicles
         CarlaDataProvider.set_ego_min_dis(ego_min_dis)
 
         if self.agent_obs_type == 'ego_state':
@@ -557,7 +582,6 @@ class CarlaEnv(gym.Env):
                 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
                 'birdeye': birdeye.astype(np.uint8),
                 'ego_state': ego_state,
-                'ego_min_dis': ego_min_dis
             }
         elif self.agent_obs_type == 'simple_state':
             # default State observation from safebench
@@ -577,28 +601,22 @@ class CarlaEnv(gym.Env):
                 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
                 'birdeye': birdeye.astype(np.uint8),
                 'simple_state': simple_state.astype(np.float32),
-                'ego_min_dis': ego_min_dis
             }
         elif self.agent_obs_type == 'plant':
             encoded_state = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
+            encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
+            if self.safety_network_obs_type == 'plant':  # reuse the calculated encoded state
+                self.encoded_state = encoded_state
             obs = {
                 'camera': camera.astype(np.uint8),
                 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
                 'birdeye': birdeye.astype(np.uint8),
-                'encoded_state': encoded_state.astype(np.float32),
-                'ego_min_dis': ego_min_dis
+                'plant_encoded_state': encoded_state.astype(np.float32),
             }
         elif self.agent_obs_type == 'no_obs':
-            obs = {}
-        # if train the safety network, need to add encoded state
-        if self.safety_network_obs_type and self.safety_network_obs_type == 'plant' and self.agent_obs_type != 'plant':
-            # the obs is a list containing ego state dict, surrounding vehicles states, and road map states
-            encoded_state = self.agent_state_encoder.get_encoded_state(
-                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
-            )
-            obs['encoded_state'] = encoded_state
+            obs = None
         return obs
 
     def _get_reward(self):

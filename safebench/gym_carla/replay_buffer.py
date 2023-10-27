@@ -17,11 +17,12 @@ class RouteReplayBuffer:
         This buffer supports parallel storing transitions from multiple trajectories.
     """
     
-    def __init__(self, num_scenario, mode, buffer_capacity=1000):
+    def __init__(self, num_scenario, mode, agent_config, buffer_capacity=1000):
         self.mode = mode
         self.buffer_capacity = buffer_capacity
         self.num_scenario = num_scenario
         self.buffer_len = 0
+        self.need_obs = False if agent_config['obs_type'] == 'no_obs' or agent_config['policy_type'] == 'plant' else True
 
         # buffers for step info
         self.reset_buffer()
@@ -67,8 +68,9 @@ class RouteReplayBuffer:
             sid = additional_dict[s_i]['scenario_id']
             self.buffer_ego_actions[sid].append(ego_actions[s_i])
             self.buffer_scenario_actions[sid].append(scenario_actions[s_i])
-            self.buffer_obs[sid].append(obs[s_i])
-            self.buffer_next_obs[sid].append(next_obs[s_i])
+            if self.need_obs:
+                self.buffer_obs[sid].append(obs[s_i])
+                self.buffer_next_obs[sid].append(next_obs[s_i])
             self.buffer_rewards[sid].append(rewards[s_i])
             self.buffer_dones[sid].append(dones[s_i])
 
@@ -139,8 +141,9 @@ class RouteReplayBuffer:
             # concat
             prepared_ego_actions += self.buffer_ego_actions[s_i][start_idx:]
             prepared_scenario_actions += self.buffer_scenario_actions[s_i][start_idx:]
-            prepared_obs += self.buffer_obs[s_i][start_idx:]
-            prepared_next_obs += self.buffer_next_obs[s_i][start_idx:]
+            if self.need_obs:
+                prepared_obs += self.buffer_obs[s_i][start_idx:]
+                prepared_next_obs += self.buffer_next_obs[s_i][start_idx:]
             prepared_rewards += self.buffer_rewards[s_i][start_idx:]
             prepared_dones += self.buffer_dones[s_i][start_idx:]
 
@@ -158,11 +161,14 @@ class RouteReplayBuffer:
         action = prepared_ego_actions if self.mode == 'train_agent' else prepared_scenario_actions
         batch = {
             'action': np.stack(action)[sample_index],                 # action
-            'state': np.stack(prepared_obs)[sample_index, :],         # state
-            'n_state': np.stack(prepared_next_obs)[sample_index, :],  # next state
             'reward': np.stack(prepared_rewards)[sample_index],       # reward
             'done': np.stack(prepared_dones)[sample_index],           # done
         }
+        if self.need_obs:
+            batch.update({
+                'state': np.stack(prepared_obs)[sample_index, :],         # state
+                'n_state': np.stack(prepared_next_obs)[sample_index, :],  # next state
+            })
 
         # add additional information to the batch
         batch_info = {} 

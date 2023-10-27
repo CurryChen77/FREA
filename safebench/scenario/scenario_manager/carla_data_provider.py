@@ -836,9 +836,11 @@ class CarlaDataProvider(object):
                 distance = location.distance(spawn_point_location)
                 if radius_list[i] > distance >= closest_dis_list[i]:  # init point shouldn't be too close or too far
                     nearby_spawn_points.append(spawn_point)
+                    # if the spawn point belongs to one location area, then no need to calculate for other locations
+                    break
         CarlaDataProvider._rng.shuffle(nearby_spawn_points)
         spawn_points_count = len(nearby_spawn_points)
-        picking_number = min(int(spawn_points_count*intensity), upper_limit) if spawn_points_count > 20 else spawn_points_count
+        picking_number = min(int(spawn_points_count*intensity), upper_limit) if spawn_points_count > 24 else spawn_points_count
         nearby_spawn_points = nearby_spawn_points[:picking_number]  # sampling part of the nearby spawn points
         return nearby_spawn_points
 

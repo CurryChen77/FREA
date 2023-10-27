@@ -19,13 +19,14 @@ class VectorWrapper():
         The interface to control a list of environments.
     """
 
-    def __init__(self, env_params, scenario_config, world, birdeye_render, display, search_radius, agent_state_encoder, logger):
+    def __init__(self, env_params, scenario_config, world, birdeye_render, display, search_radius, safety_network_config, agent_state_encoder, logger):
         self.logger = logger
         self.world = world
         self.num_scenario = scenario_config['num_scenario']  # default 2
         self.ROOT_DIR = scenario_config['ROOT_DIR']
         self.frame_skip = scenario_config['frame_skip']  
         self.render = scenario_config['render']
+        self.safety_network_config = safety_network_config
         self.agent_state_encoder = agent_state_encoder
 
         self.env_list = []
@@ -34,7 +35,9 @@ class VectorWrapper():
             # each small scenario corresponds to a carla_env create the ObservationWrapper()
             env = carla_env(
                 env_params, birdeye_render=birdeye_render, display=display,
-                world=world, search_radius=search_radius, agent_state_encoder=agent_state_encoder, logger=logger)
+                world=world, search_radius=search_radius, safety_network_config=safety_network_config,
+                agent_state_encoder=agent_state_encoder, logger=logger
+            )
             self.env_list.append(env)
             self.action_space_list.append(env.action_space)
 
@@ -230,14 +233,18 @@ class ObservationWrapper(gym.Wrapper):
     def _preprocess_obs(self, obs):
         # only use the 4-dimensional state space
         if self.agent_obs_type == 'simple_state':
-            return obs['simple_state'][:4].astype(np.float64)
+            process_obs = obs['simple_state'][:4].astype(np.float64)
         # include the pos, speed, compass(yaw angle)
         elif self.agent_obs_type == 'ego_state':
-            return obs['ego_state']
+            process_obs = obs['ego_state']
+        elif self.agent_obs_type == 'plant':
+            process_obs = obs['plant_encoded_state']
         elif self.agent_obs_type == 'no_obs':
-            return None
+            process_obs = obs
         else:
             raise NotImplementedError
+
+        return process_obs
 
     def _preprocess_reward(self, reward, info):
         return reward, info
@@ -249,7 +256,13 @@ class ObservationWrapper(gym.Wrapper):
         self._env.clear_up()
 
 
-def carla_env(env_params, birdeye_render=None, display=None, world=None, search_radius=0, agent_state_encoder=None, logger=None):
+def carla_env(env_params, birdeye_render=None, display=None, world=None, search_radius=0, safety_network_config=None, agent_state_encoder=None, logger=None):
+    if agent_state_encoder:
+        safety_network_obs_type = agent_state_encoder.obs_type
+    elif safety_network_config:
+        safety_network_obs_type = safety_network_config['obs_type']
+    else:
+        safety_network_obs_type = None
     return ObservationWrapper(
         gym.make(
             'carla-v0', 
@@ -259,9 +272,10 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, search_
             world=world,
             search_radius=search_radius,
             agent_obs_type=env_params['agent_obs_type'],
+            safety_network_config=safety_network_config,
             agent_state_encoder=agent_state_encoder,
             logger=logger,
         ), 
         agent_obs_type=env_params['agent_obs_type'],
-        safety_network_obs_type=agent_state_encoder.obs_type if agent_state_encoder else None
+        safety_network_obs_type=safety_network_obs_type
     )
