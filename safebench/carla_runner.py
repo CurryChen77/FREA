@@ -95,6 +95,11 @@ class CarlaRunner:
         agent_config['ego_state_dim'] = scenario_config['ego_state_dim']        # default 4 dimensions
         agent_config['ego_action_limit'] = scenario_config['ego_action_limit']  # default 1.0
 
+        # pass config from agent, scenario to safety_network
+        if self.safety_network_config:
+            self.safety_network_config['agent_policy_type'] = agent_config['policy_type']
+            self.safety_network_config['scenario_policy_type'] = scenario_config['policy_type']
+
         CarlaDataProvider.set_ego_desired_speed(self.env_params['desired_speed'])
 
         # define logger

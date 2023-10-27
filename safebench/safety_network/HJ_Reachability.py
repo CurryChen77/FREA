@@ -62,7 +62,12 @@ class HJR:
         self.batch_size = config['batch_size']
         self.train_iteration = config['train_iteration']
 
-        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
+        self.agent_policy_type = config['agent_policy_type']
+        self.scenario_policy_type = config['scenario_policy_type']
+        model_name = self.agent_policy_type + "_" + self.scenario_policy_type + "_" + "HJR"
+        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], model_name)
+        if not os.path.exists(self.model_path):
+            os.makedirs(self.model_path)
 
         self.Qh_net = CUDA(Q(self.state_dim, self.action_dim))  # the Q network of constrain
         self.Qh_optimizer = optim.Adam(self.Qh_net.parameters(), lr=self.lr)  # the corresponding optimizer of Qh
