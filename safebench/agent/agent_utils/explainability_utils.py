@@ -11,6 +11,7 @@
 import carla
 from PIL import Image
 import numpy as np
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 import cv2
 
 
@@ -39,13 +40,13 @@ def get_masked_viz_3rd_person(save_path_org, save_path_mask, step, input_data):
     img.save(f'{save_path_mask}/{step}.png')
 
 
-def draw_attention_bb_in_carla(_world, keep_vehicle_ids, keep_vehicle_attn, frame_rate_sim):
+def draw_attention_bb_in_carla(_world, keep_vehicle_ids, keep_vehicle_attn):
     actors = _world.get_actors()
     all_vehicles = actors.filter('*vehicle*')
-    
+    ego_actors = CarlaDataProvider.get_ego_vehicles()
+    ego_ids = [ego.id for ego in ego_actors]
     for vehicle in all_vehicles:
-        # print(vehicle.id)
-        if vehicle.id in keep_vehicle_ids:
+        if (vehicle.id in keep_vehicle_ids) and (vehicle.id not in ego_ids):
             index = keep_vehicle_ids.index(vehicle.id)
             # cmap = plt.get_cmap('YlOrRd')
             # c = cmap(object[1])
@@ -55,12 +56,12 @@ def draw_attention_bb_in_carla(_world, keep_vehicle_ids, keep_vehicle_attn, fram
             loc = vehicle.get_location()
             loc.z = vehicle.bounding_box.extent.z/2
             bb = carla.BoundingBox(loc, vehicle.bounding_box.extent)
-            bb.extent.z=0.2
-            bb.extent.x+=0.2      
-            bb.extent.y+=0.05                  
-            # bb = carla.BoundingBox(vehicle.get_transform().location, vehicle.bounding_box.extent)
-            _world.debug.draw_box(box=bb, rotation= vehicle.get_transform().rotation, thickness=0.4, color=color, life_time=(1.0 / frame_rate_sim)) #(1.0/self.frame_rate_sim))
+            bb.extent.z = 0.2
+            bb.extent.x += 0.2
+            bb.extent.y += 0.05
 
+            # bb = carla.BoundingBox(vehicle.get_transform().location, vehicle.bounding_box.extent)
+            _world.debug.draw_box(box=bb, rotation=vehicle.get_transform().rotation, thickness=0.15, color=color, life_time=0.15) #(1.0/self.frame_rate_sim))
 
 
 def get_attn_norm_vehicles(attention_score, data_car, attn_map):

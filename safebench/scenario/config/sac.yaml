@@ -4,7 +4,7 @@ scenario_category: 'planning'
 policy_type: 'sac'
 
 route_dir: 'safebench/scenario/scenario_data/route'
-scenario_id: 8
+scenario_id: 7
 route_id: null
 
 # parameters for agent policy

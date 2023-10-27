@@ -49,6 +49,7 @@ class CarlaDataProvider(object):
     _ego_desired_speed = 8
     _blueprint_library = None
     _ego_vehicle_route = None
+    _egos = []
     _traffic_manager_port = 8000
     _random_seed = 2000
     _rng = random.RandomState(_random_seed)
@@ -476,11 +477,19 @@ class CarlaDataProvider(object):
         return relevant_traffic_light
 
     @staticmethod
-    def set_ego_vehicle_route(route):
+    def set_ego_vehicle_route(ego, route):
         """
             Set the route of the ego vehicle
         """
         CarlaDataProvider._ego_vehicle_route = route
+        CarlaDataProvider._egos.append(ego)
+
+    @staticmethod
+    def get_ego_vehicles():
+        """
+            Set the route of the ego vehicle
+        """
+        return CarlaDataProvider._egos
 
     @staticmethod
     def get_ego_vehicle_route():
@@ -1072,6 +1081,9 @@ class CarlaDataProvider(object):
         CarlaDataProvider._world = None
         CarlaDataProvider._sync_flag = False
         CarlaDataProvider._ego_vehicle_route = None
+        CarlaDataProvider._egos = []
+        CarlaDataProvider._ego_min_dis = None
+        CarlaDataProvider._ego_desired_speed = 8
         CarlaDataProvider._carla_actor_pool = {}
         CarlaDataProvider._client = None
         CarlaDataProvider._spawn_points = None

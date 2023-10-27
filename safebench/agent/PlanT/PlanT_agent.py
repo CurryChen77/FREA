@@ -215,15 +215,14 @@ class PlanTAgent(DataAgent):
         if viz_trigger and self.step > 2:
             create_BEV(label_raw, light, tp, pred_wp)
 
-        if self.exec_or_inter == 'inter':
-            attn_vector = get_attn_norm_vehicles(self.cfg['attention_score'], self.data_car, attn_map)
-            keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.cfg['topk'], attn_vector)
-            # if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
-            #     draw_attention_bb_in_carla(self._world, keep_vehicle_ids, keep_vehicle_attn, self.frame_rate_sim)
+        # if self.exec_or_inter == 'inter':
+        attn_vector = get_attn_norm_vehicles(self.cfg['attention_score'], self.data_car, attn_map)
+        keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.cfg['topk'], attn_vector)
+        draw_attention_bb_in_carla(self._world, keep_vehicle_ids, keep_vehicle_attn)
             #     if self.step % 1 == 0:
             #         get_masked_viz_3rd_person(self.save_path_org, self.save_path_mask, self.step, input_data)
 
-            return keep_vehicle_ids, attn_indices
+            # return keep_vehicle_ids, attn_indices
 
         return control
     

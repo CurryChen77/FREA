@@ -90,7 +90,7 @@ class RouteScenario():
             ego_vehicle = self._spawn_ego_vehicle(route[0][0], self.config.auto_ego)
 
         # TODO: ego route will be overwritten by other scenarios
-        CarlaDataProvider.set_ego_vehicle_route(convert_transform_to_location(route))
+        CarlaDataProvider.set_ego_vehicle_route(ego_vehicle, convert_transform_to_location(route))
         CarlaDataProvider.set_scenario_config(self.config)
 
         # Timeout of scenario in seconds

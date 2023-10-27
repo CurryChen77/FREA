@@ -30,7 +30,7 @@ gpus: 1
 viz: 0
 # Explain-ability
 attention_score: AllLayer
-topk: 100000 #1
+topk: 3 #1
 
 training:
   max_epochs: 50

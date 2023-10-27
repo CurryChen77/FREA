@@ -44,8 +44,8 @@ class AutoPilot(object):
         # self.gps_buffer = deque(maxlen=1) # Stores the last x updated gps signals. #TODO
 
         # Dynamics models
-        self.frame_rate = 20
-        self.frame_rate_sim = 20
+        self.frame_rate = 10
+        self.frame_rate_sim = 10
         self.ego_model     = EgoModel(dt=(1.0 / self.frame_rate))
         self.vehicle_model = EgoModel(dt=(1.0 / self.frame_rate))
 
