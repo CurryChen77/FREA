@@ -787,8 +787,13 @@ class CarlaDataProvider(object):
         nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(ego_vehicle, search_radius)
         # min distance between vehicle bboxes
         ego_min_dis = 10
+        # the closest vehicle using center points distance may change when using bboxes distance
+        if len(nearby_vehicles) < 3:
+            refined_vehicles_count = len(nearby_vehicles)
+        else:
+            refined_vehicles_count = 3
 
-        for i in range(len(nearby_vehicles)):
+        for i in range(refined_vehicles_count):
             # the closest vehicle using center point may not be the closest vehicle using bboxs
             dis = CarlaDataProvider.get_min_distance_across_bboxes(ego_vehicle, nearby_vehicles[i])
             if dis < ego_min_dis:
@@ -821,16 +826,19 @@ class CarlaDataProvider(object):
         return mapped_vel
 
     @staticmethod
-    def get_location_nearby_spawn_points(center_location, radius=40, closest_dis=0, intensity=0.5, upper_limit=15):
+    def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis_list=None, intensity=0.8, upper_limit=30):
         nearby_spawn_points = []
-        CarlaDataProvider.generate_spawn_points()
+        CarlaDataProvider.generate_spawn_points()  # get all the possible spawn points in this map
+
         for spawn_point in CarlaDataProvider._spawn_points:
             spawn_point_location = spawn_point.location
-            distance = center_location.distance(spawn_point_location)
-            if radius > distance >= closest_dis:  # the init spawn point shouldn't be too close or too far
-                nearby_spawn_points.append(spawn_point)
+            for i, location in enumerate(location_lists):
+                distance = location.distance(spawn_point_location)
+                if radius_list[i] > distance >= closest_dis_list[i]:  # init point shouldn't be too close or too far
+                    nearby_spawn_points.append(spawn_point)
         CarlaDataProvider._rng.shuffle(nearby_spawn_points)
-        picking_number = min(int(len(nearby_spawn_points)*intensity), upper_limit)
+        spawn_points_count = len(nearby_spawn_points)
+        picking_number = min(int(spawn_points_count*intensity), upper_limit) if spawn_points_count > 20 else spawn_points_count
         nearby_spawn_points = nearby_spawn_points[:picking_number]  # sampling part of the nearby spawn points
         return nearby_spawn_points
 

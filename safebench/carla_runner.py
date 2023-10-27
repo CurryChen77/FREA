@@ -210,6 +210,7 @@ class CarlaRunner:
             'pixels_ahead_vehicle': pixels_ahead_vehicle,
         }
         self.birdeye_render = BirdeyeRender(self.world, self.birdeye_params, logger=self.logger)
+        self.logger.log(">> Finish pygame birdeye renderer initialization")
 
     def train(self, data_loader, start_episode=0):
         # general buffer for both agent and scenario

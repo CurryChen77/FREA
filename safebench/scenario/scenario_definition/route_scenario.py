@@ -193,10 +193,13 @@ class RouteScenario():
         start_location = self.route[0][0].location
         middle_location = self.route[len(self.route)//2][0].location
         end_location = self.route[-1][0].location
-        start = CarlaDataProvider.get_location_nearby_spawn_points(start_location, radius=20, closest_dis=7, intensity=self.traffic_intensity[0])  # route start point
-        middle = CarlaDataProvider.get_location_nearby_spawn_points(middle_location, radius=40, intensity=self.traffic_intensity[1])  # route middle point
-        end = CarlaDataProvider.get_location_nearby_spawn_points(end_location, radius=30, intensity=self.traffic_intensity[2])  # route end point
-        spawn_points = list(set(start + middle + end))  # filter the overlapping
+        locations_list = [start_location, middle_location, end_location]
+        radius_list = [20, 40, 30]
+        closest_dis = [5, 0, 0]
+
+        spawn_points = CarlaDataProvider.get_locations_nearby_spawn_points(
+            locations_list, radius_list, closest_dis, self.traffic_intensity
+        )
         amount = len(spawn_points)
         return amount, spawn_points
 
