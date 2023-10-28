@@ -71,7 +71,7 @@ class CarlaRunner:
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'warm_up_steps': 9,                                             # number of ticks after spawning the vehicles
             'disable_lidar': True,                                          # show bird-eye view lidar or not
-            'display_size': 128,                                            # screen size of one bird-eye view window
+            'display_size': 256,                                            # screen size of one bird-eye view window
             'obs_range': 32,                                                # observation range (meter)
             'd_behind': 12,                                                 # distance behind the ego vehicle (meter)
             'max_past_step': 1,                                             # the number of past steps to draw

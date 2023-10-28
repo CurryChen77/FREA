@@ -61,7 +61,7 @@ def draw_attention_bb_in_carla(_world, keep_vehicle_ids, keep_vehicle_attn):
             bb.extent.y += 0.05
 
             # bb = carla.BoundingBox(vehicle.get_transform().location, vehicle.bounding_box.extent)
-            _world.debug.draw_box(box=bb, rotation=vehicle.get_transform().rotation, thickness=0.15, color=color, life_time=0.15) #(1.0/self.frame_rate_sim))
+            _world.debug.draw_box(box=bb, rotation=vehicle.get_transform().rotation, thickness=0.2, color=color, life_time=0.15) #(1.0/self.frame_rate_sim))
 
 
 def get_attn_norm_vehicles(attention_score, data_car, attn_map):

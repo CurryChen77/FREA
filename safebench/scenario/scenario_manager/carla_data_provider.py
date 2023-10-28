@@ -46,6 +46,7 @@ class CarlaDataProvider(object):
     _spawn_points = None
     _spawn_index = 0
     _ego_min_dis = 0
+    _fps = 10
     _ego_desired_speed = 8
     _blueprint_library = None
     _ego_vehicle_route = None
