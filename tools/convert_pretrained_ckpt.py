@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：test_load_ckpt.py
+@File    ：convert_pretrained_ckpt.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/26
@@ -33,16 +33,30 @@ def update_state_encoder(model_path, updated_model_path):
     print("successfully saving the updated state encoder ckpt")
 
 
+def update_plant_pretrain_model(model_path, updated_pretrain_model_path):
+    checkpoint = pl_load(model_path, map_location=lambda storage, loc: storage)
+    del checkpoint["state_dict"]['model.model.embeddings.position_ids']
+
+    for key, value in checkpoint["state_dict"].items():
+        print("key:", key)
+    save_path = updated_pretrain_model_path
+    torch.save(checkpoint, save_path)
+    print("successfully saving the updated state encoder ckpt")
+
+
 def main(args):
     strict = True
     ROOT_DIR = osp.abspath(osp.dirname(osp.dirname(osp.realpath(__file__))))
     config_path = osp.join(ROOT_DIR, 'safebench/safety_network/config/HJR.yaml')
     config = load_config(config_path)
     model_path = osp.join(ROOT_DIR, 'safebench/agent/model_ckpt/PlanT_state_encoder/checkpoints/epoch=047.ckpt')
-    updated_model_path = osp.join(ROOT_DIR, config['pretrained_model_path'])
+    updated_model_path = osp.join(ROOT_DIR, config['pretrained_model_path'])  # for the state encoder
+    updated_pretrain_model_path = osp.join(ROOT_DIR, 'safebench/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt')  # for PlanT
 
     if args.Transfer_OriginCKPT_to_StateEncoderCKPT:
         update_state_encoder(model_path, updated_model_path)
+    if args.Transfer_OriginCKPT_to_CKPT_WithoutPositionEncoding:
+        update_plant_pretrain_model(model_path, updated_pretrain_model_path)
 
     # load the already transferred state encoder ckpt
     checkpoint = pl_load(updated_model_path, map_location=lambda storage, loc: storage)
@@ -67,6 +81,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--Transfer_OriginCKPT_to_StateEncoderCKPT', type=str, default=False)
+    parser.add_argument('--Transfer_OriginCKPT_to_CKPT_WithoutPositionEncoding', type=str, default=False)
     args = parser.parse_args()
 
     main(args)

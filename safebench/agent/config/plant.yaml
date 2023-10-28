@@ -21,8 +21,8 @@ buffer_start_training: 100
 #agent_config: ${experiments.agent_root}/log/
 
 # model_ckpt_load_path needs to be adapted depending on the experiment
-model_ckpt_load_path: "safebench/agent/model_ckpt/PlanT_medium/checkpoints/epoch=047.ckpt"
-exec_model_ckpt_load_path: "safebench/agent/model_ckpt/PlanT_medium/checkpoints/epoch=047.ckpt"
+model_ckpt_load_path: "safebench/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt"
+exec_model_ckpt_load_path: "safebench/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt"
 
 exec_or_inter: 'exec'
 lrDecay_epoch: 46
