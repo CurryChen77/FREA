@@ -13,6 +13,7 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 from safebench.agent.agent_utils.coordinate_utils import normalize_angle
 from safebench.agent.PlanT.dataset import split_large_BB, generate_batch
+from safebench.agent.agent_utils.explainability_utils import *
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from einops import rearrange
 from pytorch_lightning.utilities.cloud_io import load as pl_load
@@ -32,6 +33,7 @@ class AgentStateEncoder(object):
         self.config = config
         self.logger = logger
         self.obs_type = config['obs_type']
+        self.viz_attn_map = config['viz_attn_map']
         self.model_path = config['pretrained_model_path']
         self.net = EncoderModel(config)
 
@@ -39,6 +41,7 @@ class AgentStateEncoder(object):
         updated_model_path = self.config['pretrained_model_path']
         checkpoint = pl_load(updated_model_path, map_location=lambda storage, loc: storage)
         self.net.load_state_dict(checkpoint["state_dict"], strict=strict)
+        self.world = CarlaDataProvider.get_world()
         self.logger.log('>> Loading the pretrained ego state encoder.')
 
     def get_encoded_state(self, ego_vehicle, ego_nearby_vehicles, waypoints, traffic_light_hazard):
@@ -49,7 +52,12 @@ class AgentStateEncoder(object):
         label_raw = self.get_bev_boxes(ego_vehicle, ego_nearby_vehicles, waypoints)
         input_batch = self.get_input_batch(label_raw, target_point, traffic_light_hazard)
         x, y, _, tp, light = input_batch
-        encoded_state = self.net(x, y, target_point=tp, light_hazard=light)
+        encoded_state, attn_map = self.net(x, y, target_point=tp, light_hazard=light)
+
+        if self.viz_attn_map:
+            attn_vector = get_attn_norm_vehicles(self.config['attention_score'], self.data_car, attn_map)
+            keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.config['topk'], attn_vector)
+            draw_attention_bb_in_carla(self.world, keep_vehicle_ids, keep_vehicle_attn)
         return encoded_state
 
     def get_bev_boxes(self, ego_veh, ego_nearby_vehicles, waypoints):
@@ -283,6 +291,10 @@ class AgentStateEncoder(object):
 
         input_batch = generate_batch(batch)
 
+        self.data = data
+        self.data_car = data_car
+        self.data_route = data_route
+
         return input_batch
 
 
@@ -400,4 +412,4 @@ class EncoderModel(nn.Module):
         output = self.model(**{"inputs_embeds": embedding}, output_attentions=True)
         x, attn_map = output.last_hidden_state, output.attentions
 
-        return x
+        return x, attn_map

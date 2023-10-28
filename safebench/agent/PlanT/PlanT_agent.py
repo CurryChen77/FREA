@@ -40,6 +40,7 @@ class PlanTAgent(DataAgent):
         self.config = config
         self.logger = logger
         self.exec_or_inter = config['exec_or_inter']
+        self.viz_attn_map = config['viz_attn_map']
 
         # print(f'Saving gif: {SAVE_GIF}')
 
@@ -104,7 +105,7 @@ class PlanTAgent(DataAgent):
             LOAD_CKPT_PATH = self.config['model_ckpt_load_path']
 
         if Path(LOAD_CKPT_PATH).suffix == '.ckpt':
-            self.net = LitHFLM.load_from_checkpoint(LOAD_CKPT_PATH, strict=False,  cfg=self.config)
+            self.net = LitHFLM.load_from_checkpoint(LOAD_CKPT_PATH, strict=True,  cfg=self.config)
         else:
             raise Exception(f'Unknown model type: {Path(LOAD_CKPT_PATH).suffix}')
         self.net.eval()
@@ -215,12 +216,12 @@ class PlanTAgent(DataAgent):
         if viz_trigger and self.step > 2:
             create_BEV(label_raw, light, tp, pred_wp)
 
-        # if self.exec_or_inter == 'inter':
-        attn_vector = get_attn_norm_vehicles(self.cfg['attention_score'], self.data_car, attn_map)
-        keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.cfg['topk'], attn_vector)
-        draw_attention_bb_in_carla(self._world, keep_vehicle_ids, keep_vehicle_attn)
-            #     if self.step % 1 == 0:
-            #         get_masked_viz_3rd_person(self.save_path_org, self.save_path_mask, self.step, input_data)
+        if self.viz_attn_map:
+            attn_vector = get_attn_norm_vehicles(self.cfg['attention_score'], self.data_car, attn_map)
+            keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.cfg['topk'], attn_vector)
+            draw_attention_bb_in_carla(self._world, keep_vehicle_ids, keep_vehicle_attn)
+            # if self.step % 1 == 0:
+            #     get_masked_viz_3rd_person(self.save_path_org, self.save_path_mask, self.step, input_data)
 
             # return keep_vehicle_ids, attn_indices
 

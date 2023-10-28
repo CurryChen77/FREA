@@ -28,9 +28,10 @@ exec_or_inter: 'exec'
 lrDecay_epoch: 46
 gpus: 1
 viz: 0
+viz_attn_map: False
 # Explain-ability
 attention_score: AllLayer
-topk: 3 #1
+topk: 5 #1
 
 training:
   max_epochs: 50

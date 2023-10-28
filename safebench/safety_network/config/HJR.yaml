@@ -27,6 +27,7 @@ tau: 0.005
 train_iteration: 10
 gamma: 0.99
 batch_size: 64
+
 pretrained_model_path: 'safebench/agent/model_ckpt/PlanT_state_encoder/checkpoints/state_encoder.ckpt'
 
 training:

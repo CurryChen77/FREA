@@ -67,7 +67,7 @@ def draw_attention_bb_in_carla(_world, keep_vehicle_ids, keep_vehicle_attn):
 def get_attn_norm_vehicles(attention_score, data_car, attn_map):
     if attention_score == 'AllLayer':
         # attention score for CLS token, sum of all heads
-        attn_vector = [np.sum(attn_map[i][0,:,0,1:].numpy(), axis=0) for i in range(len(attn_map))]
+        attn_vector = [np.sum(attn_map[i][0,:,0,1:].detach().numpy(), axis=0) for i in range(len(attn_map))]
     else:
         print(f"Attention score {attention_score} not implemented! Please use 'AllLayer'!")
         raise NotImplementedError
