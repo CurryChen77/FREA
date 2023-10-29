@@ -26,8 +26,8 @@ from safebench.gym_carla.envs.misc import (
     get_lane_dis, 
     get_pos, 
     get_preview_lane_dis,
-    get_masked_viz_3rd_person
 )
+from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
@@ -315,7 +315,7 @@ class CarlaEnv(gym.Env):
             cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
             cbv_angle = math.radians(cbv_transform.rotation.yaw)
             cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
-            self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.2, color=carla.Color(0,0,255,0), life_time=0.2)
+            self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.2, color=carla.Color(0,0,255,0), life_time=0.11)
 
         # if the ego agent is learnable then, draw the target waypoints
         if self.ego_agent_learnable:
@@ -323,7 +323,7 @@ class CarlaEnv(gym.Env):
                 begin = carla.Location(x=wpt[0], y=wpt[1], z=0.3)
                 angle = math.radians(wpt[2])
                 end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
-                self.world.debug.draw_arrow(begin, end, arrow_size=0.1, life_time=0.2)
+                self.world.debug.draw_arrow(begin, end, arrow_size=0.1, life_time=0.11)
 
     def step_before_tick(self, ego_action, scenario_action):
         if self.world:

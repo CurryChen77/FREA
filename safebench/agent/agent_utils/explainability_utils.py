@@ -15,18 +15,17 @@ from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataPro
 import cv2
 
 
-def get_masked_viz_3rd_person(save_path_org, save_path_mask, step, input_data):
+def get_masked_viz_3rd_person(bgr_img, sem_img):
     # PIXELS_PER_METER = 5.689
-    im3 = Image.fromarray(cv2.cvtColor(input_data['rgb_back'][1][:, :, :3], cv2.COLOR_BGR2RGB))
-    sem = input_data['sem_back'][1][:, :, 2]
-    mask = (sem == 10) | (sem==0)
-    mask_neg = (mask==0)
+    # rgb_img array[:, :, :3], sem_img array[:, :, 2]
+    mask = (sem_img == 10) | (sem_img == 0)  # any foreground including unlabeled(draw box, draw line), vehicles
+    mask_neg = (mask == 0)  # any backgound
 
-    img_raw = input_data['rgb_back'][1][:, :, :3].copy()
-    img_raw[mask_neg] = [255,255,255]
-    foreground = np.concatenate((img_raw, np.expand_dims(mask*255,-1).astype(np.uint8)), axis=2)
+    img_raw = bgr_img.copy()
+    img_raw[mask_neg] = [255, 255, 255]  # set the background to white
+    foreground = np.concatenate((img_raw, np.expand_dims(mask*255, -1).astype(np.uint8)), axis=2)  # combine img_raw and mask
     masked_img = Image.fromarray(cv2.cvtColor(foreground, cv2.COLOR_BGRA2RGBA))
-    background = Image.fromarray(cv2.cvtColor(input_data['rgb_back'][1][:, :, :3].copy(), cv2.COLOR_BGR2RGB).astype(np.uint8)).convert('RGBA')
+    background = Image.fromarray(cv2.cvtColor(bgr_img.copy(), cv2.COLOR_BGR2RGB).astype(np.uint8)).convert('RGBA')
     background.putalpha(130)
     white_img = Image.new("RGBA", (mask.shape[1],mask.shape[0]), (255, 255, 255, 255))
     white_img.paste(background, (0,0), background)
@@ -34,10 +33,7 @@ def get_masked_viz_3rd_person(save_path_org, save_path_mask, step, input_data):
     white_img2 = Image.new("RGB", (mask.shape[1],mask.shape[0]), (255, 255, 255))
     white_img2.paste(white_img, (0,0), white_img.split()[3])
 
-    img = Image.fromarray(np.asarray(white_img2).copy())
-    
-    im3.save(f'{save_path_org}/{step}.png')
-    img.save(f'{save_path_mask}/{step}.png')
+    return np.asarray(white_img2).copy()
 
 
 def draw_attention_bb_in_carla(_world, keep_vehicle_ids, keep_vehicle_attn):
@@ -52,7 +48,7 @@ def draw_attention_bb_in_carla(_world, keep_vehicle_ids, keep_vehicle_attn):
             # c = cmap(object[1])
             # color = carla.Color(*[int(i*255) for i in c])
             c = get_color(keep_vehicle_attn[index])
-            color = carla.Color(r=int(c[0]), g=int(c[1]), b=int(c[2]))        
+            color = carla.Color(r=int(c[0]), g=int(c[1]), b=int(c[2]))
             loc = vehicle.get_location()
             loc.z = vehicle.bounding_box.extent.z/2
             bb = carla.BoundingBox(loc, vehicle.bounding_box.extent)
@@ -61,7 +57,7 @@ def draw_attention_bb_in_carla(_world, keep_vehicle_ids, keep_vehicle_attn):
             bb.extent.y += 0.05
 
             # bb = carla.BoundingBox(vehicle.get_transform().location, vehicle.bounding_box.extent)
-            _world.debug.draw_box(box=bb, rotation=vehicle.get_transform().rotation, thickness=0.2, color=color, life_time=0.15) #(1.0/self.frame_rate_sim))
+            _world.debug.draw_box(box=bb, rotation=vehicle.get_transform().rotation, thickness=0.1, color=color, life_time=0.11) #(1.0/self.frame_rate_sim))
 
 
 def get_attn_norm_vehicles(attention_score, data_car, attn_map):

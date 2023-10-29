@@ -10,7 +10,6 @@
 
 import math
 import numpy as np
-from PIL import Image
 import carla
 import pygame
 from matplotlib.path import Path
@@ -314,26 +313,3 @@ def debug_bbox(data, obs_size, fov, camera_sensor, world, ego):
                     p2 = get_image_point(verts[edge[1]], K, world_2_camera)
                     cv2.line(data, (int(p1[0]), int(p1[1])), (int(p2[0]), int(p2[1])), (0,0,255, 255), 2)
     return data
-
-
-def get_masked_viz_3rd_person(bgr_img, sem_img):
-    # PIXELS_PER_METER = 5.689
-    # rgb_img array[:, :, :3], sem_img array[:, :, 2]
-
-    im3 = Image.fromarray(cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB))
-    mask = (sem_img == 10) | (sem_img == 0)  # any foreground including unlabeled(draw box, draw line), vehicles
-    mask_neg = (mask == 0)  # any backgound
-
-    img_raw = bgr_img.copy()
-    img_raw[mask_neg] = [255, 255, 255]  # set the background to white
-    foreground = np.concatenate((img_raw, np.expand_dims(mask*255, -1).astype(np.uint8)), axis=2)  # combine img_raw and mask
-    masked_img = Image.fromarray(cv2.cvtColor(foreground, cv2.COLOR_BGRA2RGBA))
-    background = Image.fromarray(cv2.cvtColor(bgr_img.copy(), cv2.COLOR_BGR2RGB).astype(np.uint8)).convert('RGBA')
-    background.putalpha(130)
-    white_img = Image.new("RGBA", (mask.shape[1],mask.shape[0]), (255, 255, 255, 255))
-    white_img.paste(background, (0,0), background)
-    white_img.paste(masked_img, (0,0), masked_img)
-    white_img2 = Image.new("RGB", (mask.shape[1],mask.shape[0]), (255, 255, 255))
-    white_img2.paste(white_img, (0,0), white_img.split()[3])
-
-    return np.asarray(white_img2).copy()
