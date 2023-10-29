@@ -9,6 +9,7 @@
 """
 import math
 import random
+import copy
 
 import numpy as np
 import pygame
@@ -17,13 +18,15 @@ import gym
 from gym import spaces
 import carla
 
+
 from safebench.gym_carla.envs.route_planner import RoutePlanner
 from safebench.gym_carla.envs.misc import (
     display_to_rgb, 
     rgb_to_display_surface, 
     get_lane_dis, 
     get_pos, 
-    get_preview_lane_dis
+    get_preview_lane_dis,
+    get_masked_viz_3rd_person
 )
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenario
@@ -58,6 +61,7 @@ class CarlaEnv(gym.Env):
         self.collision_sensor = None
         self.lidar_sensor = None
         self.camera_sensor = None
+        self.sem_sensor = None
         self.lidar_data = None
         self.lidar_height = 2.1
 
@@ -136,9 +140,10 @@ class CarlaEnv(gym.Env):
         self.lidar_bp.set_attribute('range', '1000')
         
         # camera sensor
-        self.camera_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8) 
+        self.camera_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
+        self.BGR_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
         # self.camera_trans = carla.Transform(carla.Location(x=0.8, z=1.7))  # for ego view
-        self.camera_trans = carla.Transform(carla.Location(x=-4., z=3.), carla.Rotation(pitch=-20.0))  # for third-person view
+        self.camera_trans = carla.Transform(carla.Location(x=-4., y=0., z=5.), carla.Rotation(pitch=-20.0))  # for third-person view
         self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.rgb')
         # Modify the attributes of the blueprint to set image resolution and field of view.
         self.camera_bp.set_attribute('image_size_x', str(self.obs_size))
@@ -146,6 +151,16 @@ class CarlaEnv(gym.Env):
         self.camera_bp.set_attribute('fov', '110')
         # Set the time in seconds between sensor captures
         self.camera_bp.set_attribute('sensor_tick', '0.02')
+
+        # sem camera sensor
+        self.sem_img = np.zeros((self.obs_size, self.obs_size, 2), dtype=np.uint8)
+        self.sem_trans = carla.Transform(carla.Location(x=-4., y=0, z=5.), carla.Rotation(pitch=-20.0))  # for third-person view
+        self.sem_bp = self.world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
+        self.sem_bp.set_attribute('image_size_x', str(self.obs_size))
+        self.sem_bp.set_attribute('image_size_y', str(self.obs_size))
+        self.sem_bp.set_attribute('fov', '110')
+        # Set the time in seconds between sensor captures
+        self.sem_bp.set_attribute('sensor_tick', '0.02')
 
 
     def _create_scenario(self, config, env_id):
@@ -279,8 +294,19 @@ class CarlaEnv(gym.Env):
             array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (data.height, data.width, 4))
             array = array[:, :, :3]
+            self.BGR_img = copy.deepcopy(array)
             array = array[:, :, ::-1]
             self.camera_img = array
+
+        # Add sem_camera sensor
+        self.sem_sensor = self.world.spawn_actor(self.sem_bp, self.sem_trans, attach_to=self.ego_vehicle)
+        self.sem_sensor.listen(lambda data: get_sem_img(data))
+
+        def get_sem_img(data):
+            array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
+            array = np.reshape(array, (data.height, data.width, 4))
+            array = array[:, :, 2]  # from PlanT
+            self.sem_img = array
 
     def visualize(self):
         # Visualize the controlled bv
@@ -561,6 +587,13 @@ class CarlaEnv(gym.Env):
             camera_surface = rgb_to_display_surface(camera, self.display_size)
             self.display.blit(camera_surface, (self.display_size, self.env_id*self.display_size))
 
+            # display masked viz 3rd person
+            masked_img = get_masked_viz_3rd_person(self.BGR_img, self.sem_img)
+            masked_image = resize(masked_img, (self.obs_size, self.obs_size)) * 255
+            masked_image_surface = rgb_to_display_surface(masked_image, self.display_size)
+            self.display.blit(masked_image_surface, (self.display_size*2, self.env_id * self.display_size))
+
+
         # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
         ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
         self.ego_min_dis = ego_min_dis
@@ -580,9 +613,9 @@ class CarlaEnv(gym.Env):
                 'compass': ego_compass
             }
             obs = {
-                'camera': camera.astype(np.uint8),
-                'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
-                'birdeye': birdeye.astype(np.uint8),
+                # 'camera': camera.astype(np.uint8),
+                # 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
+                # 'birdeye': birdeye.astype(np.uint8),
                 'ego_state': ego_state,
             }
         elif self.agent_obs_type == 'simple_state':
@@ -599,9 +632,9 @@ class CarlaEnv(gym.Env):
             speed = np.sqrt(v.x ** 2 + v.y ** 2)
             simple_state = np.array([lateral_dis, -delta_yaw, speed, self.vehicle_front])
             obs = {
-                'camera': camera.astype(np.uint8),
-                'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
-                'birdeye': birdeye.astype(np.uint8),
+                # 'camera': camera.astype(np.uint8),
+                # 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
+                # 'birdeye': birdeye.astype(np.uint8),
                 'simple_state': simple_state.astype(np.float32),
             }
         elif self.agent_obs_type == 'plant':
@@ -612,9 +645,9 @@ class CarlaEnv(gym.Env):
             if self.safety_network_obs_type == 'plant':  # reuse the calculated encoded state
                 self.encoded_state = encoded_state
             obs = {
-                'camera': camera.astype(np.uint8),
-                'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
-                'birdeye': birdeye.astype(np.uint8),
+                # 'camera': camera.astype(np.uint8),
+                # 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
+                # 'birdeye': birdeye.astype(np.uint8),
                 'plant_encoded_state': encoded_state.astype(np.float32),
             }
         elif self.agent_obs_type == 'no_obs':
@@ -672,6 +705,10 @@ class CarlaEnv(gym.Env):
             self.camera_sensor.stop()
             self.camera_sensor.destroy()
             self.camera_sensor = None
+        if self.sem_sensor is not None:
+            self.sem_sensor.stop()
+            self.sem_sensor.destroy()
+            self.sem_sensor = None
 
     def _remove_ego(self):
         # TODO: ego can be reused.
