@@ -44,6 +44,41 @@ class AgentStateEncoder(object):
         self.world = CarlaDataProvider.get_world()
         self.logger.log('>> Loading the pretrained ego state encoder.')
 
+    def get_most_relevant_vehicle(self, attn_vector, topk=1):
+        # get ids of all vehicles in detection range
+        data_car_ids = [
+            float(x['id'])
+            for x in self.data if x['class'] == 'Car']
+
+        # get topk indices of attn_vector
+        if topk > len(attn_vector):
+            topk = len(attn_vector)
+        else:
+            topk = topk
+
+        attn_indices = np.argpartition(attn_vector, -topk)[-topk:]
+
+        # get carla vehicles ids of topk vehicles
+        keep_vehicle_ids = []
+        keep_vehicle_attn = []
+        for indice in attn_indices:
+            if indice < len(data_car_ids):
+                keep_vehicle_ids.append(data_car_ids[indice])
+                keep_vehicle_attn.append(attn_vector[indice])
+
+        # if we don't have any detected vehicle we should not have any ids here
+        # otherwise we want #topk vehicles
+        if len(self.data_car) > 0:
+            assert len(keep_vehicle_ids) == topk
+        else:
+            assert len(keep_vehicle_ids) == 0
+
+        # get topk (top 1) vehicles indices
+        most_relevant_vehicle_id = keep_vehicle_ids[0]
+        most_relevant_vehicle = CarlaDataProvider.get_actor_by_id(most_relevant_vehicle_id)
+
+        return most_relevant_vehicle
+
     def get_encoded_state(self, ego_vehicle, ego_nearby_vehicles, waypoints, traffic_light_hazard):
         if len(waypoints) > 1:
             target_point = waypoints[1]  # the preview waypoint
@@ -54,11 +89,14 @@ class AgentStateEncoder(object):
         x, y, _, tp, light = input_batch
         encoded_state, attn_map = self.net(x, y, target_point=tp, light_hazard=light)
 
+        # get the most relevant vehicle as the controlled background vehicle
+        attn_vector = get_attn_norm_vehicles(self.config['attention_score'], self.data_car, attn_map)
+        most_relevant_vehicle = self.get_most_relevant_vehicle(attn_vector, topk=1)
+
         if self.viz_attn_map:
-            attn_vector = get_attn_norm_vehicles(self.config['attention_score'], self.data_car, attn_map)
             keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.config['topk'], attn_vector)
             draw_attention_bb_in_carla(self.world, keep_vehicle_ids, keep_vehicle_attn)
-        return encoded_state
+        return encoded_state, most_relevant_vehicle
 
     def get_bev_boxes(self, ego_veh, ego_nearby_vehicles, waypoints):
         """

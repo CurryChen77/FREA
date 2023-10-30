@@ -70,18 +70,21 @@ class CarlaEnv(gym.Env):
         self.gps_route = None
         self.route = None
         self.ego_min_dis = None
-        self.ego_nearby_vehicles = None
         self.encoded_state = None
         self.search_radius = search_radius
         self.agent_obs_type = agent_obs_type
         self.agent_state_encoder = agent_state_encoder
 
+        # agent state encoder for safety network using PlanT encoding or agent using PlanT
         if agent_state_encoder:
             self.safety_network_obs_type = agent_state_encoder.obs_type
         elif safety_network_config:
             self.safety_network_obs_type = safety_network_config['obs_type']
         else:
             self.safety_network_obs_type = None
+
+        # for Cbv
+        self.cbv_selection = env_params['cbv_selection']
 
         # scenario manager
         use_scenic = True if env_params['scenario_category'] == 'scenic' else False
@@ -223,18 +226,34 @@ class CarlaEnv(gym.Env):
         # first update the info in the CarlaDataProvider
         CarlaDataProvider.on_carla_after_tick()
 
+        # route planner for ego vehicle
+        self.route_waypoints = self._parse_route(config)
+        self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.route_waypoints)
+        self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
+
+        # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
+        ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+        self.ego_min_dis = ego_min_dis
+        CarlaDataProvider.set_ego_min_dis(ego_min_dis)
+
+        # all the situations that need the encoded state or most relevant vehicle
+        if (self.safety_network_obs_type and self.safety_network_obs_type == 'plant') or (self.agent_obs_type == 'plant') or (self.cbv_selection == 'attention-based'):
+            encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
+                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
+            )
+            self.encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
+
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
-        self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
+        if self.cbv_selection == 'rule-based':
+            self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
+        elif self.cbv_selection == 'attention-based':
+            self.controlled_bv = most_relevant_vehicle
+        # get the nearby vehicles around the cbv
         if self.controlled_bv:
             self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
         else:
             self.controlled_bv_nearby_vehicles = None
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
-
-        # route planner for ego vehicle
-        self.route_waypoints = self._parse_route(config)
-        self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.route_waypoints)
-        self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
 
         # change view point
         #location = carla.Location(x=100, y=100, z=300)
@@ -413,8 +432,24 @@ class CarlaEnv(gym.Env):
 
         origin_info = self._get_info(training=True)  # for training
 
-        # update the sorted nearby vehicles
-        self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
+        # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
+        ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+        self.ego_min_dis = ego_min_dis
+        CarlaDataProvider.set_ego_min_dis(ego_min_dis)
+
+        # all the situations that need the encoded state or most relevant vehicle
+        if (self.safety_network_obs_type and self.safety_network_obs_type == 'plant') or (self.agent_obs_type == 'plant') or (self.cbv_selection == 'attention-based'):
+            encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
+                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
+            )
+            self.encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
+
+        # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
+        if self.cbv_selection == 'rule-based':
+            self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
+        elif self.cbv_selection == 'attention-based':
+            self.controlled_bv = most_relevant_vehicle
+        # get the nearby vehicles around the cbv
         if self.controlled_bv:
             self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
         else:
@@ -454,16 +489,7 @@ class CarlaEnv(gym.Env):
             })
 
             # if train the safety network, need to add encoded state
-            if self.safety_network_obs_type and self.safety_network_obs_type == 'plant' and self.agent_obs_type != 'plant':
-                # the first time to calculate the plant encoded state
-                encoded_state = self.agent_state_encoder.get_encoded_state(
-                    self.ego_vehicle, self.ego_nearby_vehicles, self.waypoints, self.red_light_state
-                )
-                encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
-                info['encoded_state'] = self.encoded_state if self.encoded_state is not None else encoded_state
-                self.encoded_state = encoded_state
-            elif self.safety_network_obs_type and self.safety_network_obs_type == 'plant' and self.agent_obs_type == 'plant':
-                # already got the plant encoded state in get_obs, so reuse it
+            if self.safety_network_obs_type and self.safety_network_obs_type == 'plant':
                 info['encoded_state'] = self.encoded_state
 
         return info
@@ -593,13 +619,6 @@ class CarlaEnv(gym.Env):
             masked_image_surface = rgb_to_display_surface(masked_image, self.display_size)
             self.display.blit(masked_image_surface, (self.display_size*2, self.env_id * self.display_size))
 
-
-        # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
-        ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
-        self.ego_min_dis = ego_min_dis
-        self.ego_nearby_vehicles = ego_nearby_vehicles
-        CarlaDataProvider.set_ego_min_dis(ego_min_dis)
-
         if self.agent_obs_type == 'ego_state':
             # Ego state
             ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
@@ -613,9 +632,6 @@ class CarlaEnv(gym.Env):
                 'compass': ego_compass
             }
             obs = {
-                # 'camera': camera.astype(np.uint8),
-                # 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
-                # 'birdeye': birdeye.astype(np.uint8),
                 'ego_state': ego_state,
             }
         elif self.agent_obs_type == 'simple_state':
@@ -632,23 +648,11 @@ class CarlaEnv(gym.Env):
             speed = np.sqrt(v.x ** 2 + v.y ** 2)
             simple_state = np.array([lateral_dis, -delta_yaw, speed, self.vehicle_front])
             obs = {
-                # 'camera': camera.astype(np.uint8),
-                # 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
-                # 'birdeye': birdeye.astype(np.uint8),
                 'simple_state': simple_state.astype(np.float32),
             }
         elif self.agent_obs_type == 'plant':
-            encoded_state = self.agent_state_encoder.get_encoded_state(
-                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
-            )
-            encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
-            if self.safety_network_obs_type == 'plant':  # reuse the calculated encoded state
-                self.encoded_state = encoded_state
             obs = {
-                # 'camera': camera.astype(np.uint8),
-                # 'lidar': None if self.disable_lidar else lidar.astype(np.uint8),
-                # 'birdeye': birdeye.astype(np.uint8),
-                'plant_encoded_state': encoded_state.astype(np.float32),
+                'plant_encoded_state': self.encoded_state.astype(np.float32),
             }
         elif self.agent_obs_type == 'no_obs':
             obs = None
