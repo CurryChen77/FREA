@@ -46,7 +46,6 @@ class CarlaDataProvider(object):
     _spawn_points = None
     _spawn_index = 0
     _ego_min_dis = 0
-    _fps = 10
     _ego_desired_speed = 8
     _blueprint_library = None
     _ego_vehicle_route = None
@@ -482,7 +481,6 @@ class CarlaDataProvider(object):
         """
             Set the route of the ego vehicle
         """
-        CarlaDataProvider._egos = []  # refresh the ego vehicle
         CarlaDataProvider._ego_vehicle_route = route
         CarlaDataProvider._egos.append(ego)
 
@@ -673,7 +671,6 @@ class CarlaDataProvider(object):
             CarlaDataProvider._world.tick()
         else:
             CarlaDataProvider._world.wait_for_tick()
-
         CarlaDataProvider._carla_actor_pool[actor.id] = actor
         CarlaDataProvider.register_actor(actor)
 
@@ -1056,6 +1053,19 @@ class CarlaDataProvider(object):
             Set the port to use for the traffic manager.
         """
         CarlaDataProvider._traffic_manager_port = tm_port
+
+    @staticmethod
+    def remove_all_information_map():
+        CarlaDataProvider._actor_velocity_map.clear()
+        CarlaDataProvider._actor_location_map.clear()
+        CarlaDataProvider._actor_transform_map.clear()
+        CarlaDataProvider._actor_velocity_map_after_tick.clear()
+        CarlaDataProvider._actor_location_map_after_tick.clear()
+        CarlaDataProvider._actor_transform_map_after_tick.clear()
+        CarlaDataProvider._ego_min_dis = 0
+        CarlaDataProvider._ego_desired_speed = 8
+        CarlaDataProvider._ego_vehicle_route = None
+        CarlaDataProvider._egos = []
 
     @staticmethod
     def cleanup():

@@ -72,4 +72,5 @@ class BasicScenario(object):
                 self.other_actors[s_i].set_autopilot(enabled=False, tm_port=CarlaDataProvider.get_traffic_manager_port())
             if CarlaDataProvider.actor_id_exists(self.other_actors[s_i].id):
                 CarlaDataProvider.remove_actor_by_id(self.other_actors[s_i].id)
+        CarlaDataProvider.remove_all_information_map()  # remove the information stored in the CarlaDataProvider
         self.other_actors = []

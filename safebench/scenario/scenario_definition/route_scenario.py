@@ -352,5 +352,6 @@ class RouteScenario():
                 self.background_actors[s_i].set_autopilot(enabled=False)
             if CarlaDataProvider.actor_id_exists(self.background_actors[s_i].id):
                 CarlaDataProvider.remove_actor_by_id(self.background_actors[s_i].id)
+        CarlaDataProvider.remove_all_information_map()  # remove the information stored in the CarlaDataProvider
         self.logger.log(f'>> cleaning {len(self.background_actors)} vehicles', color='yellow')
         self.background_actors = []

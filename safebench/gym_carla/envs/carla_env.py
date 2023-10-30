@@ -224,6 +224,7 @@ class CarlaEnv(gym.Env):
         self._attach_sensor()
 
         # first update the info in the CarlaDataProvider
+        CarlaDataProvider.on_carla_tick()
         CarlaDataProvider.on_carla_after_tick()
 
         # route planner for ego vehicle
@@ -710,13 +711,16 @@ class CarlaEnv(gym.Env):
             self.sem_sensor = None
 
     def _remove_ego(self):
-        # TODO: ego can be reused.
-        if self.ego_vehicle is not None:
-            self.ego_vehicle.destroy()
+        if self.ego_vehicle is not None and CarlaDataProvider.actor_id_exists(self.ego_vehicle.id):
+            CarlaDataProvider.remove_actor_by_id(self.ego_vehicle.id)
             self.ego_vehicle = None
+        # if self.ego_vehicle is not None:
+        #     self.ego_vehicle.destroy()
+        #     self.ego_vehicle = None
 
     def clean_up(self):
         self._remove_sensor()
         if self.scenario_category != 'scenic':
             self._remove_ego()
         self.scenario_manager.clean_up()
+
