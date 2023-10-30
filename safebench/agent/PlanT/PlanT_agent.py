@@ -28,10 +28,6 @@ from safebench.agent.expert.nav_planner import RoutePlanner_new as RoutePlanner
 
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-# def get_entry_point():
-#     return 'PlanTAgent'
-
-# SAVE_GIF = os.getenv("SAVE_GIF", 'False').lower() in ('true', '1', 't')
 
 
 class PlanTAgent(DataAgent):
@@ -99,8 +95,6 @@ class PlanTAgent(DataAgent):
         if self.exec_or_inter is not None:
             if self.exec_or_inter == 'exec':
                 LOAD_CKPT_PATH = self.config['exec_model_ckpt_load_path']
-            elif self.exec_or_inter == 'inter':
-                LOAD_CKPT_PATH = self.config['inter_model_ckpt_load_path']
         else:
             LOAD_CKPT_PATH = self.config['model_ckpt_load_path']
 
@@ -174,13 +168,8 @@ class PlanTAgent(DataAgent):
         tick_data = self.tick(input_data)
         # label_raw contains [vehicle information, route information]
         label_raw = super().get_bev_boxes(input_data=input_data, pos=tick_data['gps'])
-        
-        if self.exec_or_inter == 'inter':
-            keep_vehicle_ids = self._get_control(label_raw, tick_data)
-            # print(f'plant: {keep_vehicle_ids}')
-            
-            return keep_vehicle_ids
-        elif self.exec_or_inter == 'exec' or self.exec_or_inter is None:
+
+        if self.exec_or_inter == 'exec' or self.exec_or_inter is None:
             self.control = self._get_control(label_raw, tick_data)
         
         inital_frames_delay = 10
@@ -220,10 +209,6 @@ class PlanTAgent(DataAgent):
             attn_vector = get_attn_norm_vehicles(self.cfg['attention_score'], self.data_car, attn_map)
             keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.cfg['topk'], attn_vector)
             draw_attention_bb_in_carla(self._world, keep_vehicle_ids, keep_vehicle_attn)
-            # if self.step % 1 == 0:
-            #     get_masked_viz_3rd_person(self.save_path_org, self.save_path_mask, self.step, input_data)
-
-            # return keep_vehicle_ids, attn_indices
 
         return control
     

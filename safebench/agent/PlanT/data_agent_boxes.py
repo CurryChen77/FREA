@@ -23,32 +23,7 @@ from safebench.agent.expert.autopilot import AutoPilot
 import carla
 
 from safebench.agent.agent_utils.coordinate_utils import normalize_angle
-
-# SHUFFLE_WEATHER = int(os.environ.get('SHUFFLE_WEATHER'))
-
-# WEATHERS = {
-# 		'Clear': carla.WeatherParameters.ClearNoon,
-# 		'Cloudy': carla.WeatherParameters.CloudySunset,
-# 		'Wet': carla.WeatherParameters.WetSunset,
-# 		'MidRain': carla.WeatherParameters.MidRainSunset,
-# 		'WetCloudy': carla.WeatherParameters.WetCloudySunset,
-# 		'HardRain': carla.WeatherParameters.HardRainNoon,
-# 		'SoftRain': carla.WeatherParameters.SoftRainSunset,
-# }
-
-# azimuths = [45.0 * i for i in range(8)]
-
-# daytimes = {
-# 	'Night': -80.0,
-# 	'Twilight': 0.0,
-# 	'Dawn': 5.0,
-# 	'Sunset': 15.0,
-# 	'Morning': 35.0,
-# 	'Noon': 75.0,
-# }
-
-# WEATHERS_IDS = list(WEATHERS)
-
+from safebench.agent.agent_utils.visualization import draw_route
 
 def get_entry_point():
     return 'DataAgent'
@@ -68,7 +43,6 @@ class DataAgent(AutoPilot):
         # distance is from the center of the ego-vehicle and measured in 3D space
         self.max_actor_distance = self.detection_radius  # copy from expert
         self.max_light_distance = self.light_radius  # copy from expert
-        self.max_route_distance = 30.0
         self.max_map_element_distance = 30.0
         
         if self.save_path is not None:
@@ -383,8 +357,7 @@ class DataAgent(AutoPilot):
             relative_yaw = normalize_angle(angles[i] - ego_yaw)
 
             # visualize subsampled route
-            # self._world.debug.draw_box(box=bounding_box, rotation=bounding_box.rotation, thickness=0.1,
-            #                             color=carla.Color(0, 255, 255, 255), life_time=(10.0/self.frame_rate_sim))
+            draw_route(self._world, bounding_box=bounding_box)
 
             result = {
                 "class": "Route",
@@ -494,24 +467,6 @@ class DataAgent(AutoPilot):
                       (lidar_vehicle[1] < y) & (lidar_vehicle[1] > -y) & 
                       (lidar_vehicle[2] < z) & (lidar_vehicle[2] > -z)).sum()
         return num_points
-
-    def get_relative_transform(self, ego_matrix, vehicle_matrix):
-        """
-        return the relative transform from ego_pose to vehicle pose
-        """
-        relative_pos = vehicle_matrix[:3, 3] - ego_matrix[:3, 3]
-        rot = ego_matrix[:3, :3].T
-        relative_pos = rot @ relative_pos
-        
-        # transform to right-handed system
-        relative_pos[1] = - relative_pos[1]
-
-        # transform relative pos to virtual lidar system
-        rot = np.eye(3)
-        trans = - np.array([1.3, 0.0, 2.5])
-        relative_pos = rot @ relative_pos + trans
-
-        return relative_pos
 
     def get_lidar_to_vehicle_transform(self):
         # yaw = -90

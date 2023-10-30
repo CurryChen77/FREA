@@ -8,21 +8,18 @@
 @source  ：This file is modified from <https://github.com/autonomousvision/plant/tree/1bfb695910d816e70f53521aa263648072edea8e>
 """
 
-import os
+
 import json
-import gzip
-import time
-import cv2
+
 import math
-import datetime
+
 import statistics
 import numpy as np
 import carla
-from PIL import Image
-from pathlib import Path
+from rdp import rdp
 from collections import deque, defaultdict
 
-
+from safebench.agent.agent_utils.visualization import draw_route
 from safebench.agent.expert.nav_planner import PIDController, interpolate_trajectory
 from safebench.agent.expert.nav_planner import RoutePlanner_new as RoutePlanner
 from safebench.agent.agent_utils.coordinate_utils import inverse_conversion_2d
@@ -32,6 +29,8 @@ from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataPro
 
 class AutoPilot(object):
     def __init__(self, config=None, logger=None):
+        self.rdp_epsilon = 0.5  # epsilon for route shortening
+        self.max_route_distance = 30.0
         self.config = config
         self.logger = logger
         self.step = -1
@@ -201,6 +200,7 @@ class AutoPilot(object):
         waypoint_route = self._waypoint_planner.run_step(pos)
         self._waypoint_planner.save()
         self.waypoint_route = np.array([[node[0][0], node[0][1]] for node in waypoint_route])
+        draw_route(self._world, vehicle=self._vehicle, waypoint_route=self.waypoint_route)  # draw the waypoint route
         _, near_command = waypoint_route[1] if len(waypoint_route) > 1 else waypoint_route[0]  # needs HD map
 
         self.remaining_route = waypoint_route
@@ -266,7 +266,25 @@ class AutoPilot(object):
             self.save(target_point, next_target_point, steer, throttle, brake, target_speed, tick_data)
 
         return control
-    
+
+    def get_relative_transform(self, ego_matrix, vehicle_matrix):
+        """
+        return the relative transform from ego_pose to vehicle pose
+        """
+        relative_pos = vehicle_matrix[:3, 3] - ego_matrix[:3, 3]
+        rot = ego_matrix[:3, :3].T
+        relative_pos = rot @ relative_pos
+
+        # transform to right-handed system
+        relative_pos[1] = - relative_pos[1]
+
+        # transform relative pos to virtual lidar system
+        rot = np.eye(3)
+        trans = - np.array([1.3, 0.0, 2.5])
+        relative_pos = rot @ relative_pos + trans
+
+        return relative_pos
+
     def _get_position(self, gps):
         gps = (gps - self._command_planner.mean) * self._command_planner.scale
         return gps

@@ -33,6 +33,7 @@ from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenari
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.tools.route_manipulation import interpolate_trajectory
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
+from safebench.agent.agent_utils.visualization import draw_route
 
 
 class CarlaEnv(gym.Env):
@@ -325,11 +326,9 @@ class CarlaEnv(gym.Env):
 
         # if the ego agent is learnable then, draw the target waypoints
         if self.ego_agent_learnable:
-            for wpt in self.waypoints:
-                begin = carla.Location(x=wpt[0], y=wpt[1], z=0.3)
-                angle = math.radians(wpt[2])
-                end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
-                self.world.debug.draw_arrow(begin, end, arrow_size=0.1, life_time=0.11)
+            waypoint_route = np.array([[node[0], node[1]] for node in self.waypoints])
+            draw_route(self.world, self.ego_vehicle, waypoint_route)
+
 
     def step_before_tick(self, ego_action, scenario_action):
         if self.world:
