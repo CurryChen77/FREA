@@ -52,6 +52,7 @@ class CarlaRunner:
         self.search_radius = scenario_config['search_radius']                            # default 20 meters
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.scenario_category = scenario_config['scenario_category']                    # default planning
+        self.cbv_selection = scenario_config['cbv_selection']
 
         # continue training flag
         self.continue_agent_training = scenario_config['continue_agent_training']        # default False
@@ -68,7 +69,7 @@ class CarlaRunner:
             'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
             'agent_obs_type': agent_config['obs_type'],                     # default 0 (only 4 dimensions states )
             'scenario_category': self.scenario_category,
-            'cbv_selection': scenario_config['cbv_selection'],              # the method using for selection controlled bv
+            'cbv_selection': self.cbv_selection,              # the method using for selection controlled bv
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'warm_up_steps': 9,                                             # number of ticks after spawning the vehicles
             'disable_lidar': True,                                          # show bird-eye view lidar or not
@@ -86,7 +87,6 @@ class CarlaRunner:
             'lidar_bin': 0.125,                                             # bin size of lidar sensor (meter)
             'out_lane_thres': 4,                                            # threshold for out of lane (meter)
             'desired_speed': 8,                                             # desired speed (m/s)
-            'image_sz': 1024,                                               # TODO: move to config of od scenario
         }
 
         # pass config from scenario to agent
@@ -147,7 +147,7 @@ class CarlaRunner:
 
         # define the ego state encoder if needed
         self.agent_state_encoder = None
-        if (self.safety_network_config and self.safety_network_config['obs_type'] == 'plant') or self.agent_config['obs_type'] == 'plant':
+        if (self.safety_network_config and self.safety_network_config['obs_type'] == 'plant') or (self.agent_config['obs_type'] == 'plant') or (self.cbv_selection == 'attention-based'):
             # initial the agent state encoder
             root_path = agent_config['ROOT_DIR']
             state_encoder_path = osp.join(root_path, 'safebench/agent/config/state_encoder.yaml')
@@ -158,9 +158,10 @@ class CarlaRunner:
         self.logger.log('>> Mode: ' + self.mode, color="yellow")
         self.logger.log('>> Agent Policy: ' + agent_config['policy_type'], color="yellow")
         self.logger.log('>> Scenario Policy: ' + scenario_config['policy_type'], color="yellow")
-        self.logger.log('>> Safety network Policy: ' + safety_network_config['type'], color="yellow") if self.safety_network_config else None
-        self.logger.log('>> Using state encoder: ' + state_encoder_config['obs_type'], color="yellow") if self.agent_state_encoder else None
-
+        if self.safety_network_config:
+            self.logger.log('>> Safety network Policy: ' + safety_network_config['type'], color="yellow")
+        if self.agent_state_encoder:
+            self.logger.log('>> Using state encoder: ' + state_encoder_config['obs_type'], color="yellow")
 
         if self.scenario_config['auto_ego']:
             self.logger.log('>> Using auto-polit for ego vehicle, action of policy will be ignored', 'yellow')

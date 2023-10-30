@@ -259,7 +259,6 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, search_
             display=display, 
             world=world,
             search_radius=search_radius,
-            agent_obs_type=env_params['agent_obs_type'],
             safety_network_config=safety_network_config,
             agent_state_encoder=agent_state_encoder,
             logger=logger,

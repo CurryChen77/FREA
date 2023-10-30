@@ -40,7 +40,7 @@ class CarlaEnv(gym.Env):
         An OpenAI-gym style interface for CARLA simulator. 
     """
     def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0,
-                 agent_obs_type=None, safety_network_config=None, agent_state_encoder=None, logger=None):
+                safety_network_config=None, agent_state_encoder=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
         self.config = None
@@ -72,7 +72,7 @@ class CarlaEnv(gym.Env):
         self.ego_min_dis = None
         self.encoded_state = None
         self.search_radius = search_radius
-        self.agent_obs_type = agent_obs_type
+        self.agent_obs_type = env_params['agent_obs_type']
         self.agent_state_encoder = agent_state_encoder
 
         # agent state encoder for safety network using PlanT encoding or agent using PlanT

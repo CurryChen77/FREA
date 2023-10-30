@@ -28,9 +28,9 @@ if __name__ == '__main__':
     parser.add_argument('--max_episode_step', type=int, default=300)
     parser.add_argument('--search_radius', type=int, default=60, help='the radius for agent to search other agents')
     parser.add_argument('--traffic_intensity', type=int, default=0.8, help='the intensity of initial traffic flow')
-    parser.add_argument('--cbv_selection', type=str, default='attention-based', help='rule-based or attention-based')
+    parser.add_argument('--cbv_selection', type=str, default='attention-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
-    parser.add_argument('--safety_eval', type=bool, default=True, help='whether to activate safety evaluation')
+    parser.add_argument('--safety_eval', action='store_true', help='whether to activate safety evaluation')
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_safety_network'])
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='dummy.yaml')
     parser.add_argument('--scenario_cfg', nargs='*', type=str, default='standard.yaml')
@@ -69,7 +69,9 @@ if __name__ == '__main__':
             scenario_config = load_config(scenario_config_path)
 
             # if "train safety network mode" then must start safety eval
+            print("args safety_eval", args.safety_eval)
             safety_eval = True if args.mode == 'train_safety_network' else args.safety_eval
+            print("safety_eval", safety_eval)
             if safety_eval:
                 # load safety network config
                 safety_network_config_path = osp.join(args.ROOT_DIR, 'safebench/safety_network/config', args.safety_network_cfg)

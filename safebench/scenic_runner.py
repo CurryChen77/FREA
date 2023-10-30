@@ -78,7 +78,6 @@ class ScenicRunner:
             'lidar_bin': 0.125,                                        # bin size of lidar sensor (meter)
             'out_lane_thres': 4,                                       # threshold for out of lane (meter)
             'desired_speed': 8,                                        # desired speed (m/s)
-            'image_sz': 1024,                                          # TODO: move to config of od scenario
         }
 
         # pass config from scenario to agent
