@@ -9,6 +9,7 @@
 """
 
 import gym
+import carla
 import numpy as np
 import pygame
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -99,7 +100,14 @@ class VectorWrapper():
                 # TODO: pre-process scenario action
                 self.env_list[e_i].step_before_tick(processed_action, scenario_actions[action_idx])
                 action_idx += 1
-        
+
+        # set spectator
+        transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
+        spectator = self.world.get_spectator()
+        spectator.set_transform(carla.Transform(
+            transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+        ))
+
         # tick all scenarios
         for _ in range(self.frame_skip):
             self.world.tick()
@@ -144,12 +152,6 @@ class VectorWrapper():
         if self.render:
             pygame.display.flip()
         return self.obs_postprocess(obs_list), rewards, dones, infos
-
-    # def sample_action_space(self):
-    #     action = []
-    #     for action_space in self.action_space_list:
-    #         action.append(action_space.sample())
-    #     return np.array(action)
 
     def all_scenario_done(self):
         if np.sum(self.finished_env) == self.num_scenario:
@@ -197,26 +199,6 @@ class ObservationWrapper(gym.Wrapper):
         reward, info = self._preprocess_reward(reward, info)
         obs = self._preprocess_obs(obs)
         return obs, reward, done, info
-
-    # def _build_obs_space(self):
-    #     if self.obs_type == 0:
-    #         obs_dim = 4
-    #         # assume the obs range from -1 to 1
-    #         obs_lim = np.ones((obs_dim), dtype=np.float32)
-    #         self.observation_space = gym.spaces.Box(-obs_lim, obs_lim)
-    #     elif self.obs_type == 1:
-    #         obs_dim = 11
-    #         # assume the obs range from -1 to 1
-    #         obs_lim = np.ones((obs_dim), dtype=np.float32)
-    #         self.observation_space = gym.spaces.Box(-obs_lim, obs_lim)
-    #     elif self.obs_type == 2 or self.obs_type == 3:
-    #         # 4 state space + bev
-    #         obs_dim = 128  # TODO: should be the same as display_size
-    #         # assume the obs range from -1 to 1
-    #         obs_lim = np.ones((obs_dim), dtype=np.float32)
-    #         self.observation_space = gym.spaces.Box(-obs_lim, obs_lim)
-    #     else:
-    #         raise NotImplementedError
 
     def _preprocess_obs(self, obs):
         # only use the 4-dimensional state space

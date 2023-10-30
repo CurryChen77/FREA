@@ -482,6 +482,7 @@ class CarlaDataProvider(object):
         """
             Set the route of the ego vehicle
         """
+        CarlaDataProvider._egos = []  # refresh the ego vehicle
         CarlaDataProvider._ego_vehicle_route = route
         CarlaDataProvider._egos.append(ego)
 
@@ -491,6 +492,13 @@ class CarlaDataProvider(object):
             Set the route of the ego vehicle
         """
         return CarlaDataProvider._egos
+
+    @staticmethod
+    def get_first_ego_transform():
+        """
+            Set the first ego location
+        """
+        return CarlaDataProvider.get_transform(CarlaDataProvider._egos[0])
 
     @staticmethod
     def get_ego_vehicle_route():

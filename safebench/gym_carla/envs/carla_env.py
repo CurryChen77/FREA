@@ -254,11 +254,6 @@ class CarlaEnv(gym.Env):
         else:
             self.controlled_bv_nearby_vehicles = None
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
-
-        # change view point
-        #location = carla.Location(x=100, y=100, z=300)
-        #spectator = self.world.get_spectator()
-        #spectator.set_transform(carla.Transform(location, carla.Rotation(yaw=270.0, pitch=-90.0)))
     
         # Get actors polygon list (for visualization)
         self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]

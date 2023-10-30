@@ -69,9 +69,7 @@ if __name__ == '__main__':
             scenario_config = load_config(scenario_config_path)
 
             # if "train safety network mode" then must start safety eval
-            print("args safety_eval", args.safety_eval)
             safety_eval = True if args.mode == 'train_safety_network' else args.safety_eval
-            print("safety_eval", safety_eval)
             if safety_eval:
                 # load safety network config
                 safety_network_config_path = osp.join(args.ROOT_DIR, 'safebench/safety_network/config', args.safety_network_cfg)
