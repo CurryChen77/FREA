@@ -117,19 +117,11 @@ class CarlaEnv(gym.Env):
         else:
             raise ValueError(f'Unknown scenario category: {self.scenario_category}')
 
-        # define obs space
-        # self.observation_space = spaces.Dict(observation_space_dict)
-
         # action and observation spaces
         self.discrete = env_params['discrete']
         self.discrete_act = [env_params['discrete_acc'], env_params['discrete_steer']]  # acc, steer
         self.n_acc = len(self.discrete_act[0])
         self.n_steer = len(self.discrete_act[1])
-        if self.discrete:
-            self.action_space = spaces.Discrete(self.n_acc * self.n_steer)
-        else:
-            # assume the output of NN is from -1 to 1
-            self.action_space = spaces.Box(np.array([-1, -1], dtype=np.float32), np.array([1, 1], dtype=np.float32), dtype=np.float32)  # acc, steer
 
     def _create_sensors(self):
         # collision sensor
@@ -164,7 +156,6 @@ class CarlaEnv(gym.Env):
         self.sem_bp.set_attribute('fov', '110')
         # Set the time in seconds between sensor captures
         self.sem_bp.set_attribute('sensor_tick', '0.02')
-
 
     def _create_scenario(self, config, env_id):
         self.logger.log(f">> Loading scenario data id: {config.data_id}")
@@ -714,9 +705,6 @@ class CarlaEnv(gym.Env):
         if self.ego_vehicle is not None and CarlaDataProvider.actor_id_exists(self.ego_vehicle.id):
             CarlaDataProvider.remove_actor_by_id(self.ego_vehicle.id)
             self.ego_vehicle = None
-        # if self.ego_vehicle is not None:
-        #     self.ego_vehicle.destroy()
-        #     self.ego_vehicle = None
 
     def clean_up(self):
         self._remove_sensor()

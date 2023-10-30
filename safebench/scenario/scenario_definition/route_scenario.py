@@ -58,23 +58,13 @@ class RouteScenario():
 
         # create the route and ego's position (the start point of the route)
         self.route, self.ego_vehicle = self._update_route_and_ego(timeout=self.timeout)
-        # self.route, self.ego_vehicle, scenario_definitions = self._update_route_and_ego(timeout=self.timeout)
         self.background_actors = []
         self.controlled_bv = None
         self.controlled_bv_nearby_vehicles = None
-        # scenario_definitions contains the possible scenarios along the pre-defined route
-        # self.list_scenarios = self._build_scenario_instances(scenario_definitions)  # remove the scenario_definitions
         self.criteria = self._create_criteria()
         self.scenario_instance = AdvBehaviorSingle(self.world, self.ego_vehicle, env_params)  # create the scenario instance
 
     def _update_route_and_ego(self, timeout=None):
-        # # transform the scenario file into a dictionary
-        # if self.config.scenario_file is not None:
-        #     world_annotations = RouteParser.parse_annotations_file(self.config.scenario_file)
-        # else:
-        #     world_annotations = self.config.scenario_config
-
-        # prepare route's trajectory (interpolate and add the GPS route)
         ego_vehicle = None
         route = None
         scenario_id = self.config.scenario_id
@@ -131,63 +121,6 @@ class RouteScenario():
                 print("WARNING: Failed to spawn the ego vehicle, try to modify the z position of the spawn point")
                 elevate_transform.location.z += 0.1
         return ego_vehicle
-
-    # def _build_scenario_instances(self, scenario_definitions):
-    #     """
-    #         Based on the parsed route and possible scenarios, build all the scenario classes.
-    #     """
-    #     scenario_instance_list = []
-    #     for _, definition in enumerate(scenario_definitions):
-    #         # get the class of the scenario
-    #         scenario_path = [
-    #             'safebench.scenario.scenario_definition',
-    #             self.config.scenario_folder,
-    #             definition['name'],
-    #         ]
-    #         scenario_class = class_from_path('.'.join(scenario_path))
-    #
-    #         # create the other actors that are going to appear
-    #         if definition['other_actors'] is not None:
-    #             list_of_actor_conf_instances = self._get_actors_instances(definition['other_actors'])
-    #         else:
-    #             list_of_actor_conf_instances = []
-    #
-    #         # create an actor configuration for the ego-vehicle trigger position
-    #         egoactor_trigger_position = convert_json_to_transform(definition['trigger_position'])
-    #         route_config = RouteScenarioConfig()
-    #         route_config.other_actors = list_of_actor_conf_instances
-    #         route_config.trigger_points = [egoactor_trigger_position]
-    #         route_config.parameters = self.config.parameters
-    #         route_config.num_scenario = self.config.num_scenario
-    #         if self.config.weather is not None:
-    #             route_config.weather = self.config.weather
-    #
-    #         try:
-    #             scenario_instance = scenario_class(self.world, self.ego_vehicle, route_config, timeout=self.timeout)
-    #         except Exception as e:
-    #             traceback.print_exc()
-    #             print("Skipping scenario '{}' due to setup error: {}".format(definition['name'], e))
-    #             continue
-    #
-    #         scenario_instance_list.append(scenario_instance)
-    #     return scenario_instance_list
-
-    # def _get_actors_instances(self, list_of_antagonist_actors):
-    #     def get_actors_from_list(list_of_actor_def):
-    #         # receives a list of actor definitions and creates an actual list of ActorConfigurationObjects
-    #         sublist_of_actors = []
-    #         for actor_def in list_of_actor_def:
-    #             sublist_of_actors.append(convert_json_to_actor(actor_def))
-    #         return sublist_of_actors
-    #
-    #     list_of_actors = []
-    #     if 'front' in list_of_antagonist_actors:
-    #         list_of_actors += get_actors_from_list(list_of_antagonist_actors['front'])
-    #     if 'left' in list_of_antagonist_actors:
-    #         list_of_actors += get_actors_from_list(list_of_antagonist_actors['left'])
-    #     if 'right' in list_of_antagonist_actors:
-    #         list_of_actors += get_actors_from_list(list_of_antagonist_actors['right'])
-    #     return list_of_actors
 
     def get_location_nearby_spawn_points(self):
         start_location = self.route[0][0].location
@@ -271,18 +204,6 @@ class RouteScenario():
             stop = True
             self.logger.log('>> Scenario stops due to timeout', color='yellow')
 
-        # for scenario in self.list_scenarios:
-        #     # only check when evaluating
-        #     if self.config.scenario_id != 0:
-        #         if running_status['driven_distance'] >= scenario.ego_max_driven_distance:
-        #             stop = True
-        #             self.logger.log('>> Scenario stops due to max driven distance', color='yellow')
-        #             break
-        #     if running_status['current_game_time'] >= scenario.timeout:
-        #         stop = True
-        #         self.logger.log('>> Scenario stops due to timeout', color='yellow')
-        #         break
-
         return running_status, stop, collision
 
     def _create_criteria(self):
@@ -325,10 +246,6 @@ class RouteScenario():
             while len(actor_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
                 actor_info.append([0] * len(controlled_bv_state))
 
-                # for s_i in self.list_scenarios:
-                #     for a_i in s_i.other_actors:  # The order of the other actors follows the order in the .json file
-                #         actor_state = self._get_actor_state(a_i)
-                #         actor_info.append(actor_state)  # add the info of the other actor to the list
             actor_info = np.array(actor_info)
         else:
             actor_info = np.zeros((desired_nearby_vehicle+1, 9))  # need to have the same size like normal actor info
@@ -341,9 +258,6 @@ class RouteScenario():
         for _, criterion in self.criteria.items():
             criterion.terminate()
 
-        # # each scenario remove its own actors
-        # for scenario in self.list_scenarios:
-        #     scenario.clean_up()
         self.scenario_instance.clean_up()
 
         # remove background vehicles

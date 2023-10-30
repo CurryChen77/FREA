@@ -31,7 +31,6 @@ class VectorWrapper():
         self.agent_state_encoder = agent_state_encoder
 
         self.env_list = []
-        self.action_space_list = []
         for i in range(self.num_scenario):
             # each small scenario corresponds to a carla_env create the ObservationWrapper()
             env = carla_env(
@@ -40,7 +39,6 @@ class VectorWrapper():
                 agent_state_encoder=agent_state_encoder, logger=logger
             )
             self.env_list.append(env)
-            self.action_space_list.append(env.action_space)
 
         # flags for env list 
         self.finished_env = [False] * self.num_scenario
@@ -179,12 +177,6 @@ class ObservationWrapper(gym.Wrapper):
         self.is_running = False
         self.agent_obs_type = agent_obs_type
         self.safety_network_obs_type = safety_network_obs_type
-        # self._build_obs_space()
-
-        # build action space, assume the obs range from -1 to 1
-        act_dim = 2
-        act_lim = np.ones((act_dim), dtype=np.float32)
-        self.action_space = gym.spaces.Box(-act_lim, act_lim, dtype=np.float32)
 
     def reset(self, **kwargs):
         obs, info = self._env.reset(**kwargs)
