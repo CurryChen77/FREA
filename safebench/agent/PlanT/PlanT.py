@@ -23,6 +23,7 @@ class PlanT(BasePolicy):
         self.config = config
         self.logger = logger
         self.model_path = config['model_path']
+        self.viz_route = config['viz_route']
         self.mode = 'train'
         self.continue_episode = 0
         self.route = None
@@ -50,7 +51,7 @@ class PlanT(BasePolicy):
         actions = []
         for i, e_i in enumerate(infos):
             # select the controller that matches the scenario_id
-            control = self.controller_list[e_i['scenario_id']].run_step(obs[i])
+            control = self.controller_list[e_i['scenario_id']].run_step(obs[i], self.viz_route)
             throttle = control.throttle
             steer = control.steer
             brake = control.brake

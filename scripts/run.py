@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--traffic_intensity', type=int, default=0.8, help='the intensity of initial traffic flow')
     parser.add_argument('--cbv_selection', type=str, default='attention-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
+    parser.add_argument('--viz_route', action='store_true')
     parser.add_argument('--safety_eval', action='store_true', help='whether to activate safety evaluation')
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_safety_network'])
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='dummy.yaml')

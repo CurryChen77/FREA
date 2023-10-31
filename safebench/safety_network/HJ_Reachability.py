@@ -121,7 +121,7 @@ class HJR:
                 bn_s_ = CUDA(torch.FloatTensor(batch['n_state']))  # using the next state for agent
 
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
-            # the 5th column of the state is the min dis
+            # the ego min distance from the infos
             bn_min_dis = CUDA(torch.FloatTensor(batch['ego_min_dis'])).unsqueeze(-1)
 
             # h = threshold - min_dis, if h > 0 unsafe, else safe

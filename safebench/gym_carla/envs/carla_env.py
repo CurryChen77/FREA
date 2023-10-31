@@ -93,6 +93,7 @@ class CarlaEnv(gym.Env):
 
         # for birdeye view and front view visualization
         self.ego_agent_learnable = env_params['ego_agent_learnable']
+        self.viz_route = env_params['viz_route']
         self.display_size = env_params['display_size']
         self.obs_range = env_params['obs_range']
         self.d_behind = env_params['d_behind']
@@ -321,7 +322,7 @@ class CarlaEnv(gym.Env):
             self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.2, color=carla.Color(0,0,255,0), life_time=0.11)
 
         # if the ego agent is learnable then, draw the target waypoints
-        if self.ego_agent_learnable:
+        if self.ego_agent_learnable and self.viz_route:
             # wpt = self.waypoints[0]
             # begin = carla.Location(x=wpt[0], y=wpt[1], z=0.3)
             # angle = math.radians(wpt[2])

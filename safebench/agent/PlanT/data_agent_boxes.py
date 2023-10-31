@@ -216,7 +216,7 @@ class DataAgent(AutoPilot):
         transform.location += shift * transform.get_forward_vector()
         return transform
 
-    def get_bev_boxes(self, input_data=None, lidar=None, pos=None):
+    def get_bev_boxes(self, input_data=None, lidar=None, pos=None, viz_route=None):
 
         # -----------------------------------------------------------
         # Ego vehicle
@@ -356,7 +356,8 @@ class DataAgent(AutoPilot):
             relative_yaw = normalize_angle(angles[i] - ego_yaw)
 
             # visualize subsampled route
-            draw_route(self._world, bounding_box=bounding_box)
+            if viz_route:
+                draw_route(self._world, bounding_box=bounding_box)
 
             result = {
                 "class": "Route",

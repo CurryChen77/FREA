@@ -12,6 +12,7 @@ import numpy as np
 
 from safebench.agent.base_policy import BasePolicy
 from agents.navigation.behavior_agent_overtake import BehaviorAgentOvertake
+from safebench.agent.agent_utils.visualization import draw_route
 
 
 class CarlaBehaviorAgent(BasePolicy):
@@ -24,6 +25,7 @@ class CarlaBehaviorAgent(BasePolicy):
         self.num_scenario = config['num_scenario']
         self.ego_action_dim = config['ego_action_dim']
         self.model_path = config['model_path']
+        self.viz_route = config['viz_route']
         self.mode = 'train'
         self.continue_episode = 0
         self.route = None
@@ -50,15 +52,22 @@ class CarlaBehaviorAgent(BasePolicy):
     def get_action(self, obs, infos, deterministic=False):
         actions = []
         for e_i in infos:
+            controller = self.controller_list[e_i['scenario_id']]
+
+            if self.viz_route:
+                route = controller._local_planner._waypoints_queue
+                waypoint_route = np.array([[node[0].transform.location.x, node[0].transform.location.y] for node in route])
+                draw_route(controller._world, controller._vehicle, waypoint_route)
+
             # TODO the waypoint list in safebench and carla's behavior agent is different
             # for the behavior agent, the goal may be reached (no more waypoints to chase), but safebench still got waypoints
-            if self.controller_list[e_i['scenario_id']].done():
+            if controller.done():
                 throttle = 0
                 steer = 0
                 brake = 0.5
             else:
                 # select the controller that matches the scenario_id
-                control = self.controller_list[e_i['scenario_id']].run_step(debug=True)
+                control = controller.run_step(debug=False)
                 throttle = control.throttle
                 steer = control.steer
                 brake = control.brake

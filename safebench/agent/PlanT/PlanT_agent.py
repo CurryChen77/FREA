@@ -74,8 +74,6 @@ class PlanTAgent(DataAgent):
         self.timings_run_step = []
         self.timings_forward_model = []
 
-        self.keep_ids = None
-
         self.control = carla.VehicleControl()
         self.control.steer = 0.0
         self.control.throttle = 0.0
@@ -157,9 +155,8 @@ class PlanTAgent(DataAgent):
         return result
 
     @torch.no_grad()
-    def run_step(self, input_data,  keep_ids=None):
+    def run_step(self, input_data, viz_route=None):
         # The input data contains [speed, imu(yaw angle), gps(x, y location)] sometimes include 'rgb_back', 'sem_back'
-        self.keep_ids = keep_ids
 
         self.step += 1
 
@@ -167,7 +164,7 @@ class PlanTAgent(DataAgent):
         _ = super()._get_brake(stop_sign_hazard=0, vehicle_hazard=0, walker_hazard=0)
         tick_data = self.tick(input_data)
         # label_raw contains [vehicle information, route information]
-        label_raw = super().get_bev_boxes(input_data=input_data, pos=tick_data['gps'])
+        label_raw = super().get_bev_boxes(input_data=input_data, pos=tick_data['gps'], viz_route=viz_route)
 
         if self.exec_or_inter == 'exec' or self.exec_or_inter is None:
             self.control = self._get_control(label_raw, tick_data)
@@ -267,12 +264,6 @@ class PlanTAgent(DataAgent):
                 data_route[i][3] = 0.
                 data_route[i][-2] = 0.
                 data_route[i][-1] = 0.
-
-        # filter vehicle and route by attention scores
-        # only keep entries which are in self.keep_ids
-        if self.keep_ids is not None:
-            data_car = [x for i, x in enumerate(data_car) if i in self.keep_ids]
-            assert len(data_car) <= len(self.keep_ids), f'{len(data_car)} <= {len(self.keep_ids)}'
 
         features = data_car + data_route
 

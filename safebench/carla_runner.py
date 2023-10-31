@@ -66,6 +66,7 @@ class CarlaRunner:
 
         self.env_params = {
             'auto_ego': scenario_config['auto_ego'],
+            'viz_route': agent_config['viz_route'],                         # whether to visualize the route
             'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
             'agent_obs_type': agent_config['obs_type'],                     # default 0 (only 4 dimensions states )
             'scenario_category': self.scenario_category,
@@ -148,6 +149,7 @@ class CarlaRunner:
 
         # define the ego state encoder if needed
         self.agent_state_encoder = None
+        state_encoder_config = None
         if (self.safety_network_config and self.safety_network_config['obs_type'] == 'plant') or (self.agent_config['obs_type'] == 'plant') or (self.cbv_selection == 'attention-based'):
             # initial the agent state encoder
             root_path = agent_config['ROOT_DIR']

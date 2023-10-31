@@ -76,7 +76,7 @@ class RouteReplayBuffer:
 
             # store additional information in given dict (e.g., cost and actor_info)
             for key in additional_dict[s_i].keys():
-                if key == 'scenario_id':
+                if key == 'route_waypoints' or key == 'gps_route' or key == 'route':
                     continue
                 if key not in self.buffer_additional_dict[s_i].keys():
                     self.buffer_additional_dict[s_i][key] = []

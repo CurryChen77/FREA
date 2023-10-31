@@ -185,12 +185,12 @@ class AutoPilot(object):
 
         return result
 
-    def run_step(self, input_data=None):
+    def run_step(self, input_data=None, viz_route=None):
         self.step += 1
-        control = self._get_control(input_data)
+        control = self._get_control(input_data=input_data, viz_route=viz_route)
         return control
 
-    def _get_control(self, input_data=None, steer=None, throttle=None,
+    def _get_control(self, input_data=None, viz_route=None, steer=None, throttle=None,
                      vehicle_hazard=None, light_hazard=None, walker_hazard=None, stop_sign_hazard=None):
 
         tick_data = self.tick_autopilot(input_data)
@@ -201,8 +201,9 @@ class AutoPilot(object):
         self._waypoint_planner.save()
 
         # draw the waypoint route
-        waypoint_route_draw = np.array([[node[0][0], node[0][1]] for node in waypoint_route])
-        draw_route(self._world, vehicle=self._vehicle, waypoint_route=waypoint_route_draw)
+        if viz_route:
+            waypoint_route_draw = np.array([[node[0][0], node[0][1]] for node in waypoint_route])
+            draw_route(self._world, vehicle=self._vehicle, waypoint_route=waypoint_route_draw)
 
         _, near_command = waypoint_route[1] if len(waypoint_route) > 1 else waypoint_route[0]  # needs HD map
 
