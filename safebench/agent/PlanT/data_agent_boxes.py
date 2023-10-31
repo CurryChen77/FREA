@@ -341,7 +341,6 @@ class DataAgent(AutoPilot):
             st_relative_pos = self.get_relative_transform(ego_matrix, st_route_matrix)
             st_distance = np.linalg.norm(st_relative_pos)
 
-
             # only store route boxes that are near the ego vehicle
             if i > 0 and st_distance > self.max_route_distance:
                 continue

@@ -57,7 +57,7 @@ class RouteScenario():
         self.search_radius = config.search_radius
 
         # create the route and ego's position (the start point of the route)
-        self.route, self.ego_vehicle = self._update_route_and_ego(timeout=self.timeout)
+        self.route, self.ego_vehicle, self.gps_route = self._update_route_and_ego(timeout=self.timeout)
         self.background_actors = []
         self.controlled_bv = None
         self.controlled_bv_nearby_vehicles = None
@@ -67,16 +67,17 @@ class RouteScenario():
     def _update_route_and_ego(self, timeout=None):
         ego_vehicle = None
         route = None
+        gps_route = None
         scenario_id = self.config.scenario_id
         if scenario_id == 0:
             vehicle_spawn_points = get_valid_spawn_points(self.world)
             for random_transform in vehicle_spawn_points:
-                _, route = interpolate_trajectory(self.world, [random_transform])
+                gps_route, route = interpolate_trajectory(self.world, [random_transform])
                 ego_vehicle = self._spawn_ego_vehicle(route[0][0], self.config.auto_ego)
                 if ego_vehicle is not None:
                     break
         else:
-            _, route = interpolate_trajectory(self.world, self.config.trajectory)
+            gps_route, route = interpolate_trajectory(self.world, self.config.trajectory)
             ego_vehicle = self._spawn_ego_vehicle(route[0][0], self.config.auto_ego)
 
         # TODO: ego route will be overwritten by other scenarios
@@ -85,7 +86,7 @@ class RouteScenario():
 
         # Timeout of scenario in seconds
         self.timeout = self._estimate_route_timeout(route) if timeout is None else timeout
-        return route, ego_vehicle
+        return route, ego_vehicle, gps_route
 
     def _estimate_route_timeout(self, route):
         route_length = 0.0  # in meters

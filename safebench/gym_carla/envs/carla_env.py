@@ -185,20 +185,16 @@ class CarlaEnv(gym.Env):
         # init scenario
         self.ego_vehicle = scenario.ego_vehicle
         self.scenario_manager.load_scenario(scenario)  # The scenario manager only controls the RouteScenario
+        self.route = self.scenario_manager.route_scenario.route  # the global route
+        self.gps_route = self.scenario_manager.route_scenario.gps_route  # the global gps route
 
     def _run_scenario(self):
         self.scenario_manager.run_scenario()  # init the background vehicle
 
-    def _parse_route(self, config):
-        # interp waypoints as init waypoints
-        gps_route, route = interpolate_trajectory(self.world, config.trajectory)
-        self.gps_route = gps_route
-        self.route = route
-
-        # TODO: these waypoints can be directly got from scenario
+    def _global_route_to_waypoints(self):
         waypoints_list = []
         self.carla_map = self.world.get_map()
-        for node in route:
+        for node in self.route:
             loc = node[0].location
             waypoint = self.carla_map.get_waypoint(loc, project_to_road=True, lane_type=carla.LaneType.Driving)
             waypoints_list.append(waypoint)
@@ -220,8 +216,8 @@ class CarlaEnv(gym.Env):
         CarlaDataProvider.on_carla_after_tick()
 
         # route planner for ego vehicle
-        self.route_waypoints = self._parse_route(config)
-        self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.route_waypoints)
+        self.global_route_waypoints = self._global_route_to_waypoints()  # the initial route waypoints from the config
+        self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
 
         # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
@@ -326,9 +322,13 @@ class CarlaEnv(gym.Env):
 
         # if the ego agent is learnable then, draw the target waypoints
         if self.ego_agent_learnable:
+            # wpt = self.waypoints[0]
+            # begin = carla.Location(x=wpt[0], y=wpt[1], z=0.3)
+            # angle = math.radians(wpt[2])
+            # end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
+            # self.world.debug.draw_arrow(begin, end, arrow_size=0.1, life_time=0.11)
             waypoint_route = np.array([[node[0], node[1]] for node in self.waypoints])
             draw_route(self.world, self.ego_vehicle, waypoint_route)
-
 
     def step_before_tick(self, ego_action, scenario_action):
         if self.world:
@@ -429,6 +429,8 @@ class CarlaEnv(gym.Env):
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
             self.encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
+        else:
+            most_relevant_vehicle = None
 
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         if self.cbv_selection == 'rule-based':
@@ -469,7 +471,7 @@ class CarlaEnv(gym.Env):
                 'cbv_min_dis_cost': cbv_min_dis_cost,             # whether the min dis is lower than a threshold
                 'mapped_cbv_vel': CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed),    # the mapped cbv velocity
                 'ego_min_dis': self.ego_min_dis,                  # the ego_min_dis with the rest bvs
-                'route_waypoints': self.route_waypoints,          # the global route waypoints
+                'route_waypoints': self.global_route_waypoints,   # the global route waypoints
                 'gps_route': self.gps_route,                      # the global gps route
                 'route': self.route,                              # the global route
             })

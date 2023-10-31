@@ -11,6 +11,7 @@
 from enum import Enum
 from collections import deque
 import carla
+import numpy as np
 
 from safebench.gym_carla.envs.misc import distance_vehicle, is_within_distance_ahead, compute_magnitude_angle
 
@@ -32,14 +33,14 @@ class RoutePlanner():
         self._world = self._vehicle.get_world()
         self._map = self._world.get_map()
 
-        self._sampling_radius = 5
+        self._sampling_radius = 2
         self._min_distance = 4
 
         self._target_waypoint = None
         self._buffer_size = buffer_size
-        self._waypoint_buffer = deque(maxlen=self._buffer_size)
+        self._waypoint_buffer = deque(maxlen=self._buffer_size)  # the local buffer to store the pop waypoint in the waypoints queue
 
-        self._waypoints_queue = deque(maxlen=600)
+        self._waypoints_queue = deque(maxlen=600)  # the global waypoints queue from the global route
         self._current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
 
         if len(init_waypoints) == 0:
@@ -53,13 +54,12 @@ class RoutePlanner():
                 else:
                     self._waypoints_queue.append((waypoint, compute_connection(init_waypoints[i - 1], waypoint)))
 
-
-        self._target_road_option = RoadOption.LANEFOLLOW
+        self._target_road_option = RoadOption.LANEFOLLOW  # the initial road option is LaneFollow
 
         self._last_traffic_light = None
         self._proximity_threshold = 15.0
 
-        self._compute_next_waypoints(k=200)
+        self._compute_next_waypoints(k=5)  # add some extra waypoints for the preview lane distance calculation
 
     def _compute_next_waypoints(self, k=1):
         """
@@ -103,23 +103,36 @@ class RoutePlanner():
         """
             Execute one step of local planning which involves running the longitudinal and lateral PID controllers to
             follow the waypoints trajectory.
+            step 1: if the current local waypoint buffer is not full, then pop waypoints from the global queue to fill the local
+            step 2: check whether the current local waypoint buffer got too closed waypoints, if so, remove the too closed local waypoints
             :param debug: boolean flag to activate waypoints debugging
             :return:
         """
 
-        # not enough waypoints in the horizon? => add more!
-        if len(self._waypoints_queue) < int(self._waypoints_queue.maxlen * 0.5):
-            self._compute_next_waypoints(k=100)
-
-        # Buffering the waypoints
+        # step 1: if the current local waypoint buffer is not full, then pop waypoints from the global queue to fill the local
         while len(self._waypoint_buffer) < self._buffer_size:
             if self._waypoints_queue:
                 self._waypoint_buffer.append(self._waypoints_queue.popleft())
             else:
                 break
 
-        waypoints = []
+        # step 2: check whether the current local waypoint buffer got too closed waypoints, if so, remove the too closed local waypoints
+        vehicle_transform = self._vehicle.get_transform()
+        max_index = -1
+        farthest_in_range = -np.inf
         for i, (waypoint, _) in enumerate(self._waypoint_buffer):
+            distance = distance_vehicle(waypoint, vehicle_transform)
+            if self._min_distance > distance > farthest_in_range:
+                farthest_in_range = distance
+                max_index = i
+        if max_index >= 0:
+            for i in range(max_index - 1):
+                if len(self._waypoint_buffer) >= 2:
+                    self._waypoint_buffer.popleft()  # remove the already passed waypoints
+
+        # step 3: retrieve the waypoints and the target point information from the local waypoint buffer
+        waypoints = []
+        for i, (waypoint, _) in enumerate(self._waypoint_buffer):  # get the waypoint data from the waypoint buffer
             waypoints.append([waypoint.transform.location.x, waypoint.transform.location.y, waypoint.transform.rotation.yaw])
 
         # current vehicle waypoint
@@ -127,17 +140,6 @@ class RoutePlanner():
         # target waypoint the next waypoint
         self._target_waypoint, self._target_road_option = self._waypoint_buffer[0]
 
-        # purge the queue of obsolete waypoints
-        vehicle_transform = self._vehicle.get_transform()
-        max_index = -1
-
-        for i, (waypoint, _) in enumerate(self._waypoint_buffer):
-            if distance_vehicle(waypoint, vehicle_transform) < self._min_distance:
-                max_index = i
-        if max_index >= 0:
-            for i in range(max_index - 1):
-                self._waypoint_buffer.popleft()
-        # TODO: waypoint location list?
         return waypoints, self._target_road_option, self._current_waypoint, self._target_waypoint
 
     def _get_hazard(self):

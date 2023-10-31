@@ -199,8 +199,11 @@ class AutoPilot(object):
         self._waypoint_planner.load()
         waypoint_route = self._waypoint_planner.run_step(pos)
         self._waypoint_planner.save()
-        self.waypoint_route = np.array([[node[0][0], node[0][1]] for node in waypoint_route])
-        draw_route(self._world, vehicle=self._vehicle, waypoint_route=self.waypoint_route)  # draw the waypoint route
+
+        # draw the waypoint route
+        waypoint_route_draw = np.array([[node[0][0], node[0][1]] for node in waypoint_route])
+        draw_route(self._world, vehicle=self._vehicle, waypoint_route=waypoint_route_draw)
+
         _, near_command = waypoint_route[1] if len(waypoint_route) > 1 else waypoint_route[0]  # needs HD map
 
         self.remaining_route = waypoint_route

@@ -68,7 +68,9 @@ def draw_route(world, vehicle=None, waypoint_route=None, bounding_box=None):
             bounding_box.rotation = carla.Rotation(pitch=0.0,
                                                    yaw=angles[i] * 180 / np.pi,
                                                    roll=0.0)
-
+            world.debug.draw_box(box=bounding_box, rotation=bounding_box.rotation, thickness=0.15,
+                                 color=carla.Color(0, 255, 255, 255), life_time=(0.11))
+    else:
         # visualize subsampled route
         world.debug.draw_box(box=bounding_box, rotation=bounding_box.rotation, thickness=0.15,
                                    color=carla.Color(0, 255, 255, 255), life_time=(0.11))
