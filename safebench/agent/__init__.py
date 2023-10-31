@@ -15,7 +15,6 @@ from safebench.agent.rl.rc_sac import RCSAC
 from safebench.agent.rl.ddpg import DDPG
 from safebench.agent.rl.ppo import PPO
 from safebench.agent.rl.td3 import TD3
-from safebench.agent.basic import CarlaBasicAgent
 from safebench.agent.behavior import CarlaBehaviorAgent
 from safebench.agent.expert.expert import CarlaExpertAgent
 from safebench.agent.PlanT.PlanT import PlanT
@@ -23,7 +22,6 @@ from safebench.agent.PlanT.PlanT import PlanT
 
 AGENT_POLICY_LIST = {
     'dummy': DummyAgent,
-    'basic': CarlaBasicAgent,
     'behavior': CarlaBehaviorAgent,
     'sac': SAC,
     'rc_sac': RCSAC,

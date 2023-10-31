@@ -13,7 +13,7 @@ import pickle as pkl
 import matplotlib.pyplot as plt
 
 
-with open('../log/exp/exp_basic_standard_HJ-Reachability_seed_0/training_results/results.pkl', 'rb') as f:
+with open('../log/exp/exp_sac_standard_HJ-Reachability_seed_0/training_results/results.pkl', 'rb') as f:
     data = pkl.load(f)
 
 episode = data['episode']
