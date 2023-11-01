@@ -46,7 +46,7 @@ class CarlaDataProvider(object):
     _spawn_points = None
     _spawn_index = 0
     _ego_min_dis = 0
-    _ego_desired_speed = 8
+    _ego_desired_speed = 8  # m/s
     _blueprint_library = None
     _ego_vehicle_route = None
     _egos = []
@@ -801,7 +801,7 @@ class CarlaDataProvider(object):
     def cal_ego_min_dis(ego_vehicle, search_radius):
         nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(ego_vehicle, search_radius)
         # min distance between vehicle bboxes
-        ego_min_dis = 10
+        ego_min_dis = search_radius
         # the closest vehicle using center points distance may change when using bboxes distance
         if len(nearby_vehicles) < 3:
             refined_vehicles_count = len(nearby_vehicles)

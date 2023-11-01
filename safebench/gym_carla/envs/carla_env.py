@@ -232,6 +232,8 @@ class CarlaEnv(gym.Env):
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
             self.encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
+        else:
+            most_relevant_vehicle = None
 
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         if self.cbv_selection == 'rule-based':
@@ -319,15 +321,10 @@ class CarlaEnv(gym.Env):
             cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
             cbv_angle = math.radians(cbv_transform.rotation.yaw)
             cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
-            self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.2, color=carla.Color(0,0,255,0), life_time=0.11)
+            self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.3, color=carla.Color(0,0,255,0), life_time=0.11)
 
-        # if the ego agent is learnable then, draw the target waypoints
+        # if the ego agent is learnable and need to viz the route, then draw the target waypoints
         if self.ego_agent_learnable and self.viz_route:
-            # wpt = self.waypoints[0]
-            # begin = carla.Location(x=wpt[0], y=wpt[1], z=0.3)
-            # angle = math.radians(wpt[2])
-            # end = begin + carla.Location(x=math.cos(angle), y=math.sin(angle))
-            # self.world.debug.draw_arrow(begin, end, arrow_size=0.1, life_time=0.11)
             waypoint_route = np.array([[node[0], node[1]] for node in self.waypoints])
             draw_route(self.world, self.ego_vehicle, waypoint_route)
 

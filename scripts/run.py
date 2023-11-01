@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--max_episode_step', type=int, default=300)
     parser.add_argument('--search_radius', type=int, default=60, help='the radius for agent to search other agents')
-    parser.add_argument('--traffic_intensity', type=int, default=0.8, help='the intensity of initial traffic flow')
+    parser.add_argument('--traffic_intensity', type=int, default=0.9, help='the intensity of initial traffic flow')
     parser.add_argument('--cbv_selection', type=str, default='attention-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--viz_route', action='store_true')
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--num_scenario', '-ns', type=int, default=2, help='num of scenarios we run in one episode')
     parser.add_argument('--save_video', action='store_true')
-    parser.add_argument('--render', type=bool, default=True)
+    parser.add_argument('--render', action='store_false')
     parser.add_argument('--frame_skip', '-fs', type=int, default=1, help='skip of frame in each step')
     parser.add_argument('--port', type=int, default=2000, help='port to communicate with carla')
     parser.add_argument('--tm_port', type=int, default=8000, help='traffic manager port')
