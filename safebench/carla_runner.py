@@ -74,6 +74,7 @@ class CarlaRunner:
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'warm_up_steps': 9,                                             # number of ticks after spawning the vehicles
             'disable_lidar': True,                                          # show bird-eye view lidar or not
+            'enable_sem': agent_config['enable_sem'],                       # whether to enable the sem visualization
             'display_size': 192,                                            # screen size of one bird-eye view window
             'obs_range': 32,                                                # observation range (meter)
             'd_behind': 12,                                                 # distance behind the ego vehicle (meter)
@@ -87,7 +88,7 @@ class CarlaRunner:
             'max_waypt': 12,                                                # maximum number of waypoints
             'lidar_bin': 0.125,                                             # bin size of lidar sensor (meter)
             'out_lane_thres': 4,                                            # threshold for out of lane (meter)
-            'desired_speed': 8,                                             # desired speed (m/s)
+            'desired_speed': 6,                                             # desired speed (m/s)
         }
 
         # pass config from scenario to agent
@@ -204,9 +205,15 @@ class CarlaRunner:
         if self.scenario_category == 'planning': 
             # [bird-eye view, Lidar, front view] or [bird-eye view, front view]
             if self.env_params['disable_lidar']:
-                window_size = (self.env_params['display_size'] * 3, self.env_params['display_size'] * self.num_scenario)
+                if self.env_params['enable_sem']:
+                    window_size = (self.env_params['display_size'] * 3, self.env_params['display_size'] * self.num_scenario)
+                else:
+                    window_size = (self.env_params['display_size'] * 2, self.env_params['display_size'] * self.num_scenario)
             else:
-                window_size = (self.env_params['display_size'] * 4, self.env_params['display_size'] * self.num_scenario)
+                if self.env_params['enable_sem']:
+                    window_size = (self.env_params['display_size'] * 4, self.env_params['display_size'] * self.num_scenario)
+                else:
+                    window_size = (self.env_params['display_size'] * 3, self.env_params['display_size'] * self.num_scenario)
         else:
             window_size = (self.env_params['display_size'], self.env_params['display_size'] * self.num_scenario)
         self.display = pygame.display.set_mode(window_size, flag)

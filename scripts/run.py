@@ -31,6 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('--cbv_selection', type=str, default='attention-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--viz_route', action='store_true')
+    parser.add_argument('--enable_sem', action='store_true')
     parser.add_argument('--safety_eval', action='store_true', help='whether to activate safety evaluation')
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_safety_network'])
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='dummy.yaml')
@@ -45,7 +46,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--num_scenario', '-ns', type=int, default=2, help='num of scenarios we run in one episode')
     parser.add_argument('--save_video', action='store_true')
-    parser.add_argument('--render', action='store_false')
+    parser.add_argument('--render', '-r', action='store_true', default=False)
     parser.add_argument('--frame_skip', '-fs', type=int, default=1, help='skip of frame in each step')
     parser.add_argument('--port', type=int, default=2000, help='port to communicate with carla')
     parser.add_argument('--tm_port', type=int, default=8000, help='traffic manager port')

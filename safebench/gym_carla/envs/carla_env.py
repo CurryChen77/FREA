@@ -58,6 +58,7 @@ class CarlaEnv(gym.Env):
         self.ego_vehicle = None
         self.env_params = env_params
         self.auto_ego = env_params['auto_ego']
+        self.enable_sem = env_params['enable_sem']
 
         self.collision_sensor = None
         self.lidar_sensor = None
@@ -150,14 +151,15 @@ class CarlaEnv(gym.Env):
         self.camera_bp.set_attribute('sensor_tick', '0.02')
 
         # sem camera sensor
-        self.sem_img = np.zeros((self.obs_size, self.obs_size, 2), dtype=np.uint8)
-        self.sem_trans = carla.Transform(carla.Location(x=-4., y=0, z=5.), carla.Rotation(pitch=-20.0))  # for third-person view
-        self.sem_bp = self.world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
-        self.sem_bp.set_attribute('image_size_x', str(self.obs_size))
-        self.sem_bp.set_attribute('image_size_y', str(self.obs_size))
-        self.sem_bp.set_attribute('fov', '110')
-        # Set the time in seconds between sensor captures
-        self.sem_bp.set_attribute('sensor_tick', '0.02')
+        if self.enable_sem:
+            self.sem_img = np.zeros((self.obs_size, self.obs_size, 2), dtype=np.uint8)
+            self.sem_trans = carla.Transform(carla.Location(x=-4., y=0, z=5.), carla.Rotation(pitch=-20.0))  # for third-person view
+            self.sem_bp = self.world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
+            self.sem_bp.set_attribute('image_size_x', str(self.obs_size))
+            self.sem_bp.set_attribute('image_size_y', str(self.obs_size))
+            self.sem_bp.set_attribute('fov', '110')
+            # Set the time in seconds between sensor captures
+            self.sem_bp.set_attribute('sensor_tick', '0.02')
 
     def _create_scenario(self, config, env_id):
         self.logger.log(f">> Loading scenario data id: {config.data_id}")
@@ -305,8 +307,9 @@ class CarlaEnv(gym.Env):
             self.camera_img = array
 
         # Add sem_camera sensor
-        self.sem_sensor = self.world.spawn_actor(self.sem_bp, self.sem_trans, attach_to=self.ego_vehicle)
-        self.sem_sensor.listen(lambda data: get_sem_img(data))
+        if self.enable_sem:
+            self.sem_sensor = self.world.spawn_actor(self.sem_bp, self.sem_trans, attach_to=self.ego_vehicle)
+            self.sem_sensor.listen(lambda data: get_sem_img(data))
 
         def get_sem_img(data):
             array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
@@ -600,10 +603,11 @@ class CarlaEnv(gym.Env):
             self.display.blit(camera_surface, (self.display_size, self.env_id*self.display_size))
 
             # display masked viz 3rd person
-            masked_img = get_masked_viz_3rd_person(self.BGR_img, self.sem_img)
-            masked_image = resize(masked_img, (self.obs_size, self.obs_size)) * 255
-            masked_image_surface = rgb_to_display_surface(masked_image, self.display_size)
-            self.display.blit(masked_image_surface, (self.display_size*2, self.env_id * self.display_size))
+            if self.enable_sem:
+                masked_img = get_masked_viz_3rd_person(self.BGR_img, self.sem_img)
+                masked_image = resize(masked_img, (self.obs_size, self.obs_size)) * 255
+                masked_image_surface = rgb_to_display_surface(masked_image, self.display_size)
+                self.display.blit(masked_image_surface, (self.display_size*2, self.env_id * self.display_size))
 
         if self.agent_obs_type == 'ego_state':
             # Ego state

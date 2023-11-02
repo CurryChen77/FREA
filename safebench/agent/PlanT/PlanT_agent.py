@@ -40,34 +40,34 @@ class PlanTAgent(DataAgent):
 
         # print(f'Saving gif: {SAVE_GIF}')
 
-        # Filtering
-        self.points = MerweScaledSigmaPoints(n=4,
-                                            alpha=.00001,
-                                            beta=2,
-                                            kappa=0,
-                                            subtract=residual_state_x)
-        self.ukf = UKF(dim_x=4,
-                    dim_z=4,
-                    fx=bicycle_model_forward,
-                    hx=measurement_function_hx,
-                    dt=1/self.frame_rate,
-                    points=self.points,
-                    x_mean_fn=state_mean,
-                    z_mean_fn=measurement_mean,
-                    residual_x=residual_state_x,
-                    residual_z=residual_measurement_h)
-
-        # State noise, same as measurement because we
-        # initialize with the first measurement later
-        self.ukf.P = np.diag([0.5, 0.5, 0.000001, 0.000001])
-        # Measurement noise
-        self.ukf.R = np.diag([0.5, 0.5, 0.000000000000001, 0.000000000000001])
-        self.ukf.Q = np.diag([0.0001, 0.0001, 0.001, 0.001])  # Model noise
-        # Used to set the filter state equal the first measurement
-        self.filter_initialized = False
-        # Stores the last filtered positions of the ego vehicle.
-        # Used to realign.
-        self.state_log = deque(maxlen=2)
+        # # Filtering
+        # self.points = MerweScaledSigmaPoints(n=4,
+        #                                     alpha=.00001,
+        #                                     beta=2,
+        #                                     kappa=0,
+        #                                     subtract=residual_state_x)
+        # self.ukf = UKF(dim_x=4,
+        #             dim_z=4,
+        #             fx=bicycle_model_forward,
+        #             hx=measurement_function_hx,
+        #             dt=1/self.frame_rate,
+        #             points=self.points,
+        #             x_mean_fn=state_mean,
+        #             z_mean_fn=measurement_mean,
+        #             residual_x=residual_state_x,
+        #             residual_z=residual_measurement_h)
+        #
+        # # State noise, same as measurement because we
+        # # initialize with the first measurement later
+        # self.ukf.P = np.diag([0.5, 0.5, 0.000001, 0.000001])
+        # # Measurement noise
+        # self.ukf.R = np.diag([0.5, 0.5, 0.000000000000001, 0.000000000000001])
+        # self.ukf.Q = np.diag([0.0001, 0.0001, 0.001, 0.001])  # Model noise
+        # # Used to set the filter state equal the first measurement
+        # self.filter_initialized = False
+        # # Stores the last filtered positions of the ego vehicle.
+        # # Used to realign.
+        # self.state_log = deque(maxlen=2)
 
         self.save_mask = []
         self.save_topdowns = []
@@ -114,27 +114,28 @@ class PlanTAgent(DataAgent):
     def tick(self, input_data):
         result = super().tick(input_data)
 
-        pos = input_data['gps']
-        speed = input_data['speed']
-        compass = input_data['compass']
-        # pos = self._route_planner.convert_gps_to_carla(input_data['gps'][1][:2])
-        # speed = input_data['speed'][1]['speed']
-        # compass = preprocess_compass(input_data['imu'][1][-1])
-        
-        if not self.filter_initialized:
-            self.ukf.x = np.array([pos[0], pos[1], compass, speed])
-            self.filter_initialized = True
+        # pos = input_data['gps']
+        # speed = input_data['speed']
+        # compass = input_data['compass']
+        # # pos = self._route_planner.convert_gps_to_carla(input_data['gps'][1][:2])
+        # # speed = input_data['speed'][1]['speed']
+        # # compass = preprocess_compass(input_data['imu'][1][-1])
+        #
+        # # if not self.filter_initialized:
+        # #     self.ukf.x = np.array([pos[0], pos[1], compass, speed])
+        # #     self.filter_initialized = True
+        # #
+        # # self.ukf.predict(steer=self.control.steer,
+        # #                 throttle=self.control.throttle,
+        # #                 brake=self.control.brake)
+        # # self.ukf.update(np.array([pos[0], pos[1], compass, speed]))
+        # # filtered_state = self.ukf.x
+        # # self.state_log.append(filtered_state)
+        # # result['gps'] = filtered_state[0:2]
+        # # waypoint_route = self._route_planner.run_step(filtered_state[0:2])
 
-        self.ukf.predict(steer=self.control.steer,
-                        throttle=self.control.throttle,
-                        brake=self.control.brake)
-        self.ukf.update(np.array([pos[0], pos[1], compass, speed]))
-        filtered_state = self.ukf.x
-        self.state_log.append(filtered_state)
-        result['gps'] = filtered_state[0:2]
+        waypoint_route = self._route_planner.run_step(result['gps'])
 
-        waypoint_route = self._route_planner.run_step(filtered_state[0:2])
-        
         if len(waypoint_route) > 2:
             target_point, _ = waypoint_route[1]
             next_target_point, _ = waypoint_route[2]
@@ -145,7 +146,7 @@ class PlanTAgent(DataAgent):
             target_point, _ = waypoint_route[0]
             next_target_point, _ = waypoint_route[0]
 
-        ego_target_point = inverse_conversion_2d(target_point, result['gps'], compass)
+        ego_target_point = inverse_conversion_2d(target_point, result['gps'], result['compass'])
         result['target_point'] = tuple(ego_target_point)
 
         # if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
@@ -164,12 +165,13 @@ class PlanTAgent(DataAgent):
         _ = super()._get_brake(stop_sign_hazard=0, vehicle_hazard=0, walker_hazard=0)
         tick_data = self.tick(input_data)
         # label_raw contains [vehicle information, route information]
-        label_raw = super().get_bev_boxes(input_data=input_data, pos=tick_data['gps'], viz_route=viz_route)
+        # TODO pos from the GT data instead of UnscentedKalmanFilter
+        label_raw = super().get_bev_boxes(input_data=input_data, pos=input_data['gps'], viz_route=viz_route)
 
         if self.exec_or_inter == 'exec' or self.exec_or_inter is None:
             self.control = self._get_control(label_raw, tick_data)
         
-        inital_frames_delay = 3
+        inital_frames_delay = 5
         if self.step < inital_frames_delay:
             self.control = carla.VehicleControl(0.0, 0.0, 1.0)
             
@@ -192,6 +194,7 @@ class PlanTAgent(DataAgent):
 
         if brake:
             steer *= self.steer_damping
+
 
         control = carla.VehicleControl()
         control.steer = float(steer)

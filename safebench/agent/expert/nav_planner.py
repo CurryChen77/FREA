@@ -144,7 +144,6 @@ class RoutePlanner_new(object):
                 pos -= self.mean
 
             self.route.append((pos, cmd))
-
         # We do the calculations in the beginning once so that we don't have
         # to do them every time in run_step
         self.route_distances.append(0.0)
@@ -174,9 +173,8 @@ class RoutePlanner_new(object):
             if farthest_in_range < distance <= self.min_distance:
                 farthest_in_range = distance
                 to_pop = i
-
         for _ in range(to_pop):
-            if len(self.route) > 2:
+            if len(self.route) > 1:
                 self.route.popleft()
                 self.route_distances.popleft()
 
@@ -190,14 +188,14 @@ class RoutePlanner_new(object):
         self.route = self.saved_route
         self.route_distances = self.saved_route_distances
         self.is_last = False
-        
+
+
 class RoutePlanner(object):
     def __init__(self, min_distance, max_distance, debug_size=256):
         self.saved_route = deque()
         self.route = deque()
         self.saved_route_distances = deque()
         self.route_distances = deque()
-
 
         self.min_distance = min_distance
         self.max_distance = max_distance

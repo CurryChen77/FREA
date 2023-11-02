@@ -306,12 +306,10 @@ class DataAgent(AutoPilot):
         # Route rdp
         # -----------------------------------------------------------
         if input_data is not None:
-            # pos = self._get_position(input_data['gps'][1][:2])
-            # self.gps_buffer.append(pos)
-            # pos = np.average(self.gps_buffer, axis=0)  # Denoised position
             self._waypoint_planner.load()
             waypoint_route = self._waypoint_planner.run_step(pos)
             self.waypoint_route = np.array([[node[0][0],node[0][1]] for node in waypoint_route])
+
             self._waypoint_planner.save()
         
         

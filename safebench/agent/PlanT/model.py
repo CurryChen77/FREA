@@ -335,9 +335,10 @@ class HFLM(nn.Module):
         waypoints[:, 0] += 1.3
         speed = velocity[0].data.cpu().numpy()
 
-        desired_speed = np.linalg.norm(waypoints[0] - waypoints[1]) * 4.0  # near speed of 8 m/s
+        pre_difined_desired_speed = CarlaDataProvider.get_ego_desired_speed()
+        desired_speed = np.linalg.norm(waypoints[0] - waypoints[1]) * pre_difined_desired_speed//2  # near the desired speed
         if is_stuck:
-            desired_speed = np.array(CarlaDataProvider.get_ego_desired_speed())  # near speed of 8 m/s
+            desired_speed = np.array(pre_difined_desired_speed)
 
         brake = desired_speed < 0.4 or (speed / desired_speed) > 1.1
 
