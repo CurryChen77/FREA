@@ -2,9 +2,9 @@
 
 # Content
 
-* [Train Agent](#Train Agent)
-* [Train Scenario](#Train Scenario)
-* [Train Safety network](#Train Safety network)
+* [Train Agent](#Train-Agent)
+* [Train Scenario](#Train-Scenario)
+* [Train Safety network](#Train-Safety-network)
 * [Eval](#Eval)
 * [Visualization](#Visualization)
 
@@ -20,7 +20,7 @@
 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode train_agent
 ``````
 
-### Policy:
+### Policy
 
 * **behavior:** Carla default agent (no state)
 
@@ -28,7 +28,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --m
 * **plant:**  transformer based planning agent, output ego's future waypoints (ego state)
 * **sac:** RL-based agent (from Safebench, default 4dim simple state)
 
-### state/observation:
+### state/observation
 
 For learnable agent (SAC PPO......)
 
@@ -76,7 +76,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --m
 3. **ppo**
 4. **td3**
 
-### optional 
+### optional
 
 * Select the controlled bv method
 
