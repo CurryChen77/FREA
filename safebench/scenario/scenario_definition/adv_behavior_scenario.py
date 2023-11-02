@@ -73,28 +73,6 @@ class AdvBehaviorSingle(BasicScenario):
         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
         return act
 
-    def initialize_actors(self):
-        other_actor_transform = self.config.other_actors[0].transform
-        forward_vector = other_actor_transform.rotation.get_forward_vector() * self.other_actor_delta_x
-        other_actor_transform.location += forward_vector
-        first_vehicle_transform = carla.Transform(
-            carla.Location(other_actor_transform.location.x, other_actor_transform.location.y, other_actor_transform.location.z),
-            other_actor_transform.rotation
-        )
-
-        self.actor_transform_list = [first_vehicle_transform]
-        self.actor_type_list = ["vehicle.audi.tt"]
-        self.other_actors = self.scenario_operation.initialize_vehicle_actors(self.actor_transform_list, self.actor_type_list)
-        self.reference_actor = self.other_actors[0] # used for triggering this scenario
-
-        # other vehicle's traffic light
-        traffic_light_other = CarlaDataProvider.get_next_traffic_light(other_actor_transform, False, True)
-        if traffic_light_other is None:
-            print(">> No traffic light for the given location of the other vehicle found")
-        else:
-            traffic_light_other.set_state(carla.TrafficLightState.Red)
-            traffic_light_other.set_red_time(self.timeout)
-
     def create_behavior(self, scenario_init_action):
         assert scenario_init_action is None, f'{self.name} should receive [None] initial action.'
         self.other_actor_delta_x = 1.0

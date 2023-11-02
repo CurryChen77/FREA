@@ -64,7 +64,7 @@ class CarlaBehaviorAgent(BasePolicy):
             if controller.done():
                 throttle = 0
                 steer = 0
-                brake = 0.5
+                brake = 0.2
             else:
                 # select the controller that matches the scenario_id
                 control = controller.run_step(debug=False)

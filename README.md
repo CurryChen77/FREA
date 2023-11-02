@@ -1,205 +1,213 @@
-<!--
- * @Date: 2023-01-25 19:36:50
- * @LastEditTime: 2023-04-12 14:02:50
- * @Description: 
--->
+# RESA: Reasonable Evaluation via Safety Assurance
 
-<div align="center">
+# Content
 
-<h1>SafeBench: A Benchmark for Evaluating Autonomous Vehicles in Safety-critical Scenarios</h1>
+* [Train Agent](#Train Agent)
+* [Train Scenario](#Train Scenario)
+* [Train Safety network](#Train Safety network)
+* [Eval](#Eval)
+* [Visualization](#Visualization)
 
-[![](https://img.shields.io/badge/Documentation-online-green)](https://safebench.readthedocs.io)
-[![](https://img.shields.io/badge/Website-online-green)](https://safebench.github.io)
-[![](https://img.shields.io/badge/Paper-2206.09682-b31b1b.svg)](https://arxiv.org/pdf/2206.09682.pdf)
-[![](https://img.shields.io/badge/License-MIT-blue)](#License)
-</div>
+## Train Agent
 
+### Usage
 
+``````bash
+# Launch CARLA
+./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-| Perception Evaluation | Control Evaluation |
-| :-------------------: | :----------------: | 
-| ![pipeline](https://github.com/safebench/safebench.github.io/blob/master/videos/perception.gif) | ![pipeline](https://github.com/safebench/safebench.github.io/blob/master/videos/control.gif) | 
+# Launch in another terminal
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode train_agent
+``````
 
+### Policy:
 
-## Installation
+* **behavior:** Carla default agent (no state)
 
-**Recommended system: Ubuntu 20.04 or 22.04**
+* **expert:** Carla leaderboard default rule-based agent (ego state)
+* **plant:**  transformer based planning agent, output ego's future waypoints (ego state)
+* **sac:** RL-based agent (from Safebench, default 4dim simple state)
 
-### 1. Local Installation
+### state/observation:
 
-<details>
-    <summary> Click to expand </summary>
+For learnable agent (SAC PPO......)
 
-Step 1: Setup conda environment
-```bash
-conda create -n safebench python=3.8
-conda activate safebench
-```
+* **Safebench default state for learning**
 
-Step 2: Clone this git repo in an appropriate folder
-```bash
-git clone git@github.com:trust-ai/SafeBench.git
-```
+  1. **lateral dis** from the target point
 
-Step 3: Enter the repo root folder and install the packages:
-```bash
-cd SafeBench
-pip install -r requirements.txt
-pip install -e .
-```
+  2. **-delta yaw** from the target point
 
-Step 4: Download our [CARLA_0.9.13](https://drive.google.com/file/d/139vLRgXP90Zk6Q_du9cRdOLx7GJIw_0v/view?usp=sharing) and extract it to your folder.
+  3. **ego speed**
 
-Step 5: Run `sudo apt install libomp5` as per this [git issue](https://github.com/carla-simulator/carla/issues/4498).
+  4.  **front got vehicle or not**  
 
-Step 6: Add the python API of CARLA to the ```PYTHONPATH``` environment variable. You can add the following commands to your `~/.bashrc`:
-```bash
-export CARLA_ROOT={path/to/your/carla}
-export PYTHONPATH=$PYTHONPATH:${CARLA_ROOT}/PythonAPI/carla/dist/carla-0.9.13-py3.8-linux-x86_64.egg
-export PYTHONPATH=$PYTHONPATH:${CARLA_ROOT}/PythonAPI/carla/agents
-export PYTHONPATH=$PYTHONPATH:${CARLA_ROOT}/PythonAPI/carla
-export PYTHONPATH=$PYTHONPATH:${CARLA_ROOT}/PythonAPI
-```
-</details>
+     shape: 4
 
-### 2. Docker Installation (Beta)
+* **PlanT style encoded state**
 
-<details>
-    <summary> Click to expand </summary>
+  1. cls token after transformer block
 
-We also provide a docker image with CARLA and SafeBench installed. Use the following command to launch a docker container:
+     shape: [1, 1, 512]
 
-```bash
-bash docker/run_docker.sh
-```
+For Carla Leaderboard agent (Expert or PlanT)
 
-The CARLA simulator is installed at `/home/safebench/carla` and SafeBench is installed at `/home/safebench/SafeBench`.
+* **Ego state for PlanT and Expert**:
+  1. ego position (x, y)
+  2. ego speed (m/s)
+  3. ego yaw (radius)
 
-</details>
+## Train Scenario
 
-## Usage
+### Usage
 
-### 1. Desktop Users
-
-<details>
-    <summary> Click to expand </summary>
-
-Enter the CARLA root folder, launch the CARLA server and run our platform with
 ```bash
 # Launch CARLA
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-# Launch SafeBench in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval
+# Launch in another terminal
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode train_scenario
 ```
-</details>
 
-### 2. Remote Server Users
+### Policy
 
-<details>
-    <summary> Click to expand </summary>
+1. **sac**
+2. **standard (autopilot)**
+3. **ppo**
+4. **td3**
 
-Enter the CARLA root folder, launch the CARLA server with headless mode, and run our platform with
+### optional 
+
+* Select the controlled bv method
+
+  1. **attention-based** (default)
+  2. **rule-based**
+
+```bash
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode train_scenario  --cbv_selection 'attention-based'  # different method of selecting controlled bv
+```
+
+* Input state
+
+  **Actor info** (ego and surrounding 3 bv's 9-dim state)
+
+* Output action
+
+  2-dim continues action
+
+  acc ~ [-3.0, 3.0]
+
+  steer ~ [-0.3, 0.3]
+
+## Train Safety network
+
+### Usage
+
 ```bash
 # Launch CARLA
-./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
+./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-# Launch SafeBench in another terminal
-SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval
+# Launch in another terminal
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --safety_network_cfg HJR.yaml --mode train_safety_network
 ```
 
-(Optional) You can also visualize the pygame window using [TurboVNC](https://sourceforge.net/projects/turbovnc/files/).
-First, launch CARLA with headless mode, and run our platform on a virtual display.
+### Policy
+
+* HJ-Reachability
+
+### Input state
+
+[yaml file](safebench/safety_network/config/HJR.yaml)  ```obs_type: "plant" (default)```
+
+* **PlanT:** (encoded state) default 
+
+* **Actor info:** (ego and surrounding 3 bv's 9-dim state) *no route map information*
+
+## Eval
+
+### Usage
+
 ```bash
 # Launch CARLA
-./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
+./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-# Run a remote VNC-Xserver. This will create a virtual display "8".
-/opt/TurboVNC/bin/vncserver :8 -noxstartup
-
-# Launch SafeBench on the virtual display
-DISPLAY=:8 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval
+# Launch in another terminal
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --safety_network_cfg HJR.yaml --mode eval
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --safety_network_cfg HJR.yaml --mode eval --safety_eval  # use the trained safety network to help evaluation
 ```
 
-You can use the TurboVNC client on your local machine to connect to the virtual display.
-```bash
-# Use the built-in SSH client of TurboVNC Viewer
-/opt/TurboVNC/bin/vncviewer -via user@host localhost:n
+## Visualization
 
-# Or you can manually forward connections to the remote server by
-ssh -L fp:localhost:5900+n user@host
-# Open another terminal on local machine
-/opt/TurboVNC/bin/vncviewer localhost::fp
-```
-where `user@host` is your remote server, `fp` is a free TCP port on the local machine, and `n` is the display port specified when you started the VNC server on the remote server ("8" in our example).
-
-</details>
-
-### 3. Visualization with CarlaViz
-
-<details>
-    <summary> Click to expand </summary>
-
-![carlaviz](./docs/source/images/carlaviz.png)
-CarlaViz is a convenient visualization tool for CARLA developed by a former member [mjxu96](https://github.com/mjxu96) of our team. To use CarlaViz, please open another terminal and follow the intructions:
-```bash
-# pull docker image from docker hub
-docker pull mjxu96/carlaviz:0.9.13
-
-# run docker container of CarlaViz
-cd Safebench/scripts
-sh start_carlaviz.sh
-```
-Then, you can open the CarlaViz window at http://localhost:8080. You can also remotely access the CarlaViz window by forwarding the port 8080 to your local machine.
-</details>
-
-### 4. Scenic users
-
-<details>
-    <summary> Click to expand </summary>
-
-If you want to use scenic to control the surrounding adversarial agents, and use RL to control the ego, then first install scenic as follows:
+### Ego route
 
 ```bash
-# Download Scenic repository
-git clone https://github.com/BerkeleyLearnVerify/Scenic.git
-cd Scenic
-python -m pip install -e .
+# Launch CARLA
+./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+
+# Launch in another terminal
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval --viz_route  # visualization the global route
 ```
 
-Then you can create a directory in ```safebench/scenario/scenario_data/scenic_data```, e.g., ```Carla_Challenge```, and put your scenic files in that directory (the relative map path defined in scenic file should be ```../maps/*.xodr```).
+### State encoder attn map
 
-Next, set the param ```scenic_dir``` in ```safebench/scenario/config/scenic.yaml``` with the directory where you store the scenic files, e.g., ```safebench/scenario/scenario_data/scenic_data/Carla_Challenge```, and our code will automatically load all scenic files in that directory.
+[state encoder yaml](safebench/agent/config/state_encoder.yaml)   ```viz_attn_map=True (default)```
 
-For selecting the most adversarial scenes, the param ```sample_num``` within the ```scenic.yaml``` serves to determine the number of scenes sampled for each scenic file and the param ```select_num``` is used to specify the number of the most adversarial scenes to be selected from among the sample_num scenes:
+### render the whole pygame window
+
+ ```bash
+ # Launch CARLA
+ ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+ 
+ # Launch in another terminal
+ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval --render  # show the pygame window
+ ```
+
+### enable the semantic segmentation camera in the pygame window
 
 ```bash
-python scripts/run.py --agent_cfg sac.yaml --scenario_cfg scenic.yaml --num_scenario 1 --mode train_scenario
+# Launch CARLA
+./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+
+# Launch in another terminal
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval --render --envable_sem # show the pygame window and enable the 3rd-person view using the semantic segmentation camera
 ```
 
-Now you can test the ego with these selected adversarial scenes:
+## 静态场景改变
 
-```bash
-python scripts/run.py --agent_cfg sac.yaml --scenario_cfg scenic.yaml --num_scenario 1 --mode eval
-```
+carla_runner.py中的self._init_world(m_i)用于生成静态场景，诸如天气，自车需要行驶的global route等
+都由scenario/scenario_data/route下的.xml文件或.json文件生成  
 
-Or if you want to Launch it on the virtual display:
+### 静态地图载入流程
 
-```bash
-DISPLAY=:8 python scripts/run.py --agent_cfg sac.yaml --scenario_cfg scenic.yaml --num_scenario 1 --mode train_scenario
-DISPLAY=:8 python scripts/run.py --agent_cfg sac.yaml --scenario_cfg scenic.yaml --num_scenario 1 --mode eval
-``` 
-</details>
+1. 一类生成场景算法(adv_behavior_single)包含一系列的data_id，即不同的scenario template id, route id的组合
+2. sceanrio_type中的yaml文件去除一部分的data_id，例如，采用SAC算法进行adv_behavior_single生成，指定scenario_id=8，route id=null，即只进行第八类scenario template的场景(NoSignalJunctionCrossingRoute)，但选择第八类全部的route进行生成。其中不同的route包含不同地图下的不同route
+3. 针对挑选scenario id和route id后的data id进行具体的scenario_05_route_03.xml文件中解析其route上的waypoints以及额外信息，并对每一个data_id依据town进行分类
+4. 针对根据town分类后的data id生成地图，每一个具体的地图中，可能包含不同scenario template，以及route。例如，可能为Town5中，所有可能发生NoSignalJunctionCrossingRoute模板场景的route，如果不仅仅包含一个scenario template，可能还会包含多种scenario template的多种route，在一个地图内。
+5. 当carla_runner每run一次，会针对一个地图，挑出该地图中，所有的data id包含的config (每一个config包含一个具体的scenario template的route，即发生NoSignalJunctionCrossingRoute的route 1)，并且将其打乱，包装为一个data_loader训练测试时，对data_loader进行sample，挑出某些包含场景的route。并且在训练和测试时，同时sample到的多条route进行仿真。
 
-## Running Arguments
+### 各类文件作用
 
-| Argument | Choice | Usage |
-| :----: | :----: | :---- |
-| `mode` | `{train_agent, train_scenario, eval}` | We provide three modes for training agent, training scenario, and evaluation. |
-| `agent_cfg`      | str  |  path to the configuration file of agent. |
-| `scenario_cfg`   | str  |  path to the configuration file of scenario. |
-| `max_episode_step`      | int     | Number of episode used for training agents and scenario. |
-| `num_scenario`  | `{1, 2, 3, 4}` | We support running multiple scenarios in parallel. Current map allows at most 4 scenarios. |
-| `save_video`    | store_true     |  We support saving videos during the evaluation mode. | 
-| `auto_ego`      | store_true     |  Overwrite the action of ego agent with auto-polit |
-| `port`      | int     |  Port used by Carla, default 2000 |
+1. [Scenario_type](safebench/scenario/config/scenario_type)中的.json文件包含某一生成场景算法(adv_behavior_single, adv_init_state等)，所有的**Scenario_id, route_id**组合，使用时通过.yaml文件确定在哪些**scenario模板**以及**哪些地图的哪些route**进行部署, 
+   其中针对同一scenario以及route可能重复多次，但其data_id不同
+2. **确定Scenario_id (Scenario模板): **[scenario_01.json](safebench/scenario/scenario_data/route/scenarios)文件表示，某一scenario template (8种template)在所有的7张地图(Town_Safebench_Light,Town1~Town6)中，可能在哪些地图中出现，且周围的环境车辆的初始位置信息，如果available_event_configurations为空，则代表在该地图下，不可能发生该scenario。例如scenario_01.json表示DynamicObjectCrossing这一场景只会在Town_Safebench_Light地图和Town5地图下可能出现
+3. **确定route_id (某一地图某一Route): **[Scenario_01_routes](safebench/scenario/scenario_data/route/scenario_01_routes)文件夹中的Scenario_01_route_xx.xml文件表示在可能的地图中（scenario_01例子中，为Town_Safebench_Light地图和Town5地图）发生DynamicObjectCrossing这一场景的route (包含起始点(保留位姿)，终止点，以及路径中离散的关键点)
+4. 天气情况由[scenario_01_routes](./safebench/scenario/scenario_data/route/scenario_01_routes)中的.xml文件指定，也可由[carla_runner.py](safebench/carla_runner.py)中的self._init_world 函数设置
+
+## 动态场景改变
+
+1. initial action: 改变初始状态的通过sceanrio difination中具体scenario的create_behavior跳转
+   可改，通过改变某一scenario的create_behavior以及initialize_actor
+2. adversarial behavior改变行进过程中的状态(调整target speed，目前不支持变道，只能直行)的通过scenario policy update_behavior跳转 
+   可改，通过改变接收到scenario action后的使用方式，扩展到变道，不仅仅改变target speed  
+
+### Example
+
+1. adversarial behavior:  
+   [adv_behavior_single](./safebench/scenario/scenario_definition/adv_behavior_single/junction_crossing_route.py) 
+   update_behavior function, 当触发场景后，改变周车行驶过程中的target speed (仅限于直行),且在实现控制时，加速度即throttle保持一定  
+   *行车过程中，周车的target speed通过算法控制，初始状态提前设定(pre-defined)*
+2. initial action:  
+   [adv_init_state](./safebench/scenario/scenario_definition/adv_init_state/junction_crossing_route.py) 
+   create_behavior function改变周车初始行为中的target speed (周车目标速度), trigger distance threshold (提前多少距离触发新场景)
+   改变他车forward vector的尺度 (改变他车的初始位置), 当自车接近到周车提前设定的位置时，激活场景，通过update_behavior更新动作 
+   *行车过程中，初始状态由算法提前设定，激活后update behavior提前设定(rule-based)无法通过算法动态改变*

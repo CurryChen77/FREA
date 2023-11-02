@@ -34,7 +34,7 @@ if __name__ == '__main__':
     parser.add_argument('--enable_sem', action='store_true')
     parser.add_argument('--safety_eval', action='store_true', help='whether to activate safety evaluation')
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_safety_network'])
-    parser.add_argument('--agent_cfg', nargs='*', type=str, default='dummy.yaml')
+    parser.add_argument('--agent_cfg', nargs='*', type=str, default='behavior.yaml')
     parser.add_argument('--scenario_cfg', nargs='*', type=str, default='standard.yaml')
     parser.add_argument('--safety_network_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--continue_agent_training', '-cat', type=bool, default=False)
