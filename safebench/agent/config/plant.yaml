@@ -11,15 +11,6 @@ save_freq: 10
 buffer_capacity: 10000
 buffer_start_training: 100
 
-
-#agent: ${user.working_dir}/carla_agent_files/PlanT_agent.py
-#
-## model_path needs to be adapted depending on the experiment
-#model_root: checkpoints/PlanT/3x/PlanT_medium
-#
-#agent_root: ${user.working_dir}/${experiments.model_path}
-#agent_config: ${experiments.agent_root}/log/
-
 # model_ckpt_load_path needs to be adapted depending on the experiment
 model_ckpt_load_path: "safebench/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt"
 exec_model_ckpt_load_path: "safebench/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt"

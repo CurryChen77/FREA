@@ -5,6 +5,9 @@ model_id: 0
 results_folder_path: ''
 obs_type: 'no_obs'
 
+# parameters for agent policy
+ego_action_dim: 2
+
 train_episode: 2000
 eval_in_train_freq: 1
 save_freq: 10

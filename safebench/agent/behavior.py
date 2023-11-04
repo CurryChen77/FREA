@@ -23,7 +23,6 @@ class CarlaBehaviorAgent(BasePolicy):
     def __init__(self, config, logger):
         self.logger = logger
         self.num_scenario = config['num_scenario']
-        self.ego_action_dim = config['ego_action_dim']
         self.model_path = config['model_path']
         self.viz_route = config['viz_route']
         self.mode = 'train'
@@ -57,7 +56,8 @@ class CarlaBehaviorAgent(BasePolicy):
             if self.viz_route:
                 route = controller._local_planner._waypoints_queue
                 waypoint_route = np.array([[node[0].transform.location.x, node[0].transform.location.y] for node in route])
-                draw_route(controller._world, controller._vehicle, waypoint_route)
+                if len(waypoint_route) >= 1:
+                    draw_route(controller._world, controller._vehicle, waypoint_route)
 
             # TODO the waypoint list in safebench and carla's behavior agent is different
             # for the behavior agent, the goal may be reached (no more waypoints to chase), but safebench still got waypoints

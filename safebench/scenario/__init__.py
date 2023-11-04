@@ -20,8 +20,6 @@ SCENARIO_POLICY_LIST = {
     'standard': DummyPolicy,
     'ordinary': DummyPolicy,
     'scenic': DummyPolicy,
-    'advsim': HardCodePolicy,
-    'advtraj': HardCodePolicy,
     'human': HardCodePolicy,
     'random': HardCodePolicy,
     'lc': REINFORCE,

@@ -79,6 +79,7 @@ class AgentStateEncoder(object):
 
         return most_relevant_vehicle
 
+    @torch.no_grad()
     def get_encoded_state(self, ego_vehicle, ego_nearby_vehicles, waypoints, traffic_light_hazard):
         if len(waypoints) > 1:
             target_point = waypoints[1]  # the preview waypoint

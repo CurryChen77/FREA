@@ -13,11 +13,9 @@ from pathlib import Path
 import warnings
 from PIL import Image, ImageDraw, ImageOps
 import torch
+import math
 
-from filterpy.kalman import MerweScaledSigmaPoints
-from filterpy.kalman import UnscentedKalmanFilter as UKF
-from safebench.agent.agent_utils.filter_functions import *
-from safebench.agent.agent_utils.coordinate_utils import preprocess_compass, inverse_conversion_2d
+from safebench.agent.agent_utils.coordinate_utils import inverse_conversion_2d
 from safebench.agent.agent_utils.explainability_utils import *
 
 from safebench.agent.PlanT.data_agent_boxes import DataAgent
@@ -114,26 +112,6 @@ class PlanTAgent(DataAgent):
     def tick(self, input_data):
         result = super().tick(input_data)
 
-        # pos = input_data['gps']
-        # speed = input_data['speed']
-        # compass = input_data['compass']
-        # # pos = self._route_planner.convert_gps_to_carla(input_data['gps'][1][:2])
-        # # speed = input_data['speed'][1]['speed']
-        # # compass = preprocess_compass(input_data['imu'][1][-1])
-        #
-        # # if not self.filter_initialized:
-        # #     self.ukf.x = np.array([pos[0], pos[1], compass, speed])
-        # #     self.filter_initialized = True
-        # #
-        # # self.ukf.predict(steer=self.control.steer,
-        # #                 throttle=self.control.throttle,
-        # #                 brake=self.control.brake)
-        # # self.ukf.update(np.array([pos[0], pos[1], compass, speed]))
-        # # filtered_state = self.ukf.x
-        # # self.state_log.append(filtered_state)
-        # # result['gps'] = filtered_state[0:2]
-        # # waypoint_route = self._route_planner.run_step(filtered_state[0:2])
-
         waypoint_route = self._route_planner.run_step(result['gps'])
 
         if len(waypoint_route) > 2:
@@ -148,10 +126,6 @@ class PlanTAgent(DataAgent):
 
         ego_target_point = inverse_conversion_2d(target_point, result['gps'], result['compass'])
         result['target_point'] = tuple(ego_target_point)
-
-        # if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
-        #     result['rgb_back'] = input_data['rgb_back']
-        #     result['sem_back'] = input_data['sem_back']
 
         return result
 
@@ -194,7 +168,6 @@ class PlanTAgent(DataAgent):
 
         if brake:
             steer *= self.steer_damping
-
 
         control = carla.VehicleControl()
         control.steer = float(steer)
@@ -291,24 +264,6 @@ class PlanTAgent(DataAgent):
 
     def destroy(self):
         super().destroy()
-            
-        # if SAVE_GIF == True and (self.exec_or_inter == 'inter'):
-        #     self.save_path_mask_vid = f'viz_vid/masked'
-        #     self.save_path_org_vid = f'viz_vid/org'
-        #     Path(self.save_path_mask_vid).mkdir(parents=True, exist_ok=True)
-        #     Path(self.save_path_org_vid).mkdir(parents=True, exist_ok=True)
-        #     out_name_mask = f"{self.save_path_mask_vid}/{self.route_index}.mp4"
-        #     out_name_org = f"{self.save_path_org_vid}/{self.route_index}.mp4"
-        #     cmd_mask = f"ffmpeg -r 25 -i {self.save_path_mask}/%d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {out_name_mask}"
-        #     cmd_org = f"ffmpeg -r 25 -i {self.save_path_org}/%d.png -c:v libx264 -vf fps=25 -pix_fmt yuv420p {out_name_org}"
-        #     print(cmd_mask)
-        #     os.system(cmd_mask)
-        #     print(cmd_org)
-        #     os.system(cmd_org)
-        #
-        #     # delete the images
-        #     os.system(f"rm -rf {Path(self.save_path_mask).parent}")
-            
         del self.net
 
 
@@ -321,11 +276,9 @@ def create_BEV(labels_org, gt_traffic_light_hazard, target_point, pred_wp, pix_p
     origin = (size//2, size//2)
     PIXELS_PER_METER = pix_per_m
 
-    
     # color = [(255, 0, 0), (0, 0, 255)]
     color = [(255), (255)]
-   
-    
+
     # create black image
     image_0 = Image.new('L', (size, size))
     image_1 = Image.new('L', (size, size))

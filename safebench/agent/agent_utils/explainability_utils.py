@@ -89,6 +89,7 @@ def get_attn_norm_vehicles(attention_score, data_car, attn_map):
     
     return attn_vector
 
+
 def get_vehicleID_from_attn_scores(data, data_car, topk, attn_vector):
     # get ids of all vehicles in detection range
     data_car_ids = [

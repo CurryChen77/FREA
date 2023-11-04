@@ -95,9 +95,6 @@ class CarlaRunner:
         agent_config['mode'] = scenario_config['mode']
         agent_config['desired_speed'] = self.env_params['desired_speed']
         agent_config['num_scenario'] = scenario_config['num_scenario']
-        agent_config['ego_action_dim'] = scenario_config['ego_action_dim']      # default 2 dimensions (acc, steering)
-        agent_config['ego_state_dim'] = scenario_config['ego_state_dim']        # default 4 dimensions
-        agent_config['ego_action_limit'] = scenario_config['ego_action_limit']  # default 1.0
 
         # pass config from agent, scenario to safety_network
         if self.safety_network_config:
