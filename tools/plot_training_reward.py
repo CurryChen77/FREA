@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：plot_reward.py
+@File    ：plot_training_reward.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/4
@@ -12,8 +12,8 @@ import numpy as np
 import pickle as pkl
 import matplotlib.pyplot as plt
 
-
-with open('../log/exp/exp_sac_standard_HJ-Reachability_seed_0/training_results/results.pkl', 'rb') as f:
+# The training results path
+with open('../log/train_agent/exp_sac_standard_seed_0/training_results/results.pkl', 'rb') as f:
     data = pkl.load(f)
 
 episode = data['episode']

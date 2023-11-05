@@ -226,7 +226,7 @@ class Logger:
         joblib.dump(self.eval_records, self.record_file)
 
     def print_eval_results(self):
-        self.log("Evaluation results:")
+        self.log("Evaluation results up to now:")
         for key, value in self.eval_results.items():
             self.log(f"\t {key: <25}{value}")
 

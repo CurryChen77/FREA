@@ -52,8 +52,8 @@ def get_route_scores(record_dict, time_out=30):
     # safety level
     num_collision = 0
     sum_out_of_road_length = 0
-    for data_id, sequence in record_dict.items():
-        if sequence[-1]['collision'] == Status.FAILURE:
+    for data_id, sequence in record_dict.items():  # for each data id (small scenario)
+        if sequence[-1]['collision'] == Status.FAILURE:  # [-1] means the finial step
             num_collision += 1
         sum_out_of_road_length += cal_out_of_road_length(sequence)
 

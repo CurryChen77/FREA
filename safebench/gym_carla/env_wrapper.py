@@ -133,6 +133,7 @@ class VectorWrapper():
                     # save running results according to the data_id of scenario
                     if current_env.config.data_id in self.running_results.keys():
                         self.logger.log('Scenario with data_id {} is duplicated'.format(current_env.config.data_id))
+                    # the running results contain every data id (one specific scenario) running status at each time step
                     self.running_results[current_env.config.data_id] = current_env.scenario_manager.running_record
 
                 # update infomation

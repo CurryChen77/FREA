@@ -332,7 +332,7 @@ class CarlaRunner:
                 # accumulate scores of corresponding scenario
                 reward_idx = 0
                 for s_i in infos:
-                    score = rewards[reward_idx] if self.scenario_category == 'planning' else 1-infos[reward_idx]['iou_loss']
+                    score = rewards[reward_idx]
                     score_list[s_i['scenario_id']].append(score)
                     reward_idx += 1
 
@@ -346,16 +346,16 @@ class CarlaRunner:
                 self.logger.save_video(data_ids=data_ids)
 
             # print score for ranking
-            self.logger.log(f'[{num_finished_scenario}/{data_loader.num_total_scenario}] Ranking scores for batch scenario:', 'yellow')
+            self.logger.log(f'[{num_finished_scenario}/{data_loader.num_total_scenario}] Ranking scores (rewards) for batch scenario:', 'yellow')
             for s_i in score_list.keys():
                 self.logger.log('\t Env id ' + str(s_i) + ': ' + str(np.mean(score_list[s_i])), 'yellow')
 
             # calculate evaluation results
-            score_function = get_route_scores if self.scenario_category == 'planning' else None
-            all_running_results = self.logger.add_eval_results(records=self.env.running_results)
-            all_scores = score_function(all_running_results)
+            score_function = get_route_scores
+            all_running_results = self.logger.add_eval_results(records=self.env.running_results)  # running results is growing as the evaluation goes
+            all_scores = score_function(all_running_results)  # the current statistical scores from the start to the current evaluation scenario
             self.logger.add_eval_results(scores=all_scores)
-            self.logger.print_eval_results()
+            self.logger.print_eval_results()  # the finial eval results represent the statistical score during the whole process of evaluation
             if len(self.env.running_results) % self.save_freq == 0:
                 self.logger.save_eval_results()
         self.logger.save_eval_results()
