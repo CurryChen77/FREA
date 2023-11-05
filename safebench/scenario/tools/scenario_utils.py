@@ -78,7 +78,7 @@ def scenario_parse(config, logger):
     """
     ROOT_DIR = config['ROOT_DIR']
     logger.log(">> Parsing scenario route and data")
-    # specific scenario type files ('adv_behavior_single.json')
+    # specific scenario type files ('carla_scenario_5to8_10x.json')
     list_of_scenario_config = osp.join(ROOT_DIR, config['scenario_type_dir'], config['scenario_type'])
     # route.xml file formatter('sceanrio_01_route_01.xml') specify one route in one map
     route_file_formatter = osp.join(ROOT_DIR, config['route_dir'], 'scenario_%02d_routes/scenario_%02d_route_%02d.xml')
@@ -87,7 +87,7 @@ def scenario_parse(config, logger):
 
     # scenario_id, method, route_id, risk_level
     with open(list_of_scenario_config, 'r') as f:
-        data_full = json.loads(f.read())  # one specific type of generation method (adv_init_state.json)
+        data_full = json.loads(f.read())  # one specific type of generation method (safebench_scenario_10x.json)
         # filter the list if any parameter is specified
         if config['scenario_id'] is not None:
             logger.log('>> Selecting scenario_id: ' + str(config['scenario_id']))

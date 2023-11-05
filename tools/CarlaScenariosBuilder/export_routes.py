@@ -130,7 +130,7 @@ def main(config):
 
     # save scenario config data
     os.makedirs(config.save_dir, exist_ok=True)
-    with open(os.path.join(config.save_dir, 'standard.json'), 'w') as f:
+    with open(os.path.join(config.save_dir, 'safebench_scenario_1x.json'), 'w') as f:
         json.dump(scenario_route_datas, f, indent=2)
 
 

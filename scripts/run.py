@@ -79,7 +79,6 @@ if __name__ == '__main__':
                 safety_network_config.update(args_dict)
             else:
                 safety_network_config = None
-
             # main entry with a selected mode
             agent_config.update(args_dict)
             scenario_config.update(args_dict)
