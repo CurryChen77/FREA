@@ -114,7 +114,6 @@ def scenario_parse(config, logger):
         parsed_config.auto_ego = config['auto_ego']
         parsed_config.num_scenario = config['num_scenario']
         parsed_config.data_id = item['data_id']
-        parsed_config.scenario_folder = item["scenario_folder"]
         parsed_config.scenario_id = item['scenario_id']
         parsed_config.route_id = item['route_id']
         parsed_config.risk_level = item['risk_level']
