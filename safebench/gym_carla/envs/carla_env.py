@@ -245,6 +245,7 @@ class CarlaEnv(gym.Env):
         # get the nearby vehicles around the cbv
         if self.controlled_bv:
             self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
+            self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # for the BEV visualization
         else:
             self.controlled_bv_nearby_vehicles = None
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
@@ -433,6 +434,7 @@ class CarlaEnv(gym.Env):
         else:
             most_relevant_vehicle = None
 
+        old_cbv = self.controlled_bv  # for BEV visualization
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         if self.cbv_selection == 'rule-based':
             self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
@@ -441,6 +443,12 @@ class CarlaEnv(gym.Env):
         # get the nearby vehicles around the cbv
         if self.controlled_bv:
             self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
+            # update the cbv for BEV visualization
+            if old_cbv and old_cbv.id != self.controlled_bv.id:  # the cbv has changed, need to remove the old cbv
+                self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # update the new cbv
+                self.birdeye_render.remove_old_controlled_bv(old_cbv.id)  # remove the old cbv if exist
+            elif old_cbv is None:
+                self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # add the new cbv
         else:
             self.controlled_bv_nearby_vehicles = None
         self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
@@ -540,8 +548,6 @@ class CarlaEnv(gym.Env):
     def _get_obs(self):
         # set ego information for birdeye_render
         self.birdeye_render.set_hero(self.ego_vehicle, self.ego_vehicle.id)
-        if self.controlled_bv:
-            self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)
         self.birdeye_render.vehicle_polygons = self.vehicle_polygons
         self.birdeye_render.walker_polygons = self.walker_polygons
         self.birdeye_render.waypoints = self.waypoints

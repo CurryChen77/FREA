@@ -383,6 +383,7 @@ class BirdeyeRender(object):
         self.hero_id = None
         self.hero_transform = None
         self.heros_in_all_envs = []
+        self.controlled_bv_in_all_envs = []
 
         # controlled_bv
         self.controlled_bv = None
@@ -430,6 +431,10 @@ class BirdeyeRender(object):
     def set_controlled_bv(self, controlled_bv, controlled_bv_id):
         self.controlled_bv = controlled_bv
         self.controlled_bv_id = controlled_bv_id
+        self.controlled_bv_in_all_envs.append(controlled_bv_id)
+
+    def remove_old_controlled_bv(self, controlled_bv_id):
+        self.controlled_bv_in_all_envs.remove(controlled_bv_id)
 
     def tick(self, clock):
         actors = self.world.get_actors()
@@ -485,7 +490,7 @@ class BirdeyeRender(object):
                 color_value = max(0.8 - 0.8/lp*(i+1), 0)
                 if ID == self.hero_id or ID in self.heros_in_all_envs:
                     color = pygame.Color(255, math.floor(color_value*255), math.floor(color_value*255))  # red
-                elif ID == self.controlled_bv_id:  # TODO: can't update in real-time
+                elif ID == self.controlled_bv_id or ID in self.controlled_bv_in_all_envs:  # TODO: can't update in real-time
                     color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255))  # purple
                 else:
                     if actor_type == 'vehicle':
@@ -563,4 +568,8 @@ class BirdeyeRender(object):
             return rotated_result_surface
         else:
             raise ValueError('hero_actor is None')
-    
+
+
+    def clean_up(self):
+        self.controlled_bv_in_all_envs = []
+        self.heros_in_all_envs = []

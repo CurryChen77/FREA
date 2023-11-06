@@ -29,6 +29,7 @@ class VectorWrapper():
         self.render = scenario_config['render']
         self.safety_network_config = safety_network_config
         self.agent_state_encoder = agent_state_encoder
+        self.birdeye_render = birdeye_render
 
         self.env_list = []
         for i in range(self.num_scenario):
@@ -159,6 +160,8 @@ class VectorWrapper():
             return False
 
     def clean_up(self):
+        # clean the temp list in the render
+        self.birdeye_render.clean_up()
         # stop sensor objects
         for e_i in range(self.num_scenario):
             self.env_list[e_i].clean_up()
