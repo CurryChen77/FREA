@@ -4,7 +4,7 @@ scenario_category: 'planning'
 policy_type: 'sac'
 
 route_dir: 'safebench/scenario/scenario_data/route'
-scenario_id: 8
+scenario_id: 8  # default null -> save and load an "all" model for all scenarios, 8 -> save and load one model for the "8" scenario
 route_id: null
 
 # parameters for scenario policy

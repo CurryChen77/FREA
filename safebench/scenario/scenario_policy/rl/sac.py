@@ -250,23 +250,6 @@ class SAC(BasePolicy):
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
-    # load method that require 10 different model parameters, so the saving method still need to be changed
-    # def load_model(self, scenario_configs=None):
-    #     if scenario_configs is not None:
-    #         for config in scenario_configs:
-    #             scenario_id = config.scenario_id
-    #             model_file = config.parameters  # for each scenario and route, it got 10 different parameter name
-    #             model_filename = os.path.join(self.model_path, str(scenario_id), model_file)
-    #             if os.path.exists(model_filename):
-    #                 self.logger.log(f'>> Loading {self.policy_type} model from {model_filename}')
-    #                 with open(model_filename, 'rb') as f:
-    #                     checkpoint = torch.load(f)
-    #                 self.policy_net.load_state_dict(checkpoint['policy_net'])
-    #                 self.value_net.load_state_dict(checkpoint['value_net'])
-    #                 self.Q_net.load_state_dict(checkpoint['Q_net'])
-    #             else:
-    #                 self.logger.log(f'>> Fail to find {self.policy_type} model from {model_filename}', color='yellow')
-
     # the loading method corresponds to the episode saving method
     def load_model(self, episode=None):
         scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
