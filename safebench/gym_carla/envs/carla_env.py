@@ -77,10 +77,8 @@ class CarlaEnv(gym.Env):
         self.agent_obs_type = env_params['agent_obs_type']
         self.agent_state_encoder = agent_state_encoder
 
-        # agent state encoder for safety network using PlanT encoding or agent using PlanT
-        if agent_state_encoder:
-            self.safety_network_obs_type = agent_state_encoder.obs_type
-        elif safety_network_config:
+        # set the safety network's obs type
+        if safety_network_config:
             self.safety_network_obs_type = safety_network_config['obs_type']
         else:
             self.safety_network_obs_type = None
@@ -223,12 +221,16 @@ class CarlaEnv(gym.Env):
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
 
-        # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
-        ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
-        self.ego_min_dis = ego_min_dis
+        ego_nearby_vehicles = None
+        # only the safety network is not None, then need to calculate the ego min distance
+        if self.safety_network_obs_type:
+            ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+            self.ego_min_dis = ego_min_dis
 
         # all the situations that need the encoded state or most relevant vehicle
-        if (self.safety_network_obs_type and self.safety_network_obs_type == 'plant') or (self.agent_obs_type == 'plant') or (self.cbv_selection == 'attention-based'):
+        if self.agent_state_encoder:
+            if not self.safety_network_obs_type:
+                ego_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.ego_vehicle, self.search_radius)
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
@@ -283,7 +285,7 @@ class CarlaEnv(gym.Env):
             intensity = np.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
             self.collision_hist.append(intensity)
             # TODO if collision the ego min distance must be 0
-            self.ego_min_dis = 0.
+            self.ego_min_dis = 0. if self.safety_network_obs_type else None
             if len(self.collision_hist) > self.collision_hist_l:
                 self.collision_hist.pop(0)
         self.collision_hist = []
@@ -421,12 +423,16 @@ class CarlaEnv(gym.Env):
 
         origin_info = self._get_info(training=True)  # for training
 
-        # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
-        ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
-        self.ego_min_dis = ego_min_dis
+        # only the safety network is not None, then need to calculate the ego min distance
+        ego_nearby_vehicles = None
+        if self.safety_network_obs_type:
+            ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+            self.ego_min_dis = ego_min_dis
 
         # all the situations that need the encoded state or most relevant vehicle
-        if (self.safety_network_obs_type and self.safety_network_obs_type == 'plant') or (self.agent_obs_type == 'plant') or (self.cbv_selection == 'attention-based'):
+        if self.agent_state_encoder:
+            if not self.safety_network_obs_type:
+                ego_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.ego_vehicle, self.search_radius)
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
@@ -479,7 +485,6 @@ class CarlaEnv(gym.Env):
                 'cbv_min_dis': cbv_min_dis,                       # the min dis from the controlled bv to the rest bvs
                 'cbv_min_dis_cost': cbv_min_dis_cost,             # whether the min dis is lower than a threshold
                 'mapped_cbv_vel': CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed),    # the mapped cbv velocity
-                'ego_min_dis': self.ego_min_dis,                  # the ego_min_dis with the rest bvs
                 'route_waypoints': self.global_route_waypoints,   # the global route waypoints
                 'gps_route': self.gps_route,                      # the global gps route
                 'route': self.route,                              # the global route
@@ -488,7 +493,9 @@ class CarlaEnv(gym.Env):
             # if train the safety network, need to add encoded state
             if self.safety_network_obs_type and self.safety_network_obs_type == 'plant':
                 info['encoded_state'] = self.encoded_state
-
+            # only the safety network is not None, then need to calculate the ego min distance
+            if self.safety_network_obs_type:
+                info['ego_min_dis'] = self.ego_min_dis  # the ego_min_dis with the rest bvs
         return info
 
     def _init_traffic_light(self):

@@ -17,7 +17,7 @@
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode train_agent
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_agent
 ``````
 
 ### Policy
@@ -66,7 +66,7 @@ For Carla Leaderboard agent (Expert or PlanT)
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode train_scenario
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_scenario
 ```
 
 ### Policy
@@ -84,7 +84,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --m
   2. **rule-based**
 
 ```bash
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode train_scenario  --cbv_selection 'attention-based'  # different method of selecting controlled bv
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_scenario  --cbv_selection 'attention-based'  # different method of selecting controlled bv
 ```
 
 * Input state
@@ -108,7 +108,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --m
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --safety_network_cfg HJR.yaml --mode train_safety_network
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode train_safety_network
 ```
 
 ### Policy
@@ -132,8 +132,8 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --s
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --safety_network_cfg HJR.yaml --mode eval
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --safety_network_cfg HJR.yaml --mode eval --safety_eval  # use the trained safety network to help evaluation
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode eval
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode eval --safety_eval  # use the trained safety network to help evaluation
 ```
 
 ## Visualization
@@ -145,7 +145,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --s
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval --viz_route  # visualization the global route
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --viz_route  # visualization the global route
 ```
 
 ### State encoder attn map
@@ -159,7 +159,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --m
  ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
  
  # Launch in another terminal
- python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval --render  # show the pygame window
+ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render  # show the pygame window
  ```
 
 ### enable the sem camera for visualization
@@ -169,7 +169,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --m
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval --render --envable_sem # show the pygame window and enable the 3rd-person view using the semantic segmentation camera
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render --envable_sem # show the pygame window and enable the 3rd-person view using the semantic segmentation camera
 ```
 
 ## Metric

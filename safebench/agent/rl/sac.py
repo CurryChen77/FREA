@@ -96,7 +96,8 @@ class SAC(BasePolicy):
         self.gamma = config['gamma']
         self.tau = config['tau']
 
-        self.model_id = config['model_id']
+        self.model_type = config['model_type']
+        self.scenario_id = config['scenario_id']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
@@ -220,21 +221,26 @@ class SAC(BasePolicy):
             'value_net': self.value_net.state_dict(), 
             'Q_net': self.Q_net.state_dict()
         }
-        filepath = os.path.join(self.model_path, f'model.sac.{self.model_id}.{episode:04}.torch')
+        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
+        save_dir = os.path.join(self.model_path, scenario_name)
+        os.makedirs(save_dir, exist_ok=True)
+        filepath = os.path.join(save_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
     def load_model(self, episode=None):
+        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
+        load_dir = os.path.join(self.model_path, scenario_name)
         if episode is None:
             episode = -1
-            for _, _, files in os.walk(self.model_path):
+            for _, _, files in os.walk(load_dir):
                 for name in files:
                     if fnmatch(name, "*torch"):
                         cur_episode = int(name.split(".")[-2])
                         if cur_episode > episode:
                             episode = cur_episode
-        filepath = os.path.join(self.model_path, f'model.sac.{self.model_id}.{episode:04}.torch')
+        filepath = os.path.join(load_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
             self.logger.log(f'>> Loading {self.name} model from {os.path.basename(filepath)}', color='yellow')
             with open(filepath, 'rb') as f:

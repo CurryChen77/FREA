@@ -90,7 +90,7 @@ Enter the CARLA root folder, launch the CARLA server and run our platform with
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch SafeBench in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval
 ```
 </details>
 
@@ -105,7 +105,7 @@ Enter the CARLA root folder, launch the CARLA server with headless mode, and run
 ./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Launch SafeBench in another terminal
-SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval
+SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval
 ```
 
 (Optional) You can also visualize the pygame window using [TurboVNC](https://sourceforge.net/projects/turbovnc/files/).
@@ -118,7 +118,7 @@ First, launch CARLA with headless mode, and run our platform on a virtual displa
 /opt/TurboVNC/bin/vncserver :8 -noxstartup
 
 # Launch SafeBench on the virtual display
-DISPLAY=:8 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard.yaml --mode eval
+DISPLAY=:8 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval
 ```
 
 You can use the TurboVNC client on your local machine to connect to the virtual display.

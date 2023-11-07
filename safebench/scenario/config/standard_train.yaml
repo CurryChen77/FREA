@@ -1,0 +1,16 @@
+scenario_type_dir: 'safebench/scenario/config/scenario_type'
+scenario_type: 'carla_scenario_10x.json'  # default 'safebench_scenario_1x.json' only include the route scenario in the safebench light map
+scenario_category: 'planning'
+policy_type: 'standard'
+
+route_dir: 'safebench/scenario/scenario_data/route'
+scenario_id: 8
+route_id: null
+
+# not useful
+model_path: ''
+standard_action: False
+buffer_capacity: 100
+eval_in_train_freq: 10
+save_freq: 5
+train_episode: 100

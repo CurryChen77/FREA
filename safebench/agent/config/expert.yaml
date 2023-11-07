@@ -1,7 +1,7 @@
 policy_type: 'expert'
 learnable: False
 model_path: ''
-model_id: 0
+model_type: 'agent'
 results_folder_path: ''
 obs_type: 'ego_state'
 

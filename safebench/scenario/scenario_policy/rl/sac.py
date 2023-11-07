@@ -98,7 +98,7 @@ class SAC(BasePolicy):
         self.gamma = config['gamma']
         self.tau = config['tau']
 
-        self.model_id = config['model_id']
+        self.model_type = config['model_type']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         self.scenario_id = config['scenario_id']
         if not os.path.exists(self.model_path):
@@ -245,7 +245,7 @@ class SAC(BasePolicy):
         scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
         save_dir = os.path.join(self.model_path, scenario_name)
         os.makedirs(save_dir, exist_ok=True)
-        filepath = os.path.join(save_dir, f'model.sac.{self.model_id}.{episode:04}.torch')
+        filepath = os.path.join(save_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
@@ -263,7 +263,7 @@ class SAC(BasePolicy):
                         if cur_episode > episode:
                             episode = cur_episode
 
-        filepath = os.path.join(load_dir, f'model.sac.{self.model_id}.{episode:04}.torch')
+        filepath = os.path.join(load_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
             self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}')
             with open(filepath, 'rb') as f:

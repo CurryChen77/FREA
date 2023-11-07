@@ -1,7 +1,7 @@
 policy_type: 'ddpg'
 learnable: True
 model_path: 'safebench/agent/model_ckpt/ddpg'
-model_id: 0
+model_type: 'agent'
 results_folder_path: ''
 obs_type: 'simple_state'
 

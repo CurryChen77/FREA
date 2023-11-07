@@ -128,7 +128,7 @@ class NormalizingFlow(REINFORCE):
         self.continue_episode = 0
         self.num_scenario = scenario_config['num_scenario']
         self.model_path = os.path.join(scenario_config['ROOT_DIR'], scenario_config['model_path'])
-        self.model_id = scenario_config['model_id']
+        self.model_type = scenario_config['model_type']
         self.use_prior = scenario_config['use_prior']
 
         self.lr = scenario_config['lr']
@@ -258,7 +258,7 @@ class NormalizingFlow(REINFORCE):
         if not os.path.exists(self.model_path):
             self.logger.log(f'>> Creating folder for saving model: {self.model_path}')
             os.makedirs(self.model_path)
-        model_filename = os.path.join(self.model_path, f'{self.model_id}.pt')
+        model_filename = os.path.join(self.model_path, f'{self.model_type}.pt')
         self.logger.log(f'>> Saving nf model to {model_filename}')
         with open(model_filename, 'wb+') as f:
             torch.save({'parameters': self.model.state_dict()}, f)
@@ -281,13 +281,13 @@ class NormalizingFlow(REINFORCE):
 
     def save_prior_model(self):
         states = {'parameters': self.prior_model.state_dict()}
-        model_filename = os.path.join(self.model_path, 'nf.prior.'+str(self.model_id)+'.pt')
+        model_filename = os.path.join(self.model_path, 'nf.prior.'+str(self.model_type)+'.pt')
         with open(model_filename, 'wb+') as f:
             torch.save(states, f)
             self.logger.log(f'>> Save prior model of nf')
 
     def load_prior_model(self):
-        model_filename = os.path.join(self.model_path, 'nf.prior.'+str(self.model_id)+'.pt')
+        model_filename = os.path.join(self.model_path, 'nf.prior.'+str(self.model_type)+'.pt')
         self.logger.log(f'>> Loading nf model from {model_filename}')
         if os.path.isfile(model_filename):
             with open(model_filename, 'rb') as f:

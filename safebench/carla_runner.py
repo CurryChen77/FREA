@@ -95,6 +95,7 @@ class CarlaRunner:
         agent_config['mode'] = scenario_config['mode']
         agent_config['desired_speed'] = self.env_params['desired_speed']
         agent_config['num_scenario'] = scenario_config['num_scenario']
+        agent_config['scenario_id'] = scenario_config['scenario_id']
 
         # pass config from agent, scenario to safety_network
         if self.safety_network_config:
@@ -112,6 +113,7 @@ class CarlaRunner:
             agent=agent_config['policy_type'],
             scenario=scenario_config['policy_type'],
             safety_network=self.safety_network_name,
+            scenario_id=scenario_config['scenario_id'],
             scenario_category=self.scenario_category
         )
         self.logger = Logger(**logger_kwargs)
@@ -148,6 +150,7 @@ class CarlaRunner:
         # define the ego state encoder if needed
         self.agent_state_encoder = None
         state_encoder_config = None
+        # all the situations that need the state encoder
         if (self.safety_network_config and self.safety_network_config['obs_type'] == 'plant') or (self.agent_config['obs_type'] == 'plant') or (self.cbv_selection == 'attention-based'):
             # initial the agent state encoder
             root_path = agent_config['ROOT_DIR']

@@ -1,7 +1,6 @@
 min_dis_threshold: 0.5
 type: "HJR"
 model_path: 'safebench/safety_network/model_ckpt'
-model_id: 2
 
 obs_type: "plant"  # the "plant" means plant encoded state, another option is "actor_infos" which only contains vehicles' information
 state_dim: 512  # the hidden size of the plant encoder

@@ -100,7 +100,7 @@ class PPO(BasePolicy):
         self.clip_epsilon = config['clip_epsilon']
         self.batch_size = config['batch_size']
 
-        self.model_id = config['model_id']
+        self.model_type = config['model_type']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
@@ -187,7 +187,7 @@ class PPO(BasePolicy):
             'policy': self.policy.state_dict(),
             'value': self.value.state_dict(),
         }
-        filepath = os.path.join(self.model_path, f'model.ppo.{self.model_id}.{episode:04}.torch')
+        filepath = os.path.join(self.model_path, f'model.ppo.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
@@ -201,7 +201,7 @@ class PPO(BasePolicy):
                         cur_episode = int(name.split(".")[-2])
                         if cur_episode > episode:
                             episode = cur_episode
-        filepath = os.path.join(self.model_path, f'model.ppo.{self.model_id}.{episode:04}.torch')
+        filepath = os.path.join(self.model_path, f'model.ppo.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
             self.logger.log(f'>> Loading scenario policy {self.name} model from {filepath}')
             with open(filepath, 'rb') as f:

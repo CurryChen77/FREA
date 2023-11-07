@@ -830,6 +830,7 @@ class CarlaDataProvider(object):
         # CarlaDataProvider._world.debug.draw_point(ego_waypoint.transform.location + carla.Location(z=4), size=0.1, life_time=0.11)
         # if the ego is not in the drivable area (off the road) and not in the junction, then the ego min distance is set to be 0
         if (ego_waypoint.lane_type not in check_lane_type_list) and (not ego_waypoint.is_junction):
+            print("ego outside the drivable area, ego min distance set to 0")
             ego_min_dis = 0.
 
         CarlaDataProvider.set_ego_min_dis(ego_min_dis)

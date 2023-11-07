@@ -85,7 +85,7 @@ class DDPG(BasePolicy):
         self.buffer_start_training = config['buffer_start_training']
         self.epsilon = config['epsilon']
 
-        self.model_id = config['model_id']
+        self.model_type = config['model_type']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
@@ -176,7 +176,7 @@ class DDPG(BasePolicy):
             'actor_target': self.actor_target.state_dict(),
             'critic_target': self.critic_target.state_dict(),
         }
-        filepath = os.path.join(self.model_path, f'model.ddpg.{self.model_id}.{episode:04}.torch')
+        filepath = os.path.join(self.model_path, f'model.ddpg.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
@@ -190,7 +190,7 @@ class DDPG(BasePolicy):
                         cur_episode = int(name.split(".")[-2])
                         if cur_episode > episode:
                             episode = cur_episode
-        filepath = os.path.join(self.model_path, f'model.ddpg.{self.model_id}.{episode:04}.torch')
+        filepath = os.path.join(self.model_path, f'model.ddpg.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
             self.logger.log(f'>> Loading {self.name} model from {os.path.basename(filepath)}')
             with open(filepath, 'rb') as f:

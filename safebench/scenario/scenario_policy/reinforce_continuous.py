@@ -169,7 +169,7 @@ class REINFORCE(BasePolicy):
         self.num_scenario = scenario_config['num_scenario']
         self.batch_size = scenario_config['batch_size']
         self.model_path = os.path.join(scenario_config['ROOT_DIR'], scenario_config['model_path'])
-        self.model_id = scenario_config['model_id']
+        self.model_type = scenario_config['model_type']
         self.lr = scenario_config['lr']
         self.entropy_weight = 0.0001
 
@@ -276,7 +276,7 @@ class REINFORCE(BasePolicy):
         if not os.path.exists(self.model_path):
             self.logger.log(f'>> Creating folder for saving model: {self.model_path}')
             os.makedirs(self.model_path)
-        model_filename = os.path.join(self.model_path, f'{self.model_id}.pt')
+        model_filename = os.path.join(self.model_path, f'{self.model_type}.pt')
         self.logger.log(f'>> Saving lc model to {model_filename}')
         with open(model_filename, 'wb+') as f:
             torch.save({'parameters': self.model.state_dict()}, f)

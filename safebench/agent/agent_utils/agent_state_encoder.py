@@ -74,8 +74,11 @@ class AgentStateEncoder(object):
             assert len(keep_vehicle_ids) == 0
 
         # get topk (top 1) vehicles indices
-        most_relevant_vehicle_id = keep_vehicle_ids[0]
-        most_relevant_vehicle = CarlaDataProvider.get_actor_by_id(most_relevant_vehicle_id)
+        if len(keep_vehicle_ids) >= 1:
+            most_relevant_vehicle_id = keep_vehicle_ids[0]
+            most_relevant_vehicle = CarlaDataProvider.get_actor_by_id(most_relevant_vehicle_id)
+        else:
+            most_relevant_vehicle = None
 
         return most_relevant_vehicle
 

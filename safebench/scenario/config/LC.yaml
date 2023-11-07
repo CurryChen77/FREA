@@ -9,7 +9,7 @@ route_id: null
 
 # for REINFORCE policy model
 model_path: 'safebench/scenario/scenario_data/model_ckpt/lc'
-model_id: 1
+model_type: 'bv'
 buffer_capacity: 100
 batch_size: 32
 lr: 0.001

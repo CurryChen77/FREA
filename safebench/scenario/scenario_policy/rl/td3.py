@@ -75,7 +75,7 @@ class TD3(BasePolicy):
         self.target_noise_clip = config['target_noise_clip']
         self.explore_noise = config['explore_noise']
 
-        self.model_id = config['model_id']
+        self.model_type = config['model_type']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
@@ -215,7 +215,7 @@ class TD3(BasePolicy):
             'policy': self.policy.state_dict(),
             'target_policy': self.target_policy.state_dict(),
         }
-        filepath = os.path.join(self.model_path, f'model.td3.{self.model_id}.{episode:04}.torch')
+        filepath = os.path.join(self.model_path, f'model.td3.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
@@ -229,7 +229,7 @@ class TD3(BasePolicy):
                         cur_episode = int(name.split(".")[-2])
                         if cur_episode > episode:
                             episode = cur_episode
-        filepath = os.path.join(self.model_path, f'model.td3.{self.model_id}.{episode:04}.torch')
+        filepath = os.path.join(self.model_path, f'model.td3.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
             self.logger.log(f'>> Loading scenario policy {self.name} model from {filepath}')
             with open(filepath, 'rb') as f:

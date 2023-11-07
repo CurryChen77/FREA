@@ -1,7 +1,7 @@
 policy_type: 'sac'
 learnable: True
 model_path: 'safebench/agent/model_ckpt/sac'
-model_id: 0
+model_type: 'agent'
 results_folder_path: ''
 obs_type: 'simple_state'
 
