@@ -42,7 +42,7 @@ class AgentStateEncoder(object):
         checkpoint = pl_load(updated_model_path, map_location=lambda storage, loc: storage)
         self.net.load_state_dict(checkpoint["state_dict"], strict=strict)
         self.world = CarlaDataProvider.get_world()
-        self.logger.log('>> Loading the pretrained ego state encoder.')
+        self.logger.log('>> Loading the pretrained ego state encoder.', color='yellow')
 
     def get_most_relevant_vehicle(self, attn_vector, topk=1):
         # get ids of all vehicles in detection range

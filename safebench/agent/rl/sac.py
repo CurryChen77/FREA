@@ -90,6 +90,7 @@ class SAC(BasePolicy):
         self.continue_episode = 0
         self.state_dim = config['ego_state_dim']
         self.action_dim = config['ego_action_dim']
+        self.obs_type = config['obs_type']
         self.min_Val = torch.tensor(config['min_Val']).float()
         self.batch_size = config['batch_size']
         self.update_iteration = config['update_iteration']
@@ -222,7 +223,7 @@ class SAC(BasePolicy):
             'Q_net': self.Q_net.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, scenario_name)
+        save_dir = os.path.join(self.model_path, self.obs_type, scenario_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving {self.name} model to {filepath}')
@@ -231,7 +232,7 @@ class SAC(BasePolicy):
 
     def load_model(self, episode=None):
         scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, scenario_name)
+        load_dir = os.path.join(self.model_path, self.obs_type, scenario_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):
@@ -242,7 +243,7 @@ class SAC(BasePolicy):
                             episode = cur_episode
         filepath = os.path.join(load_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading {self.name} model from {os.path.basename(filepath)}', color='yellow')
+            self.logger.log(f'>> Loading {self.name} model from {os.path.basename(filepath)} with {self.obs_type} as input', color='yellow')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy_net.load_state_dict(checkpoint['policy_net'])

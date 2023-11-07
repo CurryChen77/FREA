@@ -234,7 +234,7 @@ class CarlaEnv(gym.Env):
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
-            self.encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
+            self.encoded_state = encoded_state[:, 0, :].squeeze(0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
         else:
             most_relevant_vehicle = None
 
@@ -436,7 +436,7 @@ class CarlaEnv(gym.Env):
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
-            self.encoded_state = encoded_state[:, 0, :].unsqueeze(0).unsqueeze(0).detach()  # from tensor [1, x, 512] to [1, 1, 512] to [512]
+            self.encoded_state = encoded_state[:, 0, :].squeeze(0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
         else:
             most_relevant_vehicle = None
 
@@ -480,11 +480,13 @@ class CarlaEnv(gym.Env):
             cbv_min_dis, cbv_min_dis_cost = CarlaDataProvider.get_cbv_min_dis_cost(self.controlled_bv,
                                                                                    self.search_radius,
                                                                                    self.controlled_bv_nearby_vehicles)
+            mapped_cbv_vel = CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)
+            cost = self._get_cost()
+            # the reward for the cbv training
+            scenario_agent_reward = cbv_min_dis_cost + mapped_cbv_vel - 10 * cost
             info.update({
-                'cost': self._get_cost(),                         # the collision cost -1 means collision happens
-                'cbv_min_dis': cbv_min_dis,                       # the min dis from the controlled bv to the rest bvs
-                'cbv_min_dis_cost': cbv_min_dis_cost,             # whether the min dis is lower than a threshold
-                'mapped_cbv_vel': CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed),    # the mapped cbv velocity
+                'cost': cost,                                     # the collision cost -1 means collision happens
+                'scenario_agent_reward': scenario_agent_reward,   # the total reward for the cbv training
                 'route_waypoints': self.global_route_waypoints,   # the global route waypoints
                 'gps_route': self.gps_route,                      # the global gps route
                 'route': self.route,                              # the global route
@@ -655,7 +657,7 @@ class CarlaEnv(gym.Env):
             }
         elif self.agent_obs_type == 'plant':
             obs = {
-                'plant_encoded_state': self.encoded_state.astype(np.float32),
+                'plant_encoded_state': self.encoded_state.numpy(),
             }
         elif self.agent_obs_type == 'no_obs':
             obs = None

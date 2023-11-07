@@ -29,7 +29,8 @@ DEFAULT_DATA_DIR = osp.abspath(osp.dirname(osp.dirname(osp.dirname(__file__))))
 FORCE_DATESTAMP = False
 
 
-def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent=None, scenario=None, safety_network=None, scenario_id=None,  scenario_category='planning'):
+def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent=None, agent_obs_type=None,
+                        scenario=None, safety_network=None, scenario_id=None, scenario_category='planning'):
     # Datestamp forcing
     datestamp = datestamp or FORCE_DATESTAMP
 
@@ -44,7 +45,7 @@ def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent
     else:
         agent_scenario_safety_net_exp_name = exp_name + '_scenario_all'
     if agent is not None:
-        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + agent
+        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + agent + '(' + agent_obs_type + ')'
     if scenario is not None:
         agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + scenario
     if safety_network is not None:

@@ -22,7 +22,7 @@ class RouteReplayBuffer:
         self.buffer_capacity = buffer_capacity
         self.num_scenario = num_scenario
         self.buffer_len = 0
-        self.need_obs = False if agent_config['obs_type'] == 'no_obs' or agent_config['policy_type'] == 'plant' else True
+        self.need_obs = True if agent_config['obs_type'] == 'simple_state' or agent_config['obs_type'] == 'plant' else False
 
         # buffers for step info
         self.reset_buffer()

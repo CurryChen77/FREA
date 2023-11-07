@@ -15,6 +15,7 @@ import carla
 import pygame
 from tqdm import tqdm
 import os.path as osp
+from torch.utils.tensorboard import SummaryWriter
 
 from safebench.util.run_util import load_config
 from safebench.gym_carla.env_wrapper import VectorWrapper
@@ -111,6 +112,7 @@ class CarlaRunner:
             self.seed,
             self.mode,
             agent=agent_config['policy_type'],
+            agent_obs_type=agent_config['obs_type'],
             scenario=scenario_config['policy_type'],
             safety_network=self.safety_network_name,
             scenario_id=scenario_config['scenario_id'],
@@ -156,6 +158,8 @@ class CarlaRunner:
             root_path = agent_config['ROOT_DIR']
             state_encoder_path = osp.join(root_path, 'safebench/agent/config/state_encoder.yaml')
             state_encoder_config = load_config(state_encoder_path)
+            if self.cbv_selection == 'attention-based':  # attention-based cbv selection method need to viz the attn map
+                state_encoder_config['viz_attn_map'] = True
             self.agent_state_encoder = AgentStateEncoder(state_encoder_config, self.logger)
 
         # define agent and scenario
@@ -229,6 +233,10 @@ class CarlaRunner:
         self.birdeye_render = BirdeyeRender(self.world, self.birdeye_params, logger=self.logger)
 
     def train(self, data_loader, start_episode=0):
+        # create the tensorboard writer
+        log_dir = self.logger.output_dir
+        writer = SummaryWriter(log_dir=log_dir)
+
         # general buffer for both agent and scenario
         replay_buffer = RouteReplayBuffer(self.num_scenario, self.mode, self.agent_config, self.buffer_capacity)
         data_loader.set_mode("train")
@@ -246,7 +254,8 @@ class CarlaRunner:
             self.agent_policy.set_ego_and_route(self.env.get_ego_vehicles(), infos)
 
             # start loop
-            episode_reward = []
+            agent_episode_reward = []
+            scenario_episode_reward = []
             while not self.env.all_scenario_done():
                 # get action from agent policy and scenario policy (assume using one batch)
                 ego_actions = self.agent_policy.get_action(obs, infos, deterministic=False)
@@ -261,7 +270,11 @@ class CarlaRunner:
 
                 replay_buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=training_infos)
                 obs = copy.deepcopy(next_obs)
-                episode_reward.append(np.mean(rewards))
+                agent_episode_reward.append(np.mean(rewards))
+                if self.mode == 'train_scenario':
+                    scenario_reward = [info['scenario_agent_reward'] for info in training_infos]
+                    scenario_reward = np.array(scenario_reward)
+                    scenario_episode_reward.append(np.mean(scenario_reward))
 
                 # train off-policy agent or scenario
                 if self.mode == 'train_agent' and self.agent_policy.type == 'offpolicy':
@@ -275,7 +288,12 @@ class CarlaRunner:
             self.env.clean_up()
             replay_buffer.finish_one_episode()
             self.logger.add_training_results('episode', e_i)
-            self.logger.add_training_results('episode_reward', np.sum(episode_reward))
+            sum_episode_reward = np.sum(agent_episode_reward)
+            self.logger.add_training_results('Agent_episode_reward', sum_episode_reward)
+            if self.mode == 'train_agent':
+                writer.add_scalar("Agent_episode_reward", sum_episode_reward, e_i)
+            if self.mode == 'train_scenario':
+                writer.add_scalar("Scenario_episode_reward", np.sum(scenario_episode_reward), e_i)
             self.logger.save_training_results()
 
             # train on-policy agent or scenario
@@ -299,6 +317,9 @@ class CarlaRunner:
                     self.scenario_policy.save_model(e_i)
                 if self.mode == 'train_safety_network':
                     self.safety_network_policy.save_model(e_i)
+
+        # close the tensorboard writer
+        writer.close()
 
     def eval(self, data_loader):
         num_finished_scenario = 0

@@ -17,7 +17,7 @@ with open('../log/train_agent/exp_sac_standard_seed_0/training_results/results.p
     data = pkl.load(f)
 
 episode = data['episode']
-reward = data['episode_reward']
+reward = data['Agent_episode_reward']
 
 plt.plot(episode, reward)
 plt.xlabel('Episode')

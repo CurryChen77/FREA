@@ -185,13 +185,7 @@ class SAC(BasePolicy):
             bn_s_ = CUDA(torch.FloatTensor(batch['n_actor_info'])).reshape(self.batch_size, -1)
             bn_a = CUDA(torch.FloatTensor(batch['action']))
             # The reward of the scenario agent
-            # whether the cbv is too close to other bvs
-            bn_cbv_min_dis_cost = CUDA(torch.FloatTensor(batch['cbv_min_dis_cost'])).unsqueeze(-1)  # [B, 1]
-            # the speed of the controlled bv
-            bn_cbv_vel = CUDA(torch.FloatTensor(batch['mapped_cbv_vel'])).unsqueeze(-1)  # [B, 1]
-            # the ego collision
-            bn_collision_cost = CUDA(torch.FloatTensor(-batch['cost'])).unsqueeze(-1)  # [B, 1]
-            bn_r = bn_collision_cost + bn_cbv_min_dis_cost + bn_cbv_vel
+            bn_r = CUDA(torch.FloatTensor(batch['scenario_agent_reward'])).unsqueeze(-1)  # [B, 1]
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
 
             target_value = self.Target_value_net(bn_s_)
