@@ -51,6 +51,6 @@ RUN echo "export CARLA_ROOT=/home/safebench/carla" >> ~/.bashrc \
 RUN git clone https://github.com/trust-ai/SafeBench.git \
     && cd SafeBench \
     && pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu117  \
-    && pip install -r requirements.txt \
+    && pip install -r safebench_requirements.txt \
     && pip install moviepy \
     && pip install -e .

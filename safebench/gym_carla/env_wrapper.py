@@ -130,7 +130,7 @@ class VectorWrapper():
                     self.finished_env[e_i] = True
                     if current_env.scenario_manager._collision:
                         ego_min_dis = CarlaDataProvider.get_ego_min_dis()
-                        self.logger.log(f'>> collision caused ego min dis = {ego_min_dis}', color='yellow')
+                        self.logger.log(f'>> V2V collision caused ego min dis = {ego_min_dis}', color='yellow')
                     # save running results according to the data_id of scenario
                     if current_env.config.data_id in self.running_results.keys():
                         self.logger.log('Scenario with data_id {} is duplicated'.format(current_env.config.data_id))

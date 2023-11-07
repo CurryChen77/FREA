@@ -813,22 +813,26 @@ class CarlaDataProvider(object):
             dis = CarlaDataProvider.get_min_distance_across_bboxes(ego_vehicle, nearby_vehicles[i])
             if dis < ego_min_dis:
                 ego_min_dis = dis
-        #
-        # # check whether the ego has reached the un-drivable area
-        # check_lane_type_list = [carla.LaneType.Driving]
-        # ego_location = CarlaDataProvider.get_location_after_tick(ego_vehicle)
-        # ego_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_location, lane_type=carla.LaneType.Any)
-        # # for viz
-        # CarlaDataProvider._world.debug.draw_point(ego_waypoint.transform.location + carla.Location(z=4), size=0.1, life_time=0.11)
-        #
-        # if ego_waypoint.lane_type not in check_lane_type_list:
-        #
-        #     if ego_waypoint.is_junction and ego_waypoint.lane_type == carla.LaneType.Shoulder:
-        #         pass
-        #     else:
-        #         print("ego off the road, waypoint type:", ego_waypoint.lane_type)
-        #         ego_min_dis = 0.  # if the ego is not in the drivable area (off the road), the ego min distance is set to be 0
 
+        # check whether the ego has reached the un-drivable area
+        check_lane_type_list = [carla.LaneType.Driving]
+        ego_transform = CarlaDataProvider.get_transform_after_tick(ego_vehicle)
+        ego_location = ego_transform.location
+        # move the ego waypoint to the front part of the vehicle
+        ego_bbox_extent_x = ego_vehicle.bounding_box.extent.x
+        theta = math.radians(ego_transform.rotation.yaw)
+        delta_x = ego_bbox_extent_x // 2 * math.cos(theta)
+        delta_y = ego_bbox_extent_x // 2 * math.sin(theta)
+        ego_front_location = ego_location + carla.Location(x=delta_x, y=delta_y, z=0.0)
+        # find the nearest waypoint around the ego front location
+        ego_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_front_location, lane_type=carla.LaneType.Any)
+        # for viz
+        # CarlaDataProvider._world.debug.draw_point(ego_waypoint.transform.location + carla.Location(z=4), size=0.1, life_time=0.11)
+        # if the ego is not in the drivable area (off the road) and not in the junction, then the ego min distance is set to be 0
+        if (ego_waypoint.lane_type not in check_lane_type_list) and (not ego_waypoint.is_junction):
+            ego_min_dis = 0.
+
+        CarlaDataProvider.set_ego_min_dis(ego_min_dis)
         return ego_min_dis, nearby_vehicles
 
     @staticmethod

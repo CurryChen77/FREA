@@ -226,7 +226,6 @@ class CarlaEnv(gym.Env):
         # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
         ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
         self.ego_min_dis = ego_min_dis
-        CarlaDataProvider.set_ego_min_dis(ego_min_dis)
 
         # all the situations that need the encoded state or most relevant vehicle
         if (self.safety_network_obs_type and self.safety_network_obs_type == 'plant') or (self.agent_obs_type == 'plant') or (self.cbv_selection == 'attention-based'):
@@ -283,6 +282,8 @@ class CarlaEnv(gym.Env):
             impulse = event.normal_impulse
             intensity = np.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
             self.collision_hist.append(intensity)
+            # TODO if collision the ego min distance must be 0
+            self.ego_min_dis = 0.
             if len(self.collision_hist) > self.collision_hist_l:
                 self.collision_hist.pop(0)
         self.collision_hist = []
@@ -423,7 +424,6 @@ class CarlaEnv(gym.Env):
         # Calculate the min distance from the ego to the rest background vehicles, and update the CarlaDataProvider
         ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
         self.ego_min_dis = ego_min_dis
-        CarlaDataProvider.set_ego_min_dis(ego_min_dis)
 
         # all the situations that need the encoded state or most relevant vehicle
         if (self.safety_network_obs_type and self.safety_network_obs_type == 'plant') or (self.agent_obs_type == 'plant') or (self.cbv_selection == 'attention-based'):

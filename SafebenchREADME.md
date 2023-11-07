@@ -44,7 +44,7 @@ git clone git@github.com:trust-ai/SafeBench.git
 Step 3: Enter the repo root folder and install the packages:
 ```bash
 cd SafeBench
-pip install -r requirements.txt
+pip install -r safebench_requirements.txt
 pip install -e .
 ```
 
