@@ -282,7 +282,7 @@ class CarlaRunner:
                 elif self.mode == 'train_scenario' and self.scenario_policy.type == 'offpolicy':
                     self.scenario_policy.train(replay_buffer)
                 elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy':
-                    self.safety_network_policy.train(replay_buffer)
+                    self.safety_network_policy.train(replay_buffer, writer, e_i)
 
             # end up environment
             self.env.clean_up()
@@ -302,7 +302,7 @@ class CarlaRunner:
             elif self.mode == 'train_scenario' and self.scenario_policy.type in ['init_state', 'onpolicy']:
                 self.scenario_policy.train(replay_buffer)
             elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'onpolicy':
-                self.safety_network_policy.train(replay_buffer)
+                self.safety_network_policy.train(replay_buffer, writer, e_i)
 
             # eval during training
             if (e_i+1) % self.eval_in_train_freq == 0:
