@@ -73,12 +73,23 @@ class AdvBehaviorSingle(BasicScenario):
         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
         return act
 
+    def update_traffic_light(self):
+        traffic_light = CarlaDataProvider.set_vehicle_font_traffic_light(self.ego_vehicle)
+        # if the ego's next traffic light is not None and has changed, then set the next traffic light to green
+        if traffic_light is not None and traffic_light != self._traffic_light:
+            self._traffic_light = traffic_light
+            print("set the next traffic light to green")
+            traffic_light.set_state(carla.TrafficLightState.Green)
+            traffic_light.set_green_time(self.timeout)
+
     def create_behavior(self, scenario_init_action):
         assert scenario_init_action is None, f'{self.name} should receive [None] initial action.'
         self.other_actor_delta_x = 1.0
         self.trigger_distance_threshold = 35
 
     def update_behavior(self, controlled_bv, scenario_action):
+        # update the traffic light
+        # self.update_traffic_light()  # TODO update the ego's front traffic light
         # if the controlled bv exists and the scenario policy isn't hardcoded
         if controlled_bv is not None and scenario_action is not None:
             # create the action

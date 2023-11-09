@@ -27,5 +27,7 @@ Shapely==1.8.5
 six==1.16.0
 torch==1.13.1+cu117
 torchmetrics==0.7.2
+torchvision==0.14.1+cu117
+torchaudio==0.13.1
 tqdm==4.65.0
 transformers==4.34.1
