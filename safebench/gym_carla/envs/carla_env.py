@@ -69,6 +69,7 @@ class CarlaEnv(gym.Env):
 
         self.controlled_bv = None
         self.controlled_bv_nearby_vehicles = None
+        self.old_cbv = None
         self.gps_route = None
         self.route = None
         self.ego_min_dis = None
@@ -84,7 +85,7 @@ class CarlaEnv(gym.Env):
             self.safety_network_obs_type = None
 
         # for Cbv
-        self.cbv_selection = env_params['cbv_selection']
+        self.cbv_select_method = env_params['cbv_selection']
 
         # scenario manager
         use_scenic = True if env_params['scenario_category'] == 'scenic' else False
@@ -201,6 +202,45 @@ class CarlaEnv(gym.Env):
             waypoints_list.append(waypoint)
         return waypoints_list
 
+    def cbv_selection(self):
+        ego_nearby_vehicles = None
+        # only the safety network is not None, then need to calculate the ego min distance
+        if self.safety_network_obs_type:
+            ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+            self.ego_min_dis = ego_min_dis
+
+        # all the situations that need the encoded state or most relevant vehicle
+        if self.agent_state_encoder:
+            if not self.safety_network_obs_type:
+                ego_nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle, self.search_radius)
+            encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
+                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
+            )
+            self.encoded_state = encoded_state[:, 0, :].squeeze(0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
+        else:
+            most_relevant_vehicle = None
+        self.old_cbv = self.controlled_bv  # for BEV visualization
+        # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
+        if self.cbv_select_method == 'rule-based':
+            self.controlled_bv = CarlaDataProvider.find_closest_vehicle(self.ego_vehicle, self.search_radius, ego_nearby_vehicles)
+        elif self.cbv_select_method == 'attention-based':
+            self.controlled_bv = most_relevant_vehicle
+
+        # get the nearby vehicles around the cbv
+        if self.controlled_bv:
+            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
+            # update the cbv for BEV visualization
+            if self.old_cbv and self.controlled_bv and self.old_cbv.id != self.controlled_bv.id:  # the cbv has changed, need to remove the old cbv
+                self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # update the new cbv
+                self.birdeye_render.remove_old_controlled_bv(self.old_cbv.id)  # remove the old cbv if exist
+            elif self.old_cbv is not None and self.controlled_bv is None:
+                self.birdeye_render.remove_old_controlled_bv(self.old_cbv.id)  # remove the old cbv if exist
+            elif self.old_cbv is None and self.controlled_bv is not None:  # got the initial cbv
+                self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # add the new cbv
+        else:
+            self.controlled_bv_nearby_vehicles = None
+        self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
+
     def reset(self, config, env_id):
         self.config = config
         self.env_id = env_id
@@ -221,37 +261,9 @@ class CarlaEnv(gym.Env):
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
 
-        ego_nearby_vehicles = None
-        ego_nearby_vehicles = None
-        # only the safety network is not None, then need to calculate the ego min distance
-        if self.safety_network_obs_type:
-            ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
-            self.ego_min_dis = ego_min_dis
+        # set ego min distance and controlled bv
+        self.cbv_selection()
 
-        # all the situations that need the encoded state or most relevant vehicle
-        if self.agent_state_encoder:
-            if not self.safety_network_obs_type:
-                ego_nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle, self.search_radius)
-            encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
-                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
-            )
-            self.encoded_state = encoded_state[:, 0, :].squeeze(0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
-        else:
-            most_relevant_vehicle = None
-
-        # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
-        if self.cbv_selection == 'rule-based':
-            self.controlled_bv = CarlaDataProvider.find_closest_vehicle(self.ego_vehicle, self.search_radius, ego_nearby_vehicles)
-        elif self.cbv_selection == 'attention-based':
-            self.controlled_bv = most_relevant_vehicle
-        # get the nearby vehicles around the cbv
-        if self.controlled_bv:
-            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
-            self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # for the BEV visualization
-        else:
-            self.controlled_bv_nearby_vehicles = None
-        self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
-    
         # Get actors polygon list (for visualization)
         self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]
         self.walker_polygons = [self._get_actor_polygons('walker.*')]
@@ -419,46 +431,12 @@ class CarlaEnv(gym.Env):
 
         # route planner
         # self.waypoints: the waypoints from the waypoints buffer, needed to be followed
-        # self.vehicle_front: whether there got a vehicle in the ego's route and within a certain distance (bool)
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         origin_info = self._get_info(training=True)  # for training
 
-        # only the safety network is not None, then need to calculate the ego min distance
-        ego_nearby_vehicles = None
-        if self.safety_network_obs_type:
-            ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
-            self.ego_min_dis = ego_min_dis
-
-        # all the situations that need the encoded state or most relevant vehicle
-        if self.agent_state_encoder:
-            if not self.safety_network_obs_type:
-                ego_nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle, self.search_radius)
-            encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
-                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
-            )
-            self.encoded_state = encoded_state[:, 0, :].squeeze(0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
-        else:
-            most_relevant_vehicle = None
-
-        old_cbv = self.controlled_bv  # for BEV visualization
-        # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
-        if self.cbv_selection == 'rule-based':
-            self.controlled_bv = CarlaDataProvider.find_closest_vehicle(self.ego_vehicle, self.search_radius)
-        elif self.cbv_selection == 'attention-based':
-            self.controlled_bv = most_relevant_vehicle
-        # get the nearby vehicles around the cbv
-        if self.controlled_bv:
-            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
-            # update the cbv for BEV visualization
-            if old_cbv and old_cbv.id != self.controlled_bv.id:  # the cbv has changed, need to remove the old cbv
-                self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # update the new cbv
-                self.birdeye_render.remove_old_controlled_bv(old_cbv.id)  # remove the old cbv if exist
-            elif old_cbv is None:
-                self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # add the new cbv
-        else:
-            self.controlled_bv_nearby_vehicles = None
-        self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
+        # set ego min distance and controlled bv
+        self.cbv_selection()
 
         updated_controlled_bv_info = self._get_info(training=False)  # the updated cbv's info, for transition
 
@@ -726,6 +704,8 @@ class CarlaEnv(gym.Env):
             self.ego_vehicle = None
 
     def clean_up(self):
+        self.old_cbv = None
+        self.controlled_bv = None
         self._remove_sensor()
         if self.scenario_category != 'scenic':
             self._remove_ego()

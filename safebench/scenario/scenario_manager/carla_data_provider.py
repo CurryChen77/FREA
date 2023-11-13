@@ -459,7 +459,7 @@ class CarlaDataProvider(object):
         return d_angle < 45
 
     @staticmethod
-    def set_vehicle_font_traffic_light(actor):
+    def set_vehicle_next_traffic_light(actor):
         relevant_traffic_light = None
         actor_transform = actor.get_transform()
         actor_location = actor_transform.location
