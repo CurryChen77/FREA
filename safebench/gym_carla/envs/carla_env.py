@@ -29,9 +29,9 @@ from safebench.gym_carla.envs.misc import (
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
-from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenario
+# from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
-from safebench.scenario.tools.route_manipulation import interpolate_trajectory
+# from safebench.scenario.tools.route_manipulation import interpolate_trajectory
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.agent.agent_utils.visualization import draw_route
 
@@ -172,14 +172,14 @@ class CarlaEnv(gym.Env):
                 env_params=self.env_params,
                 logger=self.logger
             )
-        elif self.scenario_category == 'scenic':
-            scenario = ScenicScenario(
-                world=self.world, 
-                config=config, 
-                ego_id=env_id, 
-                max_running_step=self.max_episode_step, 
-                logger=self.logger
-            )
+        # elif self.scenario_category == 'scenic':
+        #     scenario = ScenicScenario(
+        #         world=self.world,
+        #         config=config,
+        #         ego_id=env_id,
+        #         max_running_step=self.max_episode_step,
+        #         logger=self.logger
+        #     )
         else:
             raise ValueError(f'Unknown scenario category: {self.scenario_category}')
 
@@ -222,6 +222,7 @@ class CarlaEnv(gym.Env):
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
 
         ego_nearby_vehicles = None
+        ego_nearby_vehicles = None
         # only the safety network is not None, then need to calculate the ego min distance
         if self.safety_network_obs_type:
             ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
@@ -230,7 +231,7 @@ class CarlaEnv(gym.Env):
         # all the situations that need the encoded state or most relevant vehicle
         if self.agent_state_encoder:
             if not self.safety_network_obs_type:
-                ego_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+                ego_nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle, self.search_radius)
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
@@ -240,7 +241,7 @@ class CarlaEnv(gym.Env):
 
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         if self.cbv_selection == 'rule-based':
-            self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
+            self.controlled_bv = CarlaDataProvider.find_closest_vehicle(self.ego_vehicle, self.search_radius, ego_nearby_vehicles)
         elif self.cbv_selection == 'attention-based':
             self.controlled_bv = most_relevant_vehicle
         # get the nearby vehicles around the cbv
@@ -432,7 +433,7 @@ class CarlaEnv(gym.Env):
         # all the situations that need the encoded state or most relevant vehicle
         if self.agent_state_encoder:
             if not self.safety_network_obs_type:
-                ego_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+                ego_nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle, self.search_radius)
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
@@ -443,7 +444,7 @@ class CarlaEnv(gym.Env):
         old_cbv = self.controlled_bv  # for BEV visualization
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         if self.cbv_selection == 'rule-based':
-            self.controlled_bv = CarlaDataProvider.get_controlled_vehicle(self.ego_vehicle, self.search_radius)
+            self.controlled_bv = CarlaDataProvider.find_closest_vehicle(self.ego_vehicle, self.search_radius)
         elif self.cbv_selection == 'attention-based':
             self.controlled_bv = most_relevant_vehicle
         # get the nearby vehicles around the cbv

@@ -837,7 +837,7 @@ class CarlaDataProvider(object):
 
     @staticmethod
     def cal_ego_min_dis(ego_vehicle, search_radius):
-        nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(ego_vehicle, search_radius)
+        nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(ego_vehicle, search_radius)
         # min distance between vehicle bboxes
         ego_min_dis = search_radius
         # the closest vehicle using center points distance may change when using bboxes distance
@@ -919,75 +919,20 @@ class CarlaDataProvider(object):
         return nearby_spawn_points
 
     @staticmethod
-    def get_controlled_vehicle(ego_vehicle, radius=60):
-        min_dis = 1000
+    def find_closest_vehicle(ego_vehicle, radius=40, ego_nearby_vehicles=None):
+        min_dis = radius
         controlled_bv = None
-        ego_transform = CarlaDataProvider.get_transform_after_tick(ego_vehicle)
-        ego_location = ego_transform.location
-        ego_forward_vector = ego_transform.rotation.get_forward_vector()
-        ego_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_location)
-        all_vehicles = CarlaDataProvider._world.get_actors().filter('vehicle.*')
+        ego_location = CarlaDataProvider.get_location_after_tick(ego_vehicle)
+        if ego_nearby_vehicles is None:
+            ego_nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(ego_vehicle, radius)
 
-        def _get_controlled_vehicle(vehicle_location, controlled_bv, radius, min_dis):
+        for vehicle in ego_nearby_vehicles:
+            vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
             distance = ego_location.distance(vehicle_location)
-            relative_direction = (vehicle_location - ego_location) / distance
-            dot_product = ego_forward_vector.dot(relative_direction)  # the relative dot product
-            if distance < radius and distance < min_dis and dot_product > 0.0:
-                controlled_bv = vehicle  # update the controlled bv
-                min_dis = distance  # update the min_dis
+            if distance < min_dis:
+                controlled_bv = vehicle  # update cbv
+                min_dis = distance  # update min dis
 
-            return controlled_bv, min_dis
-
-        # the ego vehicle is not in the junction
-        if not ego_waypoint.is_junction:
-            ego_view_waypoint = ego_waypoint
-            center_lane = None
-            # find the center_lane_marking
-            for _ in range(4):  # assume max 4 lanes along each roadside
-                if ego_view_waypoint and ego_view_waypoint.left_lane_marking.color == carla.LaneMarkingColor.Yellow:
-                    center_lane = ego_view_waypoint.left_lane_marking  # find the center lane marking
-                    break
-                else:
-                    ego_view_waypoint = ego_view_waypoint.get_left_lane()  # move view to the left lane
-            if center_lane and center_lane.type == carla.LaneMarkingType.SolidSolid:
-                # find all the lanes at the ego side
-                ego_view_waypoint = ego_waypoint  # update the ego_view
-                for _ in range(4):  # assume max 4 lanes along each roadside
-                    if ego_view_waypoint.lane_type == carla.LaneType.Driving:
-                        max_lane_id = ego_view_waypoint.lane_id
-                        ego_view_waypoint = ego_view_waypoint.get_right_lane()  # move view to the right lane
-                    else:
-                        break
-                if max_lane_id < 0:
-                    lane_id_list = list(range(max_lane_id, 0))
-                else:
-                    lane_id_list = list(range(1, max_lane_id+1))
-
-            for vehicle in all_vehicles:
-                if vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
-                    vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
-                    vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(vehicle_location)
-
-                    if center_lane and center_lane.type == carla.LaneMarkingType.SolidSolid:
-                        # the center lane is the solid yellow lane that don't allow crossing
-                        for lane_id in lane_id_list:  # for all the lane in ego roadside
-                            if lane_id == vehicle_waypoint.lane_id:  # if the vehicle is in the ego side
-                                controlled_bv, min_dis = _get_controlled_vehicle(
-                                    vehicle_location, controlled_bv, radius, min_dis
-                                )
-                    else:  # the normal yellow lane mark or no yellow lane mark at all
-                        controlled_bv, min_dis = _get_controlled_vehicle(
-                            vehicle_location, controlled_bv, radius, min_dis
-                        )
-        # the ego vehicle is in the junction
-        else:
-            # TODO need to remove the vehicle waiting for the red light
-            for vehicle in all_vehicles:
-                if vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
-                    vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
-                    controlled_bv, min_dis = _get_controlled_vehicle(
-                        vehicle_location, controlled_bv, radius, min_dis
-                    )
         return controlled_bv
 
     @staticmethod
@@ -1007,6 +952,44 @@ class CarlaDataProvider(object):
                 distance = center_location.distance(vehicle_location)
                 if distance <= radius:
                     nearby_vehicles_info.append([vehicle, distance])
+
+        # sort the nearby vehicles according to the distance in ascending order
+        nearby_vehicles_info.sort(key=lambda x: x[1])
+
+        # return the nearby vehicles list
+        nearby_vehicles = [info[0] for info in nearby_vehicles_info]
+
+        return nearby_vehicles
+
+    @staticmethod
+    def get_meaningful_nearby_vehicles(center_vehicle, radius=40):
+        '''
+            the foundation for the cbv selection, selecting the candidates nearby vehicles based on specific traffic rules
+        '''
+        # info for the ego vehicle
+        center_transform = CarlaDataProvider.get_transform_after_tick(center_vehicle)
+        center_location = center_transform.location
+        center_waypoint = CarlaDataProvider.get_map().get_waypoint(center_location)
+        center_forward_vector = center_transform.rotation.get_forward_vector()
+
+        # get all the vehicles on the world
+        all_vehicles = CarlaDataProvider._world.get_actors().filter('vehicle.*')
+        # store the nearby vehicle information [vehicle, distance]
+        nearby_vehicles_info = []
+        for vehicle in all_vehicles:
+            if vehicle.id != center_vehicle.id:  # except the center vehicle
+                vehicle_transform = CarlaDataProvider.get_transform_after_tick(vehicle)
+                vehicle_location = vehicle_transform.location
+                vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(vehicle_location)
+                # except the bv and the center vehicle are on the same road but different lane directions (multiply of lane id < 0)
+                if not (center_waypoint.lane_id * vehicle_waypoint.lane_id < 0 and center_waypoint.road_id == vehicle_waypoint.road_id):
+                    relative_direction = (vehicle_location - center_location)
+                    dot_product = center_forward_vector.dot(relative_direction)  # the relative dot product
+                    # remove the bv behind the center vehicle and got different direction
+                    if dot_product > 0.0 or abs(center_transform.rotation.yaw-vehicle_transform.rotation.yaw) < 45:
+                        distance = center_location.distance(vehicle_location)
+                        if distance <= radius:
+                            nearby_vehicles_info.append([vehicle, distance])
 
         # sort the nearby vehicles according to the distance in ascending order
         nearby_vehicles_info.sort(key=lambda x: x[1])
