@@ -116,6 +116,7 @@ class CarlaRunner:
             scenario=scenario_config['policy_type'],
             safety_network=self.safety_network_name,
             scenario_id=scenario_config['scenario_id'],
+            cbv_selection=self.cbv_selection,
             scenario_category=self.scenario_category
         )
         self.logger = Logger(**logger_kwargs)

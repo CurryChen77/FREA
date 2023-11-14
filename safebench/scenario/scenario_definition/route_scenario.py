@@ -128,8 +128,8 @@ class RouteScenario():
         middle_location = self.route[len(self.route)//2][0].location
         end_location = self.route[-1][0].location
         locations_list = [start_location, middle_location, end_location]
-        radius_list = [20, 40, 30]
-        closest_dis = [5, 0, 0]
+        radius_list = [30, 40, 20]
+        closest_dis = [10, 0, 0]
 
         spawn_points = CarlaDataProvider.get_locations_nearby_spawn_points(
             locations_list, radius_list, closest_dis, self.traffic_intensity

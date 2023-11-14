@@ -95,13 +95,15 @@ class PPO(BasePolicy):
         self.policy_lr = config['policy_lr']
         self.value_lr = config['value_lr']
         self.train_iteration = config['train_iteration']
-        self.state_dim = config['ego_state_dim']
-        self.action_dim = config['ego_action_dim']
+        self.state_dim = config['scenario_state_dim']
+        self.action_dim = config['scenario_action_dim']
         self.clip_epsilon = config['clip_epsilon']
         self.batch_size = config['batch_size']
 
         self.model_type = config['model_type']
-        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
+        self.cbv_selection = config['cbv_selection']
+        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.cbv_selection)
+        self.scenario_id = config['scenario_id']
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
 
@@ -187,15 +189,20 @@ class PPO(BasePolicy):
             'policy': self.policy.state_dict(),
             'value': self.value.state_dict(),
         }
-        filepath = os.path.join(self.model_path, f'model.ppo.{self.model_type}.{episode:04}.torch')
+        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
+        save_dir = os.path.join(self.model_path, scenario_name)
+        os.makedirs(save_dir, exist_ok=True)
+        filepath = os.path.join(save_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
     def load_model(self, episode=None):
+        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
+        load_dir = os.path.join(self.model_path, scenario_name)
         if episode is None:
             episode = -1
-            for _, _, files in os.walk(self.model_path):
+            for _, _, files in os.walk(load_dir):
                 for name in files:
                     if fnmatch(name, "*torch"):
                         cur_episode = int(name.split(".")[-2])
@@ -203,12 +210,12 @@ class PPO(BasePolicy):
                             episode = cur_episode
         filepath = os.path.join(self.model_path, f'model.ppo.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading scenario policy {self.name} model from {filepath}')
+            self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy.load_state_dict(checkpoint['policy'])
             self.value.load_state_dict(checkpoint['value'])
             self.continue_episode = episode
         else:
-            self.logger.log(f'>> No scenario policy {self.name} model found at {filepath}', 'red')
+            self.logger.log(f'>> No scenario policy {self.name} model found at {os.path.basename(filepath)}', 'red')
             exit()

@@ -24,9 +24,9 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
 * **behavior:** Carla default agent (no state)
 
-* **expert:** Carla leaderboard default rule-based agent (ego state)
+* **expert:** Carla leader board default rule-based agent (ego state)
 * **plant:**  transformer based planning agent, output ego's future waypoints (ego state)
-* **sac:** RL-based agent (from Safebench, default 4dim simple state)
+* **sac:** RL-based agent (from Safebench, default 4 dim simple state)
 
 ### state/observation
 
@@ -50,7 +50,7 @@ For learnable agent (SAC PPO......)
 
      shape: [1, 1, 512]
 
-For Carla Leaderboard agent (Expert or PlanT)
+For Carla Leader-board agent (Expert or PlanT)
 
 * **Ego state for PlanT and Expert**:
   1. ego position (x, y)
@@ -78,10 +78,10 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
 ### optional
 
-* Select the controlled bv method
+* Select the CBV method **based on the CBV candidate**
 
-  1. **attention-based** (default)
-  2. **rule-based**
+  1. **attention-based** (default, attention weight)
+  2. **rule-based** (nearest)
 
 ```bash
 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_scenario  --cbv_selection 'attention-based'  # different method of selecting controlled bv
@@ -89,7 +89,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
 * Input state
 
-  **Actor info** (ego and surrounding 3 bv's 9-dim state)
+  **Actor info** (ego and surrounding 3 BVs' 9-dim state)
 
 * Output action
 
@@ -121,7 +121,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
 * **PlanT:** (encoded state) default 
 
-* **Actor info:** (ego and surrounding 3 bv's 9-dim state) *no route map information*
+* **Actor info:** (ego and surrounding 3 BVs' 9-dim state) *no route map information*
 
 ## Eval
 
@@ -184,3 +184,21 @@ The evaluation result are the statistical result up to now
 * incomplete route
 * running time
 * final score
+
+## Tricks
+
+### Traffic light
+
+* Ego vehicle's front traffic
+
+  When the ego vehicle just run out of the junction, find the new closest traffic light, and set the corresponding light state to Green (the first traffic light has already set to Green at initialization)
+
+* CBV front traffic
+
+  When the ego is in the junction, find whether the selected CBV in under the control of Red traffic light, if so, set the affecting traffic light state to Green
+
+### CBV selection candidate
+
+* Except the ego vehicle
+* Except the BVs which are in the opposite lane side, but on the same road
+* Except the BVs behind the ego vehicle and the abs yaw angle difference > 45 degree

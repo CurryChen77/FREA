@@ -99,7 +99,8 @@ class SAC(BasePolicy):
         self.tau = config['tau']
 
         self.model_type = config['model_type']
-        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
+        self.cbv_selection = config['cbv_selection']
+        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.cbv_selection)
         self.scenario_id = config['scenario_id']
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)

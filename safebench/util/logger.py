@@ -30,7 +30,7 @@ FORCE_DATESTAMP = False
 
 
 def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent=None, agent_obs_type=None,
-                        scenario=None, safety_network=None, scenario_id=None, scenario_category='planning'):
+                        scenario=None, safety_network=None, scenario_id=None, cbv_selection=None, scenario_category='planning'):
     # Datestamp forcing
     datestamp = datestamp or FORCE_DATESTAMP
 
@@ -47,7 +47,7 @@ def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent
     if agent is not None:
         agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + agent + '(' + agent_obs_type + ')'
     if scenario is not None:
-        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + scenario
+        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + scenario + '(' + cbv_selection + ')'
     if safety_network is not None:
         agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + safety_network
 
