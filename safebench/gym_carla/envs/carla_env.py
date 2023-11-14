@@ -15,7 +15,6 @@ import numpy as np
 import pygame
 from skimage.transform import resize
 import gym
-from gym import spaces
 import carla
 
 
@@ -31,7 +30,6 @@ from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 # from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
-# from safebench.scenario.tools.route_manipulation import interpolate_trajectory
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.agent.agent_utils.visualization import draw_route
 

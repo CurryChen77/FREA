@@ -437,44 +437,6 @@ class CarlaDataProvider(object):
             param['light'].set_yellow_time(param['yellow_time'])
 
     @staticmethod
-    def is_within_distance_ahead(target_location, current_location, orientation, max_distance):
-        """
-            Check if a target object is within a certain distance in front of a reference object.
-
-            :param target_location: location of the target object
-            :param current_location: location of the reference object
-            :param orientation: orientation of the reference object
-            :param max_distance: maximum allowed distance
-            :return: True if target object is within max_distance ahead of the reference object
-        """
-        target_vector = np.array([target_location.x - current_location.x, target_location.y - current_location.y])
-        norm_target = np.linalg.norm(target_vector)
-        if norm_target > max_distance:
-            return False
-
-        forward_vector = np.array(
-            [math.cos(math.radians(orientation)), math.sin(math.radians(orientation))])
-        d_angle = math.degrees(math.acos(np.dot(forward_vector, target_vector) / norm_target))
-
-        return d_angle < 45
-
-    @staticmethod
-    def set_vehicle_next_traffic_light(actor):
-        relevant_traffic_light = None
-        actor_transform = actor.get_transform()
-        actor_location = actor_transform.location
-        actor_yaw = actor_transform.rotation.yaw
-
-        for traffic_light in CarlaDataProvider._traffic_light_map:
-            if hasattr(traffic_light, 'trigger_volume'):
-                tl_t = CarlaDataProvider._traffic_light_map[traffic_light]
-                transformed_tv = tl_t.transform(traffic_light.trigger_volume.location)
-                if CarlaDataProvider.is_within_distance_ahead(carla.Location(transformed_tv), actor_location, actor_yaw, 40):
-                    relevant_traffic_light = traffic_light
-
-        return relevant_traffic_light
-
-    @staticmethod
     def get_next_traffic_light(actor, use_cached_location=True, use_transform=False):
         """
             returns the next relevant traffic light for the provided actor
@@ -506,6 +468,7 @@ class CarlaDataProvider(object):
             if hasattr(traffic_light, 'trigger_volume'):
                 tl_t = CarlaDataProvider._traffic_light_map[traffic_light]
                 transformed_tv = tl_t.transform(traffic_light.trigger_volume.location)
+
                 distance = carla.Location(transformed_tv).distance(list_of_waypoints[-1].transform.location)
 
                 if distance < distance_to_relevant_traffic_light:

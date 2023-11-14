@@ -27,8 +27,10 @@ class AdvBehaviorSingle(BasicScenario):
         super(AdvBehaviorSingle, self).__init__("AdvBehaviorSingle", None, world)
         self.ego_vehicle = ego_vehicle
         self.timeout = timeout
+        self.last_tick_affected_by_traffic = self.ego_vehicle
 
         self._traffic_light = CarlaDataProvider.get_next_traffic_light(self.ego_vehicle, False)
+        self.last_ego_waypoint = self.world.get_map().get_waypoint(self.ego_vehicle.get_location())
         if self._traffic_light is None:
             print(">> No traffic light for the given location of the ego vehicle found")
         else:
@@ -74,13 +76,16 @@ class AdvBehaviorSingle(BasicScenario):
         return act
 
     def update_traffic_light(self):
-        traffic_light = CarlaDataProvider.set_vehicle_next_traffic_light(self.ego_vehicle)
-        # if the ego's next traffic light is not None and has changed, then set the next traffic light to green
-        if traffic_light is not None and traffic_light != self._traffic_light:
-            self._traffic_light = traffic_light
-            print("set the next traffic light to green")
-            traffic_light.set_state(carla.TrafficLightState.Green)
-            traffic_light.set_green_time(self.timeout)
+        ego_waypoint = self.world.get_map().get_waypoint(CarlaDataProvider.get_location_after_tick(self.ego_vehicle))
+        if not ego_waypoint.is_junction and self.last_ego_waypoint.is_junction:  # last tick the ego is in the junction, but the current step is out
+            traffic_light = CarlaDataProvider.get_next_traffic_light(self.ego_vehicle)
+            # if the ego's next traffic light is not None and has changed, then set the next traffic light to green
+            if traffic_light is not None and traffic_light != self._traffic_light:
+                self._traffic_light = traffic_light
+                print("set the next traffic light to green")
+                traffic_light.set_state(carla.TrafficLightState.Green)
+                traffic_light.set_green_time(self.timeout)
+        self.last_ego_waypoint = ego_waypoint
 
     def create_behavior(self, scenario_init_action):
         assert scenario_init_action is None, f'{self.name} should receive [None] initial action.'
