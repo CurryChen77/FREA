@@ -838,7 +838,7 @@ class CarlaDataProvider(object):
         return ego_min_dis, nearby_vehicles
 
     @staticmethod
-    def get_cbv_min_dis_cost(controlled_bv, search_radius, controlled_bv_nearby_vehicles, tou=1.25):
+    def get_cbv_min_dis_reward(controlled_bv, search_radius, controlled_bv_nearby_vehicles, tou=1.25):
         min_dis = search_radius  # the searching radius of the nearby_vehicle
         if controlled_bv and controlled_bv_nearby_vehicles:
             for nearby_vehicle in controlled_bv_nearby_vehicles:
@@ -846,10 +846,10 @@ class CarlaDataProvider(object):
                     # the min distance between bounding boxes of two vehicles
                     min_dis = CarlaDataProvider.get_min_distance_across_bboxes(controlled_bv, nearby_vehicle)
                     break  # the first nearby_vehicle in self.controlled_bv_nearby_vehicles is the closest, so can break
-            min_dis_cost = 0 if min_dis >= tou else -1  # the controlled bv shouldn't be too close to the other bvs
+            min_dis_reward = min(min_dis, tou)  # the controlled bv shouldn't be too close to the other bvs
         else:
-            min_dis_cost = 0
-        return min_dis, min_dis_cost
+            min_dis_reward = tou
+        return min_dis, min_dis_reward
 
     @staticmethod
     def get_mapped_cbv_speed(controlled_bv, desired_speed):
@@ -857,10 +857,12 @@ class CarlaDataProvider(object):
             v = CarlaDataProvider.get_velocity_after_tick(controlled_bv)
             min_speed = 0
             mapped_vel = (v - min_speed) / (desired_speed - min_speed)
-            mapped_vel = max(0.0, min(1.0, mapped_vel))
+            mapped_vel = np.clip(mapped_vel, 0.0, 1.0)
+            too_fast = -1 if v > desired_speed else 0
         else:
             mapped_vel = 0
-        return mapped_vel
+            too_fast = 0
+        return mapped_vel, too_fast
 
     @staticmethod
     def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis_list=None, intensity=0.8, upper_limit=30):

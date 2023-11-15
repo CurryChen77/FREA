@@ -453,14 +453,7 @@ class CarlaEnv(gym.Env):
 
         if training:
             # the info related to the controlled bv
-            # the min dis from the cbv to the rest bvs
-            cbv_min_dis, cbv_min_dis_cost = CarlaDataProvider.get_cbv_min_dis_cost(self.controlled_bv,
-                                                                                   self.search_radius,
-                                                                                   self.controlled_bv_nearby_vehicles)
-            mapped_cbv_vel = CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)
-            cost = self._get_cost()
-            # the reward for the cbv training
-            scenario_agent_reward = cbv_min_dis_cost + mapped_cbv_vel - 10 * cost
+            scenario_agent_reward, cost = self._get_scenario_reward()
             info.update({
                 'cost': cost,                                     # the collision cost -1 means collision happens
                 'scenario_agent_reward': scenario_agent_reward,   # the total reward for the cbv training
@@ -666,7 +659,26 @@ class CarlaEnv(gym.Env):
 
         # combine all rewards
         r = 1 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat
+        # reward function from "Interpretable End-to-End Urban Autonomous Driving With Latent Deep Reinforcement Learning"
+        # r = 50 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat - 0.1
         return r
+
+    def _get_scenario_reward(self):
+        """
+            cbv_min_dis_reward ~ [0, 1.25]: activate when cbv is too close to the other bvs
+            mapped_cbv_vel ~ [0.0, 1.0]: cbv's speed mapped to [0, 1]
+            cost ~ 0 or -1: whether the cbv has collided with ego vehicle
+            too_fast ~ 0 or -1: if the cbv's speed > desired speed, too_fast = -1
+        """
+        # the min dis from the cbv to the rest bvs
+        cbv_min_dis, cbv_min_dis_reward = CarlaDataProvider.get_cbv_min_dis_reward(self.controlled_bv,
+                                                                               self.search_radius,
+                                                                               self.controlled_bv_nearby_vehicles)
+        mapped_cbv_vel, too_fast = CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)
+        cost = self._get_cost()
+        # the reward for the cbv training
+        scenario_agent_reward = cbv_min_dis_reward + mapped_cbv_vel + 2 * too_fast - 10 * cost - 0.1
+        return scenario_agent_reward, cost
 
     def _get_cost(self):
         # cost for collision
