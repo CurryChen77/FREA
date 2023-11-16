@@ -11,7 +11,7 @@
 import numpy as np
 
 from safebench.agent.base_policy import BasePolicy
-from agents.navigation.behavior_agent_overtake import BehaviorAgentOvertake
+from agents.navigation.behavior_agent import BehaviorAgent
 from safebench.agent.agent_utils.visualization import draw_route
 
 
@@ -36,7 +36,7 @@ class CarlaBehaviorAgent(BasePolicy):
         self.ego_vehicles = ego_vehicles
         self.controller_list = []
         for e_i in range(len(ego_vehicles)):
-            controller = BehaviorAgentOvertake(self.ego_vehicles[e_i], behavior=self.behavior)
+            controller = BehaviorAgent(self.ego_vehicles[e_i], behavior=self.behavior)
             dest_waypoint = info[e_i]['route_waypoints'][-1]  # the destination of the ego vehicle
             location = dest_waypoint.transform.location
             controller.set_destination(location)  # set route for each controller
