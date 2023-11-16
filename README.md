@@ -16,6 +16,9 @@
 # Launch CARLA
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
+# Launch CARLA without rendering
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
+
 # Launch in another terminal
 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_agent
 ``````
