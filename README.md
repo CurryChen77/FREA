@@ -28,7 +28,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 ./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Mac local machine in another terminal
-DISPLAY=:10 python scripts/run.py --agent_cfg basic.yaml --scenario_cfg standard.yaml --mode eval --render
+DISPLAY=:10 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render
 ```
 
 * open terminal
@@ -120,6 +120,16 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 * Input state
 
   **Actor info** (ego and surrounding 3 BVs' 9-dim state)
+
+  |  vehicle   |  x   |  y   | yaw  | cos (yaw) | sin (yaw) |  Vx  |  Vy  | Acc.x | Acc.y |
+  | :--------: | :--: | :--: | :--: | :-------: | :-------: | :--: | :--: | :---: | ----- |
+  | CBV state  |      |      |      |           |           |      |      |       |       |
+  | ego state  |      |      |      |           |           |      |      |       |       |
+  | BV_1 state |      |      |      |           |           |      |      |       |       |
+  | BV_2 state |      |      |      |           |           |      |      |       |       |
+  |   ......   |      |      |      |           |           |      |      |       |       |
+
+  
 
 * Output action
 

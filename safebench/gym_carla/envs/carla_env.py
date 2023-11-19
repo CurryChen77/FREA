@@ -665,6 +665,7 @@ class CarlaEnv(gym.Env):
 
     def _get_scenario_reward(self):
         """
+            in_drivable_area ~ [0, -1]: whether the cbv are driving on the drivable area
             cbv_min_dis_reward ~ [0, 1.25]: activate when cbv is too close to the other bvs
             mapped_cbv_vel ~ [0.0, 1.0]: cbv's speed mapped to [0, 1]
             cost ~ 0 or -1: whether the cbv has collided with ego vehicle
@@ -675,9 +676,10 @@ class CarlaEnv(gym.Env):
                                                                                self.search_radius,
                                                                                self.controlled_bv_nearby_vehicles)
         mapped_cbv_vel, too_fast = CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)
+        in_drivable_area = CarlaDataProvider.get_actor_in_drivable_area(self.controlled_bv) if self.controlled_bv else 0
         cost = self._get_cost()
         # the reward for the cbv training
-        scenario_agent_reward = cbv_min_dis_reward + mapped_cbv_vel + 2 * too_fast - 80 * cost - 0.1
+        scenario_agent_reward = 10 * in_drivable_area + cbv_min_dis_reward + mapped_cbv_vel + 2 * too_fast - 150 * cost - 0.1
         return scenario_agent_reward, cost
 
     def _get_cost(self):

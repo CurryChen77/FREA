@@ -13,7 +13,7 @@ route_id: null
 #scenario_action_dim: 1
 
 # for scenario id 8
-scenario_state_dim: 36 # 4*9 - actor number * actor info dim
+scenario_state_dim: 45 # 5*9 - actor number * actor info dim
 scenario_action_dim: 2
 
 # for SAC policy model

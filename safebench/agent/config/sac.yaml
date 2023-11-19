@@ -3,11 +3,11 @@ learnable: True
 model_path: 'safebench/agent/model_ckpt/sac'
 model_type: 'agent'
 results_folder_path: ''
-obs_type: 'simple_state'
+obs_type: 'plant'
 
 # parameters for agent policy
 ego_action_dim: 2
-ego_state_dim: 4  # obs_type: 'simple_state' -> state dim=4; obs_type: 'plant' -> state dim=512
+ego_state_dim: 512  # obs_type: 'simple_state' -> state dim=4; obs_type: 'plant' -> state dim=512
 ego_action_limit: 1.0
 
 train_episode: 2000

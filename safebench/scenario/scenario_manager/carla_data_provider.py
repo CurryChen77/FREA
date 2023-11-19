@@ -799,6 +799,24 @@ class CarlaDataProvider(object):
         return actors
 
     @staticmethod
+    def get_actor_in_drivable_area(actor):
+        actor_transform = CarlaDataProvider.get_transform_after_tick(actor)
+        actor_location = actor_transform.location
+        # move the actor waypoint to the front part of the actor
+        actor_bbox_extent_x = actor.bounding_box.extent.x
+        theta = math.radians(actor_transform.rotation.yaw)
+        delta_x = actor_bbox_extent_x // 2 * math.cos(theta)
+        delta_y = actor_bbox_extent_x // 2 * math.sin(theta)
+        actor_front_location = actor_location + carla.Location(x=delta_x, y=delta_y, z=0.0)
+        # find the nearest waypoint around the actor front location
+        actor_waypoint = CarlaDataProvider.get_map().get_waypoint(actor_front_location)
+        if actor_waypoint.lane_type == carla.LaneType.Driving:
+            in_drivable_area = 0
+        else:
+            in_drivable_area = -1
+        return in_drivable_area
+
+    @staticmethod
     def cal_ego_min_dis(ego_vehicle, search_radius):
         nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(ego_vehicle, search_radius)
         # min distance between vehicle bboxes

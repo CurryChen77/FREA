@@ -237,19 +237,20 @@ class RouteScenario():
     def update_info(self, desired_nearby_vehicle=3):
         if self.controlled_bv:  # the controlled bv is not None
             controlled_bv_state = self._get_actor_state(self.controlled_bv)
-            actor_info = [controlled_bv_state]  # the first info belongs to the ego vehicle
+            ego_state = self._get_actor_state(self.ego_vehicle)
+            actor_info = [controlled_bv_state, ego_state]  # the first info belongs to the cbv, while the second belongs to the ego vehicle
             for i, actor in enumerate(self.controlled_bv_nearby_vehicles):
                 if i < desired_nearby_vehicle:
                     actor_info.append(self._get_actor_state(actor))  # add the info of the other actor to the list
                 else:
                     # avoiding too many nearby vehicles
                     break
-            while len(actor_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+            while len(actor_info)-2 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
                 actor_info.append([0] * len(controlled_bv_state))
 
             actor_info = np.array(actor_info)
         else:
-            actor_info = np.zeros((desired_nearby_vehicle+1, 9))  # need to have the same size like normal actor info
+            actor_info = np.zeros((desired_nearby_vehicle+2, 9))  # need to have the same size like normal actor info
         return {
             'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
