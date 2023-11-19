@@ -8,6 +8,35 @@
 * [Eval](#Eval)
 * [Visualization](#Visualization)
 
+## Eval
+
+### Desktop Users
+
+```bash
+# Launch CARLA
+./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+
+# Launch in another terminal
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode eval --render
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode eval --safety_eval --render # use the trained safety network to help evaluation
+```
+
+### Remote Users
+
+```bash
+# Launch CARLA with headless mode
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
+
+# Mac local machine in another terminal
+DISPLAY=:10 python scripts/run.py --agent_cfg basic.yaml --scenario_cfg standard.yaml --mode eval --render
+```
+
+* open terminal
+
+```bash
+ssh -X username@host
+```
+
 ## Train Agent
 
 ### Usage
@@ -16,12 +45,10 @@
 # Launch CARLA
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-# Launch CARLA without rendering
-./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
-
 # Launch in another terminal
 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_agent
 ``````
+
 
 ### Policy
 
