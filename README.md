@@ -119,7 +119,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
 * Input state
 
-  **Actor info** (ego and surrounding 3 BVs' 9-dim state)
+  **Actor info**
 
   |  vehicle   |  x   |  y   | yaw  | cos (yaw) | sin (yaw) |  Vx  |  Vy  | Acc.x | Acc.y |
   | :--------: | :--: | :--: | :--: | :-------: | :-------: | :--: | :--: | :---: | ----- |
@@ -127,9 +127,9 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
   | ego state  |      |      |      |           |           |      |      |       |       |
   | BV_1 state |      |      |      |           |           |      |      |       |       |
   | BV_2 state |      |      |      |           |           |      |      |       |       |
-  |   ......   |      |      |      |           |           |      |      |       |       |
+  | BV_3 state |      |      |      |           |           |      |      |       |       |
 
-  
+  **Tips: if no BV then the corresponding state will set to 0**
 
 * Output action
 

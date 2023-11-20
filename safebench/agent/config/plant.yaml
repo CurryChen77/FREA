@@ -5,7 +5,7 @@ model_type: 'agent'
 results_folder_path: ''
 obs_type: 'ego_state'
 
-train_episode: 2000
+train_episode: 200
 eval_in_train_freq: 1
 save_freq: 10
 buffer_capacity: 10000
