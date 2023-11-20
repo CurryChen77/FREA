@@ -2,10 +2,11 @@
 
 # Content
 
+* [Eval](#Eval)
+
 * [Train Agent](#Train-Agent)
 * [Train Scenario](#Train-Scenario)
 * [Train Safety network](#Train-Safety-network)
-* [Eval](#Eval)
 * [Visualization](#Visualization)
 
 ## Eval
@@ -23,15 +24,27 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
 ### Remote Users
 
+#### Remote training
+
 ```bash
 # Launch CARLA with headless mode
 ./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
-# Mac local machine in another terminal
+# Another terminal no display pygame
+SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --mode eval
+```
+
+#### Visualize pygame window
+
+```bash
+# Launch CARLA with headless mode
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
+
+# Another terminal, Launch on the virtual display
 DISPLAY=:10 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render
 ```
 
-* open terminal
+* local open terminal
 
 ```bash
 ssh -X username@host
@@ -46,7 +59,7 @@ ssh -X username@host
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_agent
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --mode train_agent
 ``````
 
 
@@ -96,7 +109,7 @@ For Carla Leader-board agent (Expert or PlanT)
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_scenario
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg sac.yaml --mode train_scenario
 ```
 
 ### Policy
@@ -148,7 +161,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode train_safety_network
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --safety_network_cfg HJR.yaml --mode train_safety_network
 ```
 
 ### Policy
@@ -162,19 +175,6 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 * **PlanT:** (encoded state) default 
 
 * **Actor info:** (ego and surrounding 3 BVs' 9-dim state) *no route map information*
-
-## Eval
-
-### Usage
-
-```bash
-# Launch CARLA
-./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
-
-# Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode eval
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode eval --safety_eval  # use the trained safety network to help evaluation
-```
 
 ## Visualization
 

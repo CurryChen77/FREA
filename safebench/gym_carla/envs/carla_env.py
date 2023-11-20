@@ -658,9 +658,9 @@ class CarlaEnv(gym.Env):
         r_lat = -abs(self.ego_vehicle.get_control().steer) * lspeed_lon**2
 
         # combine all rewards
-        r = 1 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat
-        # reward function from "Interpretable End-to-End Urban Autonomous Driving With Latent Deep Reinforcement Learning"
-        # r = 50 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat - 0.1
+        # r = 1 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat
+        # reward from "Interpretable End-to-End Urban Autonomous Driving With Latent Deep Reinforcement Learning"
+        r = 50 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat - 0.1
         return r
 
     def _get_scenario_reward(self):
