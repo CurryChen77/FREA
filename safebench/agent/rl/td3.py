@@ -63,6 +63,7 @@ class TD3(BasePolicy):
         self.continue_episode = 0
         self.state_dim = config['ego_state_dim']
         self.action_dim = config['ego_action_dim']
+
         self.batch_size = config['batch_size']
         self.hidden_size = config['hidden_size']
         self.update_iteration = config['update_iteration']
@@ -204,13 +205,16 @@ class TD3(BasePolicy):
 
         return q1_loss, q2_loss, pi_loss
 
-    def save_model(self, episode):
+    def save_model(self, episode, map_name):
         states = {
             'q_funcs': self.q_funcs.state_dict(),
             'target_q_funcs': self.target_q_funcs.state_dict(),
             'policy': self.policy.state_dict(),
             'target_policy': self.target_policy.state_dict(),
         }
+        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
+        save_dir = os.path.join(self.model_path, self.obs_type, scenario_name, map_name)
+        os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(self.model_path, f'model.td3.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:

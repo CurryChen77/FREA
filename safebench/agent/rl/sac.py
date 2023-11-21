@@ -90,7 +90,7 @@ class SAC(BasePolicy):
         self.continue_episode = 0
         self.state_dim = config['ego_state_dim']
         self.action_dim = config['ego_action_dim']
-        self.obs_type = config['obs_type']
+
         self.min_Val = torch.tensor(config['min_Val']).float()
         self.batch_size = config['batch_size']
         self.update_iteration = config['update_iteration']
@@ -98,7 +98,7 @@ class SAC(BasePolicy):
         self.tau = config['tau']
 
         self.model_type = config['model_type']
-        self.scenario_id = config['scenario_id']
+
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         if not os.path.exists(self.model_path):
             os.makedirs(self.model_path)
@@ -216,23 +216,23 @@ class SAC(BasePolicy):
             for target_param, param in zip(self.Target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(target_param * (1 - self.tau) + param * self.tau)
 
-    def save_model(self, episode):
+    def save_model(self, episode, map_name):
         states = {
             'policy_net': self.policy_net.state_dict(), 
             'value_net': self.value_net.state_dict(), 
             'Q_net': self.Q_net.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, self.obs_type, scenario_name)
+        save_dir = os.path.join(self.model_path, self.obs_type, scenario_name, map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
-    def load_model(self, episode=None):
+    def load_model(self, map_name, episode=None):
         scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, self.obs_type, scenario_name)
+        load_dir = os.path.join(self.model_path, self.obs_type, scenario_name, map_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):

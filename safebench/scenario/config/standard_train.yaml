@@ -1,10 +1,10 @@
 scenario_type_dir: 'safebench/scenario/config/scenario_type'
-scenario_type: 'carla_scenario_10x.json'  # default 'safebench_scenario_1x.json' only include the route scenario in the safebench light map
+scenario_type: 'carla_scenario_9_10x.json'  # default 'safebench_scenario_1x.json' only include the route scenario in the safebench light map
 scenario_category: 'planning'
 policy_type: 'standard'
 
 route_dir: 'safebench/scenario/scenario_data/route'
-scenario_id: 6
+scenario_id: 9
 route_id: null
 
 # not useful

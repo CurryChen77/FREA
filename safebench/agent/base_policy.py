@@ -15,6 +15,8 @@ class BasePolicy:
 
     def __init__(self, config, logger):
         self.ego_vehicles = None
+        self.scenario_id = config['scenario_id']
+        self.obs_type = config['obs_type']
 
     def set_ego_and_route(self, ego_vehicles, info):
         self.ego_vehicles = ego_vehicles
@@ -28,8 +30,8 @@ class BasePolicy:
     def get_action(self, state, infos, deterministic):
         raise NotImplementedError()
 
-    def load_model(self):
+    def load_model(self, map_name):
         raise NotImplementedError()
 
-    def save_model(self, episode):
+    def save_model(self, episode, map_name):
         raise NotImplementedError()

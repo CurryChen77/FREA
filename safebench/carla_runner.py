@@ -41,6 +41,7 @@ class CarlaRunner:
         self.agent_config = agent_config
         self.safety_network_config = safety_network_config
         self.safety_network_name = safety_network_config['type'] if safety_network_config else None
+        self.current_map = None
 
         self.seed = scenario_config['seed']
         self.exp_name = scenario_config['exp_name']
@@ -313,11 +314,11 @@ class CarlaRunner:
             # save checkpoints
             if (e_i+1) % self.save_freq == 0:
                 if self.mode == 'train_agent':
-                    self.agent_policy.save_model(e_i)
+                    self.agent_policy.save_model(e_i, self.current_map)
                 if self.mode == 'train_scenario':
-                    self.scenario_policy.save_model(e_i)
+                    self.scenario_policy.save_model(e_i, self.current_map)
                 if self.mode == 'train_safety_network':
-                    self.safety_network_policy.save_model(e_i)
+                    self.safety_network_policy.save_model(e_i, self.current_map)
 
         # close the tensorboard writer
         writer.close()
@@ -390,6 +391,7 @@ class CarlaRunner:
         config_by_map = scenario_parse(self.scenario_config, self.logger)
         for m_i in config_by_map.keys():  # for each town, the same town could include different scenario templates
             # initialize map and render
+            self.current_map = m_i  # record the current running map name
             self._init_world(m_i)
             self._init_renderer()
 
@@ -460,7 +462,7 @@ class CarlaRunner:
 
     def check_continue_training(self, policy):
         # load previous checkpoint
-        policy.load_model()
+        policy.load_model(map_name=self.current_map)
         if policy.continue_episode == 0:
             start_episode = 0
             self.logger.log('>> Previous checkpoint not found. Training from scratch.')
