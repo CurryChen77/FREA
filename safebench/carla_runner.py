@@ -59,6 +59,7 @@ class CarlaRunner:
         # continue training flag
         self.continue_agent_training = scenario_config['continue_agent_training']        # default False
         self.continue_scenario_training = scenario_config['continue_scenario_training']  # default False
+        self.scenario_id = scenario_config['scenario_id']
 
         # apply settings to carla
         self.client = carla.Client('localhost', scenario_config['port'])
@@ -97,12 +98,21 @@ class CarlaRunner:
         agent_config['mode'] = scenario_config['mode']
         agent_config['desired_speed'] = self.env_params['desired_speed']
         agent_config['num_scenario'] = scenario_config['num_scenario']
-        agent_config['scenario_id'] = scenario_config['scenario_id']
+        agent_config['scenario_id'] = self.scenario_id
+
+        # pass config from agent to scenario
+        scenario_config['agent_policy'] = agent_config['policy_type']
+        scenario_config['agent_obs_type'] = agent_config['obs_type']
+        if self.safety_network_config and self.mode != "train_safety_network":  # using safety network instead of training
+            scenario_config['safety_network'] = "with_safety_network"
+        else:
+            scenario_config['safety_network'] = "without_safety_network"
 
         # pass config from agent, scenario to safety_network
         if self.safety_network_config:
             self.safety_network_config['agent_policy_type'] = agent_config['policy_type']
             self.safety_network_config['scenario_policy_type'] = scenario_config['policy_type']
+            self.safety_network_config['scenario_id'] = self.scenario_id
 
         CarlaDataProvider.set_ego_desired_speed(self.env_params['desired_speed'])
 
@@ -116,7 +126,7 @@ class CarlaRunner:
             agent_obs_type=agent_config['obs_type'],
             scenario=scenario_config['policy_type'],
             safety_network=self.safety_network_name,
-            scenario_id=scenario_config['scenario_id'],
+            scenario_id=self.scenario_id,
             cbv_selection=self.cbv_selection,
             scenario_category=self.scenario_category
         )
@@ -237,7 +247,8 @@ class CarlaRunner:
     def train(self, data_loader, start_episode=0):
         # create the tensorboard writer
         log_dir = self.logger.output_dir
-        writer = SummaryWriter(log_dir=log_dir)
+        writer_dir = osp.join(log_dir, "Scenario"+str(self.scenario_id)+self.current_map)
+        writer = SummaryWriter(log_dir=writer_dir)
 
         # general buffer for both agent and scenario
         replay_buffer = RouteReplayBuffer(self.num_scenario, self.mode, self.agent_config, self.buffer_capacity)
@@ -289,14 +300,14 @@ class CarlaRunner:
             # end up environment
             self.env.clean_up()
             replay_buffer.finish_one_episode()
-            self.logger.add_training_results('episode', e_i)
+            # self.logger.add_training_results('episode', e_i)
             sum_episode_reward = np.sum(agent_episode_reward)
-            self.logger.add_training_results('Agent_episode_reward', sum_episode_reward)
+            # self.logger.add_training_results('Agent_episode_reward', sum_episode_reward)
             if self.mode == 'train_agent':
                 writer.add_scalar("Agent_episode_reward", sum_episode_reward, e_i)
             if self.mode == 'train_scenario':
                 writer.add_scalar("Scenario_episode_reward", np.sum(scenario_episode_reward), e_i)
-            self.logger.save_training_results()
+            # self.logger.save_training_results()
 
             # train on-policy agent or scenario
             if self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
@@ -314,11 +325,11 @@ class CarlaRunner:
             # save checkpoints
             if (e_i+1) % self.save_freq == 0:
                 if self.mode == 'train_agent':
-                    self.agent_policy.save_model(e_i, self.current_map)
+                    self.agent_policy.save_model(e_i, map_name=self.current_map)
                 if self.mode == 'train_scenario':
-                    self.scenario_policy.save_model(e_i, self.current_map)
+                    self.scenario_policy.save_model(e_i, map_name=self.current_map)
                 if self.mode == 'train_safety_network':
-                    self.safety_network_policy.save_model(e_i, self.current_map)
+                    self.safety_network_policy.save_model(e_i, map_name=self.current_map)
 
         # close the tensorboard writer
         writer.close()

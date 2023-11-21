@@ -104,8 +104,8 @@ class PPO(BasePolicy):
         self.cbv_selection = config['cbv_selection']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.cbv_selection)
         self.scenario_id = config['scenario_id']
-        if not os.path.exists(self.model_path):
-            os.makedirs(self.model_path)
+        self.agent_info = 'ego_' + config['agent_policy'] + "_" + config['agent_obs_type']
+        self.safety_network = config['safety_network']
 
         self.policy = CUDA(PolicyNetwork(state_dim=self.state_dim, action_dim=self.action_dim))
         self.old_policy = CUDA(PolicyNetwork(state_dim=self.state_dim, action_dim=self.action_dim))
@@ -184,22 +184,22 @@ class PPO(BasePolicy):
         # reset buffer
         replay_buffer.reset_buffer()
 
-    def save_model(self, episode):
+    def save_model(self, episode, map_name):
         states = {
             'policy': self.policy.state_dict(),
             'value': self.value.state_dict(),
         }
-        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, scenario_name)
+        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
+        save_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
-    def load_model(self, episode=None):
-        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, scenario_name)
+    def load_model(self, map_name, episode=None):
+        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
+        load_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):
@@ -218,4 +218,4 @@ class PPO(BasePolicy):
             self.continue_episode = episode
         else:
             self.logger.log(f'>> No scenario policy {self.name} model found at {os.path.basename(filepath)}', 'red')
-            exit()
+            self.continue_episode = 0

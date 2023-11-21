@@ -102,8 +102,8 @@ class SAC(BasePolicy):
         self.cbv_selection = config['cbv_selection']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.cbv_selection)
         self.scenario_id = config['scenario_id']
-        if not os.path.exists(self.model_path):
-            os.makedirs(self.model_path)
+        self.agent_info = 'ego_' + config['agent_policy'] + "_" + config['agent_obs_type']
+        self.safety_network = config['safety_network']
 
         # create models
         self.policy_net = CUDA(Actor(self.state_dim, self.action_dim))
@@ -231,14 +231,14 @@ class SAC(BasePolicy):
             for target_param, param in zip(self.Target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(target_param * (1 - self.tau) + param * self.tau)
 
-    def save_model(self, episode):
+    def save_model(self, episode, map_name):
         states = {
             'policy_net': self.policy_net.state_dict(), 
             'value_net': self.value_net.state_dict(), 
             'Q_net': self.Q_net.state_dict()
         }
-        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, scenario_name)
+        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
+        save_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {filepath}')
@@ -246,9 +246,9 @@ class SAC(BasePolicy):
             torch.save(states, f)
 
     # the loading method corresponds to the episode saving method
-    def load_model(self, episode=None):
-        scenario_name = "all" if self.scenario_id is None else str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, scenario_name)
+    def load_model(self, map_name, episode=None):
+        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
+        load_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):
@@ -267,3 +267,6 @@ class SAC(BasePolicy):
             self.value_net.load_state_dict(checkpoint['value_net'])
             self.Q_net.load_state_dict(checkpoint['Q_net'])
             self.continue_episode = episode
+        else:
+            self.logger.log(f'>> No {self.name} model found at {filepath}', 'red')
+            self.continue_episode = 0

@@ -39,8 +39,8 @@ class DummyAgent(BasePolicy):
         action[:, 1] = 0
         return action
 
-    def load_model(self):
+    def load_model(self, map_name):
         pass
 
-    def save_model(self):
+    def save_model(self, episode, map_name):
         pass
