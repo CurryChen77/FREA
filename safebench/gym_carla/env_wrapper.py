@@ -20,7 +20,7 @@ class VectorWrapper():
         The interface to control a list of environments.
     """
 
-    def __init__(self, env_params, scenario_config, world, birdeye_render, display, search_radius, safety_network_config, agent_state_encoder, logger):
+    def __init__(self, env_params, scenario_config, world, birdeye_render, display, search_radius, safety_network_config, agent_state_encoder, mode, logger):
         self.logger = logger
         self.world = world
         self.num_scenario = scenario_config['num_scenario']  # default 2
@@ -30,6 +30,7 @@ class VectorWrapper():
         self.safety_network_config = safety_network_config
         self.agent_state_encoder = agent_state_encoder
         self.birdeye_render = birdeye_render
+        self.mode = mode
 
         self.env_list = []
         for i in range(self.num_scenario):
@@ -133,10 +134,11 @@ class VectorWrapper():
                             ego_min_dis = CarlaDataProvider.get_ego_min_dis()
                             self.logger.log(f'>> V2V collision caused ego min dis = {ego_min_dis}', color='yellow')
                     # save running results according to the data_id of scenario
-                    if current_env.config.data_id in self.running_results.keys():
-                        self.logger.log('Scenario with data_id {} is duplicated'.format(current_env.config.data_id))
-                    # the running results contain every data id (one specific scenario) running status at each time step
-                    self.running_results[current_env.config.data_id] = current_env.scenario_manager.running_record
+                    if self.mode == 'eval':
+                        if current_env.config.data_id in self.running_results.keys():
+                            self.logger.log('Scenario with data_id {} is duplicated'.format(current_env.config.data_id))
+                        # the running results contain every data id (one specific scenario) running status at each time step
+                        self.running_results[current_env.config.data_id] = current_env.scenario_manager.running_record
 
                 # update infomation
                 obs_list.append(obs)

@@ -61,10 +61,11 @@ class HJR:
 
         self.batch_size = config['batch_size']
         self.train_iteration = config['train_iteration']
+        self.agent_info = 'ego_' + config['agent_policy_type'] + "_" + config['agent_obs_type']
 
         self.agent_policy_type = config['agent_policy_type']
         self.scenario_policy_type = config['scenario_policy_type']
-        model_name = self.agent_policy_type + "_" + self.scenario_policy_type + "_" + "HJR"
+        model_name = "EgoPolicy_" + self.agent_policy_type+"_" + config['agent_obs_type'] + "_CBVPolicy_" + self.scenario_policy_type + "_" + "HJR"
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], model_name)
         self.scenario_id = config['scenario_id']
 
@@ -151,7 +152,7 @@ class HJR:
             'Qh_net': self.Qh_net.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, self.obs_type, scenario_name, map_name)
+        save_dir = os.path.join(self.model_path, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.HJR.{episode:04}.torch')
         self.logger.log(f'>> Saving {self.name} model to {filepath}')
@@ -160,7 +161,7 @@ class HJR:
 
     def load_model(self, map_name, episode=None):
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, self.obs_type, scenario_name, map_name)
+        load_dir = os.path.join(self.model_path, scenario_name+"_"+map_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):

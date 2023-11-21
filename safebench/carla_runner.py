@@ -99,6 +99,7 @@ class CarlaRunner:
         agent_config['desired_speed'] = self.env_params['desired_speed']
         agent_config['num_scenario'] = scenario_config['num_scenario']
         agent_config['scenario_id'] = self.scenario_id
+        agent_config['scenario_policy_type'] = scenario_config['policy_type']
 
         # pass config from agent to scenario
         scenario_config['agent_policy'] = agent_config['policy_type']
@@ -113,6 +114,7 @@ class CarlaRunner:
             self.safety_network_config['agent_policy_type'] = agent_config['policy_type']
             self.safety_network_config['scenario_policy_type'] = scenario_config['policy_type']
             self.safety_network_config['scenario_id'] = self.scenario_id
+            self.safety_network_config['agent_obs_type'] = agent_config['obs_type']
 
         CarlaDataProvider.set_ego_desired_speed(self.env_params['desired_speed'])
 
@@ -139,21 +141,21 @@ class CarlaRunner:
             self.save_freq = agent_config['save_freq']
             self.train_episode = agent_config['train_episode']
             self.logger.save_config(agent_config)
-            self.logger.create_training_dir()
+            # self.logger.create_training_dir()
         elif self.mode == 'train_scenario':
             self.buffer_capacity = scenario_config['buffer_capacity']
             self.eval_in_train_freq = scenario_config['eval_in_train_freq']
             self.save_freq = scenario_config['save_freq']
             self.train_episode = scenario_config['train_episode']
             self.logger.save_config(scenario_config)
-            self.logger.create_training_dir()
+            # self.logger.create_training_dir()
         elif self.mode == 'train_safety_network':
             self.buffer_capacity = safety_network_config['buffer_capacity']
             self.eval_in_train_freq = safety_network_config['eval_in_train_freq']
             self.save_freq = safety_network_config['save_freq']
             self.train_episode = safety_network_config['train_episode']
             self.logger.save_config(safety_network_config)
-            self.logger.create_training_dir()
+            # self.logger.create_training_dir()
         elif self.mode == 'eval':
             self.save_freq = scenario_config['save_freq']
             self.logger.log('>> Evaluation Mode, skip config saving', 'yellow')
@@ -247,7 +249,7 @@ class CarlaRunner:
     def train(self, data_loader, start_episode=0):
         # create the tensorboard writer
         log_dir = self.logger.output_dir
-        writer_dir = osp.join(log_dir, "Scenario"+str(self.scenario_id)+self.current_map)
+        writer_dir = osp.join(log_dir, "Scenario"+str(self.scenario_id)+'_'+self.current_map)
         writer = SummaryWriter(log_dir=writer_dir)
 
         # general buffer for both agent and scenario
@@ -338,7 +340,7 @@ class CarlaRunner:
         num_finished_scenario = 0
         data_loader.set_mode("eval")
         data_loader.reset_idx_counter()
-        self.scenario_policy.load_model()  # using overall model, the loading process only needs to be executed once
+        self.scenario_policy.load_model(map_name=self.current_map)  # using overall model, the loading process only needs to be executed once
         while len(data_loader) > 0:
             # sample scenarios
             sampled_scenario_configs, num_sampled_scenario = data_loader.sampler()
@@ -416,6 +418,7 @@ class CarlaRunner:
                 self.search_radius,
                 self.safety_network_config,
                 self.agent_state_encoder,
+                self.mode,
                 self.logger,
             )
             self.logger.log(">> Finish scenario initialization")
@@ -426,43 +429,43 @@ class CarlaRunner:
 
             # run with different modes
             if self.mode == 'eval':
-                self.agent_policy.load_model()
+                self.agent_policy.load_model(map_name=self.current_map)
                 # self.scenario_policy.load_model()
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('eval')
                 if self.safety_network_config:
-                    self.safety_network_policy.load_model()
+                    self.safety_network_policy.load_model(map_name=self.current_map)
                     self.safety_network_policy.set_mode('eval')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.eval(data_loader)
             elif self.mode == 'train_agent':
                 start_episode = self.check_continue_training(self.agent_policy)
-                self.scenario_policy.load_model()
+                self.scenario_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('train')
                 self.scenario_policy.set_mode('eval')
                 if self.safety_network_config:
-                    self.safety_network_policy.load_model()
+                    self.safety_network_policy.load_model(map_name=self.current_map)
                     self.safety_network_policy.set_mode('eval')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
             elif self.mode == 'train_scenario':
                 start_episode = self.check_continue_training(self.scenario_policy)
-                self.agent_policy.load_model()
+                self.agent_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('train')
                 if self.safety_network_config:
-                    self.safety_network_policy.load_model()
+                    self.safety_network_policy.load_model(map_name=self.current_map)
                     self.safety_network_policy.set_mode('eval')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
             elif self.mode == 'train_safety_network':
                 start_episode = self.check_continue_training(self.safety_network_policy)
-                self.agent_policy.load_model()
+                self.agent_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
-                self.scenario_policy.load_model()
+                self.scenario_policy.load_model(map_name=self.current_map)
                 self.scenario_policy.set_mode('eval')
                 self.safety_network_policy.set_mode('train')
                 if self.agent_state_encoder:

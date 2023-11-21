@@ -104,7 +104,7 @@ class PPO(BasePolicy):
         self.cbv_selection = config['cbv_selection']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.cbv_selection)
         self.scenario_id = config['scenario_id']
-        self.agent_info = 'ego_' + config['agent_policy'] + "_" + config['agent_obs_type']
+        self.agent_info = 'EgoPolicy_' + config['agent_policy'] + "-" + config['agent_obs_type']
         self.safety_network = config['safety_network']
 
         self.policy = CUDA(PolicyNetwork(state_dim=self.state_dim, action_dim=self.action_dim))

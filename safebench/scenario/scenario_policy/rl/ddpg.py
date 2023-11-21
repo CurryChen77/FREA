@@ -88,7 +88,7 @@ class DDPG(BasePolicy):
         self.model_type = config['model_type']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         self.scenario_id = config['scenario_id']
-        self.agent_info = 'ego_' + config['agent_policy'] + "_" + config['agent_obs_type']
+        self.agent_info = 'EgoPolicy_' + config['agent_policy'] + "-" + config['agent_obs_type']
         self.safety_network = config['safety_network']
 
         self.actor = CUDA(Actor(self.state_dim, self.action_dim))

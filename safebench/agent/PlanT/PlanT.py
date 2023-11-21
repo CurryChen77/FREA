@@ -59,8 +59,8 @@ class PlanT(BasePolicy):
         actions = np.array(actions, dtype=np.float32)
         return actions
 
-    def load_model(self):
+    def load_model(self, map_name):
         pass
 
-    def save_model(self):
+    def save_model(self, episode, map_name):
         pass

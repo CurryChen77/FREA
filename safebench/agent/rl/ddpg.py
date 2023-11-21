@@ -89,6 +89,7 @@ class DDPG(BasePolicy):
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         self.scenario_id = config['scenario_id']
         self.obs_type = config['obs_type']
+        self.scenario_policy_type = config['scenario_policy_type']
 
         self.actor = CUDA(Actor(self.state_dim, self.action_dim))
         self.actor_target = CUDA(Actor(self.state_dim, self.action_dim))
@@ -177,7 +178,7 @@ class DDPG(BasePolicy):
             'critic_target': self.critic_target.state_dict(),
         }
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, self.obs_type, scenario_name, map_name)
+        save_dir = os.path.join(self.model_path, 'Ego_'+self.obs_type+'_CBV_'+self.scenario_policy_type, scenario_name+'_'+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.ddpg.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving {self.name} model to {filepath}')
@@ -186,7 +187,7 @@ class DDPG(BasePolicy):
 
     def load_model(self, map_name, episode=None):
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, self.obs_type, scenario_name, map_name)
+        load_dir = os.path.join(self.model_path, 'Ego_'+self.obs_type+'_CBV_'+self.scenario_policy_type, scenario_name+'_'+map_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):
