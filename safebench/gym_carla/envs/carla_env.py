@@ -17,13 +17,12 @@ from skimage.transform import resize
 import gym
 import carla
 
-
 from safebench.gym_carla.envs.route_planner import RoutePlanner
 from safebench.gym_carla.envs.misc import (
-    display_to_rgb, 
-    rgb_to_display_surface, 
-    get_lane_dis, 
-    get_pos, 
+    display_to_rgb,
+    rgb_to_display_surface,
+    get_lane_dis,
+    get_pos,
     get_preview_lane_dis,
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
@@ -38,8 +37,9 @@ class CarlaEnv(gym.Env):
     """ 
         An OpenAI-gym style interface for CARLA simulator. 
     """
+
     def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0,
-                safety_network_config=None, agent_state_encoder=None, logger=None):
+                 safety_network_config=None, agent_state_encoder=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
         self.config = None
@@ -113,7 +113,7 @@ class CarlaEnv(gym.Env):
         self.warm_up_steps = env_params['warm_up_steps']
 
         if self.scenario_category in ['planning', 'scenic']:
-            self.obs_size = int(self.obs_range/self.lidar_bin)
+            self.obs_size = int(self.obs_range / self.lidar_bin)
         else:
             raise ValueError(f'Unknown scenario category: {self.scenario_category}')
 
@@ -133,12 +133,13 @@ class CarlaEnv(gym.Env):
         self.lidar_bp = self.world.get_blueprint_library().find('sensor.lidar.ray_cast')
         self.lidar_bp.set_attribute('channels', '16')
         self.lidar_bp.set_attribute('range', '1000')
-        
+
         # camera sensor
         self.camera_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
         self.BGR_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
         # self.camera_trans = carla.Transform(carla.Location(x=0.8, z=1.7))  # for ego view
-        self.camera_trans = carla.Transform(carla.Location(x=-4., y=0., z=5.), carla.Rotation(pitch=-20.0))  # for third-person view
+        self.camera_trans = carla.Transform(carla.Location(x=-4., y=0., z=5.),
+                                            carla.Rotation(pitch=-20.0))  # for third-person view
         self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.rgb')
         # Modify the attributes of the blueprint to set image resolution and field of view.
         self.camera_bp.set_attribute('image_size_x', str(self.obs_size))
@@ -150,7 +151,8 @@ class CarlaEnv(gym.Env):
         # sem camera sensor
         if self.enable_sem:
             self.sem_img = np.zeros((self.obs_size, self.obs_size, 2), dtype=np.uint8)
-            self.sem_trans = carla.Transform(carla.Location(x=-4., y=0, z=5.), carla.Rotation(pitch=-20.0))  # for third-person view
+            self.sem_trans = carla.Transform(carla.Location(x=-4., y=0, z=5.),
+                                             carla.Rotation(pitch=-20.0))  # for third-person view
             self.sem_bp = self.world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
             self.sem_bp.set_attribute('image_size_x', str(self.obs_size))
             self.sem_bp.set_attribute('image_size_y', str(self.obs_size))
@@ -164,9 +166,9 @@ class CarlaEnv(gym.Env):
         # create scenario accoridng to different types
         if self.scenario_category == 'planning':
             scenario = RouteScenario(
-                world=self.world, 
-                config=config, 
-                ego_id=env_id, 
+                world=self.world,
+                config=config,
+                ego_id=env_id,
                 max_running_step=self.max_episode_step,
                 env_params=self.env_params,
                 logger=self.logger
@@ -210,23 +212,27 @@ class CarlaEnv(gym.Env):
         # all the situations that need the encoded state or most relevant vehicle
         if self.agent_state_encoder:
             if not self.safety_network_obs_type:
-                ego_nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle, self.search_radius)
+                ego_nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle,
+                                                                                       self.search_radius)
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
             )
-            self.encoded_state = encoded_state[:, 0, :].squeeze(0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
+            self.encoded_state = encoded_state[:, 0, :].squeeze(
+                0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
         else:
             most_relevant_vehicle = None
         self.old_cbv = self.controlled_bv  # for BEV visualization
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         if self.cbv_select_method == 'rule-based':
-            self.controlled_bv = CarlaDataProvider.find_closest_vehicle(self.ego_vehicle, self.search_radius, ego_nearby_vehicles)
+            self.controlled_bv = CarlaDataProvider.find_closest_vehicle(self.ego_vehicle, self.search_radius,
+                                                                        ego_nearby_vehicles)
         elif self.cbv_select_method == 'attention-based':
             self.controlled_bv = most_relevant_vehicle
 
         # get the nearby vehicles around the cbv
         if self.controlled_bv:
-            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv, self.search_radius)
+            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv,
+                                                                                       self.search_radius)
             # update the cbv for BEV visualization
             if self.old_cbv and self.controlled_bv and self.old_cbv.id != self.controlled_bv.id:  # the cbv has changed, need to remove the old cbv
                 self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # update the new cbv
@@ -237,7 +243,8 @@ class CarlaEnv(gym.Env):
                 self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # add the new cbv
         else:
             self.controlled_bv_nearby_vehicles = None
-        self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv, self.controlled_bv_nearby_vehicles)
+        self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv,
+                                                                   self.controlled_bv_nearby_vehicles)
 
     def reset(self, config, env_id):
         self.config = config
@@ -293,12 +300,13 @@ class CarlaEnv(gym.Env):
 
         def get_collision_hist(event):
             impulse = event.normal_impulse
-            intensity = np.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
+            intensity = np.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
             self.collision_hist.append(intensity)
             # TODO if collision the ego min distance must be 0
             self.ego_min_dis = 0. if self.safety_network_obs_type else None
             if len(self.collision_hist) > self.collision_hist_l:
                 self.collision_hist.pop(0)
+
         self.collision_hist = []
 
         # Add lidar sensor
@@ -313,7 +321,7 @@ class CarlaEnv(gym.Env):
         self.camera_sensor = self.world.spawn_actor(self.camera_bp, self.camera_trans, attach_to=self.ego_vehicle)
         self.camera_sensor.listen(lambda data: get_camera_img(data))
 
-        def get_camera_img(data):            
+        def get_camera_img(data):
             array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (data.height, data.width, 4))
             array = array[:, :, :3]
@@ -339,7 +347,8 @@ class CarlaEnv(gym.Env):
             cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
             cbv_angle = math.radians(cbv_transform.rotation.yaw)
             cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
-            self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.3, color=carla.Color(0,0,255,0), life_time=0.11)
+            self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.3, color=carla.Color(0, 0, 255, 0),
+                                        life_time=0.11)
 
         # if the ego agent is learnable and need to viz the route, then draw the target waypoints
         if self.ego_agent_learnable and self.viz_route:
@@ -369,7 +378,8 @@ class CarlaEnv(gym.Env):
                         # the learnable agent action
                         if self.discrete:
                             acc = self.discrete_act[0][ego_action // self.n_steer]  # 'discrete_acc': [-3.0, 0.0, 3.0]
-                            steer = self.discrete_act[1][ego_action % self.n_steer]  # 'discrete_steer': [-0.2, 0.0, 0.2]
+                            steer = self.discrete_act[1][
+                                ego_action % self.n_steer]  # 'discrete_steer': [-0.2, 0.0, 0.2]
                         else:
                             acc = ego_action[0]  # continuous action: acc
                             steer = ego_action[1]  # continuous action: steering
@@ -455,11 +465,11 @@ class CarlaEnv(gym.Env):
             # the info related to the controlled bv
             scenario_agent_reward, cost = self._get_scenario_reward()
             info.update({
-                'cost': cost,                                     # the collision cost -1 means collision happens
-                'scenario_agent_reward': scenario_agent_reward,   # the total reward for the cbv training
-                'route_waypoints': self.global_route_waypoints,   # the global route waypoints
-                'gps_route': self.gps_route,                      # the global gps route
-                'route': self.route,                              # the global route
+                'cost': cost,  # the collision cost -1 means collision happens
+                'scenario_agent_reward': scenario_agent_reward,  # the total reward for the cbv training
+                'route_waypoints': self.global_route_waypoints,  # the global route waypoints
+                'gps_route': self.gps_route,  # the global gps route
+                'route': self.route,  # the global route
             })
 
             # if train the safety network, need to add encoded state
@@ -482,7 +492,8 @@ class CarlaEnv(gym.Env):
         blueprints = self.world.get_blueprint_library().filter(actor_filter)
         blueprint_library = []
         for nw in number_of_wheels:
-            blueprint_library = blueprint_library + [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == nw]
+            blueprint_library = blueprint_library + [x for x in blueprints if
+                                                     int(x.get_attribute('number_of_wheels')) == nw]
         bp = random.choice(blueprint_library)
         if bp.has_attribute('color'):
             if not color:
@@ -535,9 +546,9 @@ class CarlaEnv(gym.Env):
         birdeye_render_types = ['roadmap', 'actors', 'waypoints']
         birdeye_surface = self.birdeye_render.render(birdeye_render_types)
         birdeye_surface = pygame.surfarray.array3d(birdeye_surface)
-        center = (int(birdeye_surface.shape[0]/2), int(birdeye_surface.shape[1]/2))
-        width = height = int(self.display_size/2)
-        birdeye = birdeye_surface[center[0]-width:center[0]+width, center[1]-height:center[1]+height]
+        center = (int(birdeye_surface.shape[0] / 2), int(birdeye_surface.shape[1] / 2))
+        width = height = int(self.display_size / 2)
+        birdeye = birdeye_surface[center[0] - width:center[0] + width, center[1] - height:center[1] + height]
         birdeye = display_to_rgb(birdeye, self.obs_size)
 
         if not self.disable_lidar:
@@ -567,32 +578,32 @@ class CarlaEnv(gym.Env):
 
             # display birdeye image
             birdeye_surface = rgb_to_display_surface(birdeye, self.display_size)
-            self.display.blit(birdeye_surface, (0, self.env_id*self.display_size))
+            self.display.blit(birdeye_surface, (0, self.env_id * self.display_size))
 
             # display lidar image
             lidar_surface = rgb_to_display_surface(lidar, self.display_size)
-            self.display.blit(lidar_surface, (self.display_size, self.env_id*self.display_size))
+            self.display.blit(lidar_surface, (self.display_size, self.env_id * self.display_size))
 
             # display camera image
             camera = resize(self.camera_img, (self.obs_size, self.obs_size)) * 255
             camera_surface = rgb_to_display_surface(camera, self.display_size)
-            self.display.blit(camera_surface, (self.display_size*2, self.env_id*self.display_size))
+            self.display.blit(camera_surface, (self.display_size * 2, self.env_id * self.display_size))
         else:
             # display birdeye image
             birdeye_surface = rgb_to_display_surface(birdeye, self.display_size)
-            self.display.blit(birdeye_surface, (0, self.env_id*self.display_size))
+            self.display.blit(birdeye_surface, (0, self.env_id * self.display_size))
 
             # display camera image
             camera = resize(self.camera_img, (self.obs_size, self.obs_size)) * 255
             camera_surface = rgb_to_display_surface(camera, self.display_size)
-            self.display.blit(camera_surface, (self.display_size, self.env_id*self.display_size))
+            self.display.blit(camera_surface, (self.display_size, self.env_id * self.display_size))
 
             # display masked viz 3rd person
             if self.enable_sem:
                 masked_img = get_masked_viz_3rd_person(self.BGR_img, self.sem_img)
                 masked_image = resize(masked_img, (self.obs_size, self.obs_size)) * 255
                 masked_image_surface = rgb_to_display_surface(masked_image, self.display_size)
-                self.display.blit(masked_image_surface, (self.display_size*2, self.env_id * self.display_size))
+                self.display.blit(masked_image_surface, (self.display_size * 2, self.env_id * self.display_size))
 
         if self.agent_obs_type == 'ego_state':
             # Ego state
@@ -655,7 +666,7 @@ class CarlaEnv(gym.Env):
         r_fast = -1 if lspeed_lon > self.desired_speed else 0
 
         # cost for lateral acceleration
-        r_lat = -abs(self.ego_vehicle.get_control().steer) * lspeed_lon**2
+        r_lat = -abs(self.ego_vehicle.get_control().steer) * lspeed_lon ** 2
 
         # combine all rewards
         # r = 1 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat
@@ -666,20 +677,23 @@ class CarlaEnv(gym.Env):
     def _get_scenario_reward(self):
         """
             in_drivable_area ~ [0, -1]: whether the cbv are driving on the drivable area
-            cbv_min_dis_reward ~ [0, 1.25]: activate when cbv is too close to the other bvs
+            cbv_min_dis_reward ~ [-1.25, 0]: activate when cbv is too close to the other bvs
             mapped_cbv_vel ~ [0.0, 1.0]: cbv's speed mapped to [0, 1]
             cost ~ 0 or -1: whether the cbv has collided with ego vehicle
             too_fast ~ 0 or -1: if the cbv's speed > desired speed, too_fast = -1
+            ego_cbv_dis_reward ~ [0.0, 1.0]: the mapped distance between ego and the cbv
         """
         # the min dis from the cbv to the rest bvs
-        cbv_min_dis, cbv_min_dis_reward = CarlaDataProvider.get_cbv_min_dis_reward(self.controlled_bv,
-                                                                               self.search_radius,
-                                                                               self.controlled_bv_nearby_vehicles)
+        cbv_min_dis, cbv_min_dis_reward = CarlaDataProvider.get_cbv_min_dis_reward(self.controlled_bv, self.search_radius, self.controlled_bv_nearby_vehicles)
+
+        ego_cbv_dis_reward = CarlaDataProvider.get_ego_cbv_dis_reward(self.ego_vehicle, self.controlled_bv, self.search_radius)
+
         mapped_cbv_vel, too_fast = CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)
         in_drivable_area = CarlaDataProvider.get_actor_in_drivable_area(self.controlled_bv) if self.controlled_bv else 0
         cost = self._get_cost()
         # the reward for the cbv training
-        scenario_agent_reward = 10 * in_drivable_area + cbv_min_dis_reward + mapped_cbv_vel + 2 * too_fast - 150 * cost - 0.1
+        scenario_agent_reward = 10 * in_drivable_area + 4 * cbv_min_dis_reward + 6 * mapped_cbv_vel + 8 * too_fast \
+                                - ego_cbv_dis_reward - 100 * cost - 1
         return scenario_agent_reward, cost
 
     def _get_cost(self):
@@ -690,7 +704,7 @@ class CarlaEnv(gym.Env):
         return r_collision
 
     def _terminal(self):
-        return not self.scenario_manager._running 
+        return not self.scenario_manager._running
 
     def _remove_sensor(self):
         if self.collision_sensor is not None:
@@ -722,4 +736,3 @@ class CarlaEnv(gym.Env):
         if self.scenario_category != 'scenic':
             self._remove_ego()
         self.scenario_manager.clean_up()
-

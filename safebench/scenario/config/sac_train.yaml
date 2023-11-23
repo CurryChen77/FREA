@@ -20,7 +20,7 @@ scenario_action_dim: 2
 model_path: 'safebench/scenario/scenario_data/model_ckpt/sac'
 model_type: 'bv'
 train_episode: 500  # the training episode for each town
-save_freq: 5
+save_freq: 20
 eval_in_train_freq: 10
 buffer_capacity: 10000
 buffer_start_training: 100
@@ -28,5 +28,5 @@ lr: 5.0e-4
 tau: 0.005
 update_iteration: 3
 gamma: 0.99
-batch_size: 32
+batch_size: 64
 min_Val: 1.0e-7

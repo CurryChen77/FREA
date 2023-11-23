@@ -856,6 +856,16 @@ class CarlaDataProvider(object):
         return ego_min_dis, nearby_vehicles
 
     @staticmethod
+    def get_ego_cbv_dis_reward(ego, cbv, search_radius):
+        if cbv:
+            dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
+            mapped_dis = (dis - 0) / (search_radius - 0)
+            mapped_dis_reward = np.clip(mapped_dis, 0.0, 1.0)
+        else:
+            mapped_dis_reward = 1.0
+        return mapped_dis_reward
+
+    @staticmethod
     def get_cbv_min_dis_reward(controlled_bv, search_radius, controlled_bv_nearby_vehicles, tou=1.25):
         min_dis = search_radius  # the searching radius of the nearby_vehicle
         if controlled_bv and controlled_bv_nearby_vehicles:
@@ -864,9 +874,9 @@ class CarlaDataProvider(object):
                     # the min distance between bounding boxes of two vehicles
                     min_dis = CarlaDataProvider.get_min_distance_across_bboxes(controlled_bv, nearby_vehicle)
                     break  # the first nearby_vehicle in self.controlled_bv_nearby_vehicles is the closest, so can break
-            min_dis_reward = min(min_dis, tou)  # the controlled bv shouldn't be too close to the other bvs
+            min_dis_reward = min(min_dis, tou) - tou  # the controlled bv shouldn't be too close to the other bvs
         else:
-            min_dis_reward = tou
+            min_dis_reward = 0
         return min_dis, min_dis_reward
 
     @staticmethod
