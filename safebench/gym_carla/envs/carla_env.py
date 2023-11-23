@@ -686,7 +686,7 @@ class CarlaEnv(gym.Env):
         # the min dis from the cbv to the rest bvs
         cbv_min_dis, cbv_min_dis_reward = CarlaDataProvider.get_cbv_min_dis_reward(self.controlled_bv, self.search_radius, self.controlled_bv_nearby_vehicles)
 
-        ego_cbv_dis_reward = CarlaDataProvider.get_ego_cbv_dis_reward(self.ego_vehicle, self.controlled_bv, self.search_radius)
+        ego_cbv_dis_reward = CarlaDataProvider.get_ego_cbv_dis_reward(self.ego_vehicle, self.controlled_bv)
 
         mapped_cbv_vel, too_fast = CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)
         in_drivable_area = CarlaDataProvider.get_actor_in_drivable_area(self.controlled_bv) if self.controlled_bv else 0

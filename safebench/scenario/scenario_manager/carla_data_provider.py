@@ -44,8 +44,10 @@ class CarlaDataProvider(object):
     _map = None
     _sync_flag = False
     _spawn_points = None
+    _cbv = None
     _spawn_index = 0
     _ego_min_dis = 0
+    _ego_cbv_dis = 0
     _ego_desired_speed = 8  # m/s
     _blueprint_library = None
     _ego_vehicle_route = None
@@ -856,14 +858,26 @@ class CarlaDataProvider(object):
         return ego_min_dis, nearby_vehicles
 
     @staticmethod
-    def get_ego_cbv_dis_reward(ego, cbv, search_radius):
+    def get_ego_cbv_dis_reward(ego, cbv):
+        delta_dis = 0
         if cbv:
-            dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
-            mapped_dis = (dis - 0) / (search_radius - 0)
-            mapped_dis_reward = np.clip(mapped_dis, 0.0, 1.0)
+            if CarlaDataProvider._cbv is None:
+                CarlaDataProvider._cbv = cbv  # init a new cbv
+            else:
+                if cbv.id == CarlaDataProvider._cbv.id:  # the cbv has not changed
+                    if CarlaDataProvider._ego_cbv_dis == 0:  # initial of one specific cbv's episode
+                        CarlaDataProvider._ego_cbv_dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
+                    else:
+                        dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
+                        # if delta_dis > 0 means ego and cbv are getting closer, encourage this, otherwise punish cbv drive away from ego
+                        delta_dis = CarlaDataProvider._ego_cbv_dis - dis  # if current dis is smaller than the previous one, reward will be positive
+                        CarlaDataProvider._ego_cbv_dis = dis
+                else:  # the cbv has changed
+                    CarlaDataProvider._ego_cbv_dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
         else:
-            mapped_dis_reward = 1.0
-        return mapped_dis_reward
+            CarlaDataProvider._cbv = None
+            CarlaDataProvider._ego_cbv_dis = 0
+        return delta_dis
 
     @staticmethod
     def get_cbv_min_dis_reward(controlled_bv, search_radius, controlled_bv_nearby_vehicles, tou=1.25):
@@ -1099,6 +1113,8 @@ class CarlaDataProvider(object):
         CarlaDataProvider._actor_transform_map_after_tick.clear()
         CarlaDataProvider._ego_min_dis = 0
         CarlaDataProvider._ego_desired_speed = 8
+        CarlaDataProvider._ego_cbv_dis = 0
+        CarlaDataProvider._cbv = None
         CarlaDataProvider._ego_vehicle_route = None
         CarlaDataProvider._egos = []
 
@@ -1138,6 +1154,8 @@ class CarlaDataProvider(object):
         CarlaDataProvider._egos = []
         CarlaDataProvider._ego_min_dis = None
         CarlaDataProvider._ego_desired_speed = 8
+        CarlaDataProvider._ego_cbv_dis = 0
+        CarlaDataProvider._cbv = None
         CarlaDataProvider._carla_actor_pool = {}
         CarlaDataProvider._client = None
         CarlaDataProvider._spawn_points = None
