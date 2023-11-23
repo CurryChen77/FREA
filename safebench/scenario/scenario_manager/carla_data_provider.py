@@ -861,19 +861,20 @@ class CarlaDataProvider(object):
     def get_ego_cbv_dis_reward(ego, cbv):
         delta_dis = 0
         if cbv:
-            if CarlaDataProvider._cbv is None:
-                CarlaDataProvider._cbv = cbv  # init a new cbv
-            else:
-                if cbv.id == CarlaDataProvider._cbv.id:  # the cbv has not changed
-                    if CarlaDataProvider._ego_cbv_dis == 0:  # initial of one specific cbv's episode
-                        CarlaDataProvider._ego_cbv_dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
-                    else:
-                        dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
-                        # if delta_dis > 0 means ego and cbv are getting closer, encourage this, otherwise punish cbv drive away from ego
-                        delta_dis = CarlaDataProvider._ego_cbv_dis - dis  # if current dis is smaller than the previous one, reward will be positive
-                        CarlaDataProvider._ego_cbv_dis = dis
-                else:  # the cbv has changed
+            if CarlaDataProvider._cbv is None:  # cbv_t-1 is None but cbv_t exist
+                # init the cbv and ego cbv distance
+                CarlaDataProvider._cbv = cbv
+                CarlaDataProvider._ego_cbv_dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
+            else:  # both cbv_t-1 and cbv_t exist
+                if cbv.id == CarlaDataProvider._cbv.id:  # cbv_t-1 == cbv_t
+                    dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
+                    # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
+                    delta_dis = CarlaDataProvider._ego_cbv_dis - dis
+                    CarlaDataProvider._ego_cbv_dis = dis
+                    CarlaDataProvider._cbv = cbv
+                else:  # cbv_t-1 != cbv_t
                     CarlaDataProvider._ego_cbv_dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
+                    CarlaDataProvider._cbv = cbv
         else:
             CarlaDataProvider._cbv = None
             CarlaDataProvider._ego_cbv_dis = 0

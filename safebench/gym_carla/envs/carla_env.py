@@ -693,7 +693,7 @@ class CarlaEnv(gym.Env):
         cost = self._get_cost()
         # the reward for the cbv training
         scenario_agent_reward = 10 * in_drivable_area + 4 * cbv_min_dis_reward + 6 * mapped_cbv_vel + 8 * too_fast \
-                                - ego_cbv_dis_reward - 100 * cost - 1
+                                + ego_cbv_dis_reward - 100 * cost - 1
         return scenario_agent_reward, cost
 
     def _get_cost(self):
