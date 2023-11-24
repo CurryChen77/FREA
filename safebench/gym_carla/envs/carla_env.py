@@ -203,19 +203,19 @@ class CarlaEnv(gym.Env):
         return waypoints_list
 
     def cbv_selection(self):
-        ego_nearby_vehicles = None
+        cbv_candidates = None
         # only the safety network is not None, then need to calculate the ego min distance
         if self.safety_network_obs_type:
-            ego_min_dis, ego_nearby_vehicles = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+            ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
             self.ego_min_dis = ego_min_dis
 
         # all the situations that need the encoded state or most relevant vehicle
         if self.agent_state_encoder:
             if not self.safety_network_obs_type:
-                ego_nearby_vehicles = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle,
+                cbv_candidates = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle,
                                                                                        self.search_radius)
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
-                self.ego_vehicle, ego_nearby_vehicles, self.waypoints, self.red_light_state
+                self.ego_vehicle, cbv_candidates, self.waypoints, self.red_light_state
             )
             self.encoded_state = encoded_state[:, 0, :].squeeze(
                 0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
@@ -225,7 +225,7 @@ class CarlaEnv(gym.Env):
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         if self.cbv_select_method == 'rule-based':
             self.controlled_bv = CarlaDataProvider.find_closest_vehicle(self.ego_vehicle, self.search_radius,
-                                                                        ego_nearby_vehicles)
+                                                                        cbv_candidates)
         elif self.cbv_select_method == 'attention-based':
             self.controlled_bv = most_relevant_vehicle
 
@@ -681,7 +681,7 @@ class CarlaEnv(gym.Env):
             mapped_cbv_vel ~ [0.0, 1.0]: cbv's speed mapped to [0, 1]
             cost ~ 0 or -1: whether the cbv has collided with ego vehicle
             too_fast ~ 0 or -1: if the cbv's speed > desired speed, too_fast = -1
-            ego_cbv_dis_reward ~ [0.0, 1.0]: the mapped distance between ego and the cbv
+            ego_cbv_dis_reward : the delta distance from t-1 to t of one specific cbv
         """
         # the min dis from the cbv to the rest bvs
         cbv_min_dis, cbv_min_dis_reward = CarlaDataProvider.get_cbv_min_dis_reward(self.controlled_bv, self.search_radius, self.controlled_bv_nearby_vehicles)
