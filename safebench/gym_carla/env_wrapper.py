@@ -75,6 +75,13 @@ class VectorWrapper():
             obs_list.append(obs)
             info_list.append(info)
 
+        # set spectator
+        transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
+        spectator = self.world.get_spectator()
+        spectator.set_transform(carla.Transform(
+            transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+        ))
+
         # sometimes not all scenarios are used
         self.finished_env = [False] * self.num_scenario
         for s_i in range(len(scenario_configs), self.num_scenario):

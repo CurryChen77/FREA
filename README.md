@@ -31,7 +31,10 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 ./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Another terminal no display pygame
-SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --mode eval
+SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg plant.yaml --scenario_cfg sac.yaml --mode train_scenario
+
+# Showing the memory usage
+SDL_VIDEODRIVER="dummy" mprof run --python scripts/run.py --agent_cfg plant.yaml --scenario_cfg sac.yaml --mode train_scenario
 ```
 
 #### Visualize pygame window

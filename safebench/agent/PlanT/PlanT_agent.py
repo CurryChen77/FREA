@@ -145,7 +145,7 @@ class PlanTAgent(DataAgent):
         if self.exec_or_inter == 'exec' or self.exec_or_inter is None:
             self.control = self._get_control(label_raw, tick_data)
         
-        inital_frames_delay = 5
+        inital_frames_delay = 2
         if self.step < inital_frames_delay:
             self.control = carla.VehicleControl(0.0, 0.0, 1.0)
             

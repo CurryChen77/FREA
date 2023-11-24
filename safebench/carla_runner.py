@@ -16,7 +16,6 @@ import pygame
 from tqdm import tqdm
 import os.path as osp
 from torch.utils.tensorboard import SummaryWriter
-from memory_profiler import profile
 
 from safebench.util.run_util import load_config
 from safebench.gym_carla.env_wrapper import VectorWrapper
@@ -400,7 +399,6 @@ class CarlaRunner:
                 self.logger.save_eval_results()
         self.logger.save_eval_results()
 
-    @profile
     def run(self):
         # get scenario data of different maps, and cluster config according to the town
         config_by_map = scenario_parse(self.scenario_config, self.logger)
