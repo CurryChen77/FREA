@@ -133,7 +133,7 @@ class PPO(BasePolicy):
         action = self.policy.select_action(state_tensor, deterministic)
         return action
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         self.old_policy.load_state_dict(self.policy.state_dict())
 
         # start to train, use gradient descent without batch size

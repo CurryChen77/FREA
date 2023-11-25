@@ -108,7 +108,7 @@ class HJR:
         min_Qs = self.Qh_net(n_state, best_action)
         return min_Qs
 
-    def train(self, replay_buffer, writer, episode):
+    def train(self, replay_buffer, writer, e_i):
 
         for _ in range(self.train_iteration):
             # sample replay buffer
@@ -137,7 +137,7 @@ class HJR:
             # the Qh loss
             Qh_loss = self.Qh_criterion(excepted_Qh, Qh_target.detach())  # J_Qh
             Qh_loss = Qh_loss.mean()
-            writer.add_scalar("HJR_Qh_loss", Qh_loss, episode)
+            writer.add_scalar("HJR_Qh_loss", Qh_loss, e_i)
 
             self.Qh_optimizer.zero_grad()
             Qh_loss.backward(retain_graph=True)

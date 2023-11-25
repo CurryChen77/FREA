@@ -18,7 +18,7 @@ from torch.distributions import Normal
 import torch.nn.functional as F
 
 from safebench.util.torch_util import CUDA, CPU, hidden_init
-from safebench.agent.base_policy import BasePolicy
+from safebench.scenario.scenario_policy.base_policy import BasePolicy
 
 
 class PolicyNetwork(nn.Module):
@@ -144,7 +144,7 @@ class PPO(BasePolicy):
         action = self.policy.select_action(state_tensor, deterministic)
         return action
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         self.old_policy.load_state_dict(self.policy.state_dict())
 
         # start to train, use gradient descent without batch size
@@ -171,12 +171,14 @@ class PPO(BasePolicy):
             L2 = torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon) * advantage
             loss = torch.min(L1, L2)
             loss = -loss.mean()
+            writer.add_scalar("policy loss", loss, e_i)
             self.optim.zero_grad()
             loss.backward()
             self.optim.step()
 
             # update value function
             value_loss = F.mse_loss(value_target, self.value(bn_s))
+            writer.add_scalar("value loss", value_loss, e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
             self.value_optim.step()

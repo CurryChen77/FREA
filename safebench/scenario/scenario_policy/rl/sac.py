@@ -175,7 +175,7 @@ class SAC(BasePolicy):
         log_prob = torch.sum(log_prob, dim=1, keepdim=True) 
         return action, log_prob, z, batch_mu, batch_log_sigma
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         if replay_buffer.buffer_len < self.buffer_start_training:
             return
 
@@ -202,10 +202,12 @@ class SAC(BasePolicy):
             # !!! Note that the actions are sampled according to the current policy, instead of replay buffer. (From original paper)
             V_loss = self.value_criterion(excepted_value, next_value.detach())  # J_V
             V_loss = V_loss.mean()
+            writer.add_scalar("V loss", V_loss, e_i)
 
             # Single Q_net this is different from original paper!!!
             Q_loss = self.Q_criterion(excepted_Q, next_q_value.detach()) # J_Q
             Q_loss = Q_loss.mean()
+            writer.add_scalar("Q loss", Q_loss, e_i)
 
             log_policy_target = excepted_new_Q - excepted_value
             pi_loss = log_prob * (log_prob - log_policy_target).detach()

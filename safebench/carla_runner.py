@@ -293,29 +293,25 @@ class CarlaRunner:
 
                 # train off-policy agent or scenario
                 if self.mode == 'train_agent' and self.agent_policy.type == 'offpolicy':
-                    self.agent_policy.train(replay_buffer)
+                    self.agent_policy.train(replay_buffer, writer, e_i)
                 elif self.mode == 'train_scenario' and self.scenario_policy.type == 'offpolicy':
-                    self.scenario_policy.train(replay_buffer)
+                    self.scenario_policy.train(replay_buffer, writer, e_i)
                 elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy':
                     self.safety_network_policy.train(replay_buffer, writer, e_i)
 
             # end up environment
             self.env.clean_up()
             replay_buffer.finish_one_episode()
-            # self.logger.add_training_results('episode', e_i)
-            sum_episode_reward = np.sum(agent_episode_reward)
-            # self.logger.add_training_results('Agent_episode_reward', sum_episode_reward)
             if self.mode == 'train_agent':
-                writer.add_scalar("Agent_episode_reward", sum_episode_reward, e_i)
+                writer.add_scalar("Agent_episode_reward", np.sum(agent_episode_reward), e_i)
             if self.mode == 'train_scenario':
                 writer.add_scalar("Scenario_episode_reward", np.sum(scenario_episode_reward), e_i)
-            # self.logger.save_training_results()
 
             # train on-policy agent or scenario
             if self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
-                self.agent_policy.train(replay_buffer)
+                self.agent_policy.train(replay_buffer, writer, e_i)
             elif self.mode == 'train_scenario' and self.scenario_policy.type in ['init_state', 'onpolicy']:
-                self.scenario_policy.train(replay_buffer)
+                self.scenario_policy.train(replay_buffer, writer, e_i)
             elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'onpolicy':
                 self.safety_network_policy.train(replay_buffer, writer, e_i)
 

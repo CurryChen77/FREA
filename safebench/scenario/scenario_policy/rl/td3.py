@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from fnmatch import fnmatch
 
 from safebench.util.torch_util import CUDA, CPU
-from safebench.agent.base_policy import BasePolicy
+from safebench.scenario.scenario_policy.base_policy import BasePolicy
 
 
 class MLPNetwork(nn.Module):
@@ -166,7 +166,7 @@ class TD3(BasePolicy):
         policy_loss = (-qval_batch).mean()
         return policy_loss
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         if replay_buffer.buffer_len < self.buffer_start_training:
             return
 
@@ -189,7 +189,9 @@ class TD3(BasePolicy):
             self._update_counter += 1
 
             q1_loss += q1_loss_step.detach().item()
+            writer.add_scalar("q1 loss", q1_loss, e_i)
             q2_loss += q2_loss_step.detach().item()
+            writer.add_scalar("q2 loss", q2_loss, e_i)
 
             if self._update_counter % self.update_interval == 0:
                 if not pi_loss:
@@ -206,8 +208,6 @@ class TD3(BasePolicy):
                 # update target policy and q-functions using Polyak averaging
                 self.update_target()
                 pi_loss += pi_loss_step.detach().item()
-
-        return q1_loss, q2_loss, pi_loss
 
     def save_model(self, episode, map_name):
         states = {

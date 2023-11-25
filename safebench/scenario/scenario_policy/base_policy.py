@@ -16,7 +16,7 @@ class BasePolicy:
     def __init__(self, config, logger):
         self.continue_episode = 0
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         raise NotImplementedError()
 
     def set_mode(self, mode):

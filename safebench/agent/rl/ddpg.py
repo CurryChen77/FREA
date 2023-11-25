@@ -128,7 +128,7 @@ class DDPG(BasePolicy):
 
         return action
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         # check if memory is enough for one batch
         if replay_buffer.buffer_len < self.buffer_start_training:
             return

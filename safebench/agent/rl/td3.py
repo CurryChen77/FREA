@@ -155,7 +155,7 @@ class TD3(BasePolicy):
         policy_loss = (-qval_batch).mean()
         return policy_loss
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         if replay_buffer.buffer_len < self.buffer_start_training:
             return
 

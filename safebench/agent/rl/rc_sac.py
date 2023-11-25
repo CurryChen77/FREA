@@ -167,7 +167,7 @@ class RCSAC(BasePolicy):
         log_prob = torch.sum(log_prob, dim=1, keepdim=True) 
         return action, log_prob, z, batch_mu, batch_log_sigma
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         if replay_buffer.buffer_len < self.buffer_start_training:
             return
 

@@ -19,7 +19,7 @@ class BasePolicy:
     def set_ego_and_route(self, ego_vehicles, info):
         self.ego_vehicles = ego_vehicles
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         raise NotImplementedError()
 
     def set_mode(self, mode):

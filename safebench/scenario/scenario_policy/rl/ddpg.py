@@ -18,7 +18,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from safebench.util.torch_util import CUDA, CPU, hidden_init
-from safebench.agent.base_policy import BasePolicy
+from safebench.scenario.scenario_policy.base_policy import BasePolicy
 
 
 class Actor(nn.Module):
@@ -139,7 +139,7 @@ class DDPG(BasePolicy):
 
         return action
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         # check if memory is enough for one batch
         if replay_buffer.buffer_len < self.buffer_start_training:
             return
@@ -162,6 +162,8 @@ class DDPG(BasePolicy):
 
             # Compute critic loss
             critic_loss = F.mse_loss(current_Q, target_Q)
+            writer.add_scalar("critic loss", critic_loss, e_i)
+
             # Optimize the critic
             self.critic_optimizer.zero_grad()
             critic_loss.backward()
@@ -169,6 +171,8 @@ class DDPG(BasePolicy):
 
             # Compute actor loss
             actor_loss = -self.critic(bn_s, self.actor(bn_s)).mean()
+            writer.add_scalar("actor loss", actor_loss, e_i)
+
             # Optimize the actor
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
