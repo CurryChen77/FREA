@@ -57,6 +57,7 @@ class CarlaEnv(gym.Env):
         self.env_params = env_params
         self.auto_ego = env_params['auto_ego']
         self.enable_sem = env_params['enable_sem']
+        self.ego_agent_learnable = env_params['ego_agent_learnable']
 
         self.collision_sensor = None
         self.lidar_sensor = None
@@ -206,7 +207,7 @@ class CarlaEnv(gym.Env):
         cbv_candidates = None
         # get the ego min distance of the next obs (s')
         if self.safety_network_obs_type:
-            self.ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
+            self.ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius, self.ego_agent_learnable)
 
         # all the situations that need the encoded state or most relevant vehicle
         if self.agent_state_encoder:
