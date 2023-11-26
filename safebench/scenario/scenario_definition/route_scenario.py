@@ -264,8 +264,8 @@ class RouteScenario():
                 ego_info.append(self._get_actor_state(actor))  # the rest row start from 2 is the meaningful vehicle around ego vehicle
             else:
                 break
-            while len(ego_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
-                ego_info.append([0] * len(ego_state))
+        while len(ego_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+            ego_info.append([0] * len(ego_state))
 
         ego_info = np.array(ego_info)
         # get the info of the ego vehicle and the other actors
