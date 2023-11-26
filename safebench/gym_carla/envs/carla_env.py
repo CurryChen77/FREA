@@ -204,6 +204,9 @@ class CarlaEnv(gym.Env):
 
     def cbv_selection(self):
         cbv_candidates = None
+        # get the ego min distance of the next obs (s')
+        if self.safety_network_obs_type:
+            self.ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
 
         # all the situations that need the encoded state or most relevant vehicle
         if self.agent_state_encoder:
@@ -264,10 +267,6 @@ class CarlaEnv(gym.Env):
 
         # set controlled bv
         self.cbv_selection()
-
-        # update ego min dis
-        if self.safety_network_obs_type:
-            self.ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
 
         # Get actors polygon list (for visualization)
         self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]
@@ -360,9 +359,6 @@ class CarlaEnv(gym.Env):
             snapshot = self.world.get_snapshot()
             if snapshot:
                 timestamp = snapshot.timestamp
-                # get the ego min distance of the last step
-                if self.safety_network_obs_type:
-                    self.ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
 
                 # get update on evaluation results before getting update of running status
                 # update the cbv's action and the previous time step information on CarlaDataProvider

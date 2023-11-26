@@ -40,10 +40,7 @@ def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent
     # relpath = ''.join([ymd_time, exp_name])
 
     # specify agent policy and scenario policy in the experiment directory.
-    if scenario_id:
-        agent_scenario_safety_net_exp_name = exp_name + '_scenario_' + str(scenario_id)
-    else:
-        agent_scenario_safety_net_exp_name = exp_name + '_scenario_all'
+    agent_scenario_safety_net_exp_name = exp_name
     if agent is not None:
         agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + agent + '(' + agent_obs_type + ')'
     if scenario is not None:
