@@ -150,7 +150,7 @@ class SAC(BasePolicy):
         return [None] * num_scenario, additional_in
 
     def get_action(self, state, infos, deterministic=False):
-        # extract the infos of all the actors. The first one is ego, while the rest are the others vehicles
+        # The first row is cbv state, the second row is ego state, while the rest are the others vehicles' states
         state = self.info_process(infos)
         state = CUDA(torch.FloatTensor(state))
         mu, log_sigma = self.policy_net(state)

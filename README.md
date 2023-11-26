@@ -173,11 +173,11 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.ya
 
 ### Input state
 
-[yaml file](safebench/safety_network/config/HJR.yaml)  ```obs_type: "plant" (default)```
+[yaml file](safebench/safety_network/config/HJR.yaml)  ```obs_type: "ego_info" (default)```
 
-* **PlanT:** (encoded state) default 
+* **PlanT:** (encoded state) 
 
-* **Actor info:** (ego and surrounding 3 BVs' 9-dim state) *no route map information*
+* **Ego info:** (ego and surrounding 4 meaningful BVs' 9-dim state) *no route map information* (default)
 
 ## Visualization
 

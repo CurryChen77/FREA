@@ -204,10 +204,6 @@ class CarlaEnv(gym.Env):
 
     def cbv_selection(self):
         cbv_candidates = None
-        # only the safety network is not None, then need to calculate the ego min distance
-        if self.safety_network_obs_type:
-            ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
-            self.ego_min_dis = ego_min_dis
 
         # all the situations that need the encoded state or most relevant vehicle
         if self.agent_state_encoder:
@@ -266,8 +262,12 @@ class CarlaEnv(gym.Env):
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
 
-        # set ego min distance and controlled bv
+        # set controlled bv
         self.cbv_selection()
+
+        # update ego min dis
+        if self.safety_network_obs_type:
+            self.ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
 
         # Get actors polygon list (for visualization)
         self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]
@@ -360,8 +360,11 @@ class CarlaEnv(gym.Env):
             snapshot = self.world.get_snapshot()
             if snapshot:
                 timestamp = snapshot.timestamp
-                # get update on evaluation results before getting update of running status
+                # get the ego min distance of the last step
+                if self.safety_network_obs_type:
+                    self.ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius)
 
+                # get update on evaluation results before getting update of running status
                 # update the cbv's action and the previous time step information on CarlaDataProvider
                 self.scenario_manager.get_update(timestamp, scenario_action)
                 self.is_running = self.scenario_manager._running
@@ -472,12 +475,15 @@ class CarlaEnv(gym.Env):
                 'route': self.route,  # the global route
             })
 
-            # if train the safety network, need to add encoded state
-            if self.safety_network_obs_type and self.safety_network_obs_type == 'plant':
-                info['encoded_state'] = self.encoded_state
-            # only the safety network is not None, then need to calculate the ego min distance
+            # if train the safety network, need to add the corresponding obs
             if self.safety_network_obs_type:
+                # only the safety network is not None, then need to calculate the ego min distance
                 info['ego_min_dis'] = self.ego_min_dis  # the ego_min_dis with the rest bvs
+                if self.safety_network_obs_type == 'plant':
+                    info['encoded_state'] = self.encoded_state
+                elif self.safety_network_obs_type == 'ego_info':
+                    info['ego_info'] = self.scenario_manager.route_scenario.update_ego_info()
+
         return info
 
     def _init_traffic_light(self):

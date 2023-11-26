@@ -115,10 +115,10 @@ class HJR:
             batch = replay_buffer.sample(self.batch_size)
             if self.obs_type == 'plant':
                 bn_s_ = CUDA(torch.FloatTensor(batch['n_encoded_state'])).reshape(self.batch_size, -1)  # next state are the next encoded state
-            elif self.obs_type == 'actor_info':
-                bn_s_ = CUDA(torch.FloatTensor(batch['n_actor_info'])).reshape(self.batch_size, -1)  # the next state are the next actor infos
+            elif self.obs_type == 'ego_info':
+                bn_s_ = CUDA(torch.FloatTensor(batch['n_ego_info'])).reshape(self.batch_size, -1)  # the next state are the next actor infos
             else:
-                bn_s_ = CUDA(torch.FloatTensor(batch['n_state']))  # using the next state for agent
+                raise ValueError(f'Unknown safety network obs type {self.obs_type}')
 
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
             # the ego min distance from the infos

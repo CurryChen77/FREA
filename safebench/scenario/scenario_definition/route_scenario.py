@@ -255,6 +255,22 @@ class RouteScenario():
             'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
+    def update_ego_info(self, desired_nearby_vehicle=4):
+        ego_state = self._get_actor_state(self.ego_vehicle)
+        ego_info = [ego_state]  # the first row is the ego info
+        ego_nearby_vehicle = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle)
+        for i, actor in enumerate(ego_nearby_vehicle):
+            if i < desired_nearby_vehicle:
+                ego_info.append(self._get_actor_state(actor))  # the rest row start from 2 is the meaningful vehicle around ego vehicle
+            else:
+                break
+            while len(ego_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+                ego_info.append([0] * len(ego_state))
+
+        ego_info = np.array(ego_info)
+        # get the info of the ego vehicle and the other actors
+        return ego_info
+
     def clean_up(self):
         # stop criterion and destroy sensors
         for _, criterion in self.criteria.items():
