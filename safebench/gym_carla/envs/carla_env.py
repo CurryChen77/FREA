@@ -694,9 +694,10 @@ class CarlaEnv(gym.Env):
         mapped_cbv_vel, too_fast = CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)
         in_drivable_area = CarlaDataProvider.get_actor_in_drivable_area(self.controlled_bv) if self.controlled_bv else 0
         cost = self._get_cost()
-        # the reward for the cbv training
-        scenario_agent_reward = 10 * in_drivable_area + 4 * cbv_min_dis_reward + 6 * mapped_cbv_vel + 8 * too_fast \
-                                + ego_cbv_dis_reward - 100 * cost - 1
+        # # the reward for the cbv training
+        # scenario_agent_reward = 10 * in_drivable_area + 4 * cbv_min_dis_reward + 6 * mapped_cbv_vel + 8 * too_fast \
+        #                         + ego_cbv_dis_reward - 100 * cost - 1
+        scenario_agent_reward = -cost
         return scenario_agent_reward, cost
 
     def _get_cost(self):
