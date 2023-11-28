@@ -688,16 +688,16 @@ class CarlaEnv(gym.Env):
         """
         # the min dis from the cbv to the rest bvs
         cbv_min_dis, cbv_min_dis_reward = CarlaDataProvider.get_cbv_min_dis_reward(self.controlled_bv, self.search_radius, self.controlled_bv_nearby_vehicles)
+        # the reward design to encourage cbv attack ego
+        # ego_cbv_dis_reward = CarlaDataProvider.get_ego_cbv_dis_reward(self.ego_vehicle, self.controlled_bv)
 
-        ego_cbv_dis_reward = CarlaDataProvider.get_ego_cbv_dis_reward(self.ego_vehicle, self.controlled_bv)
+        V_cbv = CarlaDataProvider.get_velocity_after_tick(self.controlled_bv) if self.controlled_bv else 0
+        too_fast = -1 if V_cbv > self.desired_speed else 0
 
-        mapped_cbv_vel, too_fast = CarlaDataProvider.get_mapped_cbv_speed(self.controlled_bv, self.desired_speed)
         in_drivable_area = CarlaDataProvider.get_actor_in_drivable_area(self.controlled_bv) if self.controlled_bv else 0
         cost = self._get_cost()
-        # # the reward for the cbv training
-        # scenario_agent_reward = 10 * in_drivable_area + 4 * cbv_min_dis_reward + 6 * mapped_cbv_vel + 8 * too_fast \
-        #                         + ego_cbv_dis_reward - 100 * cost - 1
-        scenario_agent_reward = -cost
+        scenario_agent_reward = 2 * in_drivable_area + 4 * cbv_min_dis_reward + V_cbv + 10 * too_fast - 200 * cost - 0.1
+
         return scenario_agent_reward, cost
 
     def _get_cost(self):

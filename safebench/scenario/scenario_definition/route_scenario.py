@@ -242,6 +242,8 @@ class RouteScenario():
             for i, actor in enumerate(self.controlled_bv_nearby_vehicles):
                 if i < desired_nearby_vehicle:
                     actor_info.append(self._get_actor_state(actor))  # add the info of the other actor to the list
+                elif actor.id == self.ego_vehicle.id:
+                    continue  # except the ego actor
                 else:
                     # avoiding too many nearby vehicles
                     break

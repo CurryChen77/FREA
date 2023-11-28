@@ -22,7 +22,7 @@ from safebench.scenario.tools.scenario_utils import compute_box2origin
 def calculate_velocity(actor):
     velocity_squared = actor.get_velocity().x**2
     velocity_squared += actor.get_velocity().y**2
-    return math.sqrt(velocity_squared)
+    return round(math.sqrt(velocity_squared), 2)
 
 
 class CarlaDataProvider(object): 
