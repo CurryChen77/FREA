@@ -914,7 +914,7 @@ class CarlaDataProvider(object):
 
         CarlaDataProvider._rng.shuffle(nearby_spawn_points)
         spawn_points_count = len(nearby_spawn_points)
-        picking_number = min(int(spawn_points_count*intensity), upper_limit) if spawn_points_count > 30 else spawn_points_count
+        picking_number = min(int(spawn_points_count*intensity), upper_limit) if spawn_points_count > 20 else spawn_points_count
         nearby_spawn_points = nearby_spawn_points[:picking_number]  # sampling part of the nearby spawn points
         return nearby_spawn_points
 

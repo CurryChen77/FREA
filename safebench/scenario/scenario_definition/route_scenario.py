@@ -229,41 +229,58 @@ class RouteScenario():
         actor_x = actor_trans.location.x
         actor_y = actor_trans.location.y
         actor_yaw = actor_trans.rotation.yaw / 180 * np.pi
-        yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
+        # yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
         velocity = actor.get_velocity()
-        acc = actor.get_acceleration()
-        return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
+        # acc = actor.get_acceleration()
+        # [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
+        return [actor_x, actor_y, actor_yaw, velocity.x, velocity.y]
 
     def update_info(self, desired_nearby_vehicle=3):
+        '''
+            scenario agent state:
+            first row is the cbv's absolute state
+            second row is ego's relative state
+            rest row are other bv's relative state
+        '''
         if self.controlled_bv:  # the controlled bv is not None
-            controlled_bv_state = self._get_actor_state(self.controlled_bv)
+            # absolute state
+            cbv_state = self._get_actor_state(self.controlled_bv)
             ego_state = self._get_actor_state(self.ego_vehicle)
-            actor_info = [controlled_bv_state, ego_state]  # the first info belongs to the cbv, while the second belongs to the ego vehicle
+            # relative state
+            ego_state = [ego - cbv for ego, cbv in zip(ego_state, cbv_state)]
+            actor_info = [cbv_state, ego_state]  # the first info belongs to the cbv, while the second belongs to the ego vehicle
             for i, actor in enumerate(self.controlled_bv_nearby_vehicles):
                 if i < desired_nearby_vehicle:
-                    actor_info.append(self._get_actor_state(actor))  # add the info of the other actor to the list
+                    actor_state = self._get_actor_state(actor)
+                    actor_info.append([actor - cbv for actor, cbv in zip(actor_state, cbv_state)])  # add the info of the other actor to the list
                 elif actor.id == self.ego_vehicle.id:
                     continue  # except the ego actor
                 else:
                     # avoiding too many nearby vehicles
                     break
             while len(actor_info)-2 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
-                actor_info.append([0] * len(controlled_bv_state))
+                actor_info.append([0] * len(cbv_state))
 
             actor_info = np.array(actor_info)
         else:
-            actor_info = np.zeros((desired_nearby_vehicle+2, 9))  # need to have the same size as normal actor info
+            actor_info = np.zeros((desired_nearby_vehicle+2, 5))  # need to have the same size as normal actor info
         return {
             'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
     def update_ego_info(self, desired_nearby_vehicle=4):
+        '''
+            safety network input state:
+            first row is ego's relative state
+            rest row are other bv's relative state
+        '''
         ego_state = self._get_actor_state(self.ego_vehicle)
         ego_info = [ego_state]  # the first row is the ego info
         ego_nearby_vehicle = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle)
         for i, actor in enumerate(ego_nearby_vehicle):
             if i < desired_nearby_vehicle:
-                ego_info.append(self._get_actor_state(actor))  # the rest row start from 2 is the meaningful vehicle around ego vehicle
+                actor_state = self._get_actor_state(actor)
+                ego_info.append([actor - ego for actor, ego in zip(actor_state, ego_state)])  # the rest row start from 2 is the meaningful vehicle around ego vehicle
             else:
                 break
         while len(ego_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0

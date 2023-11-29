@@ -85,7 +85,7 @@ class AdvBehaviorSingle(BasicScenario):
                 self.traffic_light = traffic_light
                 traffic_light.set_state(carla.TrafficLightState.Green)
                 traffic_light.set_green_time(self.timeout)
-        elif ego_waypoint.is_junction:
+        elif ego_waypoint.is_junction:  # if ego is in the junction and the cbv is stuck by the traffic light, set that traffic light to green
             if self.prior_controlled_bv and self.prior_controlled_bv.is_at_traffic_light:
                 cbv_traffic_light = self.prior_controlled_bv.get_traffic_light()
                 if cbv_traffic_light and cbv_traffic_light != self.cbv_traffic_light and cbv_traffic_light.state != carla.TrafficLightState.Green:
