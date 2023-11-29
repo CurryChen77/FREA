@@ -228,7 +228,7 @@ class RouteScenario():
         actor_trans = CarlaDataProvider.get_transform_after_tick(actor)
         actor_x = actor_trans.location.x
         actor_y = actor_trans.location.y
-        actor_yaw = actor_trans.rotation.yaw / 180 * np.pi
+        actor_yaw = round(actor_trans.rotation.yaw / 180 * np.pi, 3)
         # yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
         velocity = actor.get_velocity()
         # acc = actor.get_acceleration()
@@ -248,7 +248,7 @@ class RouteScenario():
             ego_state = self._get_actor_state(self.ego_vehicle)
             # relative state
             ego_state = [ego - cbv for ego, cbv in zip(ego_state, cbv_state)]
-            actor_info = [cbv_state, ego_state]  # the first info belongs to the cbv, while the second belongs to the ego vehicle
+            actor_info = [ego_state]  # the first info belongs to the cbv, while the second belongs to the ego vehicle
             for i, actor in enumerate(self.controlled_bv_nearby_vehicles):
                 if i < desired_nearby_vehicle:
                     actor_state = self._get_actor_state(actor)
@@ -258,12 +258,12 @@ class RouteScenario():
                 else:
                     # avoiding too many nearby vehicles
                     break
-            while len(actor_info)-2 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+            while len(actor_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
                 actor_info.append([0] * len(cbv_state))
 
             actor_info = np.array(actor_info)
         else:
-            actor_info = np.zeros((desired_nearby_vehicle+2, 5))  # need to have the same size as normal actor info
+            actor_info = np.zeros((desired_nearby_vehicle+1, 5))  # need to have the same size as normal actor info
         return {
             'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
@@ -275,7 +275,7 @@ class RouteScenario():
             rest row are other bv's relative state
         '''
         ego_state = self._get_actor_state(self.ego_vehicle)
-        ego_info = [ego_state]  # the first row is the ego info
+        ego_info = []  # the first row is the ego info
         ego_nearby_vehicle = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle)
         for i, actor in enumerate(ego_nearby_vehicle):
             if i < desired_nearby_vehicle:
@@ -283,7 +283,7 @@ class RouteScenario():
                 ego_info.append([actor - ego for actor, ego in zip(actor_state, ego_state)])  # the rest row start from 2 is the meaningful vehicle around ego vehicle
             else:
                 break
-        while len(ego_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+        while len(ego_info) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
             ego_info.append([0] * len(ego_state))
 
         ego_info = np.array(ego_info)
