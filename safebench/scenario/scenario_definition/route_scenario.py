@@ -238,27 +238,30 @@ class RouteScenario():
     def update_info(self, desired_nearby_vehicle=3):
         '''
             scenario agent state:
-            first row is the cbv's absolute state
-            second row is ego's relative state
-            rest row are other bv's relative state
+            first row is the cbv's state (x=0, y=0, yaw, vx, vy)
+            second row is ego's relative state (x, y, yaw, vx, vy)
+            rest row are other bv's relative state (x, y, yaw, vx, vy)
         '''
         if self.controlled_bv:  # the controlled bv is not None
             # absolute state
-            cbv_state = self._get_actor_state(self.controlled_bv)
-            ego_state = self._get_actor_state(self.ego_vehicle)
+            cbv_state = np.array(self._get_actor_state(self.controlled_bv))
+            cbv_state_copy = cbv_state.copy()
+            ego_state = np.array(self._get_actor_state(self.ego_vehicle))
             # relative state
-            ego_state = [ego - cbv for ego, cbv in zip(ego_state, cbv_state)]
-            actor_info = [ego_state]  # the first info belongs to the cbv, while the second belongs to the ego vehicle
+            ego_state[:2] = ego_state[:2] - cbv_state_copy[:2]
+            cbv_state[:2] = cbv_state[:2] - cbv_state_copy[:2]
+            actor_info = [cbv_state, ego_state]  # the first info belongs to the cbv, while the second belongs to the ego vehicle
             for i, actor in enumerate(self.controlled_bv_nearby_vehicles):
                 if i < desired_nearby_vehicle:
-                    actor_state = self._get_actor_state(actor)
-                    actor_info.append([actor - cbv for actor, cbv in zip(actor_state, cbv_state)])  # add the info of the other actor to the list
+                    actor_state = np.array(self._get_actor_state(actor))
+                    actor_state[:2] = actor_state[:2] - cbv_state_copy[:2]
+                    actor_info.append(actor_state)  # add the info of the other actor to the list
                 elif actor.id == self.ego_vehicle.id:
                     continue  # except the ego actor
                 else:
                     # avoiding too many nearby vehicles
                     break
-            while len(actor_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+            while len(actor_info)-2 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
                 actor_info.append([0] * len(cbv_state))
 
             actor_info = np.array(actor_info)
@@ -274,16 +277,21 @@ class RouteScenario():
             first row is ego's relative state
             rest row are other bv's relative state
         '''
-        ego_state = self._get_actor_state(self.ego_vehicle)
-        ego_info = []  # the first row is the ego info
+        # absolute ego state
+        ego_state = np.array(self._get_actor_state(self.ego_vehicle))
+        ego_state_copy = ego_state.copy()
+        # relative ego state
+        ego_state[:2] = ego_state[:2] - ego_state_copy[:2]
+        ego_info = [ego_state]  # the first row is the ego info
         ego_nearby_vehicle = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle)
         for i, actor in enumerate(ego_nearby_vehicle):
             if i < desired_nearby_vehicle:
-                actor_state = self._get_actor_state(actor)
-                ego_info.append([actor - ego for actor, ego in zip(actor_state, ego_state)])  # the rest row start from 2 is the meaningful vehicle around ego vehicle
+                actor_state = np.array(self._get_actor_state(actor))
+                actor_state[:2] = actor_state[:2] - ego_state_copy[:2]
+                ego_info.append(actor_state)  # the rest row start from 2 is the meaningful vehicle around ego vehicle
             else:
                 break
-        while len(ego_info) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+        while len(ego_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
             ego_info.append([0] * len(ego_state))
 
         ego_info = np.array(ego_info)

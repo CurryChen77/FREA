@@ -694,9 +694,10 @@ class CarlaEnv(gym.Env):
         V_cbv = CarlaDataProvider.get_velocity_after_tick(self.controlled_bv) if self.controlled_bv else 0
         too_fast = -1 if V_cbv > self.desired_speed else 0
 
-        in_drivable_area = CarlaDataProvider.get_actor_in_drivable_area(self.controlled_bv) if self.controlled_bv else 0
+        # since the obs don't have road info, so no need to include in drivable area info
+        # in_drivable_area = CarlaDataProvider.get_actor_in_drivable_area(self.controlled_bv) if self.controlled_bv else 0
         cost = self._get_cost()
-        scenario_agent_reward = 2 * in_drivable_area + 4 * cbv_min_dis_reward + V_cbv + 10 * too_fast - 200 * cost - 0.1
+        scenario_agent_reward = 10 * cbv_min_dis_reward + V_cbv + 10 * too_fast - 200 * cost - 0.1
 
         return scenario_agent_reward, cost
 
