@@ -266,7 +266,7 @@ class RouteScenario():
 
             actor_info = np.array(actor_info)
         else:
-            actor_info = np.zeros((desired_nearby_vehicle+1, 5))  # need to have the same size as normal actor info
+            actor_info = np.zeros((desired_nearby_vehicle+2, 5))  # need to have the same size as normal actor info
         return {
             'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
