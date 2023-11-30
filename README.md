@@ -18,8 +18,8 @@
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode eval --render
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --safety_network_cfg HJR.yaml --mode eval --safety_eval --render # use the trained safety network to help evaluation
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam --mode eval --safety_eval --render # use the trained safety network to help evaluation
 ```
 
 ### Remote Users
@@ -28,13 +28,13 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
 ```bash
 # Launch CARLA with headless mode
-./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000 -quality-level=Low
 
 # Another terminal no display pygame
-SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg plant.yaml --scenario_cfg sac.yaml --mode train_scenario
+SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_train.yaml --mode train_scenario
 
 # Showing the memory usage
-SDL_VIDEODRIVER="dummy" mprof run --python scripts/run.py --agent_cfg plant.yaml --scenario_cfg sac.yaml --mode train_scenario
+SDL_VIDEODRIVER="dummy" mprof run --python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_train.yaml --mode train_scenario
 ```
 
 #### Visualize pygame window
