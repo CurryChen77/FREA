@@ -485,6 +485,7 @@ class CarlaDataProvider(object):
         """
         CarlaDataProvider._ego_vehicle_route = route
         CarlaDataProvider._egos.append(ego)
+        CarlaDataProvider._ego_cbv_dis[ego.id] = {}  # create an empty dictionary for each ego car
 
     @staticmethod
     def get_ego_vehicles():
@@ -861,13 +862,16 @@ class CarlaDataProvider(object):
     def get_ego_cbv_dis_reward(ego, cbv):
         delta_dis = 0
         if cbv:
-            if cbv.id in CarlaDataProvider._ego_cbv_dis.keys():  # whether the current are in the old cbv list
+            if cbv.id in CarlaDataProvider._ego_cbv_dis[ego.id].keys():  # whether the current are in the old cbv list
                 dis = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
                 # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
-                delta_dis = CarlaDataProvider._ego_cbv_dis[cbv.id] - dis
-            CarlaDataProvider._ego_cbv_dis[cbv.id] = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
+                delta_dis = CarlaDataProvider._ego_cbv_dis[ego.id][cbv.id] - dis
+                CarlaDataProvider._ego_cbv_dis[ego.id][cbv.id] = dis
+            else:
+                CarlaDataProvider._ego_cbv_dis[ego.id].clear()  # the cbv has changed, so remove the previous cbv
+                CarlaDataProvider._ego_cbv_dis[ego.id][cbv.id] = CarlaDataProvider.get_min_distance_across_bboxes(ego, cbv)
         else:
-            CarlaDataProvider._ego_cbv_dis.clear()
+            CarlaDataProvider._ego_cbv_dis[ego.id].clear()
         return delta_dis
 
     @staticmethod

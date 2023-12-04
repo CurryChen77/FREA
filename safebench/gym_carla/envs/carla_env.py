@@ -689,7 +689,7 @@ class CarlaEnv(gym.Env):
         # the min dis from the cbv to the rest bvs
         cbv_min_dis, cbv_min_dis_reward = CarlaDataProvider.get_cbv_min_dis_reward(self.controlled_bv, self.search_radius, self.controlled_bv_nearby_vehicles)
         # the reward design to encourage cbv attack ego
-        # ego_cbv_dis_reward = CarlaDataProvider.get_ego_cbv_dis_reward(self.ego_vehicle, self.controlled_bv)
+        ego_cbv_dis_reward = CarlaDataProvider.get_ego_cbv_dis_reward(self.ego_vehicle, self.controlled_bv)
 
         V_cbv = CarlaDataProvider.get_velocity_after_tick(self.controlled_bv) if self.controlled_bv else 0
         too_fast = -1 if V_cbv > self.desired_speed else 0
@@ -697,7 +697,7 @@ class CarlaEnv(gym.Env):
         # since the obs don't have road info, so no need to include in drivable area info
         # in_drivable_area = CarlaDataProvider.get_actor_in_drivable_area(self.controlled_bv) if self.controlled_bv else 0
         cost = self._get_cost()
-        scenario_agent_reward = 10 * cbv_min_dis_reward + V_cbv + 10 * too_fast - 200 * cost - 0.1
+        scenario_agent_reward = 10 * cbv_min_dis_reward + 10 * too_fast + 10 * ego_cbv_dis_reward - 0.1
 
         return scenario_agent_reward, cost
 
