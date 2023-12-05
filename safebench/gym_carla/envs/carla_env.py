@@ -16,6 +16,7 @@ import pygame
 from skimage.transform import resize
 import gym
 import carla
+import time
 
 from safebench.gym_carla.envs.route_planner import RoutePlanner
 from safebench.gym_carla.envs.misc import (
@@ -741,3 +742,4 @@ class CarlaEnv(gym.Env):
         if self.scenario_category != 'scenic':
             self._remove_ego()
         self.scenario_manager.clean_up()
+        time.sleep(1)  # TODO sleep for some time after destroy all vehicles and sensors, and wait for the client to reset
