@@ -27,19 +27,18 @@ class AdvBehaviorSingle(BasicScenario):
         super(AdvBehaviorSingle, self).__init__("AdvBehaviorSingle", None, world)
         self.ego_vehicle = ego_vehicle
         self.timeout = timeout
+        self._map = CarlaDataProvider.get_map()
         self.last_tick_affected_by_traffic = self.ego_vehicle
 
         self.traffic_light = CarlaDataProvider.get_next_traffic_light(self.ego_vehicle, False)
         self.cbv_traffic_light = None
-        self.last_ego_waypoint = self.world.get_map().get_waypoint(self.ego_vehicle.get_location())
+        self.last_ego_waypoint = self._map.get_waypoint(self.ego_vehicle.get_location())
         if self.traffic_light is None:
             print(">> No traffic light for the given location of the ego vehicle found")
         else:
             self.traffic_light.set_state(carla.TrafficLightState.Green)
             self.traffic_light.set_green_time(self.timeout)
 
-        self.scenario_operation = ScenarioOperation()
-        self.trigger = False
         self._actor_distance = 110
         self.ego_max_driven_distance = 150
         self.discrete = env_params['discrete']
@@ -77,7 +76,7 @@ class AdvBehaviorSingle(BasicScenario):
         return act
 
     def update_traffic_light(self):
-        ego_waypoint = self.world.get_map().get_waypoint(CarlaDataProvider.get_location_after_tick(self.ego_vehicle))
+        ego_waypoint = self._map.get_waypoint(CarlaDataProvider.get_location_after_tick(self.ego_vehicle))
         if not ego_waypoint.is_junction and self.last_ego_waypoint.is_junction:  # last tick the ego is in the junction, but the current step is out
             traffic_light = CarlaDataProvider.get_next_traffic_light(self.ego_vehicle)
             # if the ego's next traffic light is not None and has changed, then set the next traffic light to green
@@ -98,11 +97,6 @@ class AdvBehaviorSingle(BasicScenario):
                     cbv_traffic_light.set_state(carla.TrafficLightState.Green)
                     cbv_traffic_light.set_green_time(self.timeout)
         self.last_ego_waypoint = ego_waypoint
-
-    def create_behavior(self, scenario_init_action):
-        assert scenario_init_action is None, f'{self.name} should receive [None] initial action.'
-        self.other_actor_delta_x = 1.0
-        self.trigger_distance_threshold = 35
 
     def update_behavior(self, controlled_bv, scenario_action):
         # if the controlled bv exists and the scenario policy isn't hardcoded
@@ -127,21 +121,5 @@ class AdvBehaviorSingle(BasicScenario):
         # update the traffic light
         self.update_traffic_light()
 
-    def check_stop_condition(self):
-        # stop when actor runs a specific distance
-        cur_distance = calculate_distance_transforms(CarlaDataProvider.get_transform(self.other_actors[0]), self.actor_transform_list[0])
-        if cur_distance >= self._actor_distance:
-            return True
-        return False
-
     def clean_up(self):
-        """
-            Remove all actors
-        """
-        for s_i in range(len(self.other_actors)):
-            if self.other_actors[s_i].type_id.startswith('vehicle'):
-                self.other_actors[s_i].set_autopilot(enabled=False, tm_port=CarlaDataProvider.get_traffic_manager_port())
-            if CarlaDataProvider.actor_id_exists(self.other_actors[s_i].id):
-                CarlaDataProvider.remove_actor_by_id(self.other_actors[s_i].id)
-        CarlaDataProvider.remove_all_information_map()  # remove the information stored in the CarlaDataProvider
-        self.other_actors = []
+        pass

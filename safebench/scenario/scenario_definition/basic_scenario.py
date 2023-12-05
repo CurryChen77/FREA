@@ -22,18 +22,11 @@ class BasicScenario(object):
         self.config = config
 
         self.ego_vehicles = None
-        self.reference_actor = None # the actor used for calculating trigger distance
-        self.other_actors = []
-        self.other_actor_transform = []
-        self.trigger_distance_threshold = None
-        self.ego_max_driven_distance = 200
 
-        
         if CarlaDataProvider.is_sync_mode():
             world.tick()
         else:
             world.wait_for_tick()
-    
 
     def create_behavior(self, scenario_init_action):
         """
@@ -42,7 +35,7 @@ class BasicScenario(object):
         raise NotImplementedError(
             "This function is re-implemented by all scenarios. If this error becomes visible the class hierarchy is somehow broken")
 
-    def update_behavior(self, scenario_action):
+    def update_behavior(self, controlled_bv, scenario_action):
         """
             This method defines how to update the behavior of the actors in scenario in each step.
         """
@@ -64,13 +57,6 @@ class BasicScenario(object):
             "This function is re-implemented by all scenarios. If this error becomes visible the class hierarchy is somehow broken")
 
     def clean_up(self):
-        """
-            Remove all actors
-        """
-        for s_i in range(len(self.other_actors)):
-            if self.other_actors[s_i].type_id.startswith('vehicle'):
-                self.other_actors[s_i].set_autopilot(enabled=False, tm_port=CarlaDataProvider.get_traffic_manager_port())
-            if CarlaDataProvider.actor_id_exists(self.other_actors[s_i].id):
-                CarlaDataProvider.remove_actor_by_id(self.other_actors[s_i].id)
-        CarlaDataProvider.remove_all_information_map()  # remove the information stored in the CarlaDataProvider
-        self.other_actors = []
+        pass
+
+
