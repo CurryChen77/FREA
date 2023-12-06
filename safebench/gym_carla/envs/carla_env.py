@@ -694,8 +694,11 @@ class CarlaEnv(gym.Env):
         # in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else 0
 
         # ego collision reward, depending on the ego min distance
-        ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv)
-        ego_cbv_collision_reward = 1 if ego_cbv_dis < 0.01 else 0
+        if self.cbv:
+            ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv)
+            ego_cbv_collision_reward = 1 if ego_cbv_dis < 0.01 else 0
+        else:
+            ego_cbv_collision_reward = 0
 
         # final scenario agent rewards
         scenario_agent_reward = 10 * cbv_min_dis_reward + 10 * too_fast + V_cbv + 150 * ego_cbv_collision_reward - 0.1
