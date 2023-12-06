@@ -27,8 +27,9 @@ from safebench.gym_carla.envs.misc import (
     get_preview_lane_dis,
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
+from safebench.gym_carla.envs.utils import cal_ego_min_dis, get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
+    get_cbv_min_dis_reward, get_ego_cbv_dis_reward, get_actor_in_drivable_area
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
-# from safebench.scenario.scenario_definition.scenic_scenario import ScenicScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.agent.agent_utils.visualization import draw_route
@@ -67,8 +68,8 @@ class CarlaEnv(gym.Env):
         self.lidar_data = None
         self.lidar_height = 2.1
 
-        self.controlled_bv = None
-        self.controlled_bv_nearby_vehicles = None
+        self.cbv = None
+        self.cbv_nearby_vehicles = None
         self.old_cbv = None
         self.gps_route = None
         self.route = None
@@ -175,14 +176,6 @@ class CarlaEnv(gym.Env):
                 env_params=self.env_params,
                 logger=self.logger
             )
-        # elif self.scenario_category == 'scenic':
-        #     scenario = ScenicScenario(
-        #         world=self.world,
-        #         config=config,
-        #         ego_id=env_id,
-        #         max_running_step=self.max_episode_step,
-        #         logger=self.logger
-        #     )
         else:
             raise ValueError(f'Unknown scenario category: {self.scenario_category}')
 
@@ -206,15 +199,14 @@ class CarlaEnv(gym.Env):
 
     def cbv_selection(self):
         cbv_candidates = None
-        # get the ego min distance of the next obs (s')
+        # get the ego min distance of the next obs (s_t+1)
         if self.safety_network_obs_type:
-            self.ego_min_dis, _ = CarlaDataProvider.cal_ego_min_dis(self.ego_vehicle, self.search_radius, self.ego_agent_learnable)
+            self.ego_min_dis, _ = cal_ego_min_dis(self.ego_vehicle, self.search_radius, self.ego_agent_learnable)
 
         # all the situations that need the encoded state or most relevant vehicle
         if self.agent_state_encoder:
             if not self.safety_network_obs_type:
-                cbv_candidates = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle,
-                                                                                       self.search_radius)
+                cbv_candidates = get_cbv_candidates(self.ego_vehicle, self.search_radius)
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, cbv_candidates, self.waypoints, self.red_light_state
             )
@@ -222,30 +214,28 @@ class CarlaEnv(gym.Env):
                 0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
         else:
             most_relevant_vehicle = None
-        self.old_cbv = self.controlled_bv  # for BEV visualization
+        self.old_cbv = self.cbv  # for BEV visualization
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         if self.cbv_select_method == 'rule-based':
-            self.controlled_bv = CarlaDataProvider.find_closest_vehicle(self.ego_vehicle, self.search_radius,
+            self.cbv = find_closest_vehicle(self.ego_vehicle, self.search_radius,
                                                                         cbv_candidates)
         elif self.cbv_select_method == 'attention-based':
-            self.controlled_bv = most_relevant_vehicle
+            self.cbv = most_relevant_vehicle
 
         # get the nearby vehicles around the cbv
-        if self.controlled_bv:
-            self.controlled_bv_nearby_vehicles = CarlaDataProvider.get_nearby_vehicles(self.controlled_bv,
-                                                                                       self.search_radius)
+        if self.cbv:
+            self.cbv_nearby_vehicles = get_nearby_vehicles(self.cbv, self.search_radius)
             # update the cbv for BEV visualization
-            if self.old_cbv and self.controlled_bv and self.old_cbv.id != self.controlled_bv.id:  # the cbv has changed, need to remove the old cbv
-                self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # update the new cbv
-                self.birdeye_render.remove_old_controlled_bv(self.old_cbv.id)  # remove the old cbv if exist
-            elif self.old_cbv is not None and self.controlled_bv is None:
-                self.birdeye_render.remove_old_controlled_bv(self.old_cbv.id)  # remove the old cbv if exist
-            elif self.old_cbv is None and self.controlled_bv is not None:  # got the initial cbv
-                self.birdeye_render.set_controlled_bv(self.controlled_bv, self.controlled_bv.id)  # add the new cbv
+            if self.old_cbv and self.cbv and self.old_cbv.id != self.cbv.id:  # the cbv has changed, need to remove the old cbv
+                self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # update the new cbv
+                self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
+            elif self.old_cbv is not None and self.cbv is None:
+                self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
+            elif self.old_cbv is None and self.cbv is not None:  # got the initial cbv
+                self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # add the new cbv
         else:
-            self.controlled_bv_nearby_vehicles = None
-        self.scenario_manager.update_controlled_bv_nearby_vehicles(self.controlled_bv,
-                                                                   self.controlled_bv_nearby_vehicles)
+            self.cbv_nearby_vehicles = None
+        self.scenario_manager.update_cbv_nearby_vehicles(self.cbv, self.cbv_nearby_vehicles)
 
     def reset(self, config, env_id):
         self.config = config
@@ -343,8 +333,8 @@ class CarlaEnv(gym.Env):
 
     def visualize(self):
         # Visualize the controlled bv
-        if self.controlled_bv:
-            cbv_transform = CarlaDataProvider.get_transform_after_tick(self.controlled_bv)
+        if self.cbv:
+            cbv_transform = CarlaDataProvider.get_transform_after_tick(self.cbv)
             cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
             cbv_angle = math.radians(cbv_transform.rotation.yaw)
             cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
@@ -447,7 +437,7 @@ class CarlaEnv(gym.Env):
         # set ego min distance and controlled bv
         self.cbv_selection()
 
-        updated_controlled_bv_info = self._get_info(training=False)  # the updated cbv's info, for transition
+        updated_cbv_info = self._get_info(training=False)  # the updated cbv's info, for transition
 
         self.visualize()  # visualize the controlled bv and the waypoints in clients side after tick
 
@@ -455,7 +445,7 @@ class CarlaEnv(gym.Env):
         self.time_step += 1
         self.total_step += 1
 
-        return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_controlled_bv_info])
+        return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_cbv_info])
 
     def _get_info(self, training=True):
         info = {}
@@ -688,15 +678,15 @@ class CarlaEnv(gym.Env):
             ego_cbv_dis_reward : the delta distance from t-1 to t of one specific cbv
         """
         # the min dis from the cbv to the rest bvs
-        cbv_min_dis, cbv_min_dis_reward = CarlaDataProvider.get_cbv_min_dis_reward(self.controlled_bv, self.search_radius, self.controlled_bv_nearby_vehicles)
+        cbv_min_dis, cbv_min_dis_reward = get_cbv_min_dis_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
         # the reward design to encourage cbv attack ego
-        ego_cbv_dis_reward = CarlaDataProvider.get_ego_cbv_dis_reward(self.ego_vehicle, self.controlled_bv)
+        ego_cbv_dis_reward = get_ego_cbv_dis_reward(self.ego_vehicle, self.cbv)
 
-        V_cbv = CarlaDataProvider.get_velocity_after_tick(self.controlled_bv) if self.controlled_bv else 0
+        V_cbv = CarlaDataProvider.get_velocity_after_tick(self.cbv) if self.cbv else 0
         too_fast = -1 if V_cbv > self.desired_speed else 0
 
         # since the obs don't have road info, so no need to include in drivable area info
-        # in_drivable_area = CarlaDataProvider.get_actor_in_drivable_area(self.controlled_bv) if self.controlled_bv else 0
+        # in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else 0
         cost = self._get_cost()
         scenario_agent_reward = 10 * cbv_min_dis_reward + 10 * too_fast + 10 * ego_cbv_dis_reward - 0.1
 
@@ -737,7 +727,7 @@ class CarlaEnv(gym.Env):
 
     def clean_up(self):
         self.old_cbv = None
-        self.controlled_bv = None
+        self.cbv = None
         self._remove_sensor()
         if self.scenario_category != 'scenic':
             self._remove_ego()

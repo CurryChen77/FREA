@@ -383,11 +383,11 @@ class BirdeyeRender(object):
         self.hero_id = None
         self.hero_transform = None
         self.heros_in_all_envs = []
-        self.controlled_bv_in_all_envs = []
+        self.cbv_in_all_envs = []
 
-        # controlled_bv
-        self.controlled_bv = None
-        self.controlled_bv_id = None
+        # cbv
+        self.cbv = None
+        self.cbv_id = None
 
         # the actors and map information
         self.vehicle_polygons = []
@@ -428,13 +428,13 @@ class BirdeyeRender(object):
         self.hero_id = hero_id
         self.heros_in_all_envs.append(hero_id)
 
-    def set_controlled_bv(self, controlled_bv, controlled_bv_id):
-        self.controlled_bv = controlled_bv
-        self.controlled_bv_id = controlled_bv_id
-        self.controlled_bv_in_all_envs.append(controlled_bv_id)
+    def set_cbv(self, cbv, cbv_id):
+        self.cbv = cbv
+        self.cbv_id = cbv_id
+        self.cbv_in_all_envs.append(cbv_id)
 
-    def remove_old_controlled_bv(self, controlled_bv_id):
-        self.controlled_bv_in_all_envs.remove(controlled_bv_id)
+    def remove_old_cbv(self, cbv_id):
+        self.cbv_in_all_envs.remove(cbv_id)
 
     def tick(self, clock):
         actors = self.world.get_actors()
@@ -490,7 +490,7 @@ class BirdeyeRender(object):
                 color_value = max(0.8 - 0.8/lp*(i+1), 0)
                 if ID == self.hero_id or ID in self.heros_in_all_envs:
                     color = pygame.Color(255, math.floor(color_value*255), math.floor(color_value*255))  # red
-                elif ID == self.controlled_bv_id or ID in self.controlled_bv_in_all_envs:  # TODO: can't update in real-time
+                elif ID == self.cbv_id or ID in self.cbv_in_all_envs:  # TODO: can't update in real-time
                     color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255))  # purple
                 else:
                     if actor_type == 'vehicle':
@@ -571,5 +571,5 @@ class BirdeyeRender(object):
 
 
     def clean_up(self):
-        self.controlled_bv_in_all_envs = []
+        self.cbv_in_all_envs = []
         self.heros_in_all_envs = []

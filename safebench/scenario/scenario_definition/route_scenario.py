@@ -12,16 +12,13 @@ import traceback
 import numpy as np
 import carla
 
-from safebench.util.run_util import class_from_path
+from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, get_nearby_vehicles
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
-from safebench.scenario.scenario_manager.scenario_config import RouteScenarioConfig
-from safebench.scenario.tools.route_parser import RouteParser
+
 from safebench.scenario.tools.route_manipulation import interpolate_trajectory
 from safebench.scenario.tools.scenario_utils import (
-    get_valid_spawn_points, 
-    convert_json_to_transform, 
-    convert_json_to_actor, 
+    get_valid_spawn_points,
     convert_transform_to_location
 )
 from safebench.scenario.scenario_definition.adv_behavior_scenario import AdvBehaviorSingle
@@ -59,8 +56,8 @@ class RouteScenario():
         # create the route and ego's position (the start point of the route)
         self.route, self.ego_vehicle, self.gps_route = self._update_route_and_ego(timeout=self.timeout)
         self.background_actors = []
-        self.controlled_bv = None
-        self.controlled_bv_nearby_vehicles = None
+        self.cbv = None
+        self.cbv_nearby_vehicles = None
         self.criteria = self._create_criteria()
         self.scenario_instance = AdvBehaviorSingle(self.world, self.ego_vehicle, env_params)  # create the scenario instance
 
@@ -128,10 +125,10 @@ class RouteScenario():
         middle_location = self.route[len(self.route)//2][0].location
         end_location = self.route[-1][0].location
         locations_list = [start_location, middle_location, end_location]
-        radius_list = [30, 40, 30]
+        radius_list = [10, 40, 40]
         closest_dis = 7
 
-        spawn_points = CarlaDataProvider.get_locations_nearby_spawn_points(
+        spawn_points = get_locations_nearby_spawn_points(
             locations_list, radius_list, closest_dis, self.traffic_intensity
         )
         amount = len(spawn_points)
@@ -242,16 +239,16 @@ class RouteScenario():
             second row is ego's relative state (x, y, yaw, vx, vy)
             rest row are other bv's relative state (x, y, yaw, vx, vy)
         '''
-        if self.controlled_bv:  # the controlled bv is not None
+        if self.cbv:  # the cbv is not None
             # absolute state
-            cbv_state = np.array(self._get_actor_state(self.controlled_bv))
+            cbv_state = np.array(self._get_actor_state(self.cbv))
             cbv_state_copy = cbv_state.copy()
             ego_state = np.array(self._get_actor_state(self.ego_vehicle))
             # relative state
             ego_state[:2] = ego_state[:2] - cbv_state_copy[:2]
             cbv_state[:2] = cbv_state[:2] - cbv_state_copy[:2]
             actor_info = [cbv_state, ego_state]  # the first info belongs to the cbv, while the second belongs to the ego vehicle
-            for i, actor in enumerate(self.controlled_bv_nearby_vehicles):
+            for i, actor in enumerate(self.cbv_nearby_vehicles):
                 if i < desired_nearby_vehicle:
                     actor_state = np.array(self._get_actor_state(actor))
                     actor_state[:2] = actor_state[:2] - cbv_state_copy[:2]
@@ -283,7 +280,7 @@ class RouteScenario():
         # relative ego state
         ego_state[:2] = ego_state[:2] - ego_state_copy[:2]
         ego_info = [ego_state]  # the first row is the ego info
-        ego_nearby_vehicle = CarlaDataProvider.get_meaningful_nearby_vehicles(self.ego_vehicle)
+        ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle)
         for i, actor in enumerate(ego_nearby_vehicle):
             if i < desired_nearby_vehicle:
                 actor_state = np.array(self._get_actor_state(actor))

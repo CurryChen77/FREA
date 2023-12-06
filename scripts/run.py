@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--max_episode_step', type=int, default=300)
     parser.add_argument('--search_radius', type=int, default=60, help='the radius for agent to search other agents')
-    parser.add_argument('--traffic_intensity', type=int, default=0.8, help='the intensity of initial traffic flow')
+    parser.add_argument('--traffic_intensity', type=int, default=0.6, help='the intensity of initial traffic flow')
     parser.add_argument('--cbv_selection', type=str, default='rule-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--viz_route', action='store_true')

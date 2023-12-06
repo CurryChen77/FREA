@@ -35,7 +35,7 @@ class BasicScenario(object):
         raise NotImplementedError(
             "This function is re-implemented by all scenarios. If this error becomes visible the class hierarchy is somehow broken")
 
-    def update_behavior(self, controlled_bv, scenario_action):
+    def update_behavior(self, cbv, scenario_action):
         """
             This method defines how to update the behavior of the actors in scenario in each step.
         """

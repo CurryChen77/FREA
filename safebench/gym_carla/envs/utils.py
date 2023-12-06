@@ -1,0 +1,228 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+"""
+@File    ：utils.py
+@Author  ：Keyu Chen
+@mail    : chenkeyu7777@gmail.com
+@Date    ：2023/12/5
+"""
+
+import carla
+import math
+
+from distance3d import gjk, colliders
+from safebench.scenario.tools.scenario_utils import compute_box2origin
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
+
+
+def get_actor_in_drivable_area(actor):
+    actor_transform = CarlaDataProvider.get_transform_after_tick(actor)
+    actor_location = actor_transform.location
+    # move the actor waypoint to the front part of the actor
+    actor_bbox_extent_x = actor.bounding_box.extent.x
+    theta = math.radians(actor_transform.rotation.yaw)
+    delta_x = actor_bbox_extent_x // 2 * math.cos(theta)
+    delta_y = actor_bbox_extent_x // 2 * math.sin(theta)
+    actor_front_location = actor_location + carla.Location(x=delta_x, y=delta_y, z=0.0)
+    # find the nearest waypoint around the actor front location
+    actor_waypoint = CarlaDataProvider.get_map().get_waypoint(actor_front_location)
+    if actor_waypoint.lane_type == carla.LaneType.Driving:
+        in_drivable_area = 0
+    else:
+        in_drivable_area = -1
+    return in_drivable_area
+
+
+def cal_ego_min_dis(ego_vehicle, search_radius, ego_agent_learnable=False):
+    nearby_vehicles = get_nearby_vehicles(ego_vehicle, search_radius)
+    # min distance between vehicle bboxes
+    ego_min_dis = search_radius
+    # the closest vehicle using center points distance may change when using bboxes distance
+    if len(nearby_vehicles) < 3:
+        refined_vehicles_count = len(nearby_vehicles)
+    else:
+        refined_vehicles_count = 3
+
+    for i in range(refined_vehicles_count):
+        # the closest vehicle using center point may not be the closest vehicle using bboxs
+        dis = get_min_distance_across_bboxes(ego_vehicle, nearby_vehicles[i])
+        if dis < ego_min_dis:
+            ego_min_dis = dis
+
+    if ego_agent_learnable:  # TODO rule-based agent usually will not drive out the road, will learning-based method could
+        # check whether the ego has reached the un-drivable area
+        check_lane_type_list = [carla.LaneType.Driving]
+        ego_transform = CarlaDataProvider.get_transform_after_tick(ego_vehicle)
+        ego_location = ego_transform.location
+        # move the ego waypoint to the front part of the vehicle
+        ego_bbox_extent_x = ego_vehicle.bounding_box.extent.x
+        theta = math.radians(ego_transform.rotation.yaw)
+        delta_x = ego_bbox_extent_x // 2 * math.cos(theta)
+        delta_y = ego_bbox_extent_x // 2 * math.sin(theta)
+        ego_front_location = ego_location + carla.Location(x=delta_x, y=delta_y, z=0.0)
+        # find the nearest waypoint around the ego front location
+        ego_waypoint = CarlaDataProvider.get_map().get_waypoint(ego_front_location, lane_type=carla.LaneType.Any)
+        # for viz
+        # CarlaDataProvider._world.debug.draw_point(ego_waypoint.transform.location + carla.Location(z=4), size=0.1, life_time=0.11)
+        # if the ego is not in the drivable area (off the road) and not in the junction, then the ego min distance is set to be 0
+        if (ego_waypoint.lane_type not in check_lane_type_list) and (not ego_waypoint.is_junction):
+            print("ego outside the drivable area, ego min distance set to 0")
+            ego_min_dis = 0.
+
+    CarlaDataProvider.set_ego_min_dis(ego_min_dis)
+    return ego_min_dis, nearby_vehicles
+
+
+def get_ego_cbv_dis_reward(ego, cbv):
+    delta_dis = 0
+    if cbv:
+        if cbv.id in CarlaDataProvider._ego_cbv_dis[ego.id].keys():  # whether the current are in the old cbv list
+            dis = get_min_distance_across_bboxes(ego, cbv)
+            # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
+            delta_dis = CarlaDataProvider._ego_cbv_dis[ego.id][cbv.id] - dis
+            CarlaDataProvider._ego_cbv_dis[ego.id][cbv.id] = dis
+        else:
+            CarlaDataProvider._ego_cbv_dis[ego.id].clear()  # the cbv has changed, so remove the previous cbv
+            CarlaDataProvider._ego_cbv_dis[ego.id][cbv.id] = get_min_distance_across_bboxes(ego, cbv)
+    else:
+        CarlaDataProvider._ego_cbv_dis[ego.id].clear()
+    return delta_dis
+
+
+def get_cbv_min_dis_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1.25):
+    min_dis = search_radius  # the searching radius of the nearby_vehicle
+    if cbv and cbv_nearby_vehicles:
+        for nearby_vehicle in cbv_nearby_vehicles:
+            if nearby_vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
+                # the min distance between bounding boxes of two vehicles
+                min_dis = get_min_distance_across_bboxes(cbv, nearby_vehicle)
+                break  # the first nearby_vehicle in self.cbv_nearby_vehicles is the closest, so can break
+        min_dis_reward = min(min_dis, tou) - tou  # the controlled bv shouldn't be too close to the other bvs
+    else:
+        min_dis_reward = 0
+    return min_dis, min_dis_reward
+
+
+def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=5, intensity=0.8, upper_limit=18):
+    nearby_spawn_points = []
+    CarlaDataProvider.generate_spawn_points()  # get all the possible spawn points in this map
+    # TODO the initial position of the bv still got problems, may to close to the egos
+    ego_locations = [ego.get_location() for ego in CarlaDataProvider._egos]
+    for spawn_point in CarlaDataProvider._spawn_points:
+        spawn_point_location = spawn_point.location
+        # check whether any spawn point close to any egos' location
+        close_to_ego = any(ego_loc.distance(spawn_point_location) <= closest_dis for ego_loc in ego_locations)
+
+        if any(location.distance(spawn_point_location) <= radius for location, radius in zip(location_lists, radius_list)) and not close_to_ego:
+            # if the spawn point is in any location's radius and not close to any egos' location, add them to the list
+            nearby_spawn_points.append(spawn_point)
+
+    CarlaDataProvider._rng.shuffle(nearby_spawn_points)
+    spawn_points_count = len(nearby_spawn_points)
+    picking_number = min(int(spawn_points_count * intensity), upper_limit) if spawn_points_count > upper_limit else spawn_points_count
+    nearby_spawn_points = nearby_spawn_points[:picking_number]  # sampling part of the nearby spawn points
+    return nearby_spawn_points
+
+
+def find_closest_vehicle(ego_vehicle, radius=40, cbv_candidates=None):
+    '''
+        rule-based method to find the cbv:
+        find the closest vehicle among all the cbv candidates
+    '''
+    min_dis = radius
+    cbv = None
+    ego_location = CarlaDataProvider.get_location_after_tick(ego_vehicle)
+    if cbv_candidates is None:
+        cbv_candidates = get_cbv_candidates(ego_vehicle, radius)  # find the cbv candidates
+
+    for vehicle in cbv_candidates:
+        vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
+        distance = ego_location.distance(vehicle_location)
+        if distance < min_dis:
+            cbv = vehicle  # update cbv
+            min_dis = distance  # update min dis
+
+    return cbv
+
+
+def get_nearby_vehicles(center_vehicle, radius=60):
+    '''
+        return the nearby vehicles around the center vehicle
+    '''
+    center_location = CarlaDataProvider.get_location_after_tick(center_vehicle)
+
+    # get all the vehicles on the world
+    all_vehicles = CarlaDataProvider._world.get_actors().filter('vehicle.*')
+
+    # store the nearby vehicle information [vehicle, distance]
+    nearby_vehicles_info = []
+
+    for vehicle in all_vehicles:
+        if vehicle.id != center_vehicle.id:  # except the center vehicle
+            # the location of other vehicles
+            vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
+            distance = center_location.distance(vehicle_location)
+            if distance <= radius:
+                nearby_vehicles_info.append([vehicle, distance])
+
+    # sort the nearby vehicles according to the distance in ascending order
+    nearby_vehicles_info.sort(key=lambda x: x[1])
+
+    # return the nearby vehicles list
+    nearby_vehicles = [info[0] for info in nearby_vehicles_info]
+
+    return nearby_vehicles
+
+
+def get_cbv_candidates(center_vehicle, radius=40):
+    '''
+        the foundation for the cbv selection, selecting the candidates nearby vehicles based on specific traffic rules
+    '''
+    # info for the ego vehicle
+    center_transform = CarlaDataProvider.get_transform_after_tick(center_vehicle)
+    center_location = center_transform.location
+    center_waypoint = CarlaDataProvider.get_map().get_waypoint(center_location)
+    center_forward_vector = center_transform.rotation.get_forward_vector()
+
+    # get all the vehicles on the world
+    all_vehicles = CarlaDataProvider._world.get_actors().filter('vehicle.*')
+    # store the nearby vehicle information [vehicle, distance]
+    nearby_vehicles_info = []
+    for vehicle in all_vehicles:
+        if vehicle.id != center_vehicle.id:  # 1. except the center vehicle
+            vehicle_transform = CarlaDataProvider.get_transform_after_tick(vehicle)
+            vehicle_location = vehicle_transform.location
+            vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(vehicle_location)
+            # 2. except the bv and the center vehicle are on the same road but different lane directions (multiply of lane id < 0)
+            if not (center_waypoint.lane_id * vehicle_waypoint.lane_id < 0 and center_waypoint.road_id == vehicle_waypoint.road_id):
+                relative_direction = (vehicle_location - center_location)
+                dot_product = center_forward_vector.dot(relative_direction)  # the relative dot product
+                # 3. remove the bv behind the center vehicle and got different direction
+                if dot_product > 0.0 or abs(center_transform.rotation.yaw - vehicle_transform.rotation.yaw) < 45:
+                    distance = center_location.distance(vehicle_location)
+                    if distance <= radius:
+                        nearby_vehicles_info.append([vehicle, distance])
+
+    # sort the nearby vehicles according to the distance in ascending order
+    nearby_vehicles_info.sort(key=lambda x: x[1])
+
+    # return the nearby vehicles list
+    nearby_vehicles = [info[0] for info in nearby_vehicles_info]
+
+    return nearby_vehicles
+
+
+def get_min_distance_across_bboxes(veh1, veh2):
+    veh1_bbox = veh1.bounding_box
+    veh2_bbox = veh2.bounding_box
+    veh1_transform = CarlaDataProvider.get_transform_after_tick(veh1)
+    veh2_transform = CarlaDataProvider.get_transform_after_tick(veh2)
+
+    box2origin_veh1, size_veh1 = compute_box2origin(veh1_bbox, veh1_transform)
+    box2origin_veh2, size_veh2 = compute_box2origin(veh2_bbox, veh2_transform)
+    # min distance
+    box_collider_veh1 = colliders.Box(box2origin_veh1, size_veh1)
+    box_collider_veh2 = colliders.Box(box2origin_veh2, size_veh2)
+    dist, closest_point_box, closest_point_box2, _ = gjk.gjk(
+        box_collider_veh1, box_collider_veh2)
+    return dist

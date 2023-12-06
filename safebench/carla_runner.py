@@ -73,8 +73,9 @@ class CarlaRunner:
             'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
             'agent_obs_type': agent_config['obs_type'],                     # default 0 (only 4 dimensions states )
             'scenario_category': self.scenario_category,
-            'cbv_selection': self.cbv_selection,              # the method using for selection controlled bv
+            'cbv_selection': self.cbv_selection,                            # the method using for selection controlled bv
             'ROOT_DIR': scenario_config['ROOT_DIR'],
+            'signalized_junction': False,                                   # whether the junction is controlled by signal
             'warm_up_steps': 9,                                             # number of ticks after spawning the vehicles
             'disable_lidar': True,                                          # show bird-eye view lidar or not
             'enable_sem': agent_config['enable_sem'],                       # whether to enable the sem visualization

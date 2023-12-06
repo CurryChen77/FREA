@@ -28,7 +28,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
 ```bash
 # Launch CARLA with headless mode
-./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000 -quality-level=Low
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Another terminal no display pygame
 SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_train.yaml --mode train_scenario
@@ -44,7 +44,7 @@ SDL_VIDEODRIVER="dummy" mprof run --python scripts/run.py --agent_cfg expert.yam
 ./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Another terminal, Launch on the virtual display
-DISPLAY=:10 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render
+DISPLAY=:10 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_eval.yaml --mode eval --render
 ```
 
 * local open terminal
@@ -62,7 +62,7 @@ ssh -X username@host
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --mode train_agent
+python scripts/run.py --agent_cfg sac.yaml --scenario_cfg standard_train.yaml --mode train_agent
 ``````
 
 
@@ -112,7 +112,7 @@ For Carla Leader-board agent (Expert or PlanT)
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg sac.yaml --mode train_scenario
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg sac_train.yaml --mode train_scenario
 ```
 
 ### Policy
@@ -137,13 +137,13 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
   **Actor info**
 
-  |  vehicle   |  x   |  y   | yaw  | cos (yaw) | sin (yaw) |  Vx  |  Vy  | Acc.x | Acc.y |
-  | :--------: | :--: | :--: | :--: | :-------: | :-------: | :--: | :--: | :---: | ----- |
-  | CBV state  |      |      |      |           |           |      |      |       |       |
-  | ego state  |      |      |      |           |           |      |      |       |       |
-  | BV_1 state |      |      |      |           |           |      |      |       |       |
-  | BV_2 state |      |      |      |           |           |      |      |       |       |
-  | BV_3 state |      |      |      |           |           |      |      |       |       |
+  |  vehicle   |  x   |  y   | yaw  |  Vx  |  Vy  |
+  | :--------: | :--: | :--: | :--: | :--: | :--: |
+  | CBV state  |  0   |  0   |      |      |      |
+  | ego state  |      |      |      |      |      |
+  | BV_1 state |      |      |      |      |      |
+  | BV_2 state |      |      |      |      |      |
+  | BV_3 state |      |      |      |      |      |
 
   **Tips: if no BV then the corresponding state will set to 0**
 

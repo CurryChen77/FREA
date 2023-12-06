@@ -48,11 +48,11 @@ class ScenarioManager(object):
         self.ego_vehicle = scenario.ego_vehicle
         self.scenario_instance = scenario.scenario_instance  # the adv behavior single scenario instance
 
-    def update_controlled_bv_nearby_vehicles(self, controlled_bv, controlled_bv_nearby_vehicles):
-        self.controlled_bv = controlled_bv
-        self.controlled_bv_nearby_vehicles = controlled_bv_nearby_vehicles
-        self.route_scenario.controlled_bv = controlled_bv
-        self.route_scenario.controlled_bv_nearby_vehicles = controlled_bv_nearby_vehicles
+    def update_cbv_nearby_vehicles(self, cbv, cbv_nearby_vehicles):
+        self.cbv = cbv
+        self.cbv_nearby_vehicles = cbv_nearby_vehicles
+        self.route_scenario.cbv = cbv
+        self.route_scenario.cbv_nearby_vehicles = cbv_nearby_vehicles
 
     def run_scenario(self):
         self._running = True
@@ -81,6 +81,6 @@ class ScenarioManager(object):
             CarlaDataProvider.on_carla_tick()
 
             # update the scenario instance receiving the scenario action
-            self.scenario_instance.update_behavior(self.controlled_bv, scenario_action)
+            self.scenario_instance.update_behavior(self.cbv, scenario_action)
 
             self.update_running_status()

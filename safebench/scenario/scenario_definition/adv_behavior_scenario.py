@@ -30,24 +30,28 @@ class AdvBehaviorSingle(BasicScenario):
         self._map = CarlaDataProvider.get_map()
         self.last_tick_affected_by_traffic = self.ego_vehicle
 
-        self.traffic_light = CarlaDataProvider.get_next_traffic_light(self.ego_vehicle, False)
+
         self.cbv_traffic_light = None
         self.last_ego_waypoint = self._map.get_waypoint(self.ego_vehicle.get_location())
-        if self.traffic_light is None:
-            print(">> No traffic light for the given location of the ego vehicle found")
+        self.signalized_junction = env_params['signalized_junction']
+        if self.signalized_junction:
+            self.traffic_light = CarlaDataProvider.get_next_traffic_light(self.ego_vehicle, False)
+            if self.traffic_light is None:
+                print(">> No traffic light for the given location of the ego vehicle found")
+            else:
+                self.traffic_light.set_state(carla.TrafficLightState.Green)
+                self.traffic_light.set_green_time(self.timeout)
         else:
-            self.traffic_light.set_state(carla.TrafficLightState.Green)
-            self.traffic_light.set_green_time(self.timeout)
+            # set all the traffic light to green
+            CarlaDataProvider.set_all_traffic_light(traffic_light_state=carla.TrafficLightState.Green, timeout=self.timeout)
 
-        self._actor_distance = 110
-        self.ego_max_driven_distance = 150
         self.discrete = env_params['discrete']
         self.discrete_act = [env_params['discrete_acc'], env_params['discrete_steer']]  # acc, steer
         self.n_acc = len(self.discrete_act[0])
         self.n_steer = len(self.discrete_act[1])
         self.acc_max = env_params['continuous_accel_range'][1]
         self.steering_max = env_params['continuous_steer_range'][1]
-        self.prior_controlled_bv = None
+        self.prior_cbv = None
 
     def convert_actions(self, scenario_actions):
         if self.discrete:
@@ -85,8 +89,8 @@ class AdvBehaviorSingle(BasicScenario):
                 traffic_light.set_state(carla.TrafficLightState.Green)
                 traffic_light.set_green_time(self.timeout)
         elif ego_waypoint.is_junction:  # if ego is in the junction and the cbv is stuck by the traffic light, set that traffic light to green
-            if self.prior_controlled_bv and self.prior_controlled_bv.is_at_traffic_light:
-                cbv_traffic_light = self.prior_controlled_bv.get_traffic_light()
+            if self.prior_cbv and self.prior_cbv.is_at_traffic_light:
+                cbv_traffic_light = self.prior_cbv.get_traffic_light()
                 if cbv_traffic_light and cbv_traffic_light != self.cbv_traffic_light and cbv_traffic_light.state != carla.TrafficLightState.Green:
                     # for visualization
                     # base_transform = cbv_traffic_light.get_transform()
@@ -98,28 +102,28 @@ class AdvBehaviorSingle(BasicScenario):
                     cbv_traffic_light.set_green_time(self.timeout)
         self.last_ego_waypoint = ego_waypoint
 
-    def update_behavior(self, controlled_bv, scenario_action):
+    def update_behavior(self, cbv, scenario_action):
         # if the controlled bv exists and the scenario policy isn't hardcoded
-        if controlled_bv is not None and scenario_action is not None:
-            if self.prior_controlled_bv is None:  # the initial time
-                controlled_bv.set_autopilot(enabled=False)  # get ready to be controlled
-                self.prior_controlled_bv = controlled_bv
+        if cbv is not None and scenario_action is not None:
+            if self.prior_cbv is None:  # the initial time
+                cbv.set_autopilot(enabled=False)  # get ready to be controlled
+                self.prior_cbv = cbv
             else:
-                if self.prior_controlled_bv != controlled_bv:  # the controlled bv has changed
-                    self.prior_controlled_bv.set_autopilot(enabled=True)  # activate the autopilot mode of prior bv
-                    controlled_bv.set_autopilot(enabled=False)  # get ready to be controlled
-                    self.prior_controlled_bv = controlled_bv  # update the prior controlled bv
+                if self.prior_cbv != cbv:  # the controlled bv has changed
+                    self.prior_cbv.set_autopilot(enabled=True)  # activate the autopilot mode of prior bv
+                    cbv.set_autopilot(enabled=False)  # get ready to be controlled
+                    self.prior_cbv = cbv  # update the prior controlled bv
             act = self.convert_actions(scenario_action)
-            self.prior_controlled_bv.apply_control(act)  # apply the control of the cbv on the next tick
-        elif controlled_bv is not None and scenario_action is None:
-            if self.prior_controlled_bv is None:  # the initial time
-                self.prior_controlled_bv = controlled_bv
+            self.prior_cbv.apply_control(act)  # apply the control of the cbv on the next tick
+        elif cbv is not None and scenario_action is None:
+            if self.prior_cbv is None:  # the initial time
+                self.prior_cbv = cbv
             else:
-                if self.prior_controlled_bv != controlled_bv:  # the controlled bv has changed
-                    self.prior_controlled_bv = controlled_bv  # update the prior controlled bv
+                if self.prior_cbv != cbv:  # the controlled bv has changed
+                    self.prior_cbv = cbv  # update the prior controlled bv
 
-        # update the traffic light
-        self.update_traffic_light()
+        if self.signalized_junction:  # if the junction is controlled by the signal, the traffic need to be updated
+            self.update_traffic_light()
 
     def clean_up(self):
         pass
