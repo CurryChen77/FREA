@@ -42,13 +42,12 @@ class CarlaDataProvider(object):
     _map = None
     _sync_flag = False
     _spawn_points = None
-    _ego_cbv_dis = {}
+    ego_cbv_dis = {}
     _spawn_index = 0
-    _ego_min_dis = 0
     _ego_desired_speed = 8  # m/s
     _blueprint_library = None
     _ego_vehicle_route = {}
-    _egos = []
+    egos = []
     _traffic_manager_port = 8000
     _random_seed = 2000
     _rng = random.RandomState(_random_seed)
@@ -203,20 +202,6 @@ class CarlaDataProvider(object):
         # We are intentionally not throwing here
         print('{}.get_transform_after_tick: {} not found!' .format(__name__, actor))
         return None
-
-    @staticmethod
-    def set_ego_min_dis(ego_min_dis):
-        """
-            Set the Ego min distance across nearby vehicles
-        """
-        CarlaDataProvider._ego_min_dis = ego_min_dis
-
-    @staticmethod
-    def get_ego_min_dis():
-        """
-            Get the Ego min distance across nearby vehicles
-        """
-        return CarlaDataProvider._ego_min_dis
 
     @staticmethod
     def set_ego_desired_speed(ego_desired_speed):
@@ -475,22 +460,22 @@ class CarlaDataProvider(object):
             Set the route of the ego vehicle
         """
         CarlaDataProvider._ego_vehicle_route[ego.id] = route
-        CarlaDataProvider._egos.append(ego)
-        CarlaDataProvider._ego_cbv_dis[ego.id] = {}  # create an empty dictionary for each ego car
+        CarlaDataProvider.egos.append(ego)
+        CarlaDataProvider.ego_cbv_dis[ego.id] = {}  # create an empty dictionary for each ego car
 
     @staticmethod
     def get_ego_vehicles():
         """
             Set the route of the ego vehicle
         """
-        return CarlaDataProvider._egos
+        return CarlaDataProvider.egos
 
     @staticmethod
     def get_first_ego_transform():
         """
             Set the first ego location
         """
-        return CarlaDataProvider.get_transform(CarlaDataProvider._egos[0])
+        return CarlaDataProvider.get_transform(CarlaDataProvider.egos[0])
 
     @staticmethod
     def get_ego_vehicle_route(ego):
@@ -880,12 +865,11 @@ class CarlaDataProvider(object):
         CarlaDataProvider._actor_velocity_map_after_tick.clear()
         CarlaDataProvider._actor_location_map_after_tick.clear()
         CarlaDataProvider._actor_transform_map_after_tick.clear()
-        CarlaDataProvider._ego_cbv_dis.clear()
+        CarlaDataProvider.ego_cbv_dis.clear()
         CarlaDataProvider._ego_vehicle_route.clear()
-        CarlaDataProvider._egos = []
+        CarlaDataProvider.egos = []
         CarlaDataProvider._spawn_points = None
         CarlaDataProvider._spawn_index = 0
-        CarlaDataProvider._ego_min_dis = 0
         CarlaDataProvider._ego_desired_speed = 8
 
     @staticmethod
@@ -921,10 +905,9 @@ class CarlaDataProvider(object):
         CarlaDataProvider._world = None
         CarlaDataProvider._sync_flag = False
         CarlaDataProvider._ego_vehicle_route.clear()
-        CarlaDataProvider._egos = []
-        CarlaDataProvider._ego_min_dis = None
+        CarlaDataProvider.egos = []
         CarlaDataProvider._ego_desired_speed = 8
-        CarlaDataProvider._ego_cbv_dis.clear()
+        CarlaDataProvider.ego_cbv_dis.clear()
         CarlaDataProvider._carla_actor_pool = {}
         CarlaDataProvider._client = None
         CarlaDataProvider._spawn_points = None

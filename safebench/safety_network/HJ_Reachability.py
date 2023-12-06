@@ -122,7 +122,7 @@ class HJR:
 
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
             # the ego min distance from the infos
-            bn_min_dis = CUDA(torch.FloatTensor(batch['ego_min_dis'])).unsqueeze(-1)
+            bn_min_dis = CUDA(torch.FloatTensor(batch['constrain_h'])).unsqueeze(-1)
 
             # h = threshold - min_dis, if h > 0 unsafe, else safe
             bn_h = torch.zeros_like(bn_min_dis).fill_(self.min_dis_threshold) - bn_min_dis

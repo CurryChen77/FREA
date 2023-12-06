@@ -33,21 +33,18 @@ def get_actor_in_drivable_area(actor):
     return in_drivable_area
 
 
-def cal_ego_min_dis(ego_vehicle, search_radius, ego_agent_learnable=False):
-    nearby_vehicles = get_nearby_vehicles(ego_vehicle, search_radius)
+def get_constrain_h(ego_vehicle, search_radius, nearby_vehicles, ego_agent_learnable=False):
     # min distance between vehicle bboxes
     ego_min_dis = search_radius
-    # the closest vehicle using center points distance may change when using bboxes distance
-    if len(nearby_vehicles) < 3:
-        refined_vehicles_count = len(nearby_vehicles)
-    else:
-        refined_vehicles_count = 3
 
-    for i in range(refined_vehicles_count):
-        # the closest vehicle using center point may not be the closest vehicle using bboxs
-        dis = get_min_distance_across_bboxes(ego_vehicle, nearby_vehicles[i])
-        if dis < ego_min_dis:
-            ego_min_dis = dis
+    # the closest vehicle using center points distance may change when using bboxes distance
+    if nearby_vehicles:
+        for i, vehicle in enumerate(nearby_vehicles):
+            # the closest vehicle using center point may not be the closest vehicle using bboxs
+            if i < 3:
+                dis = get_min_distance_across_bboxes(ego_vehicle, vehicle)
+                if dis < ego_min_dis:
+                    ego_min_dis = dis
 
     if ego_agent_learnable:  # TODO rule-based agent usually will not drive out the road, will learning-based method could
         # check whether the ego has reached the un-drivable area
@@ -69,34 +66,51 @@ def cal_ego_min_dis(ego_vehicle, search_radius, ego_agent_learnable=False):
             print("ego outside the drivable area, ego min distance set to 0")
             ego_min_dis = 0.
 
-    CarlaDataProvider.set_ego_min_dis(ego_min_dis)
-    return ego_min_dis, nearby_vehicles
+    constrain_h = ego_min_dis
+    return constrain_h
 
+
+def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40):
+    ego_min_dis = search_redius
+    if ego_nearby_vehicles:
+        for i, vehicle in enumerate(ego_nearby_vehicles):
+            if i < 3:  # calculate only the closest three vehicles
+                dis = get_min_distance_across_bboxes(ego, vehicle)
+                if dis < ego_min_dis:
+                    ego_min_dis = dis
+    return ego_min_dis
+
+
+# def get_ego_collision_reward(ego_min_dis, tou=5):
+#     ego_collision_reward = tou - min(ego_min_dis, tou)
+#     return ego_collision_reward
 
 def get_ego_cbv_dis_reward(ego, cbv):
+    '''
+        if the cbv are getting closer to the ego vehicle, then we should reward that, else punish that
+    '''
     delta_dis = 0
     if cbv:
-        if cbv.id in CarlaDataProvider._ego_cbv_dis[ego.id].keys():  # whether the current are in the old cbv list
+        if cbv.id in CarlaDataProvider.ego_cbv_dis[ego.id].keys():  # whether the current are in the old cbv list
             dis = get_min_distance_across_bboxes(ego, cbv)
             # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
-            delta_dis = CarlaDataProvider._ego_cbv_dis[ego.id][cbv.id] - dis
-            CarlaDataProvider._ego_cbv_dis[ego.id][cbv.id] = dis
+            delta_dis = CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] - dis
+            CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
         else:
-            CarlaDataProvider._ego_cbv_dis[ego.id].clear()  # the cbv has changed, so remove the previous cbv
-            CarlaDataProvider._ego_cbv_dis[ego.id][cbv.id] = get_min_distance_across_bboxes(ego, cbv)
+            CarlaDataProvider.ego_cbv_dis[ego.id].clear()  # the cbv has changed, so remove the previous cbv
+            CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = get_min_distance_across_bboxes(ego, cbv)
     else:
-        CarlaDataProvider._ego_cbv_dis[ego.id].clear()
+        CarlaDataProvider.ego_cbv_dis[ego.id].clear()
     return delta_dis
 
 
-def get_cbv_min_dis_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1.25):
+def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1.25):
     min_dis = search_radius  # the searching radius of the nearby_vehicle
     if cbv and cbv_nearby_vehicles:
-        for nearby_vehicle in cbv_nearby_vehicles:
-            if nearby_vehicle.attributes.get('role_name') == 'background':  # except the ego vehicle
+        for i, vehicle in enumerate(cbv_nearby_vehicles):
+            if vehicle.attributes.get('role_name') == 'background' and i < 2:  # except the ego vehicle and calculate only the closest two vehicles
                 # the min distance between bounding boxes of two vehicles
-                min_dis = get_min_distance_across_bboxes(cbv, nearby_vehicle)
-                break  # the first nearby_vehicle in self.cbv_nearby_vehicles is the closest, so can break
+                min_dis = get_min_distance_across_bboxes(cbv, vehicle)
         min_dis_reward = min(min_dis, tou) - tou  # the controlled bv shouldn't be too close to the other bvs
     else:
         min_dis_reward = 0
@@ -107,7 +121,7 @@ def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_
     nearby_spawn_points = []
     CarlaDataProvider.generate_spawn_points()  # get all the possible spawn points in this map
     # TODO the initial position of the bv still got problems, may to close to the egos
-    ego_locations = [ego.get_location() for ego in CarlaDataProvider._egos]
+    ego_locations = [ego.get_location() for ego in CarlaDataProvider.egos]
     for spawn_point in CarlaDataProvider._spawn_points:
         spawn_point_location = spawn_point.location
         # check whether any spawn point close to any egos' location
@@ -145,7 +159,7 @@ def find_closest_vehicle(ego_vehicle, radius=40, cbv_candidates=None):
     return cbv
 
 
-def get_nearby_vehicles(center_vehicle, radius=60):
+def get_nearby_vehicles(center_vehicle, radius=40):
     '''
         return the nearby vehicles around the center vehicle
     '''

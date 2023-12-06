@@ -7,12 +7,13 @@
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
+import time
 import traceback
 
 import numpy as np
 import carla
 
-from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, get_nearby_vehicles
+from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
@@ -268,7 +269,7 @@ class RouteScenario():
             'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
-    def update_ego_info(self, desired_nearby_vehicle=4):
+    def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=4):
         '''
             safety network input state:
             first row is ego's relative state
@@ -280,8 +281,7 @@ class RouteScenario():
         # relative ego state
         ego_state[:2] = ego_state[:2] - ego_state_copy[:2]
         ego_info = [ego_state]  # the first row is the ego info
-        ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle)
-        for i, actor in enumerate(ego_nearby_vehicle):
+        for i, actor in enumerate(ego_nearby_vehicles):
             if i < desired_nearby_vehicle:
                 actor_state = np.array(self._get_actor_state(actor))
                 actor_state[:2] = actor_state[:2] - ego_state_copy[:2]
@@ -303,6 +303,7 @@ class RouteScenario():
         self.scenario_instance.clean_up()  # nothing need to clean
 
         # remove background vehicles
+        time.sleep(0.5)
         for s_i in range(len(self.background_actors)):
             if self.background_actors[s_i].type_id.startswith('vehicle'):
                 self.background_actors[s_i].set_autopilot(enabled=False, tm_port=CarlaDataProvider.get_traffic_manager_port())
@@ -311,4 +312,5 @@ class RouteScenario():
         self.logger.log(f'>> cleaning {len(self.background_actors)} vehicles')
         self.background_actors = []
 
-        CarlaDataProvider.remove_all_information_map()  # remove the information stored in the CarlaDataProvider
+        # remove the information stored in the CarlaDataProvider
+        CarlaDataProvider.remove_all_information_map()

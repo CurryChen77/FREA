@@ -137,9 +137,7 @@ class VectorWrapper():
                 if done:
                     self.finished_env[e_i] = True
                     if current_env.scenario_manager._collision:
-                        if self.safety_network_config:
-                            ego_min_dis = CarlaDataProvider.get_ego_min_dis()
-                            self.logger.log(f'>> V2V collision caused ego min dis = {ego_min_dis}', color='yellow')
+                        self.logger.log(f'>> V2V collision caused ego min dis = {current_env.ego_min_dis}', color='yellow')
                     # save running results according to the data_id of scenario
                     if self.mode == 'eval':
                         if current_env.config.data_id in self.running_results.keys():

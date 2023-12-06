@@ -74,7 +74,7 @@ class RouteReplayBuffer:
             self.buffer_rewards[sid].append(rewards[s_i])
             self.buffer_dones[sid].append(dones[s_i])
 
-            # store additional information in given dict (e.g., cost and actor_info)
+            # store additional information in given dict (e.g., collision and actor_info)
             for key in additional_dict[s_i].keys():
                 if key == 'route_waypoints' or key == 'gps_route' or key == 'route':
                     continue

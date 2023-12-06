@@ -27,8 +27,8 @@ from safebench.gym_carla.envs.misc import (
     get_preview_lane_dis,
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
-from safebench.gym_carla.envs.utils import cal_ego_min_dis, get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    get_cbv_min_dis_reward, get_ego_cbv_dis_reward, get_actor_in_drivable_area
+from safebench.gym_carla.envs.utils import get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
+    get_actor_in_drivable_area, get_ego_min_dis, get_ego_cbv_dis_reward, get_cbv_bv_reward, get_constrain_h, get_min_distance_across_bboxes
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -40,7 +40,7 @@ class CarlaEnv(gym.Env):
         An OpenAI-gym style interface for CARLA simulator. 
     """
 
-    def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=0,
+    def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=40,
                  safety_network_config=None, agent_state_encoder=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
@@ -56,6 +56,7 @@ class CarlaEnv(gym.Env):
         self.is_running = True
         self.env_id = None
         self.ego_vehicle = None
+        self.constrain_h = None
         self.env_params = env_params
         self.auto_ego = env_params['auto_ego']
         self.enable_sem = env_params['enable_sem']
@@ -70,10 +71,11 @@ class CarlaEnv(gym.Env):
 
         self.cbv = None
         self.cbv_nearby_vehicles = None
+        self.ego_nearby_vehicle = None
         self.old_cbv = None
         self.gps_route = None
         self.route = None
-        self.ego_min_dis = None
+        self.ego_min_dis = search_radius
         self.encoded_state = None
         self.search_radius = search_radius
         self.agent_obs_type = env_params['agent_obs_type']
@@ -127,9 +129,9 @@ class CarlaEnv(gym.Env):
         self.n_steer = len(self.discrete_act[1])
 
     def _create_sensors(self):
-        # collision sensor
-        self.collision_hist_l = 1  # collision history length
-        self.collision_bp = self.world.get_blueprint_library().find('sensor.other.collision')
+        # # collision sensor
+        # self.collision_hist_l = 1  # collision history length
+        # self.collision_bp = self.world.get_blueprint_library().find('sensor.other.collision')
 
         # lidar sensor
         self.lidar_trans = carla.Transform(carla.Location(x=0.0, z=self.lidar_height))
@@ -166,7 +168,7 @@ class CarlaEnv(gym.Env):
     def _create_scenario(self, config, env_id):
         self.logger.log(f">> Loading scenario data id: {config.data_id}")
 
-        # create scenario accoridng to different types
+        # create scenario according to different types
         if self.scenario_category == 'planning':
             scenario = RouteScenario(
                 world=self.world,
@@ -201,7 +203,7 @@ class CarlaEnv(gym.Env):
         cbv_candidates = None
         # get the ego min distance of the next obs (s_t+1)
         if self.safety_network_obs_type:
-            self.ego_min_dis, _ = cal_ego_min_dis(self.ego_vehicle, self.search_radius, self.ego_agent_learnable)
+            self.constrain_h = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicle, self.ego_agent_learnable)
 
         # all the situations that need the encoded state or most relevant vehicle
         if self.agent_state_encoder:
@@ -217,8 +219,7 @@ class CarlaEnv(gym.Env):
         self.old_cbv = self.cbv  # for BEV visualization
         # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
         if self.cbv_select_method == 'rule-based':
-            self.cbv = find_closest_vehicle(self.ego_vehicle, self.search_radius,
-                                                                        cbv_candidates)
+            self.cbv = find_closest_vehicle(self.ego_vehicle, self.search_radius, cbv_candidates)
         elif self.cbv_select_method == 'attention-based':
             self.cbv = most_relevant_vehicle
 
@@ -257,6 +258,9 @@ class CarlaEnv(gym.Env):
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
 
+        # find ego nearby vehicles
+        self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+
         # set controlled bv
         self.cbv_selection()
 
@@ -285,20 +289,19 @@ class CarlaEnv(gym.Env):
         return self._get_obs(), self._get_info(training=True)
 
     def _attach_sensor(self):
-        # Add collision sensor
-        self.collision_sensor = self.world.spawn_actor(self.collision_bp, carla.Transform(), attach_to=self.ego_vehicle)
-        self.collision_sensor.listen(lambda event: get_collision_hist(event))
-
-        def get_collision_hist(event):
-            impulse = event.normal_impulse
-            intensity = np.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
-            self.collision_hist.append(intensity)
-            # TODO if collision the ego min distance must be 0
-            self.ego_min_dis = 0. if self.safety_network_obs_type else None
-            if len(self.collision_hist) > self.collision_hist_l:
-                self.collision_hist.pop(0)
-
-        self.collision_hist = []
+        # # Add collision sensor
+        # self.collision_sensor = self.world.spawn_actor(self.collision_bp, carla.Transform(), attach_to=self.ego_vehicle)
+        # self.collision_sensor.listen(lambda event: get_collision_hist(event))
+        #
+        # def get_collision_hist(event):
+        #     impulse = event.normal_impulse
+        #     intensity = np.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
+        #     self.collision_hist.append(intensity)
+        #     self.constrain_h = 0. if self.safety_network_obs_type else None
+        #     if len(self.collision_hist) > self.collision_hist_l:
+        #         self.collision_hist.pop(0)
+        #
+        # self.collision_hist = []
 
         # Add lidar sensor
         if not self.disable_lidar:
@@ -432,6 +435,9 @@ class CarlaEnv(gym.Env):
         # self.waypoints: the waypoints from the waypoints buffer, needed to be followed
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
+        # find ego nearby vehicles
+        self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+
         origin_info = self._get_info(training=True)  # for training
 
         # set ego min distance and controlled bv
@@ -454,9 +460,9 @@ class CarlaEnv(gym.Env):
 
         if training:
             # the info related to the controlled bv
-            scenario_agent_reward, cost = self._get_scenario_reward()
+            scenario_agent_reward = self._get_scenario_reward()
             info.update({
-                'cost': cost,  # the collision cost -1 means collision happens
+                'collision': self._get_cost(),  # the collision 1 means ego got collision
                 'scenario_agent_reward': scenario_agent_reward,  # the total reward for the cbv training
                 'route_waypoints': self.global_route_waypoints,  # the global route waypoints
                 'gps_route': self.gps_route,  # the global gps route
@@ -466,11 +472,11 @@ class CarlaEnv(gym.Env):
             # if train the safety network, need to add the corresponding obs
             if self.safety_network_obs_type:
                 # only the safety network is not None, then need to calculate the ego min distance
-                info['ego_min_dis'] = self.ego_min_dis  # the ego_min_dis with the rest bvs
+                info['constrain_h'] = self.constrain_h  # the ego_min_dis with the rest bvs
                 if self.safety_network_obs_type == 'plant':
                     info['encoded_state'] = self.encoded_state
                 elif self.safety_network_obs_type == 'ego_info':
-                    info['ego_info'] = self.scenario_manager.route_scenario.update_ego_info()
+                    info['ego_info'] = self.scenario_manager.route_scenario.update_ego_info(ego_nearby_vehicle=self.ego_nearby_vehicle)
 
         return info
 
@@ -641,7 +647,8 @@ class CarlaEnv(gym.Env):
     def _get_reward(self):
         """ Calculate the step reward. """
         # TODO: reward for collision, there should be a signal from scenario
-        r_collision = -1 if len(self.collision_hist) > 0 else 0
+        collision = self._get_cost()
+        r_collision = -1 if collision == 1 else 0
 
         # reward for steering:
         r_steer = -self.ego_vehicle.get_control().steer ** 2
@@ -672,32 +679,34 @@ class CarlaEnv(gym.Env):
         """
             in_drivable_area ~ [0, -1]: whether the cbv are driving on the drivable area
             cbv_min_dis_reward ~ [-1.25, 0]: activate when cbv is too close to the other bvs
-            mapped_cbv_vel ~ [0.0, 1.0]: cbv's speed mapped to [0, 1]
-            cost ~ 0 or -1: whether the cbv has collided with ego vehicle
-            too_fast ~ 0 or -1: if the cbv's speed > desired speed, too_fast = -1
-            ego_cbv_dis_reward : the delta distance from t-1 to t of one specific cbv
+            too_fast ~ 0 or -1: if the cbv speed > desired speed, too_fast = -1
+            ego_cbv_dis_reward: the delta distance between ego and cbv
         """
         # the min dis from the cbv to the rest bvs
-        cbv_min_dis, cbv_min_dis_reward = get_cbv_min_dis_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
+        _, cbv_min_dis_reward = get_cbv_bv_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
         # the reward design to encourage cbv attack ego
-        ego_cbv_dis_reward = get_ego_cbv_dis_reward(self.ego_vehicle, self.cbv)
+        # ego_cbv_dis_reward = get_ego_cbv_dis_reward(self.ego_vehicle, self.cbv)
 
         V_cbv = CarlaDataProvider.get_velocity_after_tick(self.cbv) if self.cbv else 0
         too_fast = -1 if V_cbv > self.desired_speed else 0
 
         # since the obs don't have road info, so no need to include in drivable area info
         # in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else 0
-        cost = self._get_cost()
-        scenario_agent_reward = 10 * cbv_min_dis_reward + 10 * too_fast + 10 * ego_cbv_dis_reward - 0.1
 
-        return scenario_agent_reward, cost
+        # ego collision reward, depending on the ego min distance
+        ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv)
+        ego_cbv_collision_reward = 1 if ego_cbv_dis < 0.01 else 0
+
+        # final scenario agent rewards
+        scenario_agent_reward = 10 * cbv_min_dis_reward + 10 * too_fast + V_cbv + 150 * ego_cbv_collision_reward - 0.1
+
+        return scenario_agent_reward
 
     def _get_cost(self):
         # cost for collision
-        r_collision = 0
-        if len(self.collision_hist) > 0:
-            r_collision = -1
-        return r_collision
+        self.ego_min_dis = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicle)
+        collision = 1 if self.ego_min_dis < 0.01 else 0
+        return collision
 
     def _terminal(self):
         return not self.scenario_manager._running
@@ -728,8 +737,13 @@ class CarlaEnv(gym.Env):
     def clean_up(self):
         self.old_cbv = None
         self.cbv = None
+        # remove the render sensor on ego vehicle
         self._remove_sensor()
-        if self.scenario_category != 'scenic':
-            self._remove_ego()
+
+        # destroy criterion sensors on the ego vehicle
         self.scenario_manager.clean_up()
-        time.sleep(1)  # TODO sleep for some time after destroy all vehicles and sensors, and wait for the client to reset
+
+        # finally remove the ego vehicle after removing all the sensors
+        time.sleep(0.5)
+        self._remove_ego()
+
