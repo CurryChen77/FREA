@@ -42,6 +42,8 @@ class CarlaRunner:
         self.safety_network_config = safety_network_config
         self.safety_network_name = safety_network_config['type'] if safety_network_config else None
         self.current_map = None
+        self.birdeye_render = None
+        self.display = None
 
         self.seed = scenario_config['seed']
         self.exp_name = scenario_config['exp_name']
@@ -68,6 +70,7 @@ class CarlaRunner:
         self.env = None
 
         self.env_params = {
+            'mode': self.mode,                                              # the mode of the script
             'auto_ego': scenario_config['auto_ego'],
             'viz_route': agent_config['viz_route'],                         # whether to visualize the route
             'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
@@ -96,7 +99,7 @@ class CarlaRunner:
         }
 
         # pass config from scenario to agent
-        agent_config['mode'] = scenario_config['mode']
+        agent_config['mode'] = self.mode
         agent_config['desired_speed'] = self.env_params['desired_speed']
         agent_config['num_scenario'] = scenario_config['num_scenario']
         agent_config['scenario_id'] = self.scenario_id
@@ -403,7 +406,7 @@ class CarlaRunner:
             # initialize map and render
             self.current_map = m_i  # record the current running map name
             self._init_world(m_i)
-            self._init_renderer()
+            self._init_renderer() if self.mode == 'eval' else None
 
             # create scenarios within the vectorized wrapper
             self.env = VectorWrapper(

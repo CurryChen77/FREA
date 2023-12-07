@@ -61,8 +61,8 @@ class CarlaEnv(gym.Env):
         self.auto_ego = env_params['auto_ego']
         self.enable_sem = env_params['enable_sem']
         self.ego_agent_learnable = env_params['ego_agent_learnable']
+        self.mode = env_params['mode']
 
-        self.collision_sensor = None
         self.lidar_sensor = None
         self.camera_sensor = None
         self.sem_sensor = None
@@ -226,14 +226,15 @@ class CarlaEnv(gym.Env):
         # get the nearby vehicles around the cbv
         if self.cbv:
             self.cbv_nearby_vehicles = get_nearby_vehicles(self.cbv, self.search_radius)
-            # update the cbv for BEV visualization
-            if self.old_cbv and self.cbv and self.old_cbv.id != self.cbv.id:  # the cbv has changed, need to remove the old cbv
-                self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # update the new cbv
-                self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
-            elif self.old_cbv is not None and self.cbv is None:
-                self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
-            elif self.old_cbv is None and self.cbv is not None:  # got the initial cbv
-                self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # add the new cbv
+            if self.birdeye_render:
+                # update the cbv for BEV visualization
+                if self.old_cbv and self.cbv and self.old_cbv.id != self.cbv.id:  # the cbv has changed, need to remove the old cbv
+                    self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # update the new cbv
+                    self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
+                elif self.old_cbv is not None and self.cbv is None:
+                    self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
+                elif self.old_cbv is None and self.cbv is not None:  # got the initial cbv
+                    self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # add the new cbv
         else:
             self.cbv_nearby_vehicles = None
         self.scenario_manager.update_cbv_nearby_vehicles(self.cbv, self.cbv_nearby_vehicles)
@@ -242,12 +243,15 @@ class CarlaEnv(gym.Env):
         self.config = config
         self.env_id = env_id
 
-        # create sensors, load and run scenarios
-        self._create_sensors()
+        # create sensors only for evaluation
+        self._create_sensors() if self.mode == 'eval' else None
+        # load and run scenarios
         self._create_scenario(config, env_id)  # create the RouteScenario and using scenario manager to manage it
 
-        self._run_scenario()  # generate the initial background vehicles
-        self._attach_sensor()
+        # generate the initial background vehicles
+        self._run_scenario()
+        # attach sensor only when evaluation
+        self._attach_sensor() if self.mode == 'eval' else None
 
         # first update the info in the CarlaDataProvider
         CarlaDataProvider.on_carla_tick()
@@ -265,8 +269,9 @@ class CarlaEnv(gym.Env):
         self.cbv_selection()
 
         # Get actors polygon list (for visualization)
-        self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]
-        self.walker_polygons = [self._get_actor_polygons('walker.*')]
+        if self.birdeye_render:
+            self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]
+            self.walker_polygons = [self._get_actor_polygons('walker.*')]
 
         # Get actors info list
         vehicle_info_dict_list = self._get_actor_info('vehicle.*')
@@ -289,19 +294,6 @@ class CarlaEnv(gym.Env):
         return self._get_obs(), self._get_info(training=True)
 
     def _attach_sensor(self):
-        # # Add collision sensor
-        # self.collision_sensor = self.world.spawn_actor(self.collision_bp, carla.Transform(), attach_to=self.ego_vehicle)
-        # self.collision_sensor.listen(lambda event: get_collision_hist(event))
-        #
-        # def get_collision_hist(event):
-        #     impulse = event.normal_impulse
-        #     intensity = np.sqrt(impulse.x ** 2 + impulse.y ** 2 + impulse.z ** 2)
-        #     self.collision_hist.append(intensity)
-        #     self.constrain_h = 0. if self.safety_network_obs_type else None
-        #     if len(self.collision_hist) > self.collision_hist_l:
-        #         self.collision_hist.pop(0)
-        #
-        # self.collision_hist = []
 
         # Add lidar sensor
         if not self.disable_lidar:
@@ -334,7 +326,7 @@ class CarlaEnv(gym.Env):
             array = array[:, :, 2]  # from PlanT
             self.sem_img = array
 
-    def visualize(self):
+    def visualize_ego_route_cbv(self):
         # Visualize the controlled bv
         if self.cbv:
             cbv_transform = CarlaDataProvider.get_transform_after_tick(self.cbv)
@@ -403,15 +395,16 @@ class CarlaEnv(gym.Env):
             raise Exception()
 
     def step_after_tick(self):
-        # Append actors polygon list
-        vehicle_poly_dict = self._get_actor_polygons('vehicle.*')
-        self.vehicle_polygons.append(vehicle_poly_dict)
-        while len(self.vehicle_polygons) > self.max_past_step:
-            self.vehicle_polygons.pop(0)
-        walker_poly_dict = self._get_actor_polygons('walker.*')
-        self.walker_polygons.append(walker_poly_dict)
-        while len(self.walker_polygons) > self.max_past_step:
-            self.walker_polygons.pop(0)
+        if self.birdeye_render:
+            # Append actors polygon list
+            vehicle_poly_dict = self._get_actor_polygons('vehicle.*')
+            self.vehicle_polygons.append(vehicle_poly_dict)
+            while len(self.vehicle_polygons) > self.max_past_step:
+                self.vehicle_polygons.pop(0)
+            walker_poly_dict = self._get_actor_polygons('walker.*')
+            self.walker_polygons.append(walker_poly_dict)
+            while len(self.walker_polygons) > self.max_past_step:
+                self.walker_polygons.pop(0)
 
         # Append actors info list
         vehicle_info_dict_list = self._get_actor_info('vehicle.*')
@@ -445,7 +438,7 @@ class CarlaEnv(gym.Env):
 
         updated_cbv_info = self._get_info(training=False)  # the updated cbv's info, for transition
 
-        self.visualize()  # visualize the controlled bv and the waypoints in clients side after tick
+        self.visualize_ego_route_cbv()  # visualize the controlled bv and the waypoints in clients side after tick
 
         # Update timesteps
         self.time_step += 1
@@ -479,27 +472,6 @@ class CarlaEnv(gym.Env):
                     info['ego_info'] = self.scenario_manager.route_scenario.update_ego_info(ego_nearby_vehicle=self.ego_nearby_vehicle)
 
         return info
-
-    def _init_traffic_light(self):
-        actor_list = self.world.get_actors()
-        for actor in actor_list:
-            if isinstance(actor, carla.TrafficLight):
-                actor.set_red_time(3)
-                actor.set_green_time(3)
-                actor.set_yellow_time(1)
-
-    def _create_vehicle_bluepprint(self, actor_filter, color=None, number_of_wheels=[4]):
-        blueprints = self.world.get_blueprint_library().filter(actor_filter)
-        blueprint_library = []
-        for nw in number_of_wheels:
-            blueprint_library = blueprint_library + [x for x in blueprints if
-                                                     int(x.get_attribute('number_of_wheels')) == nw]
-        bp = random.choice(blueprint_library)
-        if bp.has_attribute('color'):
-            if not color:
-                color = random.choice(bp.get_attribute('color').recommended_values)
-            bp.set_attribute('color', color)
-        return bp
 
     def _get_actor_polygons(self, filt):
         actor_poly_dict = {}
@@ -536,74 +508,75 @@ class CarlaEnv(gym.Env):
         return actor_trajectory_dict, actor_acceleration_dict, actor_angular_velocity_dict, actor_velocity_dict
 
     def _get_obs(self):
-        # set ego information for birdeye_render
-        self.birdeye_render.set_hero(self.ego_vehicle, self.ego_vehicle.id)
-        self.birdeye_render.vehicle_polygons = self.vehicle_polygons
-        self.birdeye_render.walker_polygons = self.walker_polygons
-        self.birdeye_render.waypoints = self.waypoints
+        if self.birdeye_render:
+            # set ego information for birdeye_render
+            self.birdeye_render.set_hero(self.ego_vehicle, self.ego_vehicle.id)
+            self.birdeye_render.vehicle_polygons = self.vehicle_polygons
+            self.birdeye_render.walker_polygons = self.walker_polygons
+            self.birdeye_render.waypoints = self.waypoints
 
-        # render birdeye image with the birdeye_render
-        birdeye_render_types = ['roadmap', 'actors', 'waypoints']
-        birdeye_surface = self.birdeye_render.render(birdeye_render_types)
-        birdeye_surface = pygame.surfarray.array3d(birdeye_surface)
-        center = (int(birdeye_surface.shape[0] / 2), int(birdeye_surface.shape[1] / 2))
-        width = height = int(self.display_size / 2)
-        birdeye = birdeye_surface[center[0] - width:center[0] + width, center[1] - height:center[1] + height]
-        birdeye = display_to_rgb(birdeye, self.obs_size)
+            # render birdeye image with the birdeye_render
+            birdeye_render_types = ['roadmap', 'actors', 'waypoints']
+            birdeye_surface = self.birdeye_render.render(birdeye_render_types)
+            birdeye_surface = pygame.surfarray.array3d(birdeye_surface)
+            center = (int(birdeye_surface.shape[0] / 2), int(birdeye_surface.shape[1] / 2))
+            width = height = int(self.display_size / 2)
+            birdeye = birdeye_surface[center[0] - width:center[0] + width, center[1] - height:center[1] + height]
+            birdeye = display_to_rgb(birdeye, self.obs_size)
 
-        if not self.disable_lidar:
-            # get Lidar image
-            point_cloud = np.copy(np.frombuffer(self.lidar_data.raw_data, dtype=np.dtype('f4')))
-            point_cloud = np.reshape(point_cloud, (int(point_cloud.shape[0] / 4), 4))
-            x = point_cloud[:, 0:1]
-            y = point_cloud[:, 1:2]
-            z = point_cloud[:, 2:3]
-            intensity = point_cloud[:, 3:4]
-            point_cloud = np.concatenate([y, -x, z], axis=1)
-            # Separate the 3D space to bins for point cloud, x and y is set according to self.lidar_bin, and z is set to be two bins.
-            y_bins = np.arange(-(self.obs_range - self.d_behind), self.d_behind + self.lidar_bin, self.lidar_bin)
-            x_bins = np.arange(-self.obs_range / 2, self.obs_range / 2 + self.lidar_bin, self.lidar_bin)
-            z_bins = [-self.lidar_height - 1, -self.lidar_height + 0.25, 1]
-            # Get lidar image according to the bins
-            lidar, _ = np.histogramdd(point_cloud, bins=(x_bins, y_bins, z_bins))
-            lidar[:, :, 0] = np.array(lidar[:, :, 0] > 0, dtype=np.uint8)
-            lidar[:, :, 1] = np.array(lidar[:, :, 1] > 0, dtype=np.uint8)
-            wayptimg = birdeye[:, :, 0] < 0  # Equal to a zero matrix
-            wayptimg = np.expand_dims(wayptimg, axis=2)
-            wayptimg = np.fliplr(np.rot90(wayptimg, 3))
-            # Get the final lidar image
-            lidar = np.concatenate((lidar, wayptimg), axis=2)
-            lidar = np.flip(lidar, axis=1)
-            lidar = np.rot90(lidar, 1) * 255
+            if not self.disable_lidar:
+                # get Lidar image
+                point_cloud = np.copy(np.frombuffer(self.lidar_data.raw_data, dtype=np.dtype('f4')))
+                point_cloud = np.reshape(point_cloud, (int(point_cloud.shape[0] / 4), 4))
+                x = point_cloud[:, 0:1]
+                y = point_cloud[:, 1:2]
+                z = point_cloud[:, 2:3]
+                intensity = point_cloud[:, 3:4]
+                point_cloud = np.concatenate([y, -x, z], axis=1)
+                # Separate the 3D space to bins for point cloud, x and y is set according to self.lidar_bin, and z is set to be two bins.
+                y_bins = np.arange(-(self.obs_range - self.d_behind), self.d_behind + self.lidar_bin, self.lidar_bin)
+                x_bins = np.arange(-self.obs_range / 2, self.obs_range / 2 + self.lidar_bin, self.lidar_bin)
+                z_bins = [-self.lidar_height - 1, -self.lidar_height + 0.25, 1]
+                # Get lidar image according to the bins
+                lidar, _ = np.histogramdd(point_cloud, bins=(x_bins, y_bins, z_bins))
+                lidar[:, :, 0] = np.array(lidar[:, :, 0] > 0, dtype=np.uint8)
+                lidar[:, :, 1] = np.array(lidar[:, :, 1] > 0, dtype=np.uint8)
+                wayptimg = birdeye[:, :, 0] < 0  # Equal to a zero matrix
+                wayptimg = np.expand_dims(wayptimg, axis=2)
+                wayptimg = np.fliplr(np.rot90(wayptimg, 3))
+                # Get the final lidar image
+                lidar = np.concatenate((lidar, wayptimg), axis=2)
+                lidar = np.flip(lidar, axis=1)
+                lidar = np.rot90(lidar, 1) * 255
 
-            # display birdeye image
-            birdeye_surface = rgb_to_display_surface(birdeye, self.display_size)
-            self.display.blit(birdeye_surface, (0, self.env_id * self.display_size))
+                # display birdeye image
+                birdeye_surface = rgb_to_display_surface(birdeye, self.display_size)
+                self.display.blit(birdeye_surface, (0, self.env_id * self.display_size))
 
-            # display lidar image
-            lidar_surface = rgb_to_display_surface(lidar, self.display_size)
-            self.display.blit(lidar_surface, (self.display_size, self.env_id * self.display_size))
+                # display lidar image
+                lidar_surface = rgb_to_display_surface(lidar, self.display_size)
+                self.display.blit(lidar_surface, (self.display_size, self.env_id * self.display_size))
 
-            # display camera image
-            camera = resize(self.camera_img, (self.obs_size, self.obs_size)) * 255
-            camera_surface = rgb_to_display_surface(camera, self.display_size)
-            self.display.blit(camera_surface, (self.display_size * 2, self.env_id * self.display_size))
-        else:
-            # display birdeye image
-            birdeye_surface = rgb_to_display_surface(birdeye, self.display_size)
-            self.display.blit(birdeye_surface, (0, self.env_id * self.display_size))
+                # display camera image
+                camera = resize(self.camera_img, (self.obs_size, self.obs_size)) * 255
+                camera_surface = rgb_to_display_surface(camera, self.display_size)
+                self.display.blit(camera_surface, (self.display_size * 2, self.env_id * self.display_size))
+            else:
+                # display birdeye image
+                birdeye_surface = rgb_to_display_surface(birdeye, self.display_size)
+                self.display.blit(birdeye_surface, (0, self.env_id * self.display_size))
 
-            # display camera image
-            camera = resize(self.camera_img, (self.obs_size, self.obs_size)) * 255
-            camera_surface = rgb_to_display_surface(camera, self.display_size)
-            self.display.blit(camera_surface, (self.display_size, self.env_id * self.display_size))
+                # display camera image
+                camera = resize(self.camera_img, (self.obs_size, self.obs_size)) * 255
+                camera_surface = rgb_to_display_surface(camera, self.display_size)
+                self.display.blit(camera_surface, (self.display_size, self.env_id * self.display_size))
 
-            # display masked viz 3rd person
-            if self.enable_sem:
-                masked_img = get_masked_viz_3rd_person(self.BGR_img, self.sem_img)
-                masked_image = resize(masked_img, (self.obs_size, self.obs_size)) * 255
-                masked_image_surface = rgb_to_display_surface(masked_image, self.display_size)
-                self.display.blit(masked_image_surface, (self.display_size * 2, self.env_id * self.display_size))
+                # display masked viz 3rd person
+                if self.enable_sem:
+                    masked_img = get_masked_viz_3rd_person(self.BGR_img, self.sem_img)
+                    masked_image = resize(masked_img, (self.obs_size, self.obs_size)) * 255
+                    masked_image_surface = rgb_to_display_surface(masked_image, self.display_size)
+                    self.display.blit(masked_image_surface, (self.display_size * 2, self.env_id * self.display_size))
 
         if self.agent_obs_type == 'ego_state':
             # Ego state
@@ -715,10 +688,6 @@ class CarlaEnv(gym.Env):
         return not self.scenario_manager._running
 
     def _remove_sensor(self):
-        if self.collision_sensor is not None:
-            self.collision_sensor.stop()
-            self.collision_sensor.destroy()
-            self.collision_sensor = None
         if self.lidar_sensor is not None:
             self.lidar_sensor.stop()
             self.lidar_sensor.destroy()
@@ -740,13 +709,12 @@ class CarlaEnv(gym.Env):
     def clean_up(self):
         self.old_cbv = None
         self.cbv = None
-        # remove the render sensor on ego vehicle
-        self._remove_sensor()
+        # remove the render sensor only when evaluating
+        self._remove_sensor() if self.mode == 'eval' else None
 
         # destroy criterion sensors on the ego vehicle
         self.scenario_manager.clean_up()
 
         # finally remove the ego vehicle after removing all the sensors
-        time.sleep(0.5)
         self._remove_ego()
 

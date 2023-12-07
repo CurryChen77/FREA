@@ -157,7 +157,7 @@ class VectorWrapper():
         infos = np.array(info_list)
 
         # update pygame window
-        if self.render:
+        if self.render and self.birdeye_render:
             pygame.display.flip()
         return self.obs_postprocess(obs_list), rewards, dones, infos
 
@@ -169,7 +169,7 @@ class VectorWrapper():
 
     def clean_up(self):
         # clean the temp list in the render
-        self.birdeye_render.clean_up()
+        self.birdeye_render.clean_up() if self.birdeye_render else None
         # stop sensor objects
         for e_i in range(self.num_scenario):
             self.env_list[e_i].clean_up()
