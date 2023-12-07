@@ -195,7 +195,6 @@ def get_cbv_candidates(center_vehicle, radius=40):
     # info for the ego vehicle
     center_transform = CarlaDataProvider.get_transform_after_tick(center_vehicle)
     center_location = center_transform.location
-    center_waypoint = CarlaDataProvider.get_map().get_waypoint(center_location)
     center_forward_vector = center_transform.rotation.get_forward_vector()
 
     # get all the vehicles on the world
@@ -206,16 +205,15 @@ def get_cbv_candidates(center_vehicle, radius=40):
         if vehicle.id != center_vehicle.id:  # 1. except the center vehicle
             vehicle_transform = CarlaDataProvider.get_transform_after_tick(vehicle)
             vehicle_location = vehicle_transform.location
-            vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(vehicle_location)
-            # 2. except the bv and the center vehicle are on the same road but different lane directions (multiply of lane id < 0)
-            if not (center_waypoint.lane_id * vehicle_waypoint.lane_id < 0 and center_waypoint.road_id == vehicle_waypoint.road_id):
-                relative_direction = (vehicle_location - center_location)
-                dot_product = center_forward_vector.dot(relative_direction)  # the relative dot product
-                # 3. remove the bv behind the center vehicle and got different direction
-                if dot_product > 0.0 or abs(center_transform.rotation.yaw - vehicle_transform.rotation.yaw) < 45:
-                    distance = center_location.distance(vehicle_location)
-                    if distance <= radius:
-                        nearby_vehicles_info.append([vehicle, distance])
+
+            relative_direction = (vehicle_location - center_location)
+            # if dot product > 0: vehicle in front of ego; if dot product < 0: vehicle at the back of ego
+            dot_product = center_forward_vector.dot(relative_direction)
+            # 2. remove the bv behind the center vehicle and got different direction
+            if dot_product > 0.0 or abs(center_transform.rotation.yaw - vehicle_transform.rotation.yaw) < 45:
+                distance = center_location.distance(vehicle_location)
+                if distance <= radius:
+                    nearby_vehicles_info.append([vehicle, distance])
 
     # sort the nearby vehicles according to the distance in ascending order
     nearby_vehicles_info.sort(key=lambda x: x[1])

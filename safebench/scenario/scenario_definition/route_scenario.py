@@ -230,8 +230,7 @@ class RouteScenario():
     def update_info(self, desired_nearby_vehicle=3):
         '''
             scenario agent state:
-            first row is the cbv's state (x=0, y=0, yaw, vx, vy)
-            second row is ego's relative state (x, y, yaw, vx, vy)
+            first row is ego's relative state (x, y, yaw, vx, vy)
             rest row are other bv's relative state (x, y, yaw, vx, vy)
         '''
         if self.cbv:  # the cbv is not None
@@ -240,25 +239,25 @@ class RouteScenario():
             cbv_state_copy = cbv_state.copy()
             ego_state = np.array(self._get_actor_state(self.ego_vehicle))
             # relative state
-            ego_state[:2] = ego_state[:2] - cbv_state_copy[:2]
-            cbv_state[:2] = cbv_state[:2] - cbv_state_copy[:2]
-            actor_info = [cbv_state, ego_state]  # the first info belongs to the cbv, while the second belongs to the ego vehicle
+            ego_state = ego_state - cbv_state_copy
+            cbv_state = cbv_state - cbv_state_copy
+            actor_info = [ego_state]  # the first info belongs to the ego vehicle
             for i, actor in enumerate(self.cbv_nearby_vehicles):
                 if i < desired_nearby_vehicle:
                     actor_state = np.array(self._get_actor_state(actor))
-                    actor_state[:2] = actor_state[:2] - cbv_state_copy[:2]
+                    actor_state = actor_state - cbv_state_copy
                     actor_info.append(actor_state)  # add the info of the other actor to the list
                 elif actor.id == self.ego_vehicle.id:
                     continue  # except the ego actor
                 else:
                     # avoiding too many nearby vehicles
                     break
-            while len(actor_info)-2 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+            while len(actor_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
                 actor_info.append([0] * len(cbv_state))
 
             actor_info = np.array(actor_info)
         else:
-            actor_info = np.zeros((desired_nearby_vehicle+2, 5))  # need to have the same size as normal actor info
+            actor_info = np.zeros((desired_nearby_vehicle+1, 5))  # need to have the same size as normal actor info
         return {
             'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
@@ -266,23 +265,21 @@ class RouteScenario():
     def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=4):
         '''
             safety network input state:
-            first row is ego's relative state
-            rest row are other bv's relative state
+            all the rows are other bv's relative state
         '''
         # absolute ego state
         ego_state = np.array(self._get_actor_state(self.ego_vehicle))
         ego_state_copy = ego_state.copy()
         # relative ego state
-        ego_state[:2] = ego_state[:2] - ego_state_copy[:2]
-        ego_info = [ego_state]  # the first row is the ego info
+        ego_info = []
         for i, actor in enumerate(ego_nearby_vehicles):
             if i < desired_nearby_vehicle:
                 actor_state = np.array(self._get_actor_state(actor))
-                actor_state[:2] = actor_state[:2] - ego_state_copy[:2]
-                ego_info.append(actor_state)  # the rest row start from 2 is the meaningful vehicle around ego vehicle
+                actor_state = actor_state - ego_state_copy
+                ego_info.append(actor_state)  # all the row contain meaningful vehicle around ego vehicle
             else:
                 break
-        while len(ego_info)-1 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+        while len(ego_info) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
             ego_info.append([0] * len(ego_state))
 
         ego_info = np.array(ego_info)

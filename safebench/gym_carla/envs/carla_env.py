@@ -129,10 +129,6 @@ class CarlaEnv(gym.Env):
         self.n_steer = len(self.discrete_act[1])
 
     def _create_sensors(self):
-        # # collision sensor
-        # self.collision_hist_l = 1  # collision history length
-        # self.collision_bp = self.world.get_blueprint_library().find('sensor.other.collision')
-
         # lidar sensor
         self.lidar_trans = carla.Transform(carla.Location(x=0.0, z=self.lidar_height))
         self.lidar_bp = self.world.get_blueprint_library().find('sensor.lidar.ray_cast')
@@ -658,24 +654,26 @@ class CarlaEnv(gym.Env):
         """
         # the min dis from the cbv to the rest bvs
         _, cbv_min_dis_reward = get_cbv_bv_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
-        # the reward design to encourage cbv attack ego
-        # ego_cbv_dis_reward = get_ego_cbv_dis_reward(self.ego_vehicle, self.cbv)
 
-        V_cbv = CarlaDataProvider.get_velocity_after_tick(self.cbv) if self.cbv else 0
-        too_fast = -1 if V_cbv > self.desired_speed else 0
+        # the reward design to encourage cbv attack ego
+        ego_cbv_dis_reward = get_ego_cbv_dis_reward(self.ego_vehicle, self.cbv)
+
+        # cbv velocity and whether it is too fast or not
+        # V_cbv = CarlaDataProvider.get_velocity_after_tick(self.cbv) if self.cbv else 0
+        # too_fast = -1 if V_cbv > self.desired_speed else 0
 
         # since the obs don't have road info, so no need to include in drivable area info
         # in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else 0
 
         # ego collision reward, depending on the ego min distance
-        if self.cbv:
-            ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv)
-            ego_cbv_collision_reward = 1 if ego_cbv_dis < 0.01 else 0
-        else:
-            ego_cbv_collision_reward = 0
+        # if self.cbv:
+        #     ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv)
+        #     ego_cbv_collision_reward = 1 if ego_cbv_dis < 0.01 else 0
+        # else:
+        #     ego_cbv_collision_reward = 0
 
         # final scenario agent rewards
-        scenario_agent_reward = 10 * cbv_min_dis_reward + 10 * too_fast + V_cbv + 150 * ego_cbv_collision_reward - 0.1
+        scenario_agent_reward = 5 * cbv_min_dis_reward + ego_cbv_dis_reward - 0.1
 
         return scenario_agent_reward
 
