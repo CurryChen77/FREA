@@ -43,12 +43,13 @@ class RouteScenario():
         along which several smaller scenarios are triggered
     """
 
-    def __init__(self, world, config, ego_id, max_running_step, env_params, logger):
+    def __init__(self, world, config, ego_id, max_running_step, env_params, mode, logger):
         self.world = world
         self.logger = logger
         self.config = config
         self.ego_id = ego_id
         self.max_running_step = max_running_step
+        self.mode = mode
         self.timeout = 60
         self.ego_max_driven_distance = 200
         self.traffic_intensity = config.traffic_intensity
@@ -182,23 +183,16 @@ class RouteScenario():
             stop = True
             self.logger.log('>> Scenario stops due to off road', color='yellow')
 
-        # only check when evaluating
-        if self.config.scenario_id != 0:  
-            # route completed
-            if running_status['route_complete'] == 100:
-                stop = True
-                self.logger.log('>> Scenario stops due to route completion', color='yellow')
+        # route completed
+        if running_status['route_complete'] == 100:
+            stop = True
+            self.logger.log('>> Scenario stops due to route completion', color='yellow')
 
         # stop at max step
         if len(running_record) >= self.max_running_step: 
             stop = True
             self.logger.log('>> Scenario stops due to max steps', color='yellow')
 
-        # only check when evaluating
-        if self.config.scenario_id != 0:
-            if running_status['driven_distance'] >= self.ego_max_driven_distance:
-                stop = True
-                self.logger.log('>> Scenario stops due to max driven distance', color='yellow')
         if running_status['current_game_time'] >= self.timeout:
             stop = True
             self.logger.log('>> Scenario stops due to timeout', color='yellow')
@@ -209,16 +203,16 @@ class RouteScenario():
         criteria = {}
         route = convert_transform_to_location(self.route)
 
-        criteria['driven_distance'] = DrivenDistanceTest(actor=self.ego_vehicle, distance_success=1e4, distance_acceptable=1e4, optional=True)
-        criteria['average_velocity'] = AverageVelocityTest(actor=self.ego_vehicle, avg_velocity_success=1e4, avg_velocity_acceptable=1e4, optional=True)
-        criteria['lane_invasion'] = KeepLaneTest(actor=self.ego_vehicle, optional=True)
+        # the criteria needed both in training and evaluating
+        criteria['route_complete'] = RouteCompletionTest(self.ego_vehicle, route=route)
         criteria['off_road'] = OffRoadTest(actor=self.ego_vehicle, optional=True)
-        criteria['collision'] = CollisionTest(actor=self.ego_vehicle, terminate_on_failure=True)
-        criteria['run_red_light'] = RunningRedLightTest(actor=self.ego_vehicle)
-        criteria['run_stop'] = RunningStopTest(actor=self.ego_vehicle)
-        if self.config.scenario_id != 0:  # only check when evaluating
+        criteria['collision'] = CollisionTest(actor=self.ego_vehicle, terminate_on_failure=True)  # TODO need collision sensor
+        if self.mode == 'eval':
+            # extra criteria for evaluating
+            criteria['driven_distance'] = DrivenDistanceTest(actor=self.ego_vehicle, distance_success=1e4, distance_acceptable=1e4, optional=True)
             criteria['distance_to_route'] = InRouteTest(self.ego_vehicle, route=route, offroad_max=30)
-            criteria['route_complete'] = RouteCompletionTest(self.ego_vehicle, route=route)
+            criteria['lane_invasion'] = KeepLaneTest(actor=self.ego_vehicle, optional=True)  # need sensor
+
         return criteria
 
     @staticmethod

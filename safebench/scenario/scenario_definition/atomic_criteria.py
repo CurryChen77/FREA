@@ -241,7 +241,8 @@ class CollisionTest(Criterion):
         """
             Cleanup sensor
         """
-        if self._collision_sensor is not None and self._collision_sensor.is_alive:
+        if self._collision_sensor is not None:
+            self._collision_sensor.stop()  # the .stop() should be called before .destroy()
             self._collision_sensor.destroy()
         self._collision_sensor = None
         super(CollisionTest, self).terminate()
@@ -426,6 +427,7 @@ class KeepLaneTest(Criterion):
             Cleanup sensor
         """
         if self._lane_sensor is not None:
+            self._lane_sensor.stop()  # .stop() should be called before .destroy()
             self._lane_sensor.destroy()
         self._lane_sensor = None
         super(KeepLaneTest, self).terminate()

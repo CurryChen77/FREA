@@ -176,6 +176,7 @@ class CarlaEnv(gym.Env):
                 ego_id=env_id,
                 max_running_step=self.max_episode_step,
                 env_params=self.env_params,
+                mode=self.mode,
                 logger=self.logger
             )
         else:
