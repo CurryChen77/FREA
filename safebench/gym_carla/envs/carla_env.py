@@ -222,7 +222,7 @@ class CarlaEnv(gym.Env):
 
         # get the nearby vehicles around the cbv
         if self.cbv:
-            self.cbv_nearby_vehicles = get_nearby_vehicles(self.cbv, self.search_radius)
+            self.cbv_nearby_vehicles = get_nearby_vehicles(self.cbv, self.search_radius, after_tick=True)
             if self.birdeye_render:
                 # update the cbv for BEV visualization
                 if self.old_cbv and self.cbv and self.old_cbv.id != self.cbv.id:  # the cbv has changed, need to remove the old cbv
@@ -426,7 +426,7 @@ class CarlaEnv(gym.Env):
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
-        self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+        self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius, after_tick=True)
 
         origin_info = self._get_info(training=True)  # for training
 
@@ -667,7 +667,7 @@ class CarlaEnv(gym.Env):
 
         # ego collision reward, depending on the ego min distance
         # if self.cbv:
-        #     ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv)
+        #     ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv, after_tick=True)
         #     ego_cbv_collision_reward = 1 if ego_cbv_dis < 0.01 else 0
         # else:
         #     ego_cbv_collision_reward = 0
@@ -679,7 +679,7 @@ class CarlaEnv(gym.Env):
 
     def _get_cost(self):
         # cost for collision
-        self.ego_min_dis = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicle)
+        self.ego_min_dis = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicle, after_tick=True)
         collision = 1 if self.ego_min_dis < 0.01 else 0
         return collision
 

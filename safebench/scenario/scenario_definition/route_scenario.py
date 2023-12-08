@@ -32,6 +32,7 @@ from safebench.scenario.scenario_definition.atomic_criteria import (
     KeepLaneTest,
     InRouteTest,
     RouteCompletionTest,
+    DistanceBasedCollisionTrain,
     RunningRedLightTest,
     RunningStopTest,
 )
@@ -206,12 +207,14 @@ class RouteScenario():
         # the criteria needed both in training and evaluating
         criteria['route_complete'] = RouteCompletionTest(self.ego_vehicle, route=route)
         criteria['off_road'] = OffRoadTest(actor=self.ego_vehicle, optional=True)
-        criteria['collision'] = CollisionTest(actor=self.ego_vehicle, terminate_on_failure=True)  # TODO need collision sensor
         if self.mode == 'eval':
             # extra criteria for evaluating
             criteria['driven_distance'] = DrivenDistanceTest(actor=self.ego_vehicle, distance_success=1e4, distance_acceptable=1e4, optional=True)
             criteria['distance_to_route'] = InRouteTest(self.ego_vehicle, route=route, offroad_max=30)
             criteria['lane_invasion'] = KeepLaneTest(actor=self.ego_vehicle, optional=True)  # need sensor
+            criteria['collision'] = CollisionTest(actor=self.ego_vehicle, terminate_on_failure=True)  # need sensor
+        else:
+            criteria['collision'] = DistanceBasedCollisionTrain(actor=self.ego_vehicle, terminate_on_failure=True)  # need sensor
 
         return criteria
 

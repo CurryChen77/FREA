@@ -31,10 +31,10 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 ./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Another terminal no display pygame
-SDL_VIDEODRIVER="dummy" python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_train.yaml --mode train_scenario
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_train.yaml --mode train_scenario
 
 # Showing the memory usage
-SDL_VIDEODRIVER="dummy" mprof run --python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_train.yaml --mode train_scenario
+mprof run --python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_train.yaml --mode train_scenario
 ```
 
 #### Visualize pygame window
@@ -137,16 +137,15 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
   **Actor info**
 
-  |  vehicle   |  x   |  y   | yaw  |  Vx  |  Vy  |
-  | :--------: | :--: | :--: | :--: | :--: | :--: |
-  | CBV state  |  0   |  0   |      |      |      |
-  | ego state  |      |      |      |      |      |
-  | BV_1 state |      |      |      |      |      |
-  | BV_2 state |      |      |      |      |      |
-  | BV_3 state |      |      |      |      |      |
-
+  |           vehicle            |  x   |  y   | yaw  |  Vx  |  Vy  |
+  | :--------------------------: | :--: | :--: | :--: | :--: | :--: |
+  | ego state (relative to cbv)  |      |      |      |      |      |
+  | BV_1 state (relative to cbv) |      |      |      |      |      |
+  | BV_2 state (relative to cbv) |      |      |      |      |      |
+  | BV_3 state (relative to cbv) |      |      |      |      |      |
+  
   **Tips: if no BV then the corresponding state will set to 0**
-
+  
 * Output action
 
   2-dim continues action

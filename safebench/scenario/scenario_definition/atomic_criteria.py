@@ -16,6 +16,7 @@ from enum import Enum
 import shapely
 import carla
 
+from safebench.gym_carla.envs.utils import get_nearby_vehicles, get_min_distance_across_bboxes
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.traffic_events import TrafficEvent, TrafficEventType
@@ -173,6 +174,45 @@ class AverageVelocityTest(Criterion):
         if self.test_status == "RUNNING":
             self.test_status = "FAILURE"
         super(AverageVelocityTest, self).terminate()
+
+
+class DistanceBasedCollisionTrain(Criterion):
+    """
+        This class contains an atomic test for collision based on the bbox distance
+        Args:
+        - actor (carla.Actor): CARLA actor to be used for this test
+        - terminate_on_failure [optional]: If True, the complete scenario will terminate upon failure of this test
+    """
+    def __init__(self, actor, optional=False, name="DistanceBasedCollisionTrain", terminate_on_failure=False):
+        """
+            Construction with sensor setup
+        """
+        super(DistanceBasedCollisionTrain, self).__init__(name, actor, 0, None, optional, terminate_on_failure)
+
+        self.actor = actor
+
+    def update(self):
+        """
+            Check collision count
+        """
+        new_status = Status.RUNNING
+
+        actor_nearby_vehicles = get_nearby_vehicles(self.actor, radius=40, after_tick=False)  # criteria are called before tick
+        min_dis = 40
+
+        if actor_nearby_vehicles:
+            for i, vehicle in enumerate(actor_nearby_vehicles):
+                if i < 3:  # calculate only the closest three vehicles
+                    dis = get_min_distance_across_bboxes(self.actor, vehicle, after_tick=False)  # criteria are called before tick
+                    if dis < min_dis:
+                        min_dis = dis
+        if min_dis < 0.01:  # the min distance < threshold(0.01)
+            self.test_status = "FAILURE"
+
+        if self._terminate_on_failure and (self.test_status == "FAILURE"):
+            new_status = Status.FAILURE
+
+        return new_status
 
 
 class CollisionTest(Criterion):
