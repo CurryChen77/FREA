@@ -176,43 +176,43 @@ class AverageVelocityTest(Criterion):
         super(AverageVelocityTest, self).terminate()
 
 
-class DistanceBasedCollisionTrain(Criterion):
-    """
-        This class contains an atomic test for collision based on the bbox distance
-        Args:
-        - actor (carla.Actor): CARLA actor to be used for this test
-        - terminate_on_failure [optional]: If True, the complete scenario will terminate upon failure of this test
-    """
-    def __init__(self, actor, optional=False, name="DistanceBasedCollisionTrain", terminate_on_failure=False):
-        """
-            Construction with sensor setup
-        """
-        super(DistanceBasedCollisionTrain, self).__init__(name, actor, 0, None, optional, terminate_on_failure)
-
-        self.actor = actor
-
-    def update(self):
-        """
-            Check collision count
-        """
-        new_status = Status.RUNNING
-
-        actor_nearby_vehicles = get_nearby_vehicles(self.actor, radius=40, after_tick=False)  # criteria are called before tick
-        min_dis = 40
-
-        if actor_nearby_vehicles:
-            for i, vehicle in enumerate(actor_nearby_vehicles):
-                if i < 3:  # calculate only the closest three vehicles
-                    dis = get_min_distance_across_bboxes(self.actor, vehicle, after_tick=False)  # criteria are called before tick
-                    if dis < min_dis:
-                        min_dis = dis
-        if min_dis < 0.01:  # the min distance < threshold(0.01)
-            self.test_status = "FAILURE"
-
-        if self._terminate_on_failure and (self.test_status == "FAILURE"):
-            new_status = Status.FAILURE
-
-        return new_status
+# class DistanceBasedCollisionTrain(Criterion):
+#     """
+#         This class contains an atomic test for collision based on the bbox distance
+#         Args:
+#         - actor (carla.Actor): CARLA actor to be used for this test
+#         - terminate_on_failure [optional]: If True, the complete scenario will terminate upon failure of this test
+#     """
+#     def __init__(self, actor, optional=False, name="DistanceBasedCollisionTrain", terminate_on_failure=False):
+#         """
+#             Construction with sensor setup
+#         """
+#         super(DistanceBasedCollisionTrain, self).__init__(name, actor, 0, None, optional, terminate_on_failure)
+#
+#         self.actor = actor
+#
+#     def update(self):
+#         """
+#             Check collision count
+#         """
+#         new_status = Status.RUNNING
+#
+#         actor_nearby_vehicles = get_nearby_vehicles(self.actor, radius=40, after_tick=False)  # criteria are called before tick
+#         min_dis = 40
+#
+#         if actor_nearby_vehicles:
+#             for i, vehicle in enumerate(actor_nearby_vehicles):
+#                 if i < 3:  # calculate only the closest three vehicles
+#                     dis = get_min_distance_across_bboxes(self.actor, vehicle, after_tick=False)  # criteria are called before tick
+#                     if dis < min_dis:
+#                         min_dis = dis
+#         if min_dis < 0.01:  # the min distance < threshold(0.01)
+#             self.test_status = "FAILURE"
+#
+#         if self._terminate_on_failure and (self.test_status == "FAILURE"):
+#             new_status = Status.FAILURE
+#
+#         return new_status
 
 
 class CollisionTest(Criterion):
@@ -237,7 +237,7 @@ class CollisionTest(Criterion):
             Construction with sensor setup
         """
         super(CollisionTest, self).__init__(name, actor, 0, None, optional, terminate_on_failure)
-
+        self._collision_sensor = None
         world = self.actor.get_world()
         blueprint = world.get_blueprint_library().find('sensor.other.collision')
         self._collision_sensor = world.spawn_actor(blueprint, carla.Transform(), attach_to=self.actor)

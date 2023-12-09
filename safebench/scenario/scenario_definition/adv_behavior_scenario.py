@@ -30,7 +30,6 @@ class AdvBehaviorSingle(BasicScenario):
         self._map = CarlaDataProvider.get_map()
         self.last_tick_affected_by_traffic = self.ego_vehicle
 
-
         self.cbv_traffic_light = None
         self.last_ego_waypoint = self._map.get_waypoint(self.ego_vehicle.get_location())
         self.signalized_junction = env_params['signalized_junction']

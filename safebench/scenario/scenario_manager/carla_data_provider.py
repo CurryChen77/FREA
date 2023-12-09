@@ -766,7 +766,7 @@ class CarlaDataProvider(object):
             if spawn_point:
                 batch.append(SpawnActor(blueprint, spawn_point).then(SetAutopilot(FutureActor, autopilot, CarlaDataProvider._traffic_manager_port)))
 
-        time.sleep(0.6)  # TODO need to sleep for a while for the batch_sync operation
+        time.sleep(1)  # TODO need to sleep for a while for the batch_sync operation
 
         actors = CarlaDataProvider.handle_actor_batch(batch, tick)
         for actor in actors:
@@ -858,22 +858,49 @@ class CarlaDataProvider(object):
         CarlaDataProvider._traffic_manager_port = tm_port
 
     @staticmethod
-    def remove_all_information_map():
+    def clean_up_after_episode():
+        """
+            Cleanup and remove all entries from all dictionaries
+        """
+        DestroyActor = carla.command.DestroyActor       # pylint: disable=invalid-name
+        batch = []
+
+        for actor_id in CarlaDataProvider._carla_actor_pool.copy():
+            actor = CarlaDataProvider._carla_actor_pool[actor_id]
+            if actor is not None and actor.is_alive:
+                batch.append(DestroyActor(actor))
+
+        if CarlaDataProvider._client:
+            try:
+                CarlaDataProvider._client.apply_batch_sync(batch)
+            except RuntimeError as e:
+                if "time-out" in str(e):
+                    pass
+                else:
+                    raise e
+
         CarlaDataProvider._actor_velocity_map.clear()
         CarlaDataProvider._actor_location_map.clear()
         CarlaDataProvider._actor_transform_map.clear()
-        CarlaDataProvider._actor_velocity_map_after_tick.clear()
-        CarlaDataProvider._actor_location_map_after_tick.clear()
-        CarlaDataProvider._actor_transform_map_after_tick.clear()
-        CarlaDataProvider.ego_cbv_dis.clear()
+        CarlaDataProvider._actor_velocity_map_after_tick.clear()   # clean the velocity map of actor after tick
+        CarlaDataProvider._actor_location_map_after_tick.clear()   # clean the location map of actor after tick
+        CarlaDataProvider._actor_transform_map_after_tick.clear()  # clean the transform map of actor after tick
+        # CarlaDataProvider._traffic_light_map.clear()
+        # CarlaDataProvider._map = None
+        # CarlaDataProvider._world = None
+        # CarlaDataProvider._sync_flag = False
+        # CarlaDataProvider._client = None
         CarlaDataProvider._ego_vehicle_route.clear()
         CarlaDataProvider.egos = []
+        CarlaDataProvider._ego_desired_speed = 8
+        CarlaDataProvider.ego_cbv_dis.clear()
+        CarlaDataProvider._carla_actor_pool = {}
         CarlaDataProvider._spawn_points = None
         CarlaDataProvider._spawn_index = 0
-        CarlaDataProvider._ego_desired_speed = 8
+        CarlaDataProvider._rng = random.RandomState(CarlaDataProvider._random_seed)
 
     @staticmethod
-    def cleanup():
+    def clean_up():
         """
             Cleanup and remove all entries from all dictionaries
         """

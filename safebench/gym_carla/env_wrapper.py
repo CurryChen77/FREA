@@ -175,7 +175,7 @@ class VectorWrapper():
             self.env_list[e_i].clean_up()
 
         # tick to ensure that all destroy commands are executed
-        self.world.tick()
+        self.world.tick() if self.mode == 'eval' else None
 
 
 class ObservationWrapper(gym.Wrapper):

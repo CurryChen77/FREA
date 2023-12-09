@@ -237,6 +237,7 @@ class CarlaEnv(gym.Env):
         self.scenario_manager.update_cbv_nearby_vehicles(self.cbv, self.cbv_nearby_vehicles)
 
     def reset(self, config, env_id):
+        print("-------------reset new episode---------------")
         self.config = config
         self.env_id = env_id
 
@@ -249,6 +250,7 @@ class CarlaEnv(gym.Env):
         self._run_scenario()
         # attach sensor only when evaluation
         self._attach_sensor() if self.mode == 'eval' else None
+        print("successfully spawn all actors")
 
         # first update the info in the CarlaDataProvider
         CarlaDataProvider.on_carla_tick()
@@ -283,11 +285,13 @@ class CarlaEnv(gym.Env):
 
         # applying setting can tick the world and get data from sensors
         # removing this block will cause error: AttributeError: 'NoneType' object has no attribute 'raw_data'
-        self.settings = self.world.get_settings()
-        self.world.apply_settings(self.settings)
+        if self.mode == 'eval':
+            self.settings = self.world.get_settings()
+            self.world.apply_settings(self.settings)
 
         for _ in range(self.warm_up_steps):
             self.world.tick()
+        print("finish reset episode")
         return self._get_obs(), self._get_info(training=True)
 
     def _attach_sensor(self):
@@ -703,7 +707,7 @@ class CarlaEnv(gym.Env):
     def _remove_ego(self):
         if self.ego_vehicle is not None and CarlaDataProvider.actor_id_exists(self.ego_vehicle.id):
             CarlaDataProvider.remove_actor_by_id(self.ego_vehicle.id)
-            self.ego_vehicle = None
+        self.ego_vehicle = None
 
     def clean_up(self):
         self.old_cbv = None
@@ -713,7 +717,9 @@ class CarlaEnv(gym.Env):
 
         # destroy criterion sensors on the ego vehicle
         self.scenario_manager.clean_up()
+        print("successfully cleaned up scenario manager")
 
         # finally remove the ego vehicle after removing all the sensors
         self._remove_ego()
+        print("--------------finish this episode--------------")
 
