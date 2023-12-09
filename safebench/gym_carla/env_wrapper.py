@@ -174,6 +174,8 @@ class VectorWrapper():
         for e_i in range(self.num_scenario):
             self.env_list[e_i].clean_up()
 
+        # clean the CarlaDataProvider
+        CarlaDataProvider.clean_up_after_episode()
         # tick to ensure that all destroy commands are executed
         self.world.tick() if self.mode == 'eval' else None
 

@@ -18,6 +18,7 @@ import carla
 import xml.etree.ElementTree as ET
 import numpy as np
 
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.scenario.tools.route_parser import RouteParser, TRIGGER_THRESHOLD, TRIGGER_ANGLE_THRESHOLD
 from safebench.scenario.scenario_manager.scenario_config import ScenarioConfig
 
@@ -179,7 +180,7 @@ def scenic_parse(config, logger):
     return config_list
 
 def get_valid_spawn_points(world):
-    vehicle_spawn_points = list(world.get_map().get_spawn_points())
+    vehicle_spawn_points = list(CarlaDataProvider.get_map().get_spawn_points())
     random.shuffle(vehicle_spawn_points)
     actor_location_list = get_current_location_list(world)
     vehicle_spawn_points = filter_valid_spawn_points(vehicle_spawn_points, actor_location_list)

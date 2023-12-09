@@ -291,7 +291,7 @@ class RouteScenario():
         for _, criterion in self.criteria.items():
             criterion.terminate()
         time.sleep(0.1)
-        print("successfully cleaned up all criterions")
+        # print("successfully cleaned up all criteria")
 
         self.scenario_instance.clean_up()  # nothing need to clean
 
@@ -302,9 +302,8 @@ class RouteScenario():
         #     if CarlaDataProvider.actor_id_exists(self.background_actors[s_i].id):
         #         CarlaDataProvider.remove_actor_by_id(self.background_actors[s_i].id)
         # self.logger.log(f'>> cleaning {len(self.background_actors)} vehicles')
-        # remove the information stored in the CarlaDataProvider
-        CarlaDataProvider.clean_up_after_episode()
-        print("successfully cleaned up CarlaDataProvider information")
+
+        # print("successfully cleaned up CarlaDataProvider information")
 
         self.background_actors = []
 

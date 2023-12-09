@@ -30,8 +30,6 @@ class ScenarioManager(object):
         #self.scenario = None
         self.route_scenario = None
         self.ego_vehicle = None
-        self.scenario_list = None
-        self.triggered_scenario = set()
         self._running = False
         self._collision = False
         self._timestamp_last_run = 0.0
