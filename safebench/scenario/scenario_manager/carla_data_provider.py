@@ -473,7 +473,7 @@ class CarlaDataProvider(object):
     @staticmethod
     def get_first_ego_transform():
         """
-            Set the first ego location
+            Set the first ego location (if it is not terminated)
         """
         return CarlaDataProvider.get_transform(CarlaDataProvider.egos[0])
 

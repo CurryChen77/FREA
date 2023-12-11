@@ -83,6 +83,7 @@ if __name__ == '__main__':
             # only render when evaluation
             if args.mode != 'eval':
                 args.render = False
+                args.enable_sem = False
 
             # main entry with a selected mode
             agent_config.update(args_dict)

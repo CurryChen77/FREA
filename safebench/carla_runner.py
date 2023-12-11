@@ -9,6 +9,7 @@
 """
 
 import copy
+import time
 
 import numpy as np
 import carla
@@ -65,7 +66,7 @@ class CarlaRunner:
 
         # apply settings to carla
         self.client = carla.Client('localhost', scenario_config['port'])
-        self.client.set_timeout(10.0)
+        self.client.set_timeout(15.0)
         self.world = None
         self.env = None
 
@@ -261,6 +262,7 @@ class CarlaRunner:
         data_loader.set_mode("train")
 
         for e_i in tqdm(range(start_episode, self.train_episode)):
+            start_time = time.time()
             # sample scenarios in this town (one town could contain multiple scenarios)
             # simulate multiple scenarios in parallel (usually 2 scenarios)
             sampled_scenario_configs, _ = data_loader.sampler()
@@ -318,6 +320,10 @@ class CarlaRunner:
                 self.scenario_policy.train(replay_buffer, writer, e_i)
             elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'onpolicy':
                 self.safety_network_policy.train(replay_buffer, writer, e_i)
+
+            stop_time = time.time()
+            episode_time = round(stop_time - start_time, 2)
+            self.logger.log('>> Episode time: ' + str(episode_time), color="yellow")
 
             # eval during training
             if (e_i+1) % self.eval_in_train_freq == 0:

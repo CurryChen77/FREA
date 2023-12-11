@@ -92,13 +92,13 @@ def get_ego_cbv_dis_reward(ego, cbv):
     delta_dis = 0
     if cbv:
         if cbv.id in CarlaDataProvider.ego_cbv_dis[ego.id].keys():  # whether the current are in the old cbv list
-            dis = get_min_distance_across_bboxes(ego, cbv, after_tick=True)
+            dis = get_distance_across_centers(ego, cbv, after_tick=True)
             # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
             delta_dis = CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] - dis
             CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
         else:
             CarlaDataProvider.ego_cbv_dis[ego.id].clear()  # the cbv has changed, so remove the previous cbv
-            CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = get_min_distance_across_bboxes(ego, cbv, after_tick=True)
+            CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = get_distance_across_centers(ego, cbv, after_tick=True)
     else:
         CarlaDataProvider.ego_cbv_dis[ego.id].clear()
     return delta_dis
@@ -248,3 +248,13 @@ def get_min_distance_across_bboxes(veh1, veh2, after_tick=True):
     dist, closest_point_box, closest_point_box2, _ = gjk.gjk(
         box_collider_veh1, box_collider_veh2)
     return dist
+
+
+def get_distance_across_centers(veh1, veh2, after_tick=True):
+    if after_tick:
+        veh1_loc = CarlaDataProvider.get_location_after_tick(veh1)
+        veh2_loc = CarlaDataProvider.get_location_after_tick(veh2)
+    else:
+        veh1_loc = CarlaDataProvider.get_location(veh1)
+        veh2_loc = CarlaDataProvider.get_location(veh2)
+    return veh1_loc.distance(veh2_loc)

@@ -75,12 +75,14 @@ class VectorWrapper():
             obs_list.append(obs)
             info_list.append(info)
 
-        # set spectator
-        transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
-        spectator = self.world.get_spectator()
-        spectator.set_transform(carla.Transform(
-            transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
-        ))
+        if self.mode == 'eval':
+            # only set the spectator when evaluating
+            transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
+            if transform is not None:
+                spectator = self.world.get_spectator()
+                spectator.set_transform(carla.Transform(
+                    transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+                ))
 
         # sometimes not all scenarios are used
         self.finished_env = [False] * self.num_scenario
@@ -108,12 +110,14 @@ class VectorWrapper():
                 self.env_list[e_i].step_before_tick(processed_action, scenario_actions[action_idx])
                 action_idx += 1
 
-        # set spectator
-        transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
-        spectator = self.world.get_spectator()
-        spectator.set_transform(carla.Transform(
-            transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
-        ))
+        if self.mode == 'eval':
+            # only set the spectator when evaluating
+            transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
+            if transform is not None:
+                spectator = self.world.get_spectator()
+                spectator.set_transform(carla.Transform(
+                    transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+                ))
 
         # tick all scenarios
         for _ in range(self.frame_skip):

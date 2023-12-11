@@ -63,6 +63,7 @@ class CarlaEnv(gym.Env):
         self.ego_agent_learnable = env_params['ego_agent_learnable']
         self.mode = env_params['mode']
 
+        self.collision_sensor = None
         self.lidar_sensor = None
         self.camera_sensor = None
         self.sem_sensor = None
@@ -129,36 +130,42 @@ class CarlaEnv(gym.Env):
         self.n_steer = len(self.discrete_act[1])
 
     def _create_sensors(self):
-        # lidar sensor
-        self.lidar_trans = carla.Transform(carla.Location(x=0.0, z=self.lidar_height))
-        self.lidar_bp = CarlaDataProvider._blueprint_library.find('sensor.lidar.ray_cast')
-        self.lidar_bp.set_attribute('channels', '16')
-        self.lidar_bp.set_attribute('range', '1000')
+        if self.mode == 'eval' or self.mode == 'train_agent':
+            # collision sensor
+            self.collision_hist_l = 1  # collision history length
+            self.collision_bp = self.world.get_blueprint_library().find('sensor.other.collision')
 
-        # camera sensor
-        self.camera_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
-        self.BGR_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
-        # self.camera_trans = carla.Transform(carla.Location(x=0.8, z=1.7))  # for ego view
-        self.camera_trans = carla.Transform(carla.Location(x=-4., y=0., z=5.),
-                                            carla.Rotation(pitch=-20.0))  # for third-person view
-        self.camera_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.rgb')
-        # Modify the attributes of the blueprint to set image resolution and field of view.
-        self.camera_bp.set_attribute('image_size_x', str(self.obs_size))
-        self.camera_bp.set_attribute('image_size_y', str(self.obs_size))
-        self.camera_bp.set_attribute('fov', '110')
-        # Set the time in seconds between sensor captures
-        self.camera_bp.set_attribute('sensor_tick', '0.02')
+        if self.mode == 'eval':
+            # lidar sensor
+            self.lidar_trans = carla.Transform(carla.Location(x=0.0, z=self.lidar_height))
+            self.lidar_bp = CarlaDataProvider._blueprint_library.find('sensor.lidar.ray_cast')
+            self.lidar_bp.set_attribute('channels', '16')
+            self.lidar_bp.set_attribute('range', '1000')
 
-        # sem camera sensor
-        if self.enable_sem:
-            self.sem_img = np.zeros((self.obs_size, self.obs_size, 2), dtype=np.uint8)
-            self.sem_trans = carla.Transform(carla.Location(x=-4., y=0, z=5.), carla.Rotation(pitch=-20.0))  # for third-person view
-            self.sem_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.semantic_segmentation')
-            self.sem_bp.set_attribute('image_size_x', str(self.obs_size))
-            self.sem_bp.set_attribute('image_size_y', str(self.obs_size))
-            self.sem_bp.set_attribute('fov', '110')
+            # camera sensor
+            self.camera_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
+            self.BGR_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
+            # self.camera_trans = carla.Transform(carla.Location(x=0.8, z=1.7))  # for ego view
+            self.camera_trans = carla.Transform(carla.Location(x=-4., y=0., z=5.),
+                                                carla.Rotation(pitch=-20.0))  # for third-person view
+            self.camera_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.rgb')
+            # Modify the attributes of the blueprint to set image resolution and field of view.
+            self.camera_bp.set_attribute('image_size_x', str(self.obs_size))
+            self.camera_bp.set_attribute('image_size_y', str(self.obs_size))
+            self.camera_bp.set_attribute('fov', '110')
             # Set the time in seconds between sensor captures
-            self.sem_bp.set_attribute('sensor_tick', '0.02')
+            self.camera_bp.set_attribute('sensor_tick', '0.02')
+
+            # sem camera sensor
+            if self.enable_sem:
+                self.sem_img = np.zeros((self.obs_size, self.obs_size, 2), dtype=np.uint8)
+                self.sem_trans = carla.Transform(carla.Location(x=-4., y=0, z=5.), carla.Rotation(pitch=-20.0))  # for third-person view
+                self.sem_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.semantic_segmentation')
+                self.sem_bp.set_attribute('image_size_x', str(self.obs_size))
+                self.sem_bp.set_attribute('image_size_y', str(self.obs_size))
+                self.sem_bp.set_attribute('fov', '110')
+                # Set the time in seconds between sensor captures
+                self.sem_bp.set_attribute('sensor_tick', '0.02')
 
     def _create_scenario(self, config, env_id):
         self.logger.log(f">> Loading scenario data id: {config.data_id}")
@@ -235,20 +242,16 @@ class CarlaEnv(gym.Env):
         self.scenario_manager.update_cbv_nearby_vehicles(self.cbv, self.cbv_nearby_vehicles)
 
     def reset(self, config, env_id):
-        # print("-------------reset new episode---------------")
         self.config = config
         self.env_id = env_id
 
-        # create sensors only for evaluation
-        self._create_sensors() if self.mode == 'eval' else None
+        self._create_sensors()
         # load and run scenarios
         self._create_scenario(config, env_id)  # create the RouteScenario and using scenario manager to manage it
 
         # generate the initial background vehicles
         self._run_scenario()
-        # attach sensor only when evaluation
-        self._attach_sensor() if self.mode == 'eval' else None
-        # print("successfully spawn all actors")
+        self._attach_sensor()
 
         # first update the info in the CarlaDataProvider
         CarlaDataProvider.on_carla_tick()
@@ -283,47 +286,58 @@ class CarlaEnv(gym.Env):
 
         # applying setting can tick the world and get data from sensors
         # removing this block will cause error: AttributeError: 'NoneType' object has no attribute 'raw_data'
-        if self.mode == 'eval':
-            self.settings = self.world.get_settings()
-            self.world.apply_settings(self.settings)
+        self.settings = self.world.get_settings()
+        self.world.apply_settings(self.settings)
 
         for _ in range(self.warm_up_steps):
             self.world.tick()
-        # print("finish reset episode")
         return self._get_obs(), self._get_info(training=True)
 
     def _attach_sensor(self):
+        if self.mode == 'eval' or self.mode == 'train_agent':
+            # Add collision sensor
+            self.collision_sensor = self.world.spawn_actor(self.collision_bp, carla.Transform(), attach_to=self.ego_vehicle)
+            self.collision_sensor.listen(lambda event: get_collision_hist(event))
 
-        # Add lidar sensor
-        if not self.disable_lidar:
-            self.lidar_sensor = self.world.spawn_actor(self.lidar_bp, self.lidar_trans, attach_to=self.ego_vehicle)
-            self.lidar_sensor.listen(lambda data: get_lidar_data(data))
+            def get_collision_hist(event):
+                impulse = event.normal_impulse
+                intensity = np.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
+                self.collision_hist.append(intensity)
+                if len(self.collision_hist) > self.collision_hist_l:
+                    self.collision_hist.pop(0)
+            self.collision_hist = []
 
-        def get_lidar_data(data):
-            self.lidar_data = data
+        if self.mode == 'eval':
+            # Add lidar sensor
+            if not self.disable_lidar:
+                self.lidar_sensor = self.world.spawn_actor(self.lidar_bp, self.lidar_trans, attach_to=self.ego_vehicle)
+                self.lidar_sensor.listen(lambda data: get_lidar_data(data))
 
-        # Add camera sensor
-        self.camera_sensor = self.world.spawn_actor(self.camera_bp, self.camera_trans, attach_to=self.ego_vehicle)
-        self.camera_sensor.listen(lambda data: get_camera_img(data))
+            def get_lidar_data(data):
+                self.lidar_data = data
 
-        def get_camera_img(data):
-            array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
-            array = np.reshape(array, (data.height, data.width, 4))
-            array = array[:, :, :3]
-            self.BGR_img = copy.deepcopy(array)
-            array = array[:, :, ::-1]
-            self.camera_img = array
+            # Add camera sensor
+            self.camera_sensor = self.world.spawn_actor(self.camera_bp, self.camera_trans, attach_to=self.ego_vehicle)
+            self.camera_sensor.listen(lambda data: get_camera_img(data))
 
-        # Add sem_camera sensor
-        if self.enable_sem:
-            self.sem_sensor = self.world.spawn_actor(self.sem_bp, self.sem_trans, attach_to=self.ego_vehicle)
-            self.sem_sensor.listen(lambda data: get_sem_img(data))
+            def get_camera_img(data):
+                array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
+                array = np.reshape(array, (data.height, data.width, 4))
+                array = array[:, :, :3]
+                self.BGR_img = copy.deepcopy(array)
+                array = array[:, :, ::-1]
+                self.camera_img = array
 
-        def get_sem_img(data):
-            array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
-            array = np.reshape(array, (data.height, data.width, 4))
-            array = array[:, :, 2]  # from PlanT
-            self.sem_img = array
+            # Add sem_camera sensor
+            if self.enable_sem:
+                self.sem_sensor = self.world.spawn_actor(self.sem_bp, self.sem_trans, attach_to=self.ego_vehicle)
+                self.sem_sensor.listen(lambda data: get_sem_img(data))
+
+            def get_sem_img(data):
+                array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
+                array = np.reshape(array, (data.height, data.width, 4))
+                array = array[:, :, 2]  # from PlanT
+                self.sem_img = array
 
     def visualize_ego_route_cbv(self):
         # Visualize the controlled bv
@@ -618,8 +632,10 @@ class CarlaEnv(gym.Env):
     def _get_reward(self):
         """ Calculate the step reward. """
         # TODO: reward for collision, there should be a signal from scenario
-        collision = self._get_cost()
-        r_collision = -1 if collision == 1 else 0
+        if self.mode == 'eval' or self.mode == 'train_agent':
+            r_collision = -1 if len(self.collision_hist) > 0 else 0
+        else:
+            r_collision = 0
 
         # reward for steering:
         r_steer = -self.ego_vehicle.get_control().steer ** 2
@@ -680,26 +696,35 @@ class CarlaEnv(gym.Env):
 
     def _get_cost(self):
         # cost for collision
-        self.ego_min_dis = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicle, after_tick=True)
-        collision = 1 if self.ego_min_dis < 0.01 else 0
-        return collision
+        r_collision = 0
+        if len(self.collision_hist) > 0:
+            r_collision = -1
+        return r_collision
 
     def _terminal(self):
         return not self.scenario_manager._running
 
     def _remove_sensor(self):
+        if self.collision_sensor is not None:
+            self.collision_sensor.stop()
+            self.collision_sensor.destroy()
+            self.collision_sensor = None
+            print("remove collision sensor")
         if self.lidar_sensor is not None:
             self.lidar_sensor.stop()
             self.lidar_sensor.destroy()
             self.lidar_sensor = None
+            print("remove lidar sensor")
         if self.camera_sensor is not None:
             self.camera_sensor.stop()
             self.camera_sensor.destroy()
             self.camera_sensor = None
+            print("remove camera sensor")
         if self.sem_sensor is not None:
             self.sem_sensor.stop()
             self.sem_sensor.destroy()
             self.sem_sensor = None
+            print("remove sem sensor")
 
     def _remove_ego(self):
         if self.ego_vehicle is not None and CarlaDataProvider.actor_id_exists(self.ego_vehicle.id):
@@ -712,7 +737,6 @@ class CarlaEnv(gym.Env):
         self.ego_min_dis = self.search_radius
         self.ego_nearby_vehicle = None
         self.cbv_nearby_vehicles = None
-        self.ego_nearby_vehicle = None
         self.old_cbv = None
         self.gps_route = None
         self.route = None
@@ -722,16 +746,17 @@ class CarlaEnv(gym.Env):
         self.waypoints = None
 
     def clean_up(self):
+        print("starting cleaning")
         self._reset_variables()
 
         # remove the render sensor only when evaluating
-        self._remove_sensor() if self.mode == 'eval' else None
+        self._remove_sensor()
 
         # destroy criterion sensors on the ego vehicle
         self.scenario_manager.clean_up()
-        # print("successfully cleaned up scenario manager")
+        print("successfully cleaned up scenario manager")
 
         # finally remove the ego vehicle after removing all the sensors
         self._remove_ego()
-        # print("--------------finish this episode--------------")
+        print("--------------finish this episode--------------")
 
