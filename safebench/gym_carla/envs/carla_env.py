@@ -709,22 +709,18 @@ class CarlaEnv(gym.Env):
             self.collision_sensor.stop()
             self.collision_sensor.destroy()
             self.collision_sensor = None
-            print("remove collision sensor")
         if self.lidar_sensor is not None:
             self.lidar_sensor.stop()
             self.lidar_sensor.destroy()
             self.lidar_sensor = None
-            print("remove lidar sensor")
         if self.camera_sensor is not None:
             self.camera_sensor.stop()
             self.camera_sensor.destroy()
             self.camera_sensor = None
-            print("remove camera sensor")
         if self.sem_sensor is not None:
             self.sem_sensor.stop()
             self.sem_sensor.destroy()
             self.sem_sensor = None
-            print("remove sem sensor")
 
     def _remove_ego(self):
         if self.ego_vehicle is not None and CarlaDataProvider.actor_id_exists(self.ego_vehicle.id):
@@ -746,7 +742,7 @@ class CarlaEnv(gym.Env):
         self.waypoints = None
 
     def clean_up(self):
-        print("starting cleaning")
+        # remove temp variables
         self._reset_variables()
 
         # remove the render sensor only when evaluating
@@ -754,9 +750,7 @@ class CarlaEnv(gym.Env):
 
         # destroy criterion sensors on the ego vehicle
         self.scenario_manager.clean_up()
-        print("successfully cleaned up scenario manager")
 
-        # finally remove the ego vehicle after removing all the sensors
+        # remove the ego vehicle after removing all the sensors
         self._remove_ego()
-        print("--------------finish this episode--------------")
 
