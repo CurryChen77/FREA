@@ -294,14 +294,7 @@ class RouteScenario():
 
         self.scenario_instance.clean_up()  # nothing need to clean
 
-        # # remove background vehicles
-        # for s_i in range(len(self.background_actors)):
-        #     if self.background_actors[s_i].type_id.startswith('vehicle'):
-        #         self.background_actors[s_i].set_autopilot(enabled=False, tm_port=CarlaDataProvider.get_traffic_manager_port())
-        #     if CarlaDataProvider.actor_id_exists(self.background_actors[s_i].id):
-        #         CarlaDataProvider.remove_actor_by_id(self.background_actors[s_i].id)
-        # self.logger.log(f'>> cleaning {len(self.background_actors)} vehicles')
-
+        # clean background vehicle (the vehicle will be destroyed in CarlaDataProvider)
         self.background_actors = []
 
 
