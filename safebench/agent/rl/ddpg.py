@@ -136,10 +136,10 @@ class DDPG(BasePolicy):
         for it in range(self.update_iteration):
             # sample replay buffer
             batch = replay_buffer.sample(self.batch_size)
-            state = CUDA(torch.FloatTensor(batch['state']))
+            state = CUDA(torch.FloatTensor(batch['obs']))
             action = CUDA(torch.FloatTensor(batch['action']))
             reward = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1) # [B, 1]
-            next_state = CUDA(torch.FloatTensor(batch['n_state']))
+            next_state = CUDA(torch.FloatTensor(batch['next_obs']))
             done = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1) # [B, 1]
 
             # Compute the target Q value

@@ -168,10 +168,10 @@ class SAC(BasePolicy):
         for _ in range(self.update_iteration):
             # sample replay buffer
             batch = replay_buffer.sample(self.batch_size)
-            bn_s = CUDA(torch.FloatTensor(batch['state']))
+            bn_s = CUDA(torch.FloatTensor(batch['obs']))
             bn_a = CUDA(torch.FloatTensor(batch['action']))
             bn_r = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1) # [B, 1]
-            bn_s_ = CUDA(torch.FloatTensor(batch['n_state']))
+            bn_s_ = CUDA(torch.FloatTensor(batch['next_obs']))
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1) # [B, 1]
 
             target_value = self.Target_value_net(bn_s_)

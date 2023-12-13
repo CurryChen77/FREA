@@ -205,7 +205,7 @@ class ScenicScenario():
         actor_info = np.array(actor_info)
         # get the info of the ego vehicle and the other actors
         return {
-            'actor_info': actor_info
+            'scenario_obs': actor_info
         }
 
     def clean_up(self):

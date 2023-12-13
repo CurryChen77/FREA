@@ -76,7 +76,6 @@ class CarlaEnv(gym.Env):
         self.old_cbv = None
         self.gps_route = None
         self.route = None
-        self.ego_min_dis = search_radius
         self.encoded_state = None
         self.search_radius = search_radius
         self.agent_obs_type = env_params['agent_obs_type']
@@ -291,7 +290,7 @@ class CarlaEnv(gym.Env):
 
         for _ in range(self.warm_up_steps):
             self.world.tick()
-        return self._get_obs(), self._get_info(training=True)
+        return self._get_obs(), self._get_info()
 
     def _attach_sensor(self):
         if self.mode == 'eval' or self.mode == 'train_agent':
@@ -444,12 +443,12 @@ class CarlaEnv(gym.Env):
         # find ego nearby vehicles
         self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius, after_tick=True)
 
-        origin_info = self._get_info(training=True)  # for training
+        origin_info = self._get_info()  # info after tick of old cbv
 
         # set ego min distance and controlled bv
         self.cbv_selection()
 
-        updated_cbv_info = self._get_info(training=False)  # the updated cbv's info, for transition
+        updated_cbv_info = self._get_info()  # info after tick of new cbv
 
         self.visualize_ego_route_cbv()  # visualize the controlled bv and the waypoints in clients side after tick
 
@@ -459,29 +458,28 @@ class CarlaEnv(gym.Env):
 
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_cbv_info])
 
-    def _get_info(self, training=True):
+    def _get_info(self):
         info = {}
-        # info for scenario agents to take action (actor_infos)
-        info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
+        if self.mode == 'train_scenario':
+            # info for scenario agents to take action (actor_infos)
+            info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
+            # the total reward for the cbv training
+            info['scenario_agent_reward'] = self._get_scenario_reward()
 
-        if training:
-            # the info related to the controlled bv
-            scenario_agent_reward = self._get_scenario_reward()
-            info.update({
-                'scenario_agent_reward': scenario_agent_reward,  # the total reward for the cbv training
-                'route_waypoints': self.global_route_waypoints,  # the global route waypoints
-                'gps_route': self.gps_route,  # the global gps route
-                'route': self.route,  # the global route
-            })
+        info.update({
+            'route_waypoints': self.global_route_waypoints,  # the global route waypoints
+            'gps_route': self.gps_route,  # the global gps route
+            'route': self.route,  # the global route
+        })
 
-            # if train the safety network, need to add the corresponding obs
-            if self.safety_network_obs_type:
-                # only the safety network is not None, then need to calculate the ego min distance
-                info['constrain_h'] = self.constrain_h  # the ego_min_dis with the rest bvs
-                if self.safety_network_obs_type == 'plant':
-                    info['encoded_state'] = self.encoded_state
-                elif self.safety_network_obs_type == 'ego_info':
-                    info['ego_info'] = self.scenario_manager.route_scenario.update_ego_info(ego_nearby_vehicle=self.ego_nearby_vehicle)
+        # if train the safety network, need to add the corresponding obs
+        if self.safety_network_obs_type:
+            # only the safety network is not None, then need to calculate the ego min distance
+            info['constrain_h'] = self.constrain_h  # the ego_min_dis with the rest bvs
+            if self.safety_network_obs_type == 'plant':
+                info['encoded_state'] = self.encoded_state
+            elif self.safety_network_obs_type == 'ego_info':
+                info['ego_info'] = self.scenario_manager.route_scenario.update_ego_info(ego_nearby_vehicle=self.ego_nearby_vehicle)
 
         return info
 
@@ -730,7 +728,6 @@ class CarlaEnv(gym.Env):
     def _reset_variables(self):
         self.old_cbv = None
         self.cbv = None
-        self.ego_min_dis = self.search_radius
         self.ego_nearby_vehicle = None
         self.cbv_nearby_vehicles = None
         self.old_cbv = None

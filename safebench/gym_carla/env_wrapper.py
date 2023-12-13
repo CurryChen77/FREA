@@ -140,8 +140,6 @@ class VectorWrapper():
                 # check if env is done
                 if done:
                     self.finished_env[e_i] = True
-                    if current_env.scenario_manager._collision:
-                        self.logger.log(f'>> V2V collision caused ego min dis = {current_env.ego_min_dis}', color='yellow')
                     # save running results according to the data_id of scenario
                     if self.mode == 'eval':
                         if current_env.config.data_id in self.running_results.keys():
@@ -149,7 +147,7 @@ class VectorWrapper():
                         # the running results contain every data id (one specific scenario) running status at each time step
                         self.running_results[current_env.config.data_id] = current_env.scenario_manager.running_record
 
-                # update infomation
+                # update information
                 obs_list.append(obs)
                 reward_list.append(reward)
                 done_list.append(done)

@@ -259,7 +259,7 @@ class RouteScenario():
         else:
             actor_info = np.zeros((desired_nearby_vehicle+1, 5))  # need to have the same size as normal actor info
         return {
-            'actor_info': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
+            'scenario_obs': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
     def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=4):
@@ -291,7 +291,6 @@ class RouteScenario():
         for _, criterion in self.criteria.items():
             criterion.terminate()
         time.sleep(0.1)
-        print("successfully cleaned up all criteria")
 
         self.scenario_instance.clean_up()  # nothing need to clean
 

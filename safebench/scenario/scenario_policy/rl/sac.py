@@ -140,7 +140,7 @@ class SAC(BasePolicy):
             raise ValueError(f'Unknown mode {mode}')
 
     def info_process(self, infos):
-        info_batch = np.stack([i_i['actor_info'] for i_i in infos], axis=0)
+        info_batch = np.stack([i_i['scenario_obs'] for i_i in infos], axis=0)
         info_batch = info_batch.reshape(info_batch.shape[0], -1)
         return info_batch
 
@@ -182,11 +182,11 @@ class SAC(BasePolicy):
         for _ in range(self.update_iteration):
             # sample replay buffer
             batch = replay_buffer.sample(self.batch_size)
-            bn_s = CUDA(torch.FloatTensor(batch['actor_info'])).reshape(self.batch_size, -1)
-            bn_s_ = CUDA(torch.FloatTensor(batch['n_actor_info'])).reshape(self.batch_size, -1)
+            bn_s = CUDA(torch.FloatTensor(batch['scenario_obs'])).reshape(self.batch_size, -1)
+            bn_s_ = CUDA(torch.FloatTensor(batch['next_scenario_obs'])).reshape(self.batch_size, -1)
             bn_a = CUDA(torch.FloatTensor(batch['action']))
             # The reward of the scenario agent
-            bn_r = CUDA(torch.FloatTensor(batch['scenario_agent_reward'])).unsqueeze(-1)  # [B, 1]
+            bn_r = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1)  # [B, 1]
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
 
             target_value = self.Target_value_net(bn_s_)

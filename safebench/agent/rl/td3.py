@@ -164,8 +164,8 @@ class TD3(BasePolicy):
         for _ in range(self.update_iteration):
             # sample replay buffer
             batch = replay_buffer.sample(self.batch_size)
-            state_batch = CUDA(torch.FloatTensor(batch['state']))
-            nextstate_batch = CUDA(torch.FloatTensor(batch['n_state']))
+            state_batch = CUDA(torch.FloatTensor(batch['obs']))
+            nextstate_batch = CUDA(torch.FloatTensor(batch['next_obs']))
             action_batch = CUDA(torch.FloatTensor(batch['action']))
             reward_batch = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1) # [B, 1]
             done_batch = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1) # [B, 1]

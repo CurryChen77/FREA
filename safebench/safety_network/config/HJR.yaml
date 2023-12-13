@@ -7,7 +7,7 @@ model_path: 'safebench/safety_network/model_ckpt'
 #action_dim: 2
 
 obs_type: "ego_info"  # "ego_infos" contains ego and the meaningful surrounding vehicle information
-state_dim: 25
+state_dim: 20  # 4*5 actor_number * dim
 action_dim: 2
 
 results_folder_path: ''

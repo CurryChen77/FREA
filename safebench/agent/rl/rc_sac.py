@@ -174,12 +174,12 @@ class RCSAC(BasePolicy):
         for _ in range(self.update_iteration):
             # sample replay buffer
             batch = replay_buffer.sample(self.batch_size)
-            bn_s = CUDA(torch.FloatTensor(batch['state']))  # current state
+            bn_s = CUDA(torch.FloatTensor(batch['obs']))  # current state
             bn_a = CUDA(torch.FloatTensor(batch['action']))
             bn_r = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1)  # [B, 1]
-            bn_s_ = CUDA(torch.FloatTensor(batch['n_state']))  # next state
+            bn_s_ = CUDA(torch.FloatTensor(batch['next_obs']))  # next state
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
-            bn_min_dis = CUDA(torch.FloatTensor(batch['state'][:, 4])).unsqueeze(-1)  # [B, 1]
+            bn_min_dis = CUDA(torch.FloatTensor(batch['constrain_h'])).unsqueeze(-1)  # [B, 1]
             # h = threshold - min_dis, if h > 0 unsafe, else safe
             bn_h = torch.zeros_like(bn_min_dis).fill_(self.constrain_threshold) - bn_min_dis
 

@@ -258,11 +258,10 @@ class CarlaRunner:
         writer = SummaryWriter(log_dir=writer_dir)
 
         # general buffer for both agent and scenario
-        replay_buffer = RouteReplayBuffer(self.num_scenario, self.mode, self.agent_config, self.buffer_capacity)
+        replay_buffer = RouteReplayBuffer(self.num_scenario, self.mode, self.agent_config, self.safety_network_config, self.buffer_capacity)
         data_loader.set_mode("train")
 
         for e_i in tqdm(range(start_episode, self.train_episode)):
-            start_time = time.time()
             # sample scenarios in this town (one town could contain multiple scenarios)
             # simulate multiple scenarios in parallel (usually 2 scenarios)
             sampled_scenario_configs, _ = data_loader.sampler()
@@ -286,14 +285,15 @@ class CarlaRunner:
                 next_obs, rewards, dones, multi_infos = self.env.step(ego_actions=ego_actions, scenario_actions=scenario_actions)
 
                 # infos contain [original infos and updated controlled bv infos], so need to store the original infos
-                training_infos = [info[0] for info in multi_infos]  # origin infos for training
-                infos = [info[1] for info in multi_infos]  # updated infos for transition
+                next_infos = [info[0] for info in multi_infos]  # infos before cbv change
 
-                replay_buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=training_infos)
+                replay_buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=[infos, next_infos])
+
+                infos = [info[1] for info in multi_infos]  # update infos after cbv change
                 obs = copy.deepcopy(next_obs)
                 agent_episode_reward.append(np.mean(rewards))
                 if self.mode == 'train_scenario':
-                    scenario_reward = [info['scenario_agent_reward'] for info in training_infos]
+                    scenario_reward = [info['scenario_agent_reward'] for info in next_infos]
                     scenario_reward = np.array(scenario_reward)
                     scenario_episode_reward.append(np.mean(scenario_reward))
 
@@ -307,7 +307,7 @@ class CarlaRunner:
 
             # end up environment
             self.env.clean_up()
-            replay_buffer.finish_one_episode()
+
             if self.mode == 'train_agent':
                 writer.add_scalar("Agent_episode_reward", np.sum(agent_episode_reward), e_i)
             if self.mode == 'train_scenario':
@@ -320,10 +320,6 @@ class CarlaRunner:
                 self.scenario_policy.train(replay_buffer, writer, e_i)
             elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'onpolicy':
                 self.safety_network_policy.train(replay_buffer, writer, e_i)
-
-            stop_time = time.time()
-            episode_time = round(stop_time - start_time, 2)
-            self.logger.log('>> Episode time: ' + str(episode_time), color="yellow")
 
             # eval during training
             if (e_i+1) % self.eval_in_train_freq == 0:

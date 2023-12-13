@@ -139,11 +139,11 @@ class PPO(BasePolicy):
         # start to train, use gradient descent without batch size
         for K in range(self.train_iteration):
             batch = replay_buffer.sample(self.batch_size)
-            bn_s = CUDA(torch.FloatTensor(batch['state']))
+            bn_s = CUDA(torch.FloatTensor(batch['obs']))
             bn_a = CUDA(torch.FloatTensor(batch['action']))
             bn_r = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1) # [B, 1]
-            bn_s_ = CUDA(torch.FloatTensor(batch['n_state']))
-            #bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1) # [B, 1]
+            bn_s_ = CUDA(torch.FloatTensor(batch['next_obs']))
+            # bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1) # [B, 1]
 
             with torch.no_grad():
                 old_mu, old_std = self.old_policy(bn_s)
