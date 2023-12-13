@@ -261,7 +261,7 @@ class CarlaRunner:
         replay_buffer = RouteReplayBuffer(self.num_scenario, self.mode, self.agent_config, self.safety_network_config, self.buffer_capacity)
         data_loader.set_mode("train")
 
-        for e_i in tqdm(range(start_episode, self.train_episode)):
+        for e_i in tqdm(range(start_episode, self.train_episode+1)):
             # sample scenarios in this town (one town could contain multiple scenarios)
             # simulate multiple scenarios in parallel (usually 2 scenarios)
             sampled_scenario_configs, _ = data_loader.sampler()
@@ -327,7 +327,7 @@ class CarlaRunner:
                 pass
 
             # save checkpoints
-            if (e_i+1) % self.save_freq == 0:
+            if e_i != start_episode and e_i % self.save_freq == 0:
                 if self.mode == 'train_agent':
                     self.agent_policy.save_model(e_i, map_name=self.current_map)
                 if self.mode == 'train_scenario':

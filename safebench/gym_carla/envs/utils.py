@@ -85,6 +85,15 @@ def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40, after_tick=True)
 #     ego_collision_reward = tou - min(ego_min_dis, tou)
 #     return ego_collision_reward
 
+def reset_ego_cbv_dis(ego, cbv):
+    if cbv:
+        CarlaDataProvider.ego_cbv_dis[ego.id] = {}
+        dis = get_distance_across_centers(ego, cbv, after_tick=True)
+        CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
+    else:
+        CarlaDataProvider.ego_cbv_dis[ego.id] = {}
+
+
 def get_ego_cbv_dis_reward(ego, cbv):
     '''
         if the cbv are getting closer to the ego vehicle, then we should reward that, else punish that
@@ -97,10 +106,9 @@ def get_ego_cbv_dis_reward(ego, cbv):
             delta_dis = CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] - dis
             CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
         else:
-            CarlaDataProvider.ego_cbv_dis[ego.id].clear()  # the cbv has changed, so remove the previous cbv
-            CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = get_distance_across_centers(ego, cbv, after_tick=True)
+            raise ValueError('cbv should be the same since no cbv selection applied')
     else:
-        CarlaDataProvider.ego_cbv_dis[ego.id].clear()
+        CarlaDataProvider.ego_cbv_dis[ego.id] = {}
     return delta_dis
 
 

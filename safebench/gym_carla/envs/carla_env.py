@@ -28,7 +28,8 @@ from safebench.gym_carla.envs.misc import (
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    get_actor_in_drivable_area, get_ego_min_dis, get_ego_cbv_dis_reward, get_cbv_bv_reward, get_constrain_h, get_min_distance_across_bboxes
+    get_actor_in_drivable_area, get_ego_min_dis, get_ego_cbv_dis_reward, get_cbv_bv_reward, get_constrain_h, get_min_distance_across_bboxes, \
+    reset_ego_cbv_dis
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -245,8 +246,8 @@ class CarlaEnv(gym.Env):
         self.env_id = env_id
 
         self._create_sensors()
-        # load and run scenarios
-        self._create_scenario(config, env_id)  # create the RouteScenario and using scenario manager to manage it
+        # create RouteScenario, scenario manager, ego_vehicle etc.
+        self._create_scenario(config, env_id)
 
         # generate the initial background vehicles
         self._run_scenario()
@@ -290,7 +291,7 @@ class CarlaEnv(gym.Env):
 
         for _ in range(self.warm_up_steps):
             self.world.tick()
-        return self._get_obs(), self._get_info()
+        return self._get_obs(), self._get_info(need_scenario_reward=False)
 
     def _attach_sensor(self):
         if self.mode == 'eval' or self.mode == 'train_agent':
@@ -443,12 +444,12 @@ class CarlaEnv(gym.Env):
         # find ego nearby vehicles
         self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius, after_tick=True)
 
-        origin_info = self._get_info()  # info after tick of old cbv
+        origin_info = self._get_info(need_scenario_reward=True)  # info after tick of old cbv
 
         # set ego min distance and controlled bv
         self.cbv_selection()
 
-        updated_cbv_info = self._get_info()  # info after tick of new cbv
+        updated_cbv_info = self._get_info(need_scenario_reward=False)  # info after tick of new cbv
 
         self.visualize_ego_route_cbv()  # visualize the controlled bv and the waypoints in clients side after tick
 
@@ -458,13 +459,16 @@ class CarlaEnv(gym.Env):
 
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_cbv_info])
 
-    def _get_info(self):
+    def _get_info(self, need_scenario_reward):
         info = {}
         if self.mode == 'train_scenario':
             # info for scenario agents to take action (actor_infos)
             info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
-            # the total reward for the cbv training
-            info['scenario_agent_reward'] = self._get_scenario_reward()
+            if need_scenario_reward:
+                # the total reward for the cbv training
+                info['scenario_agent_reward'] = self._get_scenario_reward()
+            else:
+                reset_ego_cbv_dis(self.ego_vehicle, self.cbv)
 
         info.update({
             'route_waypoints': self.global_route_waypoints,  # the global route waypoints

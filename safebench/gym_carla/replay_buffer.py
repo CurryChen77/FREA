@@ -50,13 +50,17 @@ class RouteReplayBuffer:
             self.buffer_dones = []
 
     def store(self, data_list, additional_dict):
+        """
+            additional dict[0]: the current infos
+            additional dict[1]: the next infos
+        """
         # store for scenario training
         if self.mode == 'train_scenario':
             scenario_actions = data_list[1]
             dones = data_list[5]
             obs = [info['scenario_obs'] for info in additional_dict[0]]
             next_obs = [info['scenario_obs'] for info in additional_dict[1]]
-            rewards = [info['scenario_agent_reward'] for info in additional_dict[0]]
+            rewards = [info['scenario_agent_reward'] for info in additional_dict[1]]  # the scenario reward should from the next infos
             if not self.full:
                 for s_i in range(len(dones)):
                     self.buffer_actions.append(scenario_actions[s_i])
@@ -119,7 +123,7 @@ class RouteReplayBuffer:
                 next_obs = [info['ego_info'] for info in additional_dict[1]]
             else:
                 raise ValueError(f'Unknown safety_network obs_type')
-            constrain_h = [info['constrain_h'] for info in additional_dict[1]]
+            constrain_h = [info['constrain_h'] for info in additional_dict[1]]  # the constraint h should from next infos
             if not self.full:
                 for s_i in range(len(dones)):
                     self.buffer_next_obs.append(next_obs[s_i])
