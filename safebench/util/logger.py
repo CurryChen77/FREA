@@ -172,9 +172,9 @@ class Logger:
             self.log(">> Log path %s already exists! Storing info there anyway." % self.output_dir, 'green')
         else:
             os.makedirs(self.output_dir)
-        self.output_file = open(osp.join(self.output_dir, output_fname), 'a')
-        atexit.register(self.output_file.close)
-        self.log(">> Logging data to %s" % self.output_file.name, 'green')
+        # self.output_file = open(osp.join(self.output_dir, output_fname), 'a')
+        # atexit.register(self.output_file.close)
+        # self.log(">> Logging data to %s" % self.output_file.name, 'green')
         
         self.eval_results = {}
         self.eval_records = {}
@@ -241,16 +241,16 @@ class Logger:
         for key, value in dict_msg.items():
             self.log("{}: {}".format(key, value), color)
 
-    def log_tabular(self, key, val):
-        """
-            Log a value of some diagnostic.
-        """
-        if self.first_row:
-            self.log_headers.append(key)
-        else:
-            assert key in self.log_headers, "Trying to introduce a new key %s that you didn't include in the first iteration" % key
-        assert key not in self.log_current_row, "You already set %s this iteration. Maybe you forgot to call dump_tabular()" % key
-        self.log_current_row[key] = val
+    # def log_tabular(self, key, val):
+    #     """
+    #         Log a value of some diagnostic.
+    #     """
+    #     if self.first_row:
+    #         self.log_headers.append(key)
+    #     else:
+    #         assert key in self.log_headers, "Trying to introduce a new key %s that you didn't include in the first iteration" % key
+    #     assert key not in self.log_current_row, "You already set %s this iteration. Maybe you forgot to call dump_tabular()" % key
+    #     self.log_current_row[key] = val
 
     def save_config(self, config):
         """
@@ -284,44 +284,44 @@ class Logger:
         except:
             self.log('Warning: could not pickle state_dict.', color='red')
 
-    def dump_tabular(self, x_axis="Epoch", verbose=True, env=None):
-        """
-            Write all of the diagnostics from the current iteration.  Writes both to stdout, and to the output file.
-            x_axis: "Epoch" or "TotalEnvInteracts"
-        """
-        data_dict = {}
-        self.epoch += 1
-        vals = []
-        key_lens = [len(key) for key in self.log_headers]
-        max_key_len = max(15, max(key_lens))
-        keystr = '%' + '%d' % max_key_len
-        fmt = "| " + keystr + "s | %15s |"
-        n_slashes = 22 + max_key_len
-        if verbose:
-            print("-" * n_slashes)
-            if env is not None:
-                print("Env: ", env)
-                print("-" * n_slashes)
-        for key in self.log_headers:
-            val = self.log_current_row.get(key, "")
-            valstr = "%8.3g" % val if hasattr(val, "__float__") else val
-            if verbose:
-                print(fmt % (key, valstr))
-            vals.append(val)
-
-            if key == x_axis:
-                self.steps = val
-        if verbose:
-            print("-" * n_slashes, flush=True)
-        if self.output_file is not None:
-            if self.first_row:
-                self.output_file.write("\t".join(self.log_headers) + "\n")
-            self.output_file.write("\t".join(map(str, vals)) + "\n")
-            self.output_file.flush()
-
-        self.log_current_row.clear()
-        self.first_row = False
-        return data_dict
+    # def dump_tabular(self, x_axis="Epoch", verbose=True, env=None):
+    #     """
+    #         Write all of the diagnostics from the current iteration.  Writes both to stdout, and to the output file.
+    #         x_axis: "Epoch" or "TotalEnvInteracts"
+    #     """
+    #     data_dict = {}
+    #     self.epoch += 1
+    #     vals = []
+    #     key_lens = [len(key) for key in self.log_headers]
+    #     max_key_len = max(15, max(key_lens))
+    #     keystr = '%' + '%d' % max_key_len
+    #     fmt = "| " + keystr + "s | %15s |"
+    #     n_slashes = 22 + max_key_len
+    #     if verbose:
+    #         print("-" * n_slashes)
+    #         if env is not None:
+    #             print("Env: ", env)
+    #             print("-" * n_slashes)
+    #     for key in self.log_headers:
+    #         val = self.log_current_row.get(key, "")
+    #         valstr = "%8.3g" % val if hasattr(val, "__float__") else val
+    #         if verbose:
+    #             print(fmt % (key, valstr))
+    #         vals.append(val)
+    #
+    #         if key == x_axis:
+    #             self.steps = val
+    #     if verbose:
+    #         print("-" * n_slashes, flush=True)
+    #     if self.output_file is not None:
+    #         if self.first_row:
+    #             self.output_file.write("\t".join(self.log_headers) + "\n")
+    #         self.output_file.write("\t".join(map(str, vals)) + "\n")
+    #         self.output_file.flush()
+    #
+    #     self.log_current_row.clear()
+    #     self.first_row = False
+    #     return data_dict
     
     def init_video_recorder(self):
         if self.scenario_category == 'planning':
