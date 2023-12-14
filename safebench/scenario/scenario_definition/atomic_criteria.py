@@ -10,6 +10,7 @@
 
 import weakref
 import math
+from collections import deque
 
 import numpy as np
 from enum import Enum
@@ -70,6 +71,51 @@ class Criterion:
             self.test_status = "SUCCESS"
 
 
+class StuckDetectorTest(Criterion):
+    """
+    Stuck detector used to detect vehicle stuck in simulator. It takes speed as input in each tick.
+
+    :Arguments:
+        - len_thresh (int, optional): Speed history length to calculate thresh. Defaults to 200.
+        - speed_thresh (float, optional): Speed thresh value. Defaults to 0.1.
+
+    :Interfaces:
+        - tick, clear
+    """
+
+    def __init__(self, actor, len_thresh=100, speed_thresh=0.1, terminate_on_failure=True, name="StuckDetectorTest"):
+        super(StuckDetectorTest, self).__init__(name, actor=actor, expected_value_success=speed_thresh, terminate_on_failure=terminate_on_failure)
+        self._speed_queue = deque(maxlen=len_thresh)
+        self._len_thresh = len_thresh
+        self._speed_thresh = speed_thresh
+
+        self.stuck = False
+
+    def update(self):
+        """
+        Update one tick
+
+        :Arguments:
+            - speed (float): Current speed
+        """
+        # TODO need to consider the traffic light
+        new_status = Status.RUNNING
+        speed = CarlaDataProvider.get_velocity(self.actor)
+        self._speed_queue.append(speed)
+        if len(self._speed_queue) >= self._len_thresh:
+            if np.average(self._speed_queue) < self._speed_thresh:
+                self.test_status = "FAILURE"
+                new_status = Status.FAILURE
+        return new_status
+
+    def terminate(self):
+        """
+        Clear speed history
+        """
+        self._speed_queue.clear()
+        super(StuckDetectorTest, self).terminate()
+
+
 class DrivenDistanceTest(Criterion):
     """
         This class contains an atomic test to check the driven distance
@@ -81,7 +127,7 @@ class DrivenDistanceTest(Criterion):
         - optional [optional]: If True, the result is not considered for an overall pass/fail result
     """
 
-    def __init__(self, actor, distance_success, distance_acceptable=None, optional=False,name="CheckDrivenDistance"):
+    def __init__(self, actor, distance_success, distance_acceptable=None, optional=False, name="CheckDrivenDistance"):
         super(DrivenDistanceTest, self).__init__(name, actor, distance_success, distance_acceptable, optional)
         self._last_location = None
         self._last_location = CarlaDataProvider.get_location(self.actor)
@@ -174,45 +220,6 @@ class AverageVelocityTest(Criterion):
         if self.test_status == "RUNNING":
             self.test_status = "FAILURE"
         super(AverageVelocityTest, self).terminate()
-
-
-# class DistanceBasedCollisionTrain(Criterion):
-#     """
-#         This class contains an atomic test for collision based on the bbox distance
-#         Args:
-#         - actor (carla.Actor): CARLA actor to be used for this test
-#         - terminate_on_failure [optional]: If True, the complete scenario will terminate upon failure of this test
-#     """
-#     def __init__(self, actor, optional=False, name="DistanceBasedCollisionTrain", terminate_on_failure=False):
-#         """
-#             Construction with sensor setup
-#         """
-#         super(DistanceBasedCollisionTrain, self).__init__(name, actor, 0, None, optional, terminate_on_failure)
-#
-#         self.actor = actor
-#
-#     def update(self):
-#         """
-#             Check collision count
-#         """
-#         new_status = Status.RUNNING
-#
-#         actor_nearby_vehicles = get_nearby_vehicles(self.actor, radius=40)  # criteria are called before tick
-#         min_dis = 40
-#
-#         if actor_nearby_vehicles:
-#             for i, vehicle in enumerate(actor_nearby_vehicles):
-#                 if i < 3:  # calculate only the closest three vehicles
-#                     dis = get_min_distance_across_bboxes(self.actor, vehicle)  # criteria are called before tick
-#                     if dis < min_dis:
-#                         min_dis = dis
-#         if min_dis < 0.01:  # the min distance < threshold(0.01)
-#             self.test_status = "FAILURE"
-#
-#         if self._terminate_on_failure and (self.test_status == "FAILURE"):
-#             new_status = Status.FAILURE
-#
-#         return new_status
 
 
 class CollisionTest(Criterion):
