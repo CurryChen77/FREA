@@ -444,6 +444,10 @@ class CarlaEnv(gym.Env):
         # find ego nearby vehicles
         self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
+        # update the running status and check whether terminate or not
+        self.scenario_manager.update_running_status()
+        self.collide_with_cbv = self.scenario_manager.collide_with_cbv
+
         origin_info = self._get_info(need_scenario_reward=True)  # info of old cbv
 
         # set ego min distance and controlled bv
@@ -456,9 +460,6 @@ class CarlaEnv(gym.Env):
         # Update timesteps
         self.time_step += 1
         self.total_step += 1
-
-        # update the running status and check whether terminate or not
-        self.scenario_manager.update_running_status()
 
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_cbv_info])
 
@@ -688,14 +689,10 @@ class CarlaEnv(gym.Env):
         # in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else 0
 
         # ego collision reward, depending on the ego min distance
-        # if self.cbv:
-        #     ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv)
-        #     ego_cbv_collision_reward = 1 if ego_cbv_dis < 0.01 else 0
-        # else:
-        #     ego_cbv_collision_reward = 0
+        ego_cbv_collide_reward = 1 if self.collide_with_cbv else 0
 
         # final scenario agent rewards
-        scenario_agent_reward = 5 * cbv_min_dis_reward + ego_cbv_dis_reward - 0.1
+        scenario_agent_reward = 5 * cbv_min_dis_reward + ego_cbv_dis_reward + 80 * ego_cbv_collide_reward - 0.1
 
         return scenario_agent_reward
 
@@ -707,7 +704,6 @@ class CarlaEnv(gym.Env):
         return r_collision
 
     def _terminal(self):
-        self.collide_with_cbv = self.scenario_manager.collide_with_cbv
         return not self.scenario_manager._running
 
     def _remove_sensor(self):
