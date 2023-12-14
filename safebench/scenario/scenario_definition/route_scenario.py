@@ -222,7 +222,7 @@ class RouteScenario():
 
     @staticmethod
     def _get_actor_state(actor):
-        actor_trans = CarlaDataProvider.get_transform_after_tick(actor)
+        actor_trans = CarlaDataProvider.get_transform(actor)
         actor_x = actor_trans.location.x
         actor_y = actor_trans.location.y
         actor_yaw = round(actor_trans.rotation.yaw / 180 * np.pi, 3)

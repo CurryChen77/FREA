@@ -79,7 +79,7 @@ class AdvBehaviorSingle(BasicScenario):
         return act
 
     def update_traffic_light(self):
-        ego_waypoint = self._map.get_waypoint(CarlaDataProvider.get_location_after_tick(self.ego_vehicle))
+        ego_waypoint = self._map.get_waypoint(CarlaDataProvider.get_location(self.ego_vehicle))
         if not ego_waypoint.is_junction and self.last_ego_waypoint.is_junction:  # last tick the ego is in the junction, but the current step is out
             traffic_light = CarlaDataProvider.get_next_traffic_light(self.ego_vehicle)
             # if the ego's next traffic light is not None and has changed, then set the next traffic light to green

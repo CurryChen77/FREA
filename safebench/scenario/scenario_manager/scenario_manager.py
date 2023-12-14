@@ -79,10 +79,6 @@ class ScenarioManager(object):
         if self._timestamp_last_run < timestamp.elapsed_seconds and self._running:
             self._timestamp_last_run = timestamp.elapsed_seconds
             GameTime.on_carla_tick(timestamp)
-            # update the CarlaDateProvider information before tick (the state of the previous time step)
-            CarlaDataProvider.on_carla_tick()
 
             # update the scenario instance receiving the scenario action
             self.scenario_instance.update_behavior(self.cbv, scenario_action)
-
-            self.update_running_status()

@@ -32,9 +32,6 @@ class CarlaDataProvider(object):
     _actor_velocity_map = {}
     _actor_location_map = {}
     _actor_transform_map = {}
-    _actor_velocity_map_after_tick = {}   # the new map to store the velocity of all the actors in the world after tick
-    _actor_location_map_after_tick = {}   # the new map to store the location of all the actors in the world after tick
-    _actor_transform_map_after_tick = {}  # the new map to store the transform of all the actors in the world after tick
     _traffic_light_map = {}
     _carla_actor_pool = {}
     _client = None
@@ -61,19 +58,16 @@ class CarlaDataProvider(object):
             raise KeyError("Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
         else:
             CarlaDataProvider._actor_velocity_map[actor] = 0.0
-            CarlaDataProvider._actor_velocity_map_after_tick[actor] = 0.0  # register new actor velocity map
 
         if actor in CarlaDataProvider._actor_location_map:
             raise KeyError("Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
         else:
             CarlaDataProvider._actor_location_map[actor] = None
-            CarlaDataProvider._actor_location_map_after_tick[actor] = None  # register new actor location map
 
         if actor in CarlaDataProvider._actor_transform_map:
             raise KeyError("Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
         else:
             CarlaDataProvider._actor_transform_map[actor] = None
-            CarlaDataProvider._actor_transform_map_after_tick[actor] = None  # register new actor transform map
 
     @staticmethod
     def register_actors(actors):
@@ -99,27 +93,6 @@ class CarlaDataProvider(object):
         for actor in CarlaDataProvider._actor_transform_map:
             if actor is not None and actor.is_alive:
                 CarlaDataProvider._actor_transform_map[actor] = actor.get_transform()
-
-        world = CarlaDataProvider._world
-        if world is None:
-            print("WARNING: CarlaDataProvider couldn't find the world")
-
-    @staticmethod
-    def on_carla_after_tick():
-        """
-            Callback from CARLA after the tick
-        """
-        for actor in CarlaDataProvider._actor_velocity_map_after_tick:
-            if actor is not None and actor.is_alive:
-                CarlaDataProvider._actor_velocity_map_after_tick[actor] = calculate_velocity(actor)  # m/s
-
-        for actor in CarlaDataProvider._actor_location_map_after_tick:
-            if actor is not None and actor.is_alive:
-                CarlaDataProvider._actor_location_map_after_tick[actor] = actor.get_location()
-
-        for actor in CarlaDataProvider._actor_transform_map_after_tick:
-            if actor is not None and actor.is_alive:
-                CarlaDataProvider._actor_transform_map_after_tick[actor] = actor.get_transform()
 
         world = CarlaDataProvider._world
         if world is None:
@@ -162,45 +135,6 @@ class CarlaDataProvider(object):
 
         # We are intentionally not throwing here
         print('{}.get_transform: {} not found!' .format(__name__, actor))
-        return None
-
-    @staticmethod
-    def get_velocity_after_tick(actor):
-        """
-            returns the absolute velocity for the given actor
-        """
-        for key in CarlaDataProvider._actor_velocity_map_after_tick:
-            if key.id == actor.id:
-                return CarlaDataProvider._actor_velocity_map_after_tick[key]
-
-        # We are intentionally not throwing here
-        print('{}.get_velocity_after_tick: {} not found!' .format(__name__, actor))
-        return 0.0
-
-    @staticmethod
-    def get_location_after_tick(actor):
-        """
-            returns the location for the given actor
-        """
-        for key in CarlaDataProvider._actor_location_map_after_tick:
-            if key.id == actor.id:
-                return CarlaDataProvider._actor_location_map_after_tick[key]
-
-        # We are intentionally not throwing here
-        print('{}.get_location_after_tick: {} not found!' .format(__name__, actor))
-        return None
-
-    @staticmethod
-    def get_transform_after_tick(actor):
-        """
-            returns the transform for the given actor
-        """
-        for key in CarlaDataProvider._actor_transform_map_after_tick:
-            if key.id == actor.id:
-                return CarlaDataProvider._actor_transform_map_after_tick[key]
-
-        # We are intentionally not throwing here
-        print('{}.get_transform_after_tick: {} not found!' .format(__name__, actor))
         return None
 
     @staticmethod
@@ -882,9 +816,6 @@ class CarlaDataProvider(object):
         CarlaDataProvider._actor_velocity_map.clear()
         CarlaDataProvider._actor_location_map.clear()
         CarlaDataProvider._actor_transform_map.clear()
-        CarlaDataProvider._actor_velocity_map_after_tick.clear()   # clean the velocity map of actor after tick
-        CarlaDataProvider._actor_location_map_after_tick.clear()   # clean the location map of actor after tick
-        CarlaDataProvider._actor_transform_map_after_tick.clear()  # clean the transform map of actor after tick
         # CarlaDataProvider._traffic_light_map.clear()
         # CarlaDataProvider._map = None
         # CarlaDataProvider._world = None
@@ -924,9 +855,6 @@ class CarlaDataProvider(object):
         CarlaDataProvider._actor_velocity_map.clear()
         CarlaDataProvider._actor_location_map.clear()
         CarlaDataProvider._actor_transform_map.clear()
-        CarlaDataProvider._actor_velocity_map_after_tick.clear()   # clean the velocity map of actor after tick
-        CarlaDataProvider._actor_location_map_after_tick.clear()   # clean the location map of actor after tick
-        CarlaDataProvider._actor_transform_map_after_tick.clear()  # clean the transform map of actor after tick
         CarlaDataProvider._traffic_light_map.clear()
         CarlaDataProvider._map = None
         CarlaDataProvider._world = None

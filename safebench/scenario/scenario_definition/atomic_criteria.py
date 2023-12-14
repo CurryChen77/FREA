@@ -197,13 +197,13 @@ class AverageVelocityTest(Criterion):
 #         """
 #         new_status = Status.RUNNING
 #
-#         actor_nearby_vehicles = get_nearby_vehicles(self.actor, radius=40, after_tick=False)  # criteria are called before tick
+#         actor_nearby_vehicles = get_nearby_vehicles(self.actor, radius=40)  # criteria are called before tick
 #         min_dis = 40
 #
 #         if actor_nearby_vehicles:
 #             for i, vehicle in enumerate(actor_nearby_vehicles):
 #                 if i < 3:  # calculate only the closest three vehicles
-#                     dis = get_min_distance_across_bboxes(self.actor, vehicle, after_tick=False)  # criteria are called before tick
+#                     dis = get_min_distance_across_bboxes(self.actor, vehicle)  # criteria are called before tick
 #                     if dis < min_dis:
 #                         min_dis = dis
 #         if min_dis < 0.01:  # the min distance < threshold(0.01)

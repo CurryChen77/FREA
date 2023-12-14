@@ -228,7 +228,7 @@ class CarlaEnv(gym.Env):
 
         # get the nearby vehicles around the cbv
         if self.cbv:
-            self.cbv_nearby_vehicles = get_nearby_vehicles(self.cbv, self.search_radius, after_tick=True)
+            self.cbv_nearby_vehicles = get_nearby_vehicles(self.cbv, self.search_radius)
             if self.birdeye_render:
                 # update the cbv for BEV visualization
                 if self.old_cbv and self.cbv and self.old_cbv.id != self.cbv.id:  # the cbv has changed, need to remove the old cbv
@@ -256,7 +256,6 @@ class CarlaEnv(gym.Env):
 
         # first update the info in the CarlaDataProvider
         CarlaDataProvider.on_carla_tick()
-        CarlaDataProvider.on_carla_after_tick()
 
         # route planner for ego vehicle
         self.global_route_waypoints = self._global_route_to_waypoints()  # the initial route waypoints from the config
@@ -343,7 +342,7 @@ class CarlaEnv(gym.Env):
     def visualize_ego_route_cbv(self):
         # Visualize the controlled bv
         if self.cbv:
-            cbv_transform = CarlaDataProvider.get_transform_after_tick(self.cbv)
+            cbv_transform = CarlaDataProvider.get_transform(self.cbv)
             cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
             cbv_angle = math.radians(cbv_transform.rotation.yaw)
             cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
@@ -436,27 +435,30 @@ class CarlaEnv(gym.Env):
             self.vehicle_velocities.pop(0)
 
         # After tick, update all the actors' velocity map, location map and transform map
-        CarlaDataProvider.on_carla_after_tick()
+        CarlaDataProvider.on_carla_tick()
 
         # route planner
         # self.waypoints: the waypoints from the waypoints buffer, needed to be followed
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
-        self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius, after_tick=True)
+        self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
-        origin_info = self._get_info(need_scenario_reward=True)  # info after tick of old cbv
+        origin_info = self._get_info(need_scenario_reward=True)  # info of old cbv
 
         # set ego min distance and controlled bv
         self.cbv_selection()
 
-        updated_cbv_info = self._get_info(need_scenario_reward=False)  # info after tick of new cbv
+        updated_cbv_info = self._get_info(need_scenario_reward=False)  # info of new cbv
 
         self.visualize_ego_route_cbv()  # visualize the controlled bv and the waypoints in clients side after tick
 
         # Update timesteps
         self.time_step += 1
         self.total_step += 1
+
+        # update the running status and check whether terminate or not
+        self.scenario_manager.update_running_status()
 
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_cbv_info])
 
@@ -595,10 +597,10 @@ class CarlaEnv(gym.Env):
 
         if self.agent_obs_type == 'ego_state':
             # Ego state
-            ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
+            ego_trans = CarlaDataProvider.get_transform(self.ego_vehicle)
             ego_loc = ego_trans.location
             ego_pos = np.array([ego_loc.x, ego_loc.y])
-            ego_speed = CarlaDataProvider.get_velocity_after_tick(self.ego_vehicle)  # m/s
+            ego_speed = CarlaDataProvider.get_velocity(self.ego_vehicle)  # m/s
             ego_compass = np.deg2rad(ego_trans.rotation.yaw)  # the yaw angle in radius
             ego_state = {
                 'gps': ego_pos,
@@ -610,7 +612,7 @@ class CarlaEnv(gym.Env):
             }
         elif self.agent_obs_type == 'simple_state':
             # default State observation from safebench
-            ego_trans = CarlaDataProvider.get_transform_after_tick(self.ego_vehicle)
+            ego_trans = CarlaDataProvider.get_transform(self.ego_vehicle)
             ego_x = ego_trans.location.x
             ego_y = ego_trans.location.y
             ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
@@ -679,7 +681,7 @@ class CarlaEnv(gym.Env):
         ego_cbv_dis_reward = get_ego_cbv_dis_reward(self.ego_vehicle, self.cbv)
 
         # cbv velocity and whether it is too fast or not
-        # V_cbv = CarlaDataProvider.get_velocity_after_tick(self.cbv) if self.cbv else 0
+        # V_cbv = CarlaDataProvider.get_velocity(self.cbv) if self.cbv else 0
         # too_fast = -1 if V_cbv > self.desired_speed else 0
 
         # since the obs don't have road info, so no need to include in drivable area info
@@ -687,7 +689,7 @@ class CarlaEnv(gym.Env):
 
         # ego collision reward, depending on the ego min distance
         # if self.cbv:
-        #     ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv, after_tick=True)
+        #     ego_cbv_dis = get_min_distance_across_bboxes(self.ego_vehicle, self.cbv)
         #     ego_cbv_collision_reward = 1 if ego_cbv_dis < 0.01 else 0
         # else:
         #     ego_cbv_collision_reward = 0

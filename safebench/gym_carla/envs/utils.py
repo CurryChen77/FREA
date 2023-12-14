@@ -16,7 +16,7 @@ from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataPro
 
 
 def get_actor_in_drivable_area(actor):
-    actor_transform = CarlaDataProvider.get_transform_after_tick(actor)
+    actor_transform = CarlaDataProvider.get_transform(actor)
     actor_location = actor_transform.location
     # move the actor waypoint to the front part of the actor
     actor_bbox_extent_x = actor.bounding_box.extent.x
@@ -42,14 +42,14 @@ def get_constrain_h(ego_vehicle, search_radius, nearby_vehicles, ego_agent_learn
         for i, vehicle in enumerate(nearby_vehicles):
             # the closest vehicle using center point may not be the closest vehicle using bboxs
             if i < 3:
-                dis = get_min_distance_across_bboxes(ego_vehicle, vehicle, after_tick=True)
+                dis = get_min_distance_across_bboxes(ego_vehicle, vehicle)
                 if dis < ego_min_dis:
                     ego_min_dis = dis
 
     if ego_agent_learnable:  # TODO rule-based agent usually will not drive out the road, will learning-based method could
         # check whether the ego has reached the un-drivable area
         check_lane_type_list = [carla.LaneType.Driving]
-        ego_transform = CarlaDataProvider.get_transform_after_tick(ego_vehicle)
+        ego_transform = CarlaDataProvider.get_transform(ego_vehicle)
         ego_location = ego_transform.location
         # move the ego waypoint to the front part of the vehicle
         ego_bbox_extent_x = ego_vehicle.bounding_box.extent.x
@@ -70,12 +70,12 @@ def get_constrain_h(ego_vehicle, search_radius, nearby_vehicles, ego_agent_learn
     return constrain_h
 
 
-def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40, after_tick=True):
+def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40):
     ego_min_dis = search_redius
     if ego_nearby_vehicles:
         for i, vehicle in enumerate(ego_nearby_vehicles):
             if i < 3:  # calculate only the closest three vehicles
-                dis = get_min_distance_across_bboxes(ego, vehicle, after_tick)
+                dis = get_min_distance_across_bboxes(ego, vehicle)
                 if dis < ego_min_dis:
                     ego_min_dis = dis
     return ego_min_dis
@@ -88,7 +88,7 @@ def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40, after_tick=True)
 def reset_ego_cbv_dis(ego, cbv):
     if cbv:
         CarlaDataProvider.ego_cbv_dis[ego.id] = {}
-        dis = get_distance_across_centers(ego, cbv, after_tick=True)
+        dis = get_distance_across_centers(ego, cbv)
         CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
     else:
         CarlaDataProvider.ego_cbv_dis[ego.id] = {}
@@ -101,12 +101,14 @@ def get_ego_cbv_dis_reward(ego, cbv):
     delta_dis = 0
     if cbv:
         if cbv.id in CarlaDataProvider.ego_cbv_dis[ego.id].keys():  # whether the current are in the old cbv list
-            dis = get_distance_across_centers(ego, cbv, after_tick=True)
+            dis = get_distance_across_centers(ego, cbv)
             # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
             delta_dis = CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] - dis
             CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
         else:
-            raise ValueError('cbv should be the same since no cbv selection applied')
+            CarlaDataProvider.ego_cbv_dis[ego.id] = {}
+            dis = get_distance_across_centers(ego, cbv)
+            CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
     else:
         CarlaDataProvider.ego_cbv_dis[ego.id] = {}
     return delta_dis
@@ -118,7 +120,7 @@ def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1.25):
         for i, vehicle in enumerate(cbv_nearby_vehicles):
             if vehicle.attributes.get('role_name') == 'background' and i < 2:  # except the ego vehicle and calculate only the closest two vehicles
                 # the min distance between bounding boxes of two vehicles
-                min_dis = get_min_distance_across_bboxes(cbv, vehicle, after_tick=True)
+                min_dis = get_min_distance_across_bboxes(cbv, vehicle)
         min_dis_reward = min(min_dis, tou) - tou  # the controlled bv shouldn't be too close to the other bvs
     else:
         min_dis_reward = 0
@@ -153,12 +155,12 @@ def find_closest_vehicle(ego_vehicle, radius=40, cbv_candidates=None):
     '''
     min_dis = radius
     cbv = None
-    ego_location = CarlaDataProvider.get_location_after_tick(ego_vehicle)
+    ego_location = CarlaDataProvider.get_location(ego_vehicle)
     if cbv_candidates is None:
         cbv_candidates = get_cbv_candidates(ego_vehicle, radius)  # find the cbv candidates
 
     for vehicle in cbv_candidates:
-        vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
+        vehicle_location = CarlaDataProvider.get_location(vehicle)
         distance = ego_location.distance(vehicle_location)
         if distance < min_dis:
             cbv = vehicle  # update cbv
@@ -167,14 +169,11 @@ def find_closest_vehicle(ego_vehicle, radius=40, cbv_candidates=None):
     return cbv
 
 
-def get_nearby_vehicles(center_vehicle, radius=40, after_tick=True):
+def get_nearby_vehicles(center_vehicle, radius=40):
     '''
         return the nearby vehicles around the center vehicle
     '''
-    if after_tick:
-        center_location = CarlaDataProvider.get_location_after_tick(center_vehicle)
-    else:
-        center_location = CarlaDataProvider.get_location(center_vehicle)
+    center_location = CarlaDataProvider.get_location(center_vehicle)
 
     # get all the vehicles on the world
     all_vehicles = CarlaDataProvider._world.get_actors().filter('vehicle.*')
@@ -185,10 +184,7 @@ def get_nearby_vehicles(center_vehicle, radius=40, after_tick=True):
     for vehicle in all_vehicles:
         if vehicle.id != center_vehicle.id:  # except the center vehicle
             # the location of other vehicles
-            if after_tick:
-                vehicle_location = CarlaDataProvider.get_location_after_tick(vehicle)
-            else:
-                vehicle_location = CarlaDataProvider.get_location(vehicle)
+            vehicle_location = CarlaDataProvider.get_location(vehicle)
             distance = center_location.distance(vehicle_location)
             if distance <= radius:
                 nearby_vehicles_info.append([vehicle, distance])
@@ -207,7 +203,7 @@ def get_cbv_candidates(center_vehicle, radius=40):
         the foundation for the cbv selection, selecting the candidates nearby vehicles based on specific traffic rules
     '''
     # info for the ego vehicle
-    center_transform = CarlaDataProvider.get_transform_after_tick(center_vehicle)
+    center_transform = CarlaDataProvider.get_transform(center_vehicle)
     center_location = center_transform.location
     center_forward_vector = center_transform.rotation.get_forward_vector()
 
@@ -217,7 +213,7 @@ def get_cbv_candidates(center_vehicle, radius=40):
     nearby_vehicles_info = []
     for vehicle in all_vehicles:
         if vehicle.id != center_vehicle.id:  # 1. except the center vehicle
-            vehicle_transform = CarlaDataProvider.get_transform_after_tick(vehicle)
+            vehicle_transform = CarlaDataProvider.get_transform(vehicle)
             vehicle_location = vehicle_transform.location
 
             relative_direction = (vehicle_location - center_location)
@@ -238,15 +234,11 @@ def get_cbv_candidates(center_vehicle, radius=40):
     return nearby_vehicles
 
 
-def get_min_distance_across_bboxes(veh1, veh2, after_tick=True):
+def get_min_distance_across_bboxes(veh1, veh2):
     veh1_bbox = veh1.bounding_box
     veh2_bbox = veh2.bounding_box
-    if after_tick:
-        veh1_transform = CarlaDataProvider.get_transform_after_tick(veh1)
-        veh2_transform = CarlaDataProvider.get_transform_after_tick(veh2)
-    else:
-        veh1_transform = CarlaDataProvider.get_transform(veh1)
-        veh2_transform = CarlaDataProvider.get_transform(veh2)
+    veh1_transform = CarlaDataProvider.get_transform(veh1)
+    veh2_transform = CarlaDataProvider.get_transform(veh2)
 
     box2origin_veh1, size_veh1 = compute_box2origin(veh1_bbox, veh1_transform)
     box2origin_veh2, size_veh2 = compute_box2origin(veh2_bbox, veh2_transform)
@@ -258,11 +250,7 @@ def get_min_distance_across_bboxes(veh1, veh2, after_tick=True):
     return dist
 
 
-def get_distance_across_centers(veh1, veh2, after_tick=True):
-    if after_tick:
-        veh1_loc = CarlaDataProvider.get_location_after_tick(veh1)
-        veh2_loc = CarlaDataProvider.get_location_after_tick(veh2)
-    else:
-        veh1_loc = CarlaDataProvider.get_location(veh1)
-        veh2_loc = CarlaDataProvider.get_location(veh2)
+def get_distance_across_centers(veh1, veh2):
+    veh1_loc = CarlaDataProvider.get_location(veh1)
+    veh2_loc = CarlaDataProvider.get_location(veh2)
     return veh1_loc.distance(veh2_loc)

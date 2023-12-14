@@ -111,7 +111,7 @@ class AgentStateEncoder(object):
         # -----------------------------------------------------------
 
         # add vehicle velocity and brake flag
-        ego_transform = CarlaDataProvider.get_transform_after_tick(ego_veh)
+        ego_transform = CarlaDataProvider.get_transform(ego_veh)
         ego_control = ego_veh.get_control()
         ego_velocity = ego_veh.get_velocity()
         ego_speed = self.get_forward_speed(transform=ego_transform, velocity=ego_velocity)  # In m/s
@@ -146,7 +146,7 @@ class AgentStateEncoder(object):
         # -----------------------------------------------------------
 
         for vehicle in ego_nearby_vehicles:
-            vehicle_transform = CarlaDataProvider.get_transform_after_tick(vehicle)
+            vehicle_transform = CarlaDataProvider.get_transform(vehicle)
             vehicle_rotation = vehicle_transform.rotation
 
             vehicle_matrix = np.array(vehicle_transform.get_matrix())
