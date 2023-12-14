@@ -78,6 +78,7 @@ class CarlaEnv(gym.Env):
         self.gps_route = None
         self.route = None
         self.encoded_state = None
+        self.collide_with_cbv = False
         self.search_radius = search_radius
         self.agent_obs_type = env_params['agent_obs_type']
         self.agent_state_encoder = agent_state_encoder
@@ -704,6 +705,7 @@ class CarlaEnv(gym.Env):
         return r_collision
 
     def _terminal(self):
+        self.collide_with_cbv = self.scenario_manager.collide_with_cbv
         return not self.scenario_manager._running
 
     def _remove_sensor(self):
@@ -741,6 +743,7 @@ class CarlaEnv(gym.Env):
         self.constrain_h = None
         self.global_route_waypoints = None
         self.waypoints = None
+        self.collide_with_cbv = False
 
     def clean_up(self):
         # remove temp variables

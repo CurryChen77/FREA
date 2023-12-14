@@ -254,9 +254,10 @@ class CollisionTest(Criterion):
             Check collision count
         """
         new_status = Status.RUNNING
-
+        collision_vehicle_id = None
         if self._terminate_on_failure and (self.test_status == "FAILURE"):
             new_status = Status.FAILURE
+            collision_vehicle_id = self.last_id
 
         actor_location = CarlaDataProvider.get_location(self.actor)
         new_registered_collisions = []
@@ -275,7 +276,7 @@ class CollisionTest(Criterion):
         if self.last_id and GameTime.get_time() - self.collision_time > self.MAX_ID_TIME:
             self.last_id = None
 
-        return new_status
+        return new_status, collision_vehicle_id
 
     def terminate(self):
         """

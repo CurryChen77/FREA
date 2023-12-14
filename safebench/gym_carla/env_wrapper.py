@@ -75,14 +75,12 @@ class VectorWrapper():
             obs_list.append(obs)
             info_list.append(info)
 
-        if self.mode == 'eval':
-            # only set the spectator when evaluating
-            transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
-            if transform is not None:
-                spectator = self.world.get_spectator()
-                spectator.set_transform(carla.Transform(
-                    transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
-                ))
+        transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
+        if transform is not None:
+            spectator = self.world.get_spectator()
+            spectator.set_transform(carla.Transform(
+                transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+            ))
 
         # sometimes not all scenarios are used
         self.finished_env = [False] * self.num_scenario
@@ -110,14 +108,12 @@ class VectorWrapper():
                 self.env_list[e_i].step_before_tick(processed_action, scenario_actions[action_idx])
                 action_idx += 1
 
-        if self.mode == 'eval':
-            # only set the spectator when evaluating
-            transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
-            if transform is not None:
-                spectator = self.world.get_spectator()
-                spectator.set_transform(carla.Transform(
-                    transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
-                ))
+        transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
+        if transform is not None:
+            spectator = self.world.get_spectator()
+            spectator.set_transform(carla.Transform(
+                transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+            ))
 
         # tick all scenarios
         for _ in range(self.frame_skip):
@@ -146,6 +142,8 @@ class VectorWrapper():
                             self.logger.log('Scenario with data_id {} is duplicated'.format(current_env.config.data_id))
                         # the running results contain every data id (one specific scenario) running status at each time step
                         self.running_results[current_env.config.data_id] = current_env.scenario_manager.running_record
+                    if self.mode == 'train_scenario' or self.mode == 'train_safety_network':
+                        done = current_env.collide_with_cbv  # when training the cbv and safety network, ego only collide with cbv means dones
 
                 # update information
                 obs_list.append(obs)

@@ -172,11 +172,16 @@ class RouteScenario():
 
         stop = False
         collision = False
+        collide_with_cbv = False
         # collision with other objects
-        if running_status['collision'] == Status.FAILURE:
+        if running_status['collision'][0] == Status.FAILURE:
             stop = True
             collision = True
-            self.logger.log(f'>> Scenario stops due to collision', color='yellow')
+            if running_status['collision'][1] is not None and running_status['collision'][1] == self.cbv.id:
+                collide_with_cbv = True
+                self.logger.log(f'>> Scenario stops due to collision with cbv', color='yellow')
+            else:
+                self.logger.log(f'>> Scenario stops due to collision with normal object', color='yellow')
 
         # out of the road detection
         if running_status['off_road'] == Status.FAILURE:
@@ -197,7 +202,7 @@ class RouteScenario():
             stop = True
             self.logger.log('>> Scenario stops due to timeout', color='yellow')
 
-        return running_status, stop, collision
+        return running_status, stop, collision, collide_with_cbv
 
     def _create_criteria(self):
         criteria = {}

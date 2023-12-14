@@ -24,6 +24,7 @@ class ScenarioManager(object):
         self.logger = logger
         self.scenic = use_scenic
         self._collision = False
+        self.collide_with_cbv = False
         self._reset()
 
     def _reset(self):
@@ -32,6 +33,7 @@ class ScenarioManager(object):
         self.ego_vehicle = None
         self._running = False
         self._collision = False
+        self.collide_with_cbv = False
         self._timestamp_last_run = 0.0
         self.running_record = []
         GameTime.restart()
@@ -64,12 +66,14 @@ class ScenarioManager(object):
         self._running = False
 
     def update_running_status(self):
-        record, stop, collision = self.route_scenario.get_running_status(self.running_record)
+        record, stop, collision, collide_with_cbv = self.route_scenario.get_running_status(self.running_record)
         self.running_record.append(record)  # contain every step's record
         if stop:
             self._running = False
             if collision:
                 self._collision = True
+                if collide_with_cbv:
+                    self.collide_with_cbv = True
 
     def get_update(self, timestamp, scenario_action):
         if self._timestamp_last_run < timestamp.elapsed_seconds and self._running:
