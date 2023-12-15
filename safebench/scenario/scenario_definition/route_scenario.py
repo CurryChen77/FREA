@@ -190,7 +190,7 @@ class RouteScenario():
             self.logger.log('>> Scenario stops due to off road', color='yellow')
 
         # stuck
-        if running_status['stuck'] == Status.FAILURE:
+        if self.mode != 'eval' and running_status['stuck'] == Status.FAILURE:
             stop = True
             self.logger.log('>> Scenario stops due to stuck', color='yellow')
 
