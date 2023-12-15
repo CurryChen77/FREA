@@ -177,7 +177,7 @@ class VectorWrapper():
         # clean the CarlaDataProvider
         CarlaDataProvider.clean_up_after_episode()
         # tick to ensure that all destroy commands are executed
-        self.world.tick() if self.mode == 'eval' else None
+        self.world.tick()
 
 
 class ObservationWrapper(gym.Wrapper):

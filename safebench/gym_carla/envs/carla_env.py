@@ -64,7 +64,6 @@ class CarlaEnv(gym.Env):
         self.ego_agent_learnable = env_params['ego_agent_learnable']
         self.mode = env_params['mode']
 
-        self.collision_sensor = None
         self.lidar_sensor = None
         self.camera_sensor = None
         self.sem_sensor = None
@@ -79,6 +78,7 @@ class CarlaEnv(gym.Env):
         self.route = None
         self.encoded_state = None
         self.collide_with_cbv = False
+        self.collide = False
         self.search_radius = search_radius
         self.agent_obs_type = env_params['agent_obs_type']
         self.agent_state_encoder = agent_state_encoder
@@ -131,11 +131,6 @@ class CarlaEnv(gym.Env):
         self.n_steer = len(self.discrete_act[1])
 
     def _create_sensors(self):
-        if self.mode == 'eval' or self.mode == 'train_agent':
-            # collision sensor
-            self.collision_hist_l = 1  # collision history length
-            self.collision_bp = self.world.get_blueprint_library().find('sensor.other.collision')
-
         if self.mode == 'eval':
             # lidar sensor
             self.lidar_trans = carla.Transform(carla.Location(x=0.0, z=self.lidar_height))
@@ -274,12 +269,12 @@ class CarlaEnv(gym.Env):
             self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]
             self.walker_polygons = [self._get_actor_polygons('walker.*')]
 
-        # Get actors info list
-        vehicle_info_dict_list = self._get_actor_info('vehicle.*')
-        self.vehicle_trajectories = [vehicle_info_dict_list[0]]
-        self.vehicle_accelerations = [vehicle_info_dict_list[1]]
-        self.vehicle_angular_velocities = [vehicle_info_dict_list[2]]
-        self.vehicle_velocities = [vehicle_info_dict_list[3]]
+        # # Get actors info list
+        # vehicle_info_dict_list = self._get_actor_info('vehicle.*')
+        # self.vehicle_trajectories = [vehicle_info_dict_list[0]]
+        # self.vehicle_accelerations = [vehicle_info_dict_list[1]]
+        # self.vehicle_angular_velocities = [vehicle_info_dict_list[2]]
+        # self.vehicle_velocities = [vehicle_info_dict_list[3]]
 
         # Update timesteps
         self.time_step = 0
@@ -295,19 +290,6 @@ class CarlaEnv(gym.Env):
         return self._get_obs(), self._get_info(need_scenario_reward=False)
 
     def _attach_sensor(self):
-        if self.mode == 'eval' or self.mode == 'train_agent':
-            # Add collision sensor
-            self.collision_sensor = self.world.spawn_actor(self.collision_bp, carla.Transform(), attach_to=self.ego_vehicle)
-            self.collision_sensor.listen(lambda event: get_collision_hist(event))
-
-            def get_collision_hist(event):
-                impulse = event.normal_impulse
-                intensity = np.sqrt(impulse.x**2 + impulse.y**2 + impulse.z**2)
-                self.collision_hist.append(intensity)
-                if len(self.collision_hist) > self.collision_hist_l:
-                    self.collision_hist.pop(0)
-            self.collision_hist = []
-
         if self.mode == 'eval':
             # Add lidar sensor
             if not self.disable_lidar:
@@ -361,8 +343,7 @@ class CarlaEnv(gym.Env):
             if snapshot:
                 timestamp = snapshot.timestamp
 
-                # get update on evaluation results before getting update of running status
-                # update the cbv's action and the previous time step information on CarlaDataProvider
+                # update the cbv action
                 self.scenario_manager.get_update(timestamp, scenario_action)
                 self.is_running = self.scenario_manager._running
 
@@ -420,20 +401,20 @@ class CarlaEnv(gym.Env):
             while len(self.walker_polygons) > self.max_past_step:
                 self.walker_polygons.pop(0)
 
-        # Append actors info list
-        vehicle_info_dict_list = self._get_actor_info('vehicle.*')
-        self.vehicle_trajectories.append(vehicle_info_dict_list[0])
-        while len(self.vehicle_trajectories) > self.max_past_step:
-            self.vehicle_trajectories.pop(0)
-        self.vehicle_accelerations.append(vehicle_info_dict_list[1])
-        while len(self.vehicle_accelerations) > self.max_past_step:
-            self.vehicle_accelerations.pop(0)
-        self.vehicle_angular_velocities.append(vehicle_info_dict_list[2])
-        while len(self.vehicle_angular_velocities) > self.max_past_step:
-            self.vehicle_angular_velocities.pop(0)
-        self.vehicle_velocities.append(vehicle_info_dict_list[3])
-        while len(self.vehicle_velocities) > self.max_past_step:
-            self.vehicle_velocities.pop(0)
+        # # Append actors info list
+        # vehicle_info_dict_list = self._get_actor_info('vehicle.*')
+        # self.vehicle_trajectories.append(vehicle_info_dict_list[0])
+        # while len(self.vehicle_trajectories) > self.max_past_step:
+        #     self.vehicle_trajectories.pop(0)
+        # self.vehicle_accelerations.append(vehicle_info_dict_list[1])
+        # while len(self.vehicle_accelerations) > self.max_past_step:
+        #     self.vehicle_accelerations.pop(0)
+        # self.vehicle_angular_velocities.append(vehicle_info_dict_list[2])
+        # while len(self.vehicle_angular_velocities) > self.max_past_step:
+        #     self.vehicle_angular_velocities.pop(0)
+        # self.vehicle_velocities.append(vehicle_info_dict_list[3])
+        # while len(self.vehicle_velocities) > self.max_past_step:
+        #     self.vehicle_velocities.pop(0)
 
         # After tick, update all the actors' velocity map, location map and transform map
         CarlaDataProvider.on_carla_tick()
@@ -447,6 +428,7 @@ class CarlaEnv(gym.Env):
 
         # update the running status and check whether terminate or not
         self.scenario_manager.update_running_status()
+        self.collide = self.scenario_manager._collision
         self.collide_with_cbv = self.scenario_manager.collide_with_cbv
 
         origin_info = self._get_info(need_scenario_reward=True)  # info of old cbv
@@ -456,7 +438,7 @@ class CarlaEnv(gym.Env):
 
         updated_cbv_info = self._get_info(need_scenario_reward=False)  # info of new cbv
 
-        self.visualize_ego_route_cbv()  # visualize the controlled bv and the waypoints in clients side after tick
+        self.visualize_ego_route_cbv() if self.mode == 'eval' else None  # visualize the controlled bv and the waypoints in clients side after tick
 
         # Update timesteps
         self.time_step += 1
@@ -638,11 +620,7 @@ class CarlaEnv(gym.Env):
 
     def _get_reward(self):
         """ Calculate the step reward. """
-        # TODO: reward for collision, there should be a signal from scenario
-        if self.mode == 'eval' or self.mode == 'train_agent':
-            r_collision = -1 if len(self.collision_hist) > 0 else 0
-        else:
-            r_collision = 0
+        r_collision = -1 if self.collide else 0
 
         # reward for steering:
         r_steer = -self.ego_vehicle.get_control().steer ** 2
@@ -693,7 +671,7 @@ class CarlaEnv(gym.Env):
         ego_cbv_collide_reward = 1 if self.collide_with_cbv else 0
 
         # final scenario agent rewards
-        scenario_agent_reward = 5 * cbv_min_dis_reward + ego_cbv_dis_reward + 80 * ego_cbv_collide_reward - 0.1
+        scenario_agent_reward = 5 * cbv_min_dis_reward + ego_cbv_dis_reward + 50 * ego_cbv_collide_reward - 0.1
 
         return scenario_agent_reward
 
@@ -708,10 +686,6 @@ class CarlaEnv(gym.Env):
         return not self.scenario_manager._running
 
     def _remove_sensor(self):
-        if self.collision_sensor is not None:
-            self.collision_sensor.stop()
-            self.collision_sensor.destroy()
-            self.collision_sensor = None
         if self.lidar_sensor is not None:
             self.lidar_sensor.stop()
             self.lidar_sensor.destroy()
@@ -743,6 +717,7 @@ class CarlaEnv(gym.Env):
         self.global_route_waypoints = None
         self.waypoints = None
         self.collide_with_cbv = False
+        self.collide = False
 
     def clean_up(self):
         # remove temp variables

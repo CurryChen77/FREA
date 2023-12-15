@@ -118,7 +118,7 @@ def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1.25):
     min_dis = search_radius  # the searching radius of the nearby_vehicle
     if cbv and cbv_nearby_vehicles:
         for i, vehicle in enumerate(cbv_nearby_vehicles):
-            if vehicle.attributes.get('role_name') == 'background' and i < 2:  # except the ego vehicle and calculate only the closest two vehicles
+            if vehicle.attributes.get('role_name') == 'background' and i < 3:  # except the ego vehicle and calculate only the closest two vehicles
                 # the min distance between bounding boxes of two vehicles
                 min_dis = get_min_distance_across_bboxes(cbv, vehicle)
         min_dis_reward = min(min_dis, tou) - tou  # the controlled bv shouldn't be too close to the other bvs

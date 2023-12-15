@@ -102,8 +102,8 @@ class AdvBehaviorSingle(BasicScenario):
         self.last_ego_waypoint = ego_waypoint
 
     def update_behavior(self, cbv, scenario_action):
-        # if the controlled bv exists and the scenario policy isn't hardcoded
         if cbv is not None and scenario_action is not None:
+            # if the controlled bv exists and the scenario policy isn't hardcoded
             if self.prior_cbv is None:  # the initial time
                 cbv.set_autopilot(enabled=False)  # get ready to be controlled
                 self.prior_cbv = cbv
@@ -115,14 +115,18 @@ class AdvBehaviorSingle(BasicScenario):
             act = self.convert_actions(scenario_action)
             self.prior_cbv.apply_control(act)  # apply the control of the cbv on the next tick
         elif cbv is not None and scenario_action is None:
+            # standard scenario agent, not receiving any action, just under autopilot mode
             if self.prior_cbv is None:  # the initial time
                 self.prior_cbv = cbv
             else:
                 if self.prior_cbv != cbv:  # the controlled bv has changed
                     self.prior_cbv = cbv  # update the prior controlled bv
+        else:
+            # have no cbv, set the prior cbv to None
+            self.prior_cbv = None
 
         if self.signalized_junction:  # if the junction is controlled by the signal, the traffic need to be updated
             self.update_traffic_light()
 
     def clean_up(self):
-        pass
+        self.prior_cbv = None
