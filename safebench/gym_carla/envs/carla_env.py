@@ -209,7 +209,7 @@ class CarlaEnv(gym.Env):
         if self.safety_network_obs_type:
             self.constrain_h = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicle, self.ego_agent_learnable)
 
-        # all the situations that need the encoded state or most relevant vehicle
+        # safety network or agent need "plant" style input or cbv selection is attention based
         if self.agent_state_encoder:
             if not self.safety_network_obs_type:
                 cbv_candidates = get_cbv_candidates(self.ego_vehicle, self.search_radius)
@@ -224,6 +224,7 @@ class CarlaEnv(gym.Env):
         if self.cbv_select_method == 'rule-based':
             self.cbv = find_closest_vehicle(self.ego_vehicle, self.search_radius, cbv_candidates)
         elif self.cbv_select_method == 'attention-based':
+            assert most_relevant_vehicle is not None, "attention-based cbv selection will got most relevant vehicle from agent state encoder"
             self.cbv = most_relevant_vehicle
 
         # get the nearby vehicles around the cbv
@@ -466,7 +467,7 @@ class CarlaEnv(gym.Env):
     def _get_info(self, need_scenario_reward):
         info = {}
         if self.mode == 'train_scenario':
-            # info for scenario agents to take action (actor_infos)
+            # info for scenario agents to take action (scenario obs)
             info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
             if need_scenario_reward:
                 # the total reward for the cbv training

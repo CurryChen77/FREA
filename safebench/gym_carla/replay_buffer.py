@@ -159,15 +159,15 @@ class RouteReplayBuffer:
             }
         elif self.mode == 'train_agent':
             batch = {
-                'action': np.stack(self.buffer_actions)[batch_indices],                    # action
-                'obs': np.stack(self.buffer_obs)[batch_indices, :],                        # obs
-                'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],              # next obs
+                'action': np.stack(self.buffer_actions)[batch_indices],                 # action
+                'obs': np.stack(self.buffer_obs)[batch_indices, :],                     # obs
+                'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],           # next obs
                 'reward': np.stack(self.buffer_rewards)[batch_indices],                 # reward
                 'done': np.stack(self.buffer_dones)[batch_indices],                     # done
             }
         elif self.mode == 'train_safety_network':
             batch = {
-                'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],              # next obs
+                'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],           # next obs
                 'constrain_h': np.stack(self.buffer_constrain_h)[batch_indices],        # constrain
                 'done': np.stack(self.buffer_dones)[batch_indices],                     # done
             }
