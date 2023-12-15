@@ -678,7 +678,7 @@ class CarlaEnv(gym.Env):
     def _get_cost(self):
         # cost for collision
         r_collision = 0
-        if len(self.collision_hist) > 0:
+        if self.collide:
             r_collision = -1
         return r_collision
 
