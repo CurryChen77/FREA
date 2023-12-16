@@ -123,10 +123,12 @@ class VectorWrapper():
             self.world.tick()
 
         # collect new observation of one frame
-        obs_list = []
+        train_obs_list = []
+        transition_obs_list = []
         reward_list = []
         done_list = []
-        info_list = []
+        train_info_list = []
+        transition_info_list = []
         for e_i in range(self.num_scenario):
             if not self.finished_env[e_i]:
                 current_env = self.env_list[e_i]
@@ -147,22 +149,27 @@ class VectorWrapper():
                         self.running_results[current_env.config.data_id] = current_env.scenario_manager.running_record
                     if self.mode == 'train_scenario' or self.mode == 'train_safety_network':
                         done = current_env.collide_with_cbv  # when training the cbv and safety network, ego only collide with cbv means dones
+                else:
+                    # if scenario is done, no need to do the transition
+                    transition_obs_list.append(obs)
+                    transition_info_list.append(info[1])
 
                 # update information
-                obs_list.append(obs)
+                train_obs_list.append(obs)
                 reward_list.append(reward)
                 done_list.append(done)
-                info_list.append(info)
+                train_info_list.append(info[0])
         
         # convert to numpy
         rewards = np.array(reward_list)
         dones = np.array(done_list)
-        infos = np.array(info_list)
+        train_infos = np.array(train_info_list)
+        transition_infos = np.array(transition_info_list)
 
         # update pygame window
         if self.render and self.birdeye_render:
             pygame.display.flip()
-        return self.obs_postprocess(obs_list), rewards, dones, infos
+        return self.obs_postprocess(train_obs_list), self.obs_postprocess(transition_obs_list), rewards, dones, train_infos, transition_infos
 
     def all_scenario_done(self):
         if np.sum(self.finished_env) == self.num_scenario:

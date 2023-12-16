@@ -54,6 +54,7 @@ class RouteReplayBuffer:
         """
             remove the meaningless data when cbv is None (scenario obs, next scenario obs, scenario action are all None)
         """
+        assert len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
         filtered_data = [
             (action, done, info['scenario_obs'], next_info['scenario_obs'], next_info['scenario_agent_reward'])
             for action, done, info, next_info in zip(data_list[1], data_list[5], additional_dict[0], additional_dict[1])
@@ -79,6 +80,7 @@ class RouteReplayBuffer:
                     self.buffer_rewards.append(rewards[s_i])  # cbv reward is scenario_agent_reward
                     self.buffer_dones.append(dones[s_i])
                     self.pos += 1
+                    self.buffer_len += 1
                     if self.pos == self.buffer_capacity:
                         self.full = True
                         self.pos = 0
@@ -91,6 +93,7 @@ class RouteReplayBuffer:
                     self.buffer_rewards[self.pos] = rewards[s_i]  # cbv reward is scenario_agent_reward
                     self.buffer_dones[self.pos] = dones[s_i]
                     self.pos += 1
+                    self.buffer_len += 1
                     if self.pos == self.buffer_capacity:
                         self.pos = 0
 
@@ -109,6 +112,7 @@ class RouteReplayBuffer:
                     self.buffer_rewards.append(rewards[s_i])
                     self.buffer_dones.append(dones[s_i])
                     self.pos += 1
+                    self.buffer_len += 1
                     if self.pos == self.buffer_capacity:
                         self.full = True
                         self.pos = 0
@@ -121,6 +125,7 @@ class RouteReplayBuffer:
                     self.buffer_rewards[self.pos] = rewards[s_i]
                     self.buffer_dones[self.pos] = dones[s_i]
                     self.pos += 1
+                    self.buffer_len += 1
                     if self.pos == self.buffer_capacity:
                         self.pos = 0
 
@@ -140,6 +145,7 @@ class RouteReplayBuffer:
                     self.buffer_constrain_h.append(constrain_h[s_i])
                     self.buffer_dones.append(dones[s_i])
                     self.pos += 1
+                    self.buffer_len += 1
                     if self.pos == self.buffer_capacity:
                         self.full = True
                         self.pos = 0
@@ -150,10 +156,9 @@ class RouteReplayBuffer:
                     self.buffer_constrain_h[self.pos] = constrain_h[s_i]
                     self.buffer_dones[self.pos] = dones[s_i]
                     self.pos += 1
+                    self.buffer_len += 1
                     if self.pos == self.buffer_capacity:
                         self.pos = 0
-
-        self.buffer_len = len(self.buffer_dones)
 
     def sample(self, batch_size):
         upper_bound = self.buffer_capacity if self.full else self.pos

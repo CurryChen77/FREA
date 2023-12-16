@@ -279,7 +279,7 @@ class CarlaEnv(gym.Env):
 
         for _ in range(self.warm_up_steps):
             self.world.tick()
-        return self._get_obs(), self._get_info(need_scenario_reward=False)
+        return self._get_obs(), self._get_info(need_scenario_reward=False, reset=True)
 
     def _attach_sensor(self):
         if self.mode == 'eval':
@@ -422,7 +422,7 @@ class CarlaEnv(gym.Env):
 
         return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_cbv_info])
 
-    def _get_info(self, need_scenario_reward):
+    def _get_info(self, need_scenario_reward, reset=False):
         info = {}
         # info for scenario agents to take action (scenario obs)
         info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
@@ -432,11 +432,12 @@ class CarlaEnv(gym.Env):
         else:
             reset_ego_cbv_dis(self.ego_vehicle, self.cbv)
 
-        info.update({
-            'route_waypoints': self.global_route_waypoints,  # the global route waypoints
-            'gps_route': self.gps_route,  # the global gps route
-            'route': self.route,  # the global route
-        })
+        if reset:
+            info.update({
+                'route_waypoints': self.global_route_waypoints,  # the global route waypoints
+                'gps_route': self.gps_route,  # the global gps route
+                'route': self.route,  # the global route
+            })
 
         # if train the safety network, need to add the corresponding obs
         if self.safety_network_obs_type:

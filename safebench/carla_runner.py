@@ -280,17 +280,14 @@ class CarlaRunner:
                 # get action from agent policy and scenario policy (assume using one batch)
                 ego_actions = self.agent_policy.get_action(obs, infos, deterministic=False)
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=False)
-
                 # apply action to env and get obs
-                next_obs, rewards, dones, multi_infos = self.env.step(ego_actions=ego_actions, scenario_actions=scenario_actions)
-
-                # infos contain [original infos and updated controlled bv infos], so need to store the original infos
-                next_infos = [info[0] for info in multi_infos]  # infos before cbv change
-
+                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions)
+                # store to the replay buffer
                 replay_buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=[infos, next_infos])
+                # for transition
+                infos = next_transition_infos
+                obs = copy.deepcopy(next_transition_obs)
 
-                infos = [info[1] for info in multi_infos]  # update infos after cbv change
-                obs = copy.deepcopy(next_obs)
                 agent_episode_reward.append(np.mean(rewards))
                 if self.mode == 'train_scenario':
                     scenario_reward = [info['scenario_agent_reward'] for info in next_infos]
@@ -361,8 +358,10 @@ class CarlaRunner:
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=True)
 
                 # apply action to env and get obs
-                obs, rewards, _, multi_infos = self.env.step(ego_actions=ego_actions, scenario_actions=scenario_actions)
-                infos = [info[1] for info in multi_infos]  # updated infos for transition
+                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions)
+
+                infos = next_transition_infos
+                obs = next_transition_obs
 
                 # save video
                 if self.save_video:
