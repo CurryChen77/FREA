@@ -117,9 +117,18 @@ class DDPG(BasePolicy):
             raise ValueError(f'Unknown mode {mode}')
     
     def info_process(self, infos):
-        info_batch = np.stack([i_i['scenario_obs'] for i_i in infos], axis=0)
-        info_batch = info_batch.reshape(info_batch.shape[0], -1)
-        return info_batch
+        scenario_obs = []
+        indexes = []  # record the index of not "None" scenario obs, and put the corresponding action at that index
+        for i, i_i in enumerate(infos):
+            if i_i['scenario_obs'] is not None:
+                scenario_obs.append(i_i['scenario_obs'])
+                indexes.append(i)
+        if scenario_obs:
+            info_batch = np.stack(scenario_obs, axis=0)
+            info_batch = info_batch.reshape(info_batch.shape[0], -1)
+        else:
+            info_batch = None
+        return info_batch, indexes
 
     def get_init_action(self, state, deterministic=False):
         num_scenario = len(state)
@@ -127,17 +136,24 @@ class DDPG(BasePolicy):
         return [None] * num_scenario, additional_in
 
     def get_action(self, state, infos, deterministic=False):
+        state, indexes = self.info_process(infos)  # remove some "None" scenario obs
+        scenario_action = [None] * len(infos)  # change the corresponding action output
         if np.random.randn() > self.epsilon or deterministic: # greedy policy
-            state = self.info_process(infos)
-            state = CUDA(torch.FloatTensor(state))
-            action = self.actor(state).cpu().data.numpy()
-        else: # random policy
-            action = np.random.uniform(-1.0, 1.0, size=(state.shape[0], self.action_dim))
-        
+            if state is not None:
+                state = self.info_process(infos)
+                state = CUDA(torch.FloatTensor(state))
+                action = self.actor(state).cpu().data.numpy()
+                for i, index in enumerate(indexes):
+                    scenario_action[index] = CPU(action[i])
+        else:  # random policy
+            for i, index in enumerate(indexes):
+                action = np.random.uniform(-1.0, 1.0, size=self.action_dim)
+                scenario_action[index] = CPU(action[i])
+
         # decay epsilon
         self.epsilon *= 0.99
 
-        return action
+        return scenario_action
 
     def train(self, replay_buffer, writer, e_i):
         # check if memory is enough for one batch

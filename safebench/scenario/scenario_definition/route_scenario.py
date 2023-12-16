@@ -240,7 +240,7 @@ class RouteScenario():
         # [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
         return [actor_x, actor_y, actor_yaw, velocity.x, velocity.y]
 
-    def update_info(self, desired_nearby_vehicle=4):
+    def update_info(self, desired_nearby_vehicle=3):
         '''
             scenario agent state:
             first row is ego's relative state (x, y, yaw, vx, vy)
@@ -267,12 +267,12 @@ class RouteScenario():
 
             actor_info = np.array(actor_info)
         else:
-            actor_info = np.zeros((desired_nearby_vehicle, 5))  # need to have the same size as normal actor info
+            actor_info = None
         return {
             'scenario_obs': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
-    def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=4):
+    def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=3):
         '''
             safety network input state:
             all the rows are other bv's relative state

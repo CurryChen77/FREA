@@ -84,6 +84,7 @@ class SAC(BasePolicy):
     type = 'offpolicy'
 
     def __init__(self, config, logger):
+        super().__init__(config, logger)
         self.logger = logger
         self.policy_type = config['scenario_type']
 
@@ -140,9 +141,18 @@ class SAC(BasePolicy):
             raise ValueError(f'Unknown mode {mode}')
 
     def info_process(self, infos):
-        info_batch = np.stack([i_i['scenario_obs'] for i_i in infos], axis=0)
-        info_batch = info_batch.reshape(info_batch.shape[0], -1)
-        return info_batch
+        scenario_obs = []
+        indexes = []  # record the index of not "None" scenario obs, and put the corresponding action at that index
+        for i, i_i in enumerate(infos):
+            if i_i['scenario_obs'] is not None:
+                scenario_obs.append(i_i['scenario_obs'])
+                indexes.append(i)
+        if scenario_obs:
+            info_batch = np.stack(scenario_obs, axis=0)
+            info_batch = info_batch.reshape(info_batch.shape[0], -1)
+        else:
+            info_batch = None
+        return info_batch, indexes
 
     def get_init_action(self, state, deterministic=False):
         num_scenario = len(state)
@@ -150,19 +160,22 @@ class SAC(BasePolicy):
         return [None] * num_scenario, additional_in
 
     def get_action(self, state, infos, deterministic=False):
-        # The first row is cbv state, the second row is ego state, while the rest are the others vehicles' states
-        state = self.info_process(infos)
-        state = CUDA(torch.FloatTensor(state))
-        mu, log_sigma = self.policy_net(state)
+        state, indexes = self.info_process(infos)  # remove some "None" scenario obs
+        scenario_action = [None] * len(infos)  # change the corresponding action output
+        if state is not None:
+            state = CUDA(torch.FloatTensor(state))
+            mu, log_sigma = self.policy_net(state)
 
-        if deterministic:
-            action = mu
-        else:
-            sigma = torch.exp(log_sigma)
-            dist = Normal(mu, sigma)
-            z = dist.sample()
-            action = torch.tanh(z)
-        return CPU(action)
+            if deterministic:
+                action = mu
+            else:
+                sigma = torch.exp(log_sigma)
+                dist = Normal(mu, sigma)
+                z = dist.sample()
+                action = torch.tanh(z)
+            for i, index in enumerate(indexes):
+                scenario_action[index] = CPU(action[i])
+        return scenario_action
 
     def get_action_log_prob(self, state):
         batch_mu, batch_log_sigma = self.policy_net(state)

@@ -15,6 +15,7 @@ class BasePolicy:
     """ This is the template for implementing the policy for a scenario. """
     def __init__(self, config, logger):
         self.continue_episode = 0
+        self.num_scenario = config['num_scenario']
 
     def train(self, replay_buffer, writer, e_i):
         raise NotImplementedError()

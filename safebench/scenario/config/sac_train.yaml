@@ -8,7 +8,7 @@ scenario_id: 9  # default null -> save and load an "all" model for all scenarios
 route_id: null
 
 # for scenario id 8
-scenario_state_dim: 20 # 4*5 - actor number * actor info dim
+scenario_state_dim: 15 # 3*5 - actor number * actor info dim
 scenario_action_dim: 2
 
 # for SAC policy model

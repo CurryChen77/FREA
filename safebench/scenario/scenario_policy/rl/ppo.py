@@ -129,9 +129,18 @@ class PPO(BasePolicy):
             raise ValueError(f'Unknown mode {mode}')
 
     def info_process(self, infos):
-        info_batch = np.stack([i_i['scenario_obs'] for i_i in infos], axis=0)
-        info_batch = info_batch.reshape(info_batch.shape[0], -1)
-        return info_batch
+        scenario_obs = []
+        indexes = []  # record the index of not "None" scenario obs, and put the corresponding action at that index
+        for i, i_i in enumerate(infos):
+            if i_i['scenario_obs'] is not None:
+                scenario_obs.append(i_i['scenario_obs'])
+                indexes.append(i)
+        if scenario_obs:
+            info_batch = np.stack(scenario_obs, axis=0)
+            info_batch = info_batch.reshape(info_batch.shape[0], -1)
+        else:
+            info_batch = None
+        return info_batch, indexes
 
     def get_init_action(self, state, deterministic=False):
         num_scenario = len(state)
@@ -139,10 +148,14 @@ class PPO(BasePolicy):
         return [None] * num_scenario, additional_in
 
     def get_action(self, state, infos, deterministic=False):
-        state = self.info_process(infos)
-        state_tensor = CUDA(torch.FloatTensor(state))
-        action = self.policy.select_action(state_tensor, deterministic)
-        return action
+        state, indexes = self.info_process(infos)
+        scenario_action = [None] * len(infos)
+        if state is not None:
+            state_tensor = CUDA(torch.FloatTensor(state))
+            action = self.policy.select_action(state_tensor, deterministic)
+            for i, index in enumerate(indexes):
+                scenario_action[index] = CPU(action[i])
+        return scenario_action
 
     def train(self, replay_buffer, writer, e_i):
         self.old_policy.load_state_dict(self.policy.state_dict())

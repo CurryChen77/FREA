@@ -305,6 +305,7 @@ class CarlaRunner:
                 elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy':
                     self.safety_network_policy.train(replay_buffer, writer, e_i)
 
+            self.logger.log('>> Start Cleaning the env', 'yellow')
             # end up environment
             self.env.clean_up()
 

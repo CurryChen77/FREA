@@ -7,6 +7,7 @@
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
+import time
 
 import numpy as np
 import torch
@@ -49,6 +50,19 @@ class RouteReplayBuffer:
             self.buffer_constrain_h = []
             self.buffer_dones = []
 
+    def streamline_data(self, data_list, additional_dict):
+        """
+            remove the meaningless data when cbv is None (scenario obs, next scenario obs, scenario action are all None)
+        """
+        filtered_data = [
+            (action, done, info['scenario_obs'], next_info['scenario_obs'], next_info['scenario_agent_reward'])
+            for action, done, info, next_info in zip(data_list[1], data_list[5], additional_dict[0], additional_dict[1])
+            if (info['scenario_obs'] is not None) or (next_info['scenario_obs'] is not None) or (action is not None)
+        ]  # assert if scenario obs is None then the next scenario obs and action are all None
+        scenario_actions, dones, obs, next_obs, rewards = zip(*filtered_data) if filtered_data else ([], [], [], [], [])
+
+        return scenario_actions, dones, obs, next_obs, rewards
+
     def store(self, data_list, additional_dict):
         """
             additional dict[0]: the current infos
@@ -56,11 +70,7 @@ class RouteReplayBuffer:
         """
         # store for scenario training
         if self.mode == 'train_scenario':
-            scenario_actions = data_list[1]
-            dones = data_list[5]
-            obs = [info['scenario_obs'] for info in additional_dict[0]]
-            next_obs = [info['scenario_obs'] for info in additional_dict[1]]
-            rewards = [info['scenario_agent_reward'] for info in additional_dict[1]]  # the scenario reward should from the next infos
+            scenario_actions, dones, obs, next_obs, rewards = self.streamline_data(data_list, additional_dict)
             if not self.full:
                 for s_i in range(len(dones)):
                     self.buffer_actions.append(scenario_actions[s_i])
