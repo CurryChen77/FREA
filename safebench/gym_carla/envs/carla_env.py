@@ -54,7 +54,6 @@ class CarlaEnv(gym.Env):
         # Record the time of total steps and resetting steps
         self.reset_step = 0
         self.total_step = 0
-        self.is_running = True
         self.env_id = None
         self.ego_vehicle = None
         self.constrain_h = None
@@ -269,13 +268,6 @@ class CarlaEnv(gym.Env):
             self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]
             self.walker_polygons = [self._get_actor_polygons('walker.*')]
 
-        # # Get actors info list
-        # vehicle_info_dict_list = self._get_actor_info('vehicle.*')
-        # self.vehicle_trajectories = [vehicle_info_dict_list[0]]
-        # self.vehicle_accelerations = [vehicle_info_dict_list[1]]
-        # self.vehicle_angular_velocities = [vehicle_info_dict_list[2]]
-        # self.vehicle_velocities = [vehicle_info_dict_list[3]]
-
         # Update timesteps
         self.time_step = 0
         self.reset_step += 1
@@ -345,7 +337,6 @@ class CarlaEnv(gym.Env):
 
                 # update the cbv action
                 self.scenario_manager.get_update(timestamp, scenario_action)
-                self.is_running = self.scenario_manager._running
 
                 # Calculate acceleration and steering
                 if not self.auto_ego:
@@ -400,21 +391,6 @@ class CarlaEnv(gym.Env):
             self.walker_polygons.append(walker_poly_dict)
             while len(self.walker_polygons) > self.max_past_step:
                 self.walker_polygons.pop(0)
-
-        # # Append actors info list
-        # vehicle_info_dict_list = self._get_actor_info('vehicle.*')
-        # self.vehicle_trajectories.append(vehicle_info_dict_list[0])
-        # while len(self.vehicle_trajectories) > self.max_past_step:
-        #     self.vehicle_trajectories.pop(0)
-        # self.vehicle_accelerations.append(vehicle_info_dict_list[1])
-        # while len(self.vehicle_accelerations) > self.max_past_step:
-        #     self.vehicle_accelerations.pop(0)
-        # self.vehicle_angular_velocities.append(vehicle_info_dict_list[2])
-        # while len(self.vehicle_angular_velocities) > self.max_past_step:
-        #     self.vehicle_angular_velocities.pop(0)
-        # self.vehicle_velocities.append(vehicle_info_dict_list[3])
-        # while len(self.vehicle_velocities) > self.max_past_step:
-        #     self.vehicle_velocities.pop(0)
 
         # After tick, update all the actors' velocity map, location map and transform map
         CarlaDataProvider.on_carla_tick()

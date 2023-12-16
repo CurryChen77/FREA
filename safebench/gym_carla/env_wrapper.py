@@ -27,6 +27,7 @@ class VectorWrapper():
         self.ROOT_DIR = scenario_config['ROOT_DIR']
         self.frame_skip = scenario_config['frame_skip']  
         self.render = scenario_config['render']
+        self.spectator = scenario_config['spectator']
         self.safety_network_config = safety_network_config
         self.agent_state_encoder = agent_state_encoder
         self.birdeye_render = birdeye_render
@@ -75,12 +76,13 @@ class VectorWrapper():
             obs_list.append(obs)
             info_list.append(info)
 
-        transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
-        if transform is not None:
-            spectator = self.world.get_spectator()
-            spectator.set_transform(carla.Transform(
-                transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
-            ))
+        if self.spectator:
+            transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
+            if transform is not None:
+                spectator = self.world.get_spectator()
+                spectator.set_transform(carla.Transform(
+                    transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+                ))
 
         # sometimes not all scenarios are used
         self.finished_env = [False] * self.num_scenario
@@ -108,12 +110,13 @@ class VectorWrapper():
                 self.env_list[e_i].step_before_tick(processed_action, scenario_actions[action_idx])
                 action_idx += 1
 
-        transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
-        if transform is not None:
-            spectator = self.world.get_spectator()
-            spectator.set_transform(carla.Transform(
-                transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
-            ))
+        if self.spectator:
+            transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
+            if transform is not None:
+                spectator = self.world.get_spectator()
+                spectator.set_transform(carla.Transform(
+                    transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+                ))
 
         # tick all scenarios
         for _ in range(self.frame_skip):
@@ -188,7 +191,6 @@ class ObservationWrapper(gym.Wrapper):
         super().__init__(env)
         self._env = env  # carla environment
 
-        self.is_running = False
         self.agent_obs_type = agent_obs_type
         self.safety_network_obs_type = safety_network_obs_type
 
@@ -201,7 +203,6 @@ class ObservationWrapper(gym.Wrapper):
 
     def step_after_tick(self):
         obs, reward, done, info = self._env.step_after_tick()
-        self.is_running = self._env.is_running
         reward, info = self._preprocess_reward(reward, info)
         obs = self._preprocess_obs(obs)
         return obs, reward, done, info
