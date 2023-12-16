@@ -448,14 +448,13 @@ class CarlaEnv(gym.Env):
 
     def _get_info(self, need_scenario_reward):
         info = {}
-        if self.mode == 'train_scenario':
-            # info for scenario agents to take action (scenario obs)
-            info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
-            if need_scenario_reward:
-                # the total reward for the cbv training
-                info['scenario_agent_reward'] = self._get_scenario_reward()
-            else:
-                reset_ego_cbv_dis(self.ego_vehicle, self.cbv)
+        # info for scenario agents to take action (scenario obs)
+        info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
+        if need_scenario_reward:
+            # the total reward for the cbv training
+            info['scenario_agent_reward'] = self._get_scenario_reward()
+        else:
+            reset_ego_cbv_dis(self.ego_vehicle, self.cbv)
 
         info.update({
             'route_waypoints': self.global_route_waypoints,  # the global route waypoints
@@ -678,7 +677,7 @@ class CarlaEnv(gym.Env):
     def _get_cost(self):
         # cost for collision
         r_collision = 0
-        if len(self.collision_hist) > 0:
+        if self.collide:
             r_collision = -1
         return r_collision
 
