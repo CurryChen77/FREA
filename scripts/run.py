@@ -101,6 +101,7 @@ if __name__ == '__main__':
             try:
                 runner.run()
             except:
+                runner.logger.close_file()  # close the logger file
                 runner.close()
                 traceback.print_exc()
                 err_list.append([agent_cfg, scenario_cfg, traceback.format_exc()])

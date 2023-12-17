@@ -142,7 +142,7 @@ class Logger:
         A general-purpose logger.
         Makes it easy to save diagnostics, hyperparameter configurations, the state of a training run, and the trained model.
     """
-    def __init__(self, output_dir=None, output_fname='progress.txt', exp_name=None, scenario_category='planning'):
+    def __init__(self, output_dir=None, output_fname='log.txt', exp_name=None, scenario_category='planning'):
         """
             Initialize a Logger.
 
@@ -165,16 +165,17 @@ class Logger:
         self.log_print_history = []
         self.video_recorder = None
         self.scenario_category = scenario_category
-        
+
         self.output_dir = output_dir or "/tmp/experiments/%i" % int(time.time())
+        self.output_file = open(osp.join(self.output_dir, output_fname), 'a')
+        atexit.register(self.output_file.close)
         self.log('>> ' + '-' * 40)
+        self.log(">> Logging to %s" % self.output_file.name, 'green')
         if osp.exists(self.output_dir):
             self.log(">> Log path %s already exists! Storing info there anyway." % self.output_dir, 'green')
         else:
             os.makedirs(self.output_dir)
-        # self.output_file = open(osp.join(self.output_dir, output_fname), 'a')
-        # atexit.register(self.output_file.close)
-        # self.log(">> Logging data to %s" % self.output_file.name, 'green')
+
         
         self.eval_results = {}
         self.eval_records = {}
@@ -235,7 +236,12 @@ class Logger:
         # print with color
         print(colorize(msg, color, bold=True))
         # save print message to log file
-        self.log_print_history.append(msg)
+        self.output_file.write(msg+'\n')
+        # self.log_print_history.append(msg)
+
+    def close_file(self):
+        if self.output_file is not None and not self.output_file.closed:
+            self.output_file.close()
 
     def log_dict(self, dict_msg, color='green'):
         for key, value in dict_msg.items():
