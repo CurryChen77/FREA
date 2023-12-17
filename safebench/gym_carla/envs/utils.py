@@ -94,6 +94,19 @@ def reset_ego_cbv_dis(ego, cbv):
         CarlaDataProvider.ego_cbv_dis[ego.id] = {}
 
 
+def get_ego_cbv_stuck_reward(ego, cbv):
+    """
+        if cbv movement causing stuck in the traffic flow especially for ego
+    """
+    ego_v = CarlaDataProvider.get_velocity(ego)
+    cbv_v = CarlaDataProvider.get_velocity(cbv) if cbv else 0
+    if ego_v < 0.1 and cbv_v < 0.1:
+        stuck_reward = -1
+    else:
+        stuck_reward = 0
+    return stuck_reward
+
+
 def get_ego_cbv_dis_reward(ego, cbv):
     '''
         if the cbv are getting closer to the ego vehicle, then we should reward that, else punish that

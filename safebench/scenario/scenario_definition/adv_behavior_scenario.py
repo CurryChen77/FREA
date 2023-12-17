@@ -70,12 +70,17 @@ class AdvBehaviorSingle(BasicScenario):
         if acc > 0:
             throttle = np.clip(acc / 3, 0, 1)
             brake = 0
+            reverse = False
         else:
-            throttle = 0
-            brake = np.clip(-acc / 8, 0, 1)
+            # throttle = 0
+            # brake = np.clip(-acc / 8, 0, 1)
+            # enable driving back
+            reverse = True
+            throttle = -np.clip(acc / 3, -1, 0)
+            brake = 0
 
         # apply ego control
-        act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
+        act = carla.VehicleControl(reverse=reverse, throttle=float(throttle), steer=float(steer), brake=float(brake))
         return act
 
     def update_traffic_light(self):
