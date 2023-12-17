@@ -167,6 +167,7 @@ class Logger:
         self.scenario_category = scenario_category
 
         self.output_dir = output_dir or "/tmp/experiments/%i" % int(time.time())
+        os.makedirs(self.output_dir, exist_ok=True)
         self.output_file = open(osp.join(self.output_dir, output_fname), 'a')
         atexit.register(self.output_file.close)
         self.log('>> ' + '-' * 40)
