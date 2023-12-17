@@ -168,15 +168,11 @@ class Logger:
 
         self.output_dir = output_dir or "/tmp/experiments/%i" % int(time.time())
         os.makedirs(self.output_dir, exist_ok=True)
-        self.output_file = open(osp.join(self.output_dir, output_fname), 'a')
-        atexit.register(self.output_file.close)
+        # self.output_file = open(osp.join(self.output_dir, output_fname), 'a')
+        # atexit.register(self.output_file.close)
         self.log('>> ' + '-' * 40)
-        self.log(">> Logging to %s" % self.output_file.name, 'green')
-        if osp.exists(self.output_dir):
-            self.log(">> Log path %s already exists! Storing info there anyway." % self.output_dir, 'green')
-        else:
-            os.makedirs(self.output_dir)
-
+        self.log(">> Logging to %s" % self.output_dir, 'green')
+        self.log('>> ' + '-' * 40)
         
         self.eval_results = {}
         self.eval_records = {}
@@ -237,12 +233,7 @@ class Logger:
         # print with color
         print(colorize(msg, color, bold=True))
         # save print message to log file
-        self.output_file.write(msg+'\n')
         # self.log_print_history.append(msg)
-
-    def close_file(self):
-        if self.output_file is not None and not self.output_file.closed:
-            self.output_file.close()
 
     def log_dict(self, dict_msg, color='green'):
         for key, value in dict_msg.items():
