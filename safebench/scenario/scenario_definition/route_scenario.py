@@ -178,7 +178,7 @@ class RouteScenario():
         if running_status['collision'][0] == Status.FAILURE:
             stop = True
             collision = True
-            if running_status['collision'][1] is not None and running_status['collision'][1] == self.cbv.id:
+            if running_status['collision'][1] is not None and self.cbv is not None and running_status['collision'][1] == self.cbv.id:
                 collide_with_cbv = True
                 self.logger.log(f'>> Scenario stops due to collision with cbv', color='yellow')
             else:
