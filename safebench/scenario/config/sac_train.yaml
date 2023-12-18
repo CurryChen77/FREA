@@ -17,9 +17,9 @@ model_type: 'bv'
 train_episode: 500  # the training episode for each town
 save_freq: 20
 eval_in_train_freq: 10
-buffer_capacity: 10000
-buffer_start_training: 100
-lr: 5.0e-4
+buffer_capacity: 20000
+buffer_start_training: 200
+lr: 3.0e-4
 tau: 0.005
 update_iteration: 3
 gamma: 0.99

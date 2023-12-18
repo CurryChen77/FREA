@@ -29,7 +29,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
     get_actor_in_drivable_area, get_ego_min_dis, get_ego_cbv_dis_reward, get_cbv_bv_reward, get_constrain_h, get_min_distance_across_bboxes, \
-    reset_ego_cbv_dis, get_ego_cbv_stuck_reward
+    reset_ego_cbv_dis, get_cbv_stuck_reward, get_ego_cbv_reward
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -633,15 +633,14 @@ class CarlaEnv(gym.Env):
         # the min dis from the cbv to the rest bvs
         _, cbv_min_dis_reward = get_cbv_bv_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
 
+        # the min dis from ego to the cbv
+        ego_cbv_dis_reward = get_ego_cbv_reward(self.ego_vehicle, self.cbv)
+
         # the reward design to encourage cbv attack ego
-        ego_cbv_dis_reward = get_ego_cbv_dis_reward(self.ego_vehicle, self.cbv)
+        # ego_cbv_dis_reward = get_ego_cbv_dis_reward(self.ego_vehicle, self.cbv)
 
-        # the reward design to prevent cbv stuck ego
-        ego_stuck_reward = get_ego_cbv_stuck_reward(self.ego_vehicle, self.cbv)
-
-        # cbv velocity and whether it is too fast or not
-        # V_cbv = CarlaDataProvider.get_velocity(self.cbv) if self.cbv else 0
-        # too_fast = -1 if V_cbv > self.desired_speed else 0
+        # the reward design to prevent cbv stuck traffic flow
+        cbv_stuck_reward = get_cbv_stuck_reward(self.cbv, self.cbv_nearby_vehicles, self.ego_vehicle, self.ego_nearby_vehicle)
 
         # since the obs don't have road info, so no need to include in drivable area info
         # in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else 0
@@ -650,7 +649,7 @@ class CarlaEnv(gym.Env):
         ego_cbv_collide_reward = 1 if self.collide_with_cbv else 0
 
         # final scenario agent rewards
-        scenario_agent_reward = 20 * cbv_min_dis_reward + 10 * ego_cbv_dis_reward + 50 * ego_cbv_collide_reward + 30 * ego_stuck_reward
+        scenario_agent_reward = 20 * cbv_min_dis_reward + 0.5 * ego_cbv_dis_reward + 500 * ego_cbv_collide_reward + 5 * cbv_stuck_reward
 
         return scenario_agent_reward
 

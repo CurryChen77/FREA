@@ -10,6 +10,7 @@
 import carla
 import math
 
+import numpy as np
 from distance3d import gjk, colliders
 from safebench.scenario.tools.scenario_utils import compute_box2origin
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -94,16 +95,23 @@ def reset_ego_cbv_dis(ego, cbv):
         CarlaDataProvider.ego_cbv_dis[ego.id] = {}
 
 
-def get_ego_cbv_stuck_reward(ego, cbv):
+def get_cbv_stuck_reward(cbv, cbv_nearby_vehicles, ego, ego_nearby_vehicles):
     """
-        if cbv movement causing stuck in the traffic flow especially for ego
+        if cbv movement causing stuck in the traffic flow especially for ego, punish this
     """
-    ego_v = CarlaDataProvider.get_velocity(ego)
-    cbv_v = CarlaDataProvider.get_velocity(cbv) if cbv else 0
-    if ego_v < 0.1 and cbv_v < 0.1:
-        stuck_reward = -1
-    else:
-        stuck_reward = 0
+    stuck_reward = 0
+    if cbv is not None and cbv_nearby_vehicles is not None and ego_nearby_vehicles is not None:
+        cbv_v = cbv.get_velocity()
+        ego_v = ego.get_velocity()
+        relative_velocity_list = [cbv_v.distance_2d(ego_v)]
+        for bv in ego_nearby_vehicles:
+            if any(actor.id == bv.id for actor in cbv_nearby_vehicles):
+                bv_v = bv.get_velocity()
+                relative_velocity_list.append(bv_v.distance_2d(ego_v))
+                break
+        if np.average(relative_velocity_list) < 0.1:
+            stuck_reward = -1
+
     return stuck_reward
 
 
@@ -138,6 +146,18 @@ def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1.25):
     else:
         min_dis_reward = 0
     return min_dis, min_dis_reward
+
+
+def get_ego_cbv_reward(ego, cbv, affected_range=10):
+    """
+        dis reward ~ [0, affected_range]: within h
+    """
+    if cbv:
+        ego_cbv_dis = get_min_distance_across_bboxes(ego, cbv)
+        dis_reward = affected_range - min(ego_cbv_dis, affected_range)
+    else:
+        dis_reward = 0
+    return dis_reward
 
 
 def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=5, intensity=0.8, upper_limit=18):

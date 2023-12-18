@@ -216,7 +216,7 @@ class SAC(BasePolicy):
 
             # soft update
             for target_param, param in zip(self.Target_value_net.parameters(), self.value_net.parameters()):
-                target_param.data.copy_(target_param * (1 - self.tau) + param * self.tau)
+                target_param.data.copy_(target_param.data * (1 - self.tau) + param.data * self.tau)
 
     def save_model(self, episode, map_name):
         states = {
