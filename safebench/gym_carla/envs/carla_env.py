@@ -369,7 +369,6 @@ class CarlaEnv(gym.Env):
                         else:
                             throttle = 0
                             brake = np.clip(-acc / 8, 0, 1)
-
                         # apply ego control
                         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
                     self.ego_vehicle.apply_control(act)  # apply action of the ego vehicle on the next tick

@@ -82,10 +82,6 @@ def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40):
     return ego_min_dis
 
 
-# def get_ego_collision_reward(ego_min_dis, tou=5):
-#     ego_collision_reward = tou - min(ego_min_dis, tou)
-#     return ego_collision_reward
-
 def reset_ego_cbv_dis(ego, cbv):
     if cbv:
         CarlaDataProvider.ego_cbv_dis[ego.id] = {}
