@@ -9,6 +9,8 @@
 """
 
 import numpy as np
+
+from safebench.gym_carla.envs.utils import calculate_abs_velocity
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_definition.atomic_criteria import Status
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -111,7 +113,7 @@ class ScenicScenario():
 
     def get_running_status(self, running_record):
         running_status = {
-            'ego_velocity': CarlaDataProvider.get_velocity(self.ego_vehicle),
+            'ego_velocity': calculate_abs_velocity(CarlaDataProvider.get_velocity(self.ego_vehicle)),
             'ego_acceleration_x': self.ego_vehicle.get_acceleration().x,
             'ego_acceleration_y': self.ego_vehicle.get_acceleration().y,
             'ego_acceleration_z': self.ego_vehicle.get_acceleration().z,
@@ -190,7 +192,7 @@ class ScenicScenario():
         actor_y = actor_trans.location.y
         actor_yaw = actor_trans.rotation.yaw / 180 * np.pi
         yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
-        velocity = actor.get_velocity()
+        velocity = CarlaDataProvider.get_velocity(actor)
         acc = actor.get_acceleration()
         return [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
 

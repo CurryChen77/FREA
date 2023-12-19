@@ -10,6 +10,7 @@
 
 import carla
 
+from safebench.gym_carla.envs.utils import calculate_abs_velocity
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.util.pid_controller import VehiclePIDController
 from safebench.scenario.tools.scenario_utils import calculate_distance_locations
@@ -53,7 +54,7 @@ class ScenarioOperation(object):
 
     def go_straight(self, target_speed, i, throttle_value=1.0, break_value=1.0, steering=0.0):
         control = self.other_actors[i].get_control()
-        if CarlaDataProvider.get_velocity(self.other_actors[i]) <= target_speed:
+        if calculate_abs_velocity(CarlaDataProvider.get_velocity(self.other_actors[i])) <= target_speed:
             self.need_accelerated = True
         else:
             self.need_accelerated = False

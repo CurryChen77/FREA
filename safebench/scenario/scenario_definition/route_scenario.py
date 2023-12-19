@@ -13,7 +13,7 @@ import traceback
 import numpy as np
 import carla
 
-from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points
+from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
@@ -155,7 +155,7 @@ class RouteScenario():
 
     def get_running_status(self, running_record):
         running_status = {
-            'ego_velocity': CarlaDataProvider.get_velocity(self.ego_vehicle),
+            'ego_velocity': calculate_abs_velocity(CarlaDataProvider.get_velocity(self.ego_vehicle)),
             'ego_acceleration_x': self.ego_vehicle.get_acceleration().x,
             'ego_acceleration_y': self.ego_vehicle.get_acceleration().y,
             'ego_acceleration_z': self.ego_vehicle.get_acceleration().z,
@@ -235,7 +235,7 @@ class RouteScenario():
         actor_y = actor_trans.location.y
         actor_yaw = round(actor_trans.rotation.yaw / 180 * np.pi, 3)
         # yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
-        velocity = actor.get_velocity()
+        velocity = CarlaDataProvider.get_velocity(actor)
         # acc = actor.get_acceleration()
         # [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
         return [actor_x, actor_y, actor_yaw, velocity.x, velocity.y]

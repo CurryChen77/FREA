@@ -17,13 +17,6 @@ import time
 import carla
 
 
-
-def calculate_velocity(actor):
-    velocity_squared = actor.get_velocity().x**2
-    velocity_squared += actor.get_velocity().y**2
-    return round(math.sqrt(velocity_squared), 2)
-
-
 class CarlaDataProvider(object): 
     """
         This module provides all frequently used data from CARLA via local buffers to avoid blocking calls to CARLA
@@ -57,7 +50,7 @@ class CarlaDataProvider(object):
         if actor in CarlaDataProvider._actor_velocity_map:
             raise KeyError("Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
         else:
-            CarlaDataProvider._actor_velocity_map[actor] = 0.0
+            CarlaDataProvider._actor_velocity_map[actor] = None
 
         if actor in CarlaDataProvider._actor_location_map:
             raise KeyError("Vehicle '{}' already registered. Cannot register twice!".format(actor.id))
@@ -84,7 +77,7 @@ class CarlaDataProvider(object):
         """
         for actor in CarlaDataProvider._actor_velocity_map:
             if actor is not None and actor.is_alive:
-                CarlaDataProvider._actor_velocity_map[actor] = calculate_velocity(actor)
+                CarlaDataProvider._actor_velocity_map[actor] = actor.get_velocity()
 
         for actor in CarlaDataProvider._actor_location_map:
             if actor is not None and actor.is_alive:
@@ -109,7 +102,7 @@ class CarlaDataProvider(object):
 
         # We are intentionally not throwing here
         print('{}.get_velocity: {} not found!' .format(__name__, actor))
-        return 0.0
+        return None
 
     @staticmethod
     def get_location(actor):

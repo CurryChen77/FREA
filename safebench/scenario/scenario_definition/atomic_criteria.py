@@ -17,7 +17,7 @@ from enum import Enum
 import shapely
 import carla
 
-from safebench.gym_carla.envs.utils import get_nearby_vehicles, get_min_distance_across_bboxes
+from safebench.gym_carla.envs.utils import get_nearby_vehicles, get_min_distance_across_bboxes, calculate_abs_velocity
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.traffic_events import TrafficEvent, TrafficEventType
@@ -100,7 +100,7 @@ class StuckDetectorTest(Criterion):
         """
         # TODO need to consider the traffic light
         new_status = Status.RUNNING
-        speed = CarlaDataProvider.get_velocity(self.actor)
+        speed = calculate_abs_velocity(CarlaDataProvider.get_velocity(self.actor))
         self._speed_queue.append(speed)
         if len(self._speed_queue) >= self._len_thresh:
             if np.average(self._speed_queue) < self._speed_thresh:
@@ -400,7 +400,7 @@ class ActorSpeedAboveThresholdTest(Criterion):
         """
         new_status = Status.RUNNING
 
-        linear_speed = CarlaDataProvider.get_velocity(self._actor)
+        linear_speed = calculate_abs_velocity(CarlaDataProvider.get_velocity(self._actor))
         if linear_speed is not None:
             if linear_speed < self._speed_threshold and self._time_last_valid_state:
                 if (GameTime.get_time() - self._time_last_valid_state) > self._below_threshold_max_time:
@@ -1054,7 +1054,7 @@ class RunningStopTest(Criterion):
             # we were in the middle of dealing with a stop sign
             if not self._stop_completed:
                 # did the ego-vehicle stop?
-                current_speed = CarlaDataProvider.get_velocity(self._actor)
+                current_speed = calculate_abs_velocity(CarlaDataProvider.get_velocity(self._actor))
                 if current_speed < self.SPEED_THRESHOLD:
                     self._stop_completed = True
 

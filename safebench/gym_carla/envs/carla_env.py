@@ -29,7 +29,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
     get_actor_in_drivable_area, get_ego_min_dis, get_ego_cbv_dis_reward, get_cbv_bv_reward, get_constrain_h, get_min_distance_across_bboxes, \
-    reset_ego_cbv_dis, get_cbv_stuck_reward, get_ego_cbv_reward
+    reset_ego_cbv_dis, get_cbv_stuck_reward, get_ego_cbv_reward, calculate_abs_velocity
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -471,18 +471,18 @@ class CarlaEnv(gym.Env):
             actor_poly_dict[actor.id] = poly
         return actor_poly_dict
 
-    def _get_actor_info(self, filt):
-        actor_trajectory_dict = {}
-        actor_acceleration_dict = {}
-        actor_angular_velocity_dict = {}
-        actor_velocity_dict = {}
-
-        for actor in self.world.get_actors().filter(filt):
-            actor_trajectory_dict[actor.id] = actor.get_transform()
-            actor_acceleration_dict[actor.id] = actor.get_acceleration()
-            actor_angular_velocity_dict[actor.id] = actor.get_angular_velocity()
-            actor_velocity_dict[actor.id] = actor.get_velocity()
-        return actor_trajectory_dict, actor_acceleration_dict, actor_angular_velocity_dict, actor_velocity_dict
+    # def _get_actor_info(self, filt):
+    #     actor_trajectory_dict = {}
+    #     actor_acceleration_dict = {}
+    #     actor_angular_velocity_dict = {}
+    #     actor_velocity_dict = {}
+    #
+    #     for actor in self.world.get_actors().filter(filt):
+    #         actor_trajectory_dict[actor.id] = actor.get_transform()
+    #         actor_acceleration_dict[actor.id] = actor.get_acceleration()
+    #         actor_angular_velocity_dict[actor.id] = actor.get_angular_velocity()
+    #         actor_velocity_dict[actor.id] = actor.get_velocity()
+    #     return actor_trajectory_dict, actor_acceleration_dict, actor_angular_velocity_dict, actor_velocity_dict
 
     def _get_obs(self):
         if self.birdeye_render:
@@ -560,7 +560,7 @@ class CarlaEnv(gym.Env):
             ego_trans = CarlaDataProvider.get_transform(self.ego_vehicle)
             ego_loc = ego_trans.location
             ego_pos = np.array([ego_loc.x, ego_loc.y])
-            ego_speed = CarlaDataProvider.get_velocity(self.ego_vehicle)  # m/s
+            ego_speed = calculate_abs_velocity(CarlaDataProvider.get_velocity(self.ego_vehicle))  # m/s
             ego_compass = np.deg2rad(ego_trans.rotation.yaw)  # the yaw angle in radius
             ego_state = {
                 'gps': ego_pos,
@@ -580,8 +580,8 @@ class CarlaEnv(gym.Env):
             yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
             delta_yaw = np.arcsin(np.cross(w, yaw))
 
-            v = self.ego_vehicle.get_velocity()
-            speed = np.sqrt(v.x ** 2 + v.y ** 2)
+            v = CarlaDataProvider.get_velocity(self.ego_vehicle)
+            speed = calculate_abs_velocity(v)
             simple_state = np.array([lateral_dis, -delta_yaw, speed, self.vehicle_front])
             obs = {
                 'simple_state': simple_state.astype(np.float32),
@@ -607,7 +607,7 @@ class CarlaEnv(gym.Env):
         r_out = -1 if abs(dis) > self.out_lane_thres else 0
 
         # reward for speed tracking
-        v = self.ego_vehicle.get_velocity()
+        v = CarlaDataProvider.get_velocity(self.ego_vehicle)
 
         # cost for too fast
         lspeed = np.array([v.x, v.y])

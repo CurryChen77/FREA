@@ -16,6 +16,8 @@ from matplotlib.path import Path
 import skimage
 import cv2
 
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
+
 
 def get_speed(vehicle):
     """
@@ -23,7 +25,7 @@ def get_speed(vehicle):
         :param vehicle: the vehicle for which speed is calculated
         :return: speed as a float in Kmh
     """
-    vel = vehicle.get_velocity()
+    vel = CarlaDataProvider.get_velocity(vehicle)
     return 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
 
 

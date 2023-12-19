@@ -101,12 +101,12 @@ def get_cbv_stuck_reward(cbv, cbv_nearby_vehicles, ego, ego_nearby_vehicles):
     """
     stuck_reward = 0
     if cbv is not None and cbv_nearby_vehicles is not None and ego_nearby_vehicles is not None:
-        cbv_v = cbv.get_velocity()
-        ego_v = ego.get_velocity()
+        cbv_v = CarlaDataProvider.get_velocity(cbv)
+        ego_v = CarlaDataProvider.get_velocity(ego)
         relative_velocity_list = [cbv_v.distance_2d(ego_v)]
         for bv in ego_nearby_vehicles:
             if any(actor.id == bv.id for actor in cbv_nearby_vehicles):
-                bv_v = bv.get_velocity()
+                bv_v = CarlaDataProvider.get_velocity(bv)
                 relative_velocity_list.append(bv_v.distance_2d(ego_v))
                 break
         if np.average(relative_velocity_list) < 0.1:
@@ -153,7 +153,7 @@ def get_ego_cbv_reward(ego, cbv, affected_range=10):
         dis reward ~ [0, affected_range]: within h
     """
     if cbv:
-        ego_cbv_dis = get_min_distance_across_bboxes(ego, cbv)
+        ego_cbv_dis = get_distance_across_centers(ego, cbv)
         dis_reward = affected_range - min(ego_cbv_dis, affected_range)
     else:
         dis_reward = 0
@@ -287,3 +287,7 @@ def get_distance_across_centers(veh1, veh2):
     veh1_loc = CarlaDataProvider.get_location(veh1)
     veh2_loc = CarlaDataProvider.get_location(veh2)
     return veh1_loc.distance(veh2_loc)
+
+
+def calculate_abs_velocity(velocity):
+    return round(math.sqrt(velocity.x**2 + velocity.y**2), 2)
