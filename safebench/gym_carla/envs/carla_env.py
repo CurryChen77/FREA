@@ -648,7 +648,7 @@ class CarlaEnv(gym.Env):
         ego_cbv_collide_reward = 1 if self.collide_with_cbv else 0
 
         # final scenario agent rewards
-        scenario_agent_reward = 20 * cbv_min_dis_reward + 0.5 * ego_cbv_dis_reward + 500 * ego_cbv_collide_reward + 5 * cbv_stuck_reward
+        scenario_agent_reward = 2 * cbv_min_dis_reward + 0.7 * ego_cbv_dis_reward + 30 * ego_cbv_collide_reward + 2 * cbv_stuck_reward
 
         return scenario_agent_reward
 
