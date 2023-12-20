@@ -177,24 +177,24 @@ class SAC(BasePolicy):
             target_value = self.Target_value_net(bn_s_)
             next_q_value = bn_r + bn_d * self.gamma * target_value
 
-            excepted_value = self.value_net(bn_s)
-            excepted_Q = self.Q_net(bn_s, bn_a)
+            expected_value = self.value_net(bn_s)
+            expected_Q = self.Q_net(bn_s, bn_a)
 
             sample_action, log_prob, z, batch_mu, batch_log_sigma = self.get_action_log_prob(bn_s)
-            excepted_new_Q = self.Q_net(bn_s, sample_action)
-            next_value = excepted_new_Q - log_prob
+            expected_new_Q = self.Q_net(bn_s, sample_action)
+            next_value = expected_new_Q - log_prob
 
             # !!! Note that the actions are sampled according to the current policy, instead of replay buffer. (From original paper)
-            V_loss = self.value_criterion(excepted_value, next_value.detach())  # J_V
+            V_loss = self.value_criterion(expected_value, next_value.detach())  # J_V
             V_loss = V_loss.mean()
             writer.add_scalar("V loss", V_loss, e_i)
 
             # Single Q_net this is different from original paper!!!
-            Q_loss = self.Q_criterion(excepted_Q, next_q_value.detach()) # J_Q
+            Q_loss = self.Q_criterion(expected_Q, next_q_value.detach()) # J_Q
             Q_loss = Q_loss.mean()
             writer.add_scalar("Q loss", Q_loss, e_i)
 
-            log_policy_target = excepted_new_Q - excepted_value
+            log_policy_target = expected_new_Q - expected_value
             pi_loss = log_prob * (log_prob - log_policy_target).detach()
             pi_loss = pi_loss.mean()
 
