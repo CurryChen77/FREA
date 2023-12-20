@@ -166,19 +166,14 @@ def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1):
 #     return reward
 
 
-def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=5, intensity=0.8, upper_limit=18):
-    nearby_spawn_points = []
+def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=0, intensity=0.5, upper_limit=20):
     CarlaDataProvider.generate_spawn_points()  # get all the possible spawn points in this map
-    # TODO the initial position of the bv still got problems, may to close to the egos
-    ego_locations = [ego.get_location() for ego in CarlaDataProvider.egos]
-    for spawn_point in CarlaDataProvider._spawn_points:
-        spawn_point_location = spawn_point.location
-        # check whether any spawn point close to any egos' location
-        close_to_ego = any(ego_loc.distance(spawn_point_location) <= closest_dis for ego_loc in ego_locations)
 
-        if any(location.distance(spawn_point_location) <= radius for location, radius in zip(location_lists, radius_list)) and not close_to_ego:
-            # if the spawn point is in any location's radius and not close to any egos' location, add them to the list
-            nearby_spawn_points.append(spawn_point)
+    ego_locations = [ego.get_location() for ego in CarlaDataProvider.egos]
+
+    nearby_spawn_points = [spawn_point for spawn_point in CarlaDataProvider._spawn_points
+                           if not any(spawn_point.location.distance(location) <= radius for location, radius in zip(location_lists, radius_list))
+                           and all(spawn_point.location.distance(ego_location) > closest_dis for ego_location in ego_locations)]
 
     CarlaDataProvider._rng.shuffle(nearby_spawn_points)
     spawn_points_count = len(nearby_spawn_points)
