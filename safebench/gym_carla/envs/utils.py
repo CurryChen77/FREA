@@ -28,9 +28,9 @@ def get_actor_in_drivable_area(actor):
     # find the nearest waypoint around the actor front location
     actor_waypoint = CarlaDataProvider.get_map().get_waypoint(actor_front_location)
     if actor_waypoint.lane_type == carla.LaneType.Driving:
-        in_drivable_area = 0
+        in_drivable_area = True
     else:
-        in_drivable_area = -1
+        in_drivable_area = False
     return in_drivable_area
 
 
@@ -83,19 +83,25 @@ def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40):
 
 
 def reset_ego_cbv_dis(ego, cbv):
+    """
+        if the cbv has changed, then reset the corresponding initial distance
+    """
+    ego_id = ego.id
     if cbv:
-        CarlaDataProvider.ego_cbv_dis[ego.id] = {}
-        dis = get_distance_across_centers(ego, cbv)
-        CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
+        cbv_id = cbv.id
+        # if the cbv has changed, clean the original dict and put new key-value pair
+        if cbv_id not in CarlaDataProvider.ego_cbv_dis[ego_id]:
+            CarlaDataProvider.ego_cbv_dis[ego_id] = {}
+            CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = get_distance_across_centers(ego, cbv)
     else:
-        CarlaDataProvider.ego_cbv_dis[ego.id] = {}
+        CarlaDataProvider.ego_cbv_dis[ego_id] = {}
 
 
-def get_cbv_stuck_reward(cbv, cbv_nearby_vehicles, ego, ego_nearby_vehicles):
+def get_cbv_stuck(cbv, cbv_nearby_vehicles, ego, ego_nearby_vehicles):
     """
         if cbv movement causing stuck in the traffic flow especially for ego, punish this
     """
-    stuck_reward = 0
+    stuck = False
     if cbv is not None and cbv_nearby_vehicles is not None and ego_nearby_vehicles is not None:
         cbv_v = CarlaDataProvider.get_velocity(cbv)
         ego_v = CarlaDataProvider.get_velocity(ego)
@@ -105,33 +111,33 @@ def get_cbv_stuck_reward(cbv, cbv_nearby_vehicles, ego, ego_nearby_vehicles):
                 bv_v = CarlaDataProvider.get_velocity(bv)
                 relative_velocity_list.append(bv_v.distance_2d(ego_v))
                 break
-        if np.average(relative_velocity_list) < 0.1:
-            stuck_reward = -1
+        if relative_velocity_list[0] < 0.1 or np.average(relative_velocity_list) < 0.1:
+            stuck = True
 
-    return stuck_reward
-
-
-def get_ego_cbv_dis_reward(ego, cbv):
-    '''
-        if the cbv are getting closer to the ego vehicle, then we should reward that, else punish that
-    '''
-    delta_dis = 0
-    if cbv:
-        if cbv.id in CarlaDataProvider.ego_cbv_dis[ego.id].keys():  # whether the current are in the old cbv list
-            dis = get_distance_across_centers(ego, cbv)
-            # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
-            delta_dis = CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] - dis
-            CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
-        else:
-            CarlaDataProvider.ego_cbv_dis[ego.id] = {}
-            dis = get_distance_across_centers(ego, cbv)
-            CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
-    else:
-        CarlaDataProvider.ego_cbv_dis[ego.id] = {}
-    return delta_dis
+    return stuck
 
 
-def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1.25):
+# def get_ego_cbv_dis_reward(ego, cbv):
+#     '''
+#         delta distance calculation
+#     '''
+#     delta_dis = 0
+#     if cbv:
+#         if cbv.id in CarlaDataProvider.ego_cbv_dis[ego.id].keys():  # whether the current are in the old cbv list
+#             dis = get_distance_across_centers(ego, cbv)
+#             # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
+#             delta_dis = CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] - dis
+#             CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
+#         else:
+#             CarlaDataProvider.ego_cbv_dis[ego.id] = {}
+#             dis = get_distance_across_centers(ego, cbv)
+#             CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
+#     else:
+#         CarlaDataProvider.ego_cbv_dis[ego.id] = {}
+#     return delta_dis
+
+
+def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1):
     min_dis = search_radius  # the searching radius of the nearby_vehicle
     if cbv and cbv_nearby_vehicles:
         for i, vehicle in enumerate(cbv_nearby_vehicles):
@@ -144,16 +150,21 @@ def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1.25):
     return min_dis, min_dis_reward
 
 
-def get_ego_cbv_reward(ego, cbv, affected_range=10):
+def get_cbv_ego_reward(ego, cbv):
     """
-        dis reward ~ [0, affected_range]: within h
+        reward ~ [-1， 1]: the ratio of (init_ego_cbv_dis-current_ego_cbv_dis)/init_ego_cbv_dis
     """
+    reward = 0
     if cbv:
-        ego_cbv_dis = get_distance_across_centers(ego, cbv)
-        dis_reward = affected_range - min(ego_cbv_dis, affected_range)
-    else:
-        dis_reward = 0
-    return dis_reward
+        ego_id = ego.id
+        cbv_id = cbv.id
+        ego_cbv_dis_dict = CarlaDataProvider.ego_cbv_dis[ego_id]
+        if cbv_id in ego_cbv_dis_dict.keys():
+            # got initial ego cbv distance
+            init_cbv_ego_dis = ego_cbv_dis_dict[cbv_id]
+            current_ego_cbv_dis = get_distance_across_centers(ego, cbv)
+            reward = np.clip((init_cbv_ego_dis-current_ego_cbv_dis)/init_cbv_ego_dis, -1.0, 1.0)
+    return reward
 
 
 def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=5, intensity=0.8, upper_limit=18):

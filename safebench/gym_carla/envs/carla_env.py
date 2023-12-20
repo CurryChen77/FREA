@@ -28,8 +28,8 @@ from safebench.gym_carla.envs.misc import (
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    get_actor_in_drivable_area, get_ego_min_dis, get_ego_cbv_dis_reward, get_cbv_bv_reward, get_constrain_h, get_min_distance_across_bboxes, \
-    reset_ego_cbv_dis, get_cbv_stuck_reward, get_ego_cbv_reward, calculate_abs_velocity
+    get_actor_in_drivable_area, get_ego_min_dis, get_cbv_bv_reward, get_constrain_h, get_min_distance_across_bboxes, \
+    reset_ego_cbv_dis, get_cbv_stuck, get_cbv_ego_reward, calculate_abs_velocity
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -619,36 +619,38 @@ class CarlaEnv(gym.Env):
         # combine all rewards
         # r = 1 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat
         # reward from "Interpretable End-to-End Urban Autonomous Driving With Latent Deep Reinforcement Learning"
-        r = 50 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat - 0.1
+        r = 10 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat - 0.1
         return r
 
     def _get_scenario_reward(self):
         """
-            in_drivable_area ~ [0, -1]: whether the cbv are driving on the drivable area
-            cbv_min_dis_reward ~ [-1.25, 0]: activate when cbv is too close to the other bvs
-            too_fast ~ 0 or -1: if the cbv speed > desired speed, too_fast = -1
-            ego_cbv_dis_reward: the delta distance between ego and cbv
+            in_drivable_area ~ -1 or 0: whether the cbv are driving on the drivable area
+            cbv_min_dis_reward ~ [-1, 0]: activate when cbv is too close to the other bvs
+            ego_cbv_dis_reward ~ [-1, 1]: the ratio of (init_ego_cbv_dis-current_ego_cbv_dis)/init_ego_cbv_dis
+            cbv_stuck_reward  ~ -1 or 0: whether the cbv has stuck the traffic flow
         """
-        # the min dis from the cbv to the rest bvs
-        _, cbv_min_dis_reward = get_cbv_bv_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
-
-        # the min dis from ego to the cbv
-        ego_cbv_dis_reward = get_ego_cbv_reward(self.ego_vehicle, self.cbv)
-
-        # the reward design to encourage cbv attack ego
-        # ego_cbv_dis_reward = get_ego_cbv_dis_reward(self.ego_vehicle, self.cbv)
+        # prevent the cbv getting too close to the other bvs
+        cbv_min_dis, cbv_min_dis_reward = get_cbv_bv_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
 
         # the reward design to prevent cbv stuck traffic flow
-        cbv_stuck_reward = get_cbv_stuck_reward(self.cbv, self.cbv_nearby_vehicles, self.ego_vehicle, self.ego_nearby_vehicle)
+        cbv_stuck = get_cbv_stuck(self.cbv, self.cbv_nearby_vehicles, self.ego_vehicle, self.ego_nearby_vehicle)
+
+        # encourage cbv to get closer to the ego (if traffic flow stuck, dis_reward will be 0, not encourage stand still)
+        ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv) if not cbv_stuck else 0
 
         # since the obs don't have road info, so no need to include in drivable area info
-        # in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else 0
+        in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else True
 
-        # ego collision reward, depending on the ego min distance
-        ego_cbv_collide_reward = 1 if self.collide_with_cbv else 0
+        # cbv collision reward
+        if (not in_drivable_area) or (cbv_min_dis < 0.01):  # cbv hit other vehicle or hit the road
+            collide_reward = -1
+        elif self.collide_with_cbv:  # cbv hit the ego
+            collide_reward = 1
+        else:
+            collide_reward = 0
 
         # final scenario agent rewards
-        scenario_agent_reward = 2 * cbv_min_dis_reward + 0.7 * ego_cbv_dis_reward + 30 * ego_cbv_collide_reward + 2 * cbv_stuck_reward
+        scenario_agent_reward = ego_cbv_dis_reward + 5 * collide_reward
 
         return scenario_agent_reward
 
