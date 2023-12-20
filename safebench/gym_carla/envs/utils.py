@@ -89,10 +89,9 @@ def reset_ego_cbv_dis(ego, cbv):
     ego_id = ego.id
     if cbv:
         cbv_id = cbv.id
-        # if the cbv has changed, clean the original dict and put new key-value pair
-        if cbv_id not in CarlaDataProvider.ego_cbv_dis[ego_id]:
-            CarlaDataProvider.ego_cbv_dis[ego_id] = {}
-            CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = get_distance_across_centers(ego, cbv)
+        CarlaDataProvider.ego_cbv_dis[ego_id] = {}
+        dis = get_distance_across_centers(ego, cbv)
+        CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = dis
     else:
         CarlaDataProvider.ego_cbv_dis[ego_id] = {}
 
@@ -117,24 +116,24 @@ def get_cbv_stuck(cbv, cbv_nearby_vehicles, ego, ego_nearby_vehicles):
     return stuck
 
 
-# def get_ego_cbv_dis_reward(ego, cbv):
-#     '''
-#         delta distance calculation
-#     '''
-#     delta_dis = 0
-#     if cbv:
-#         if cbv.id in CarlaDataProvider.ego_cbv_dis[ego.id].keys():  # whether the current are in the old cbv list
-#             dis = get_distance_across_centers(ego, cbv)
-#             # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
-#             delta_dis = CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] - dis
-#             CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
-#         else:
-#             CarlaDataProvider.ego_cbv_dis[ego.id] = {}
-#             dis = get_distance_across_centers(ego, cbv)
-#             CarlaDataProvider.ego_cbv_dis[ego.id][cbv.id] = dis
-#     else:
-#         CarlaDataProvider.ego_cbv_dis[ego.id] = {}
-#     return delta_dis
+def get_cbv_ego_reward(ego, cbv):
+    '''
+        delta distance calculation
+    '''
+    delta_dis = 0.0
+    ego_id = ego.id
+    if cbv:
+        cbv_id = cbv.id
+        if cbv_id in CarlaDataProvider.ego_cbv_dis[ego_id].keys():  # whether the current are in the old cbv list
+            dis = get_distance_across_centers(ego, cbv)
+            # delta_dis > 0 means ego and cbv are getting closer, otherwise punish cbv drive away from ego
+            delta_dis = round(CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] - dis, 4)
+            CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = dis
+        else:
+            CarlaDataProvider.ego_cbv_dis[ego_id] = {}
+            dis = get_distance_across_centers(ego, cbv)
+            CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = dis
+    return delta_dis
 
 
 def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1):
@@ -149,22 +148,22 @@ def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1):
         min_dis_reward = 0
     return min_dis, min_dis_reward
 
-
-def get_cbv_ego_reward(ego, cbv):
-    """
-        reward ~ [-1， 1]: the ratio of (init_ego_cbv_dis-current_ego_cbv_dis)/init_ego_cbv_dis
-    """
-    reward = 0
-    if cbv:
-        ego_id = ego.id
-        cbv_id = cbv.id
-        ego_cbv_dis_dict = CarlaDataProvider.ego_cbv_dis[ego_id]
-        if cbv_id in ego_cbv_dis_dict.keys():
-            # got initial ego cbv distance
-            init_cbv_ego_dis = ego_cbv_dis_dict[cbv_id]
-            current_ego_cbv_dis = get_distance_across_centers(ego, cbv)
-            reward = np.clip((init_cbv_ego_dis-current_ego_cbv_dis)/init_cbv_ego_dis, -1.0, 1.0)
-    return reward
+#
+# def get_cbv_ego_reward(ego, cbv):
+#     """
+#         reward ~ [-1， 1]: the ratio of (init_ego_cbv_dis-current_ego_cbv_dis)/init_ego_cbv_dis
+#     """
+#     reward = 0
+#     if cbv:
+#         ego_id = ego.id
+#         cbv_id = cbv.id
+#         ego_cbv_dis_dict = CarlaDataProvider.ego_cbv_dis[ego_id]
+#         if cbv_id in ego_cbv_dis_dict.keys():
+#             # got initial ego cbv distance
+#             init_cbv_ego_dis = ego_cbv_dis_dict[cbv_id]
+#             current_ego_cbv_dis = get_distance_across_centers(ego, cbv)
+#             reward = np.clip((init_cbv_ego_dis-current_ego_cbv_dis)/init_cbv_ego_dis, -1.0, 1.0)
+#     return reward
 
 
 def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=5, intensity=0.8, upper_limit=18):

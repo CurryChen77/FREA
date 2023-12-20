@@ -633,10 +633,10 @@ class CarlaEnv(gym.Env):
         cbv_min_dis, cbv_min_dis_reward = get_cbv_bv_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
 
         # the reward design to prevent cbv stuck traffic flow
-        cbv_stuck = get_cbv_stuck(self.cbv, self.cbv_nearby_vehicles, self.ego_vehicle, self.ego_nearby_vehicle)
+        # cbv_stuck = get_cbv_stuck(self.cbv, self.cbv_nearby_vehicles, self.ego_vehicle, self.ego_nearby_vehicle)
 
-        # encourage cbv to get closer to the ego (if traffic flow stuck, dis_reward will be 0, not encourage stand still)
-        ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv) if not cbv_stuck else 0
+        # encourage cbv to get closer to the ego
+        ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv)
 
         # since the obs don't have road info, so no need to include in drivable area info
         in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else True
@@ -650,7 +650,7 @@ class CarlaEnv(gym.Env):
             collide_reward = 0
 
         # final scenario agent rewards
-        scenario_agent_reward = ego_cbv_dis_reward + 5 * collide_reward
+        scenario_agent_reward = ego_cbv_dis_reward + 2 * collide_reward
 
         return scenario_agent_reward
 
