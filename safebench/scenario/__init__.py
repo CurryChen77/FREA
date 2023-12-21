@@ -10,15 +10,13 @@
 
 # collect policy models from scenarios
 from safebench.scenario.scenario_policy.dummy_policy import DummyPolicy
-from safebench.scenario.scenario_policy.reinforce_continuous import REINFORCE
-from safebench.scenario.scenario_policy.normalizing_flow_policy import NormalizingFlow
 from safebench.scenario.scenario_policy.rl.sac import SAC
+from safebench.scenario.scenario_policy.rl.ppo import PPO
 
 
 SCENARIO_POLICY_LIST = {
     'standard': DummyPolicy,
     'scenic': DummyPolicy,
-    'lc': REINFORCE,
-    'nf': NormalizingFlow,
     'sac': SAC,
+    'ppo': PPO,
 }

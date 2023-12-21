@@ -33,6 +33,9 @@ class RouteReplayBuffer:
         self.reset_buffer()
 
     def reset_buffer(self):
+        self.pos = 0
+        self.buffer_len = 0
+        self.full = False
         if self.mode == 'train_scenario':
             self.buffer_actions = []
             self.buffer_obs = []

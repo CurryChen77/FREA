@@ -1,0 +1,28 @@
+scenario_type_dir: 'safebench/scenario/config/scenario_type'
+scenario_type: 'carla_scenario_9_1x.json'
+scenario_category: 'planning'
+policy_type: 'ppo'
+
+route_dir: 'safebench/scenario/scenario_data/route'
+scenario_id: 9  # default null -> save and load an "all" model for all scenarios, 9 -> save and load one model for the "9" scenario
+route_id: null
+
+# for scenario id 8
+scenario_state_dim: 15 # 3*5 - actor number * actor info dim
+scenario_action_dim: 2
+
+# for PPO policy model
+model_path: 'safebench/scenario/scenario_data/model_ckpt/ppo'
+model_type: 'bv'
+train_episode: 500
+eval_in_train_freq: 1
+save_freq: 10
+buffer_capacity: 2000
+
+clip_epsilon: 0.2
+gamma: 0.99
+train_iteration: 20   # how many times training
+train_interval: 1     # how often training
+policy_lr: 1.0e-4
+value_lr: 1.0e-4
+batch_size: 64

@@ -154,7 +154,7 @@ class PPO(BasePolicy):
             state_tensor = CUDA(torch.FloatTensor(state))
             action = self.policy.select_action(state_tensor, deterministic)
             for i, index in enumerate(indexes):
-                scenario_action[index] = CPU(action[i])
+                scenario_action[index] = action[i]
         return scenario_action
 
     def train(self, replay_buffer, writer, e_i):
