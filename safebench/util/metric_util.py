@@ -43,7 +43,8 @@ def cal_avg_yaw_velocity(sequence):
             continue
         total_yaw_change += abs(sequence[i]['ego_yaw'] - sequence[i - 1]['ego_yaw'])
     total_yaw_change = total_yaw_change / 180 * math.pi
-    avg_yaw_velocity = total_yaw_change / (sequence[-1]['current_game_time'] - sequence[0]['current_game_time'])
+    delta_time = sequence[-1]['current_game_time'] - sequence[0]['current_game_time']
+    avg_yaw_velocity = total_yaw_change / delta_time if delta_time == 0 else 0  # prevent the delta_time is 0
 
     return avg_yaw_velocity
 
