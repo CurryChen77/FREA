@@ -166,7 +166,7 @@ def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1):
 #     return reward
 
 
-def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=0, intensity=0.5, upper_limit=20):
+def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=0, intensity=0.6, upper_limit=20):
     CarlaDataProvider.generate_spawn_points()  # get all the possible spawn points in this map
 
     ego_locations = [ego.get_location() for ego in CarlaDataProvider.egos]
