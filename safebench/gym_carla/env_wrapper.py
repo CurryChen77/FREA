@@ -81,7 +81,7 @@ class VectorWrapper():
             if transform is not None:
                 spectator = self.world.get_spectator()
                 spectator.set_transform(carla.Transform(
-                    transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+                    transform.location + carla.Location(x=-3, z=50), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
                 ))
 
         # sometimes not all scenarios are used
@@ -115,7 +115,7 @@ class VectorWrapper():
             if transform is not None:
                 spectator = self.world.get_spectator()
                 spectator.set_transform(carla.Transform(
-                    transform.location + carla.Location(x=-3, z=40), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
+                    transform.location + carla.Location(x=-3, z=50), carla.Rotation(yaw=transform.rotation.yaw, pitch=-80.0)
                 ))
 
         # tick all scenarios

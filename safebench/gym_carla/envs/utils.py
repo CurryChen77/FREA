@@ -172,13 +172,18 @@ def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_
     ego_locations = [ego.get_location() for ego in CarlaDataProvider.egos]
 
     nearby_spawn_points = [spawn_point for spawn_point in CarlaDataProvider._spawn_points
-                           if not any(spawn_point.location.distance(location) <= radius for location, radius in zip(location_lists, radius_list))
+                           if any(spawn_point.location.distance(location) <= radius for location, radius in zip(location_lists, radius_list))
                            and all(spawn_point.location.distance(ego_location) > closest_dis for ego_location in ego_locations)]
+
+    # # debugging the location of all the spawn points
+    # for point in nearby_spawn_points:
+    #     CarlaDataProvider.get_world().debug.draw_point(point.location + carla.Location(z=2.0), size=0.1, color=carla.Color(0, 0, 255, 0), life_time=-1)
 
     CarlaDataProvider._rng.shuffle(nearby_spawn_points)
     spawn_points_count = len(nearby_spawn_points)
     picking_number = min(int(spawn_points_count * intensity), upper_limit) if spawn_points_count > upper_limit else spawn_points_count
     nearby_spawn_points = nearby_spawn_points[:picking_number]  # sampling part of the nearby spawn points
+
     return nearby_spawn_points
 
 
