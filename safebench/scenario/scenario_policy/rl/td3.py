@@ -222,7 +222,7 @@ class TD3(BasePolicy):
                 self.update_target()
                 pi_loss += pi_loss_step.detach().item()
 
-    def save_model(self, episode, map_name):
+    def save_model(self, episode, map_name, replay_buffer):
         states = {
             'q_funcs': self.q_funcs.state_dict(),
             'target_q_funcs': self.target_q_funcs.state_dict(),
@@ -233,7 +233,7 @@ class TD3(BasePolicy):
         save_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.td3.{self.model_type}.{episode:04}.torch')
-        self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}')
+        self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}', 'yellow')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
@@ -250,7 +250,7 @@ class TD3(BasePolicy):
                             episode = cur_episode
         filepath = os.path.join(load_dir, f'model.td3.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading scenario policy {self.name} model from {filepath}')
+            self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}', 'yellow')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.q_funcs.load_state_dict(checkpoint['q_funcs'])

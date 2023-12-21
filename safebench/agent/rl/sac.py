@@ -222,7 +222,10 @@ class SAC(BasePolicy):
         states = {
             'policy_net': self.policy_net.state_dict(), 
             'value_net': self.value_net.state_dict(), 
-            'Q_net': self.Q_net.state_dict()
+            'Q_net': self.Q_net.state_dict(),
+            'policy_optimizer': self.policy_optimizer.state_dict(),
+            'value_optimizer': self.value_optimizer.state_dict(),
+            'Q_optimizer': self.Q_optimizer.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, 'Ego_'+self.obs_type+'_CBV_'+self.scenario_policy_type, scenario_name+'_'+map_name)
@@ -251,6 +254,9 @@ class SAC(BasePolicy):
             self.policy_net.load_state_dict(checkpoint['policy_net'])
             self.value_net.load_state_dict(checkpoint['value_net'])
             self.Q_net.load_state_dict(checkpoint['Q_net'])
+            self.policy_optimizer.load_state_dict(checkpoint['policy_optimizer'])
+            self.value_optimizer.load_state_dict(checkpoint['value_optimizer'])
+            self.Q_optimizer.load_state_dict(checkpoint['Q_optimizer'])
             self.continue_episode = episode
         else:
             self.logger.log(f'>> No {self.name} model found at {filepath}', 'red')

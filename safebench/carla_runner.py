@@ -258,7 +258,10 @@ class CarlaRunner:
         writer = SummaryWriter(log_dir=writer_dir)
 
         # general buffer for both agent and scenario
-        replay_buffer = RouteReplayBuffer(self.num_scenario, self.mode, self.agent_config, self.safety_network_config, self.buffer_capacity)
+        replay_buffer = RouteReplayBuffer(
+            self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
+            self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+        )
         data_loader.set_mode("train")
 
         for e_i in tqdm(range(start_episode, self.train_episode+1)):
@@ -314,7 +317,7 @@ class CarlaRunner:
             # train on-policy agent or scenario
             if self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
                 self.agent_policy.train(replay_buffer, writer, e_i)
-            elif self.mode == 'train_scenario' and self.scenario_policy.type in ['init_state', 'onpolicy']:
+            elif self.mode == 'train_scenario' and self.scenario_policy.type in ['onpolicy']:
                 self.scenario_policy.train(replay_buffer, writer, e_i)
             elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'onpolicy':
                 self.safety_network_policy.train(replay_buffer, writer, e_i)
@@ -327,11 +330,11 @@ class CarlaRunner:
             # save checkpoints
             if e_i != start_episode and e_i % self.save_freq == 0:
                 if self.mode == 'train_agent':
-                    self.agent_policy.save_model(e_i, map_name=self.current_map)
+                    self.agent_policy.save_model(e_i, map_name=self.current_map, replay_buffer=replay_buffer)
                 if self.mode == 'train_scenario':
-                    self.scenario_policy.save_model(e_i, map_name=self.current_map)
+                    self.scenario_policy.save_model(e_i, map_name=self.current_map, replay_buffer=replay_buffer)
                 if self.mode == 'train_safety_network':
-                    self.safety_network_policy.save_model(e_i, map_name=self.current_map)
+                    self.safety_network_policy.save_model(e_i, map_name=self.current_map, replay_buffer=replay_buffer)
 
         # close the tensorboard writer
         writer.close()

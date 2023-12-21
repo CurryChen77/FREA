@@ -7,6 +7,8 @@
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
+import os
+import pickle
 import time
 
 import numpy as np
@@ -18,19 +20,37 @@ class RouteReplayBuffer:
         This buffer supports parallel storing transitions from multiple trajectories.
     """
     
-    def __init__(self, num_scenario, mode, agent_config=None, safety_network_config=None, buffer_capacity=10000):
+    def __init__(
+            self,
+            num_scenario,
+            mode,
+            start_episode,
+            scenario_policy_type=None,
+            current_map=None,
+            agent_config=None,
+            scenario_config=None,
+            safety_network_config=None,
+            buffer_capacity=10000,
+            logger=None):
         self.mode = mode
         self.buffer_capacity = buffer_capacity
         self.num_scenario = num_scenario
         self.agent_need_obs = True if (agent_config['obs_type'] == 'simple_state' or agent_config['obs_type'] == 'plant') else False
-
         self.safety_network_obs_type = safety_network_config['obs_type'] if safety_network_config else None
         self.pos = 0
         self.buffer_len = 0
         self.full = False
+        self.logger = logger
 
-        # buffers for step info
-        self.reset_buffer()
+        if scenario_policy_type == 'offpolicy' and start_episode != 0:
+            model_path = os.path.join(scenario_config['ROOT_DIR'], scenario_config['model_path'], scenario_config['cbv_selection'])
+            agent_info = 'EgoPolicy_' + scenario_config['agent_policy'] + "-" + scenario_config['agent_obs_type']
+            safety_network = scenario_config['safety_network']
+            scenario_name = "all" if scenario_config['scenario_id'] is None else 'scenario' + str(scenario_config['scenario_id'])
+            load_dir = os.path.join(model_path, agent_info, safety_network, scenario_name + "_" + current_map)
+            self.load_buffer(dir_path=load_dir, filename=f'buffer.{start_episode:04}.pkl')
+        else:
+            self.reset_buffer()
 
     def reset_buffer(self):
         self.pos = 0
@@ -193,6 +213,79 @@ class RouteReplayBuffer:
             raise ValueError(f'Unknown mode {self.mode}')
 
         return batch
+
+    def save_buffer(self, dir_path, filename):
+        if self.mode == 'train_scenario':
+            buffer = {
+                'buffer_actions': self.buffer_actions,
+                'buffer_obs': self.buffer_obs,
+                'buffer_next_obs': self.buffer_next_obs,
+                'buffer_rewards': self.buffer_rewards,
+                'buffer_dones': self.buffer_dones,
+                'buffer_infos': [self.pos, self.buffer_len, self.full]
+            }
+        elif self.mode == 'train_agent':
+            buffer = {
+                'buffer_actions': self.buffer_actions,
+                'buffer_obs': self.buffer_obs,
+                'buffer_next_obs': self.buffer_next_obs,
+                'buffer_rewards': self.buffer_rewards,
+                'buffer_dones': self.buffer_dones,
+                'buffer_infos': [self.pos, self.buffer_len, self.full]
+            }
+        elif self.mode == 'train_safety_network':
+            buffer = {
+                'buffer_next_obs': self.buffer_next_obs,
+                'buffer_constrain_h': self.buffer_constrain_h,
+                'buffer_dones': self.buffer_dones,
+                'buffer_infos': [self.pos, self.buffer_len, self.full]
+            }
+        else:
+            raise ValueError(f'Unknown mode {self.mode}')
+
+        path = os.path.join(dir_path, filename)
+        with open(path, 'wb') as file:
+            pickle.dump(buffer, file)
+
+    def load_buffer(self, dir_path, filename):
+        path = os.path.join(dir_path, filename)
+        if os.path.exists(path):
+            try:
+                with open(path, 'rb') as file:
+                    buffer = pickle.load(file)
+                    self.logger.log(f'>> Successfully loading the replay buffer checkpoint', 'yellow')
+            except Exception as e:
+                print(f"An error occurred: {e}")
+        else:
+            print(f"File {filename} not found in {dir_path}.")
+
+        if self.mode == 'train_scenario':
+            self.buffer_actions = buffer['buffer_actions']
+            self.buffer_obs = buffer['buffer_obs']
+            self.buffer_next_obs = buffer['buffer_next_obs']
+            self.buffer_rewards = buffer['buffer_rewards']
+            self.buffer_dones = buffer['buffer_dones']
+            self.pos = buffer['buffer_infos'][0]
+            self.buffer_len = buffer['buffer_infos'][1]
+            self.full = buffer['buffer_infos'][2]
+        elif self.mode == 'train_agent':
+            self.buffer_actions = buffer['buffer_actions']
+            self.buffer_obs = buffer['buffer_obs']
+            self.buffer_next_obs = buffer['buffer_next_obs']
+            self.buffer_rewards = buffer['buffer_rewards']
+            self.buffer_dones = buffer['buffer_dones']
+            self.pos = buffer['buffer_infos'][0]
+            self.buffer_len = buffer['buffer_infos'][1]
+            self.full = buffer['buffer_infos'][2]
+        elif self.mode == 'train_safety_network':
+            self.buffer_next_obs = buffer['buffer_next_obs']
+            self.buffer_constrain_h = buffer['buffer_constrain_h']
+            self.buffer_dones = buffer['buffer_dones']
+            self.pos = buffer['buffer_infos'][0]
+            self.buffer_len = buffer['buffer_infos'][1]
+            self.full = buffer['buffer_infos'][2]
+        else:
+            raise ValueError(f'Unknown mode {self.mode}')
 
     # def reset_buffer(self):
     #     self.buffer_ego_actions = [[] for _ in range(self.num_scenario)]

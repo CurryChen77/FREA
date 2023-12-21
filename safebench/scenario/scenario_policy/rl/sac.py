@@ -252,19 +252,24 @@ class SAC(BasePolicy):
             for target_param, param in zip(self.Target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(target_param.data * (1 - self.tau) + param.data * self.tau)
 
-    def save_model(self, episode, map_name):
+    def save_model(self, episode, map_name, replay_buffer):
         states = {
             'policy_net': self.policy_net.state_dict(), 
             'value_net': self.value_net.state_dict(), 
-            'Q_net': self.Q_net.state_dict()
+            'Q_net': self.Q_net.state_dict(),
+            'policy_optimizer': self.policy_optimizer.state_dict(),
+            'value_optimizer': self.value_optimizer.state_dict(),
+            'Q_optimizer': self.Q_optimizer.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
-        self.logger.log(f'>> Saving scenario policy {self.name} model to {filepath}')
+        self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}', 'yellow')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
+        # save the replay buffer for the save
+        replay_buffer.save_buffer(dir_path=save_dir, filename=f'buffer.{episode:04}.pkl')
 
     # the loading method corresponds to the episode saving method
     def load_model(self, map_name, episode=None):
@@ -281,12 +286,15 @@ class SAC(BasePolicy):
 
         filepath = os.path.join(load_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}')
+            self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}', 'yellow')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy_net.load_state_dict(checkpoint['policy_net'])
             self.value_net.load_state_dict(checkpoint['value_net'])
             self.Q_net.load_state_dict(checkpoint['Q_net'])
+            self.policy_optimizer.load_state_dict(checkpoint['policy_optimizer'])
+            self.value_optimizer.load_state_dict(checkpoint['value_optimizer'])
+            self.Q_optimizer.load_state_dict(checkpoint['Q_optimizer'])
             self.continue_episode = episode
         else:
             self.logger.log(f'>> No {self.name} model found at {filepath}', 'red')

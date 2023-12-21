@@ -199,7 +199,7 @@ class PPO(BasePolicy):
         # reset buffer
         replay_buffer.reset_buffer()
 
-    def save_model(self, episode, map_name):
+    def save_model(self, episode, map_name, replay_buffer):
         states = {
             'policy': self.policy.state_dict(),
             'value': self.value.state_dict(),
@@ -208,7 +208,7 @@ class PPO(BasePolicy):
         save_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
-        self.logger.log(f'>> Saving scenario policy {self.name} model to {filepath}')
+        self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}', 'yellow')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
@@ -225,12 +225,12 @@ class PPO(BasePolicy):
                             episode = cur_episode
         filepath = os.path.join(self.model_path, f'model.ppo.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}')
+            self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}', 'yellow')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy.load_state_dict(checkpoint['policy'])
             self.value.load_state_dict(checkpoint['value'])
             self.continue_episode = episode
         else:
-            self.logger.log(f'>> No scenario policy {self.name} model found at {os.path.basename(filepath)}', 'red')
+            self.logger.log(f'>> No scenario policy {self.name} model found at {filepath}', 'red')
             self.continue_episode = 0
