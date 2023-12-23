@@ -190,8 +190,12 @@ class PPO(BasePolicy):
             self.optim.step()
 
             # update value function
-            value_loss = F.mse_loss(value_target, self.value(bn_s))
+            current_value = self.value(bn_s)
+            value_loss = F.mse_loss(value_target, current_value)
             writer.add_scalar("value loss", value_loss, e_i)
+            writer.add_scalars("value net mean value", {"value target": torch.mean(value_target), "value net output": torch.mean(current_value)}, e_i)
+            writer.add_scalars("value target min max", {"min": torch.min(value_target), "max": torch.max(value_target)}, e_i)
+            writer.add_scalars("value net min max", {"min": torch.min(current_value), "max": torch.max(current_value)}, e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
             self.value_optim.step()
@@ -203,6 +207,8 @@ class PPO(BasePolicy):
         states = {
             'policy': self.policy.state_dict(),
             'value': self.value.state_dict(),
+            'optim': self.optim.state_dict(),
+            'value_optim': self.value_optim.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
@@ -230,6 +236,8 @@ class PPO(BasePolicy):
                 checkpoint = torch.load(f)
             self.policy.load_state_dict(checkpoint['policy'])
             self.value.load_state_dict(checkpoint['value'])
+            self.optim.load_state_dict(checkpoint['optim'])
+            self.value_optim.load_state_dict(checkpoint['value_optim'])
             self.continue_episode = episode
         else:
             self.logger.log(f'>> No scenario policy {self.name} model found at {filepath}', 'red')
