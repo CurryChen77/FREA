@@ -76,6 +76,8 @@ class VectorWrapper():
             obs_list.append(obs)
             info_list.append(info)
 
+        CarlaDataProvider.on_carla_tick()  # tick since each small scenario got several warm up tick
+
         if self.spectator:
             transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
             if transform is not None:

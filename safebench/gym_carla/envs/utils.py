@@ -82,16 +82,16 @@ def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40):
     return ego_min_dis
 
 
-def reset_ego_cbv_dis(ego, cbv):
+def update_ego_cbv_dis(ego, cbv):
     """
         if the cbv has changed, then reset the corresponding initial distance
     """
     ego_id = ego.id
     if cbv:
         cbv_id = cbv.id
-        CarlaDataProvider.ego_cbv_dis[ego_id] = {}
-        dis = get_distance_across_centers(ego, cbv)
-        CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = dis
+        if cbv_id not in CarlaDataProvider.ego_cbv_dis[ego_id].keys():  # the cbv has changed
+            CarlaDataProvider.ego_cbv_dis[ego_id] = {}
+            CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = get_distance_across_centers(ego, cbv)
     else:
         CarlaDataProvider.ego_cbv_dis[ego_id] = {}
 
@@ -130,11 +130,8 @@ def get_cbv_ego_reward(ego, cbv):
             delta_dis = round(CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] - dis, 4)
             CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = dis
         else:
-            CarlaDataProvider.ego_cbv_dis[ego_id] = {}
-            dis = get_distance_across_centers(ego, cbv)
-            CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = dis
-    return delta_dis
-    # return np.clip(delta_dis, -1, 1)
+            print("cbv not in the dict, should not happen")
+    return np.clip(delta_dis, -1, 1)
 
 
 def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1):

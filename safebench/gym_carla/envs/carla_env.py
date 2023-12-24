@@ -29,7 +29,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
     get_actor_in_drivable_area, get_ego_min_dis, get_cbv_bv_reward, get_constrain_h, get_min_distance_across_bboxes, \
-    reset_ego_cbv_dis, get_cbv_stuck, get_cbv_ego_reward, calculate_abs_velocity
+    update_ego_cbv_dis, get_cbv_stuck, get_cbv_ego_reward, calculate_abs_velocity
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -279,6 +279,7 @@ class CarlaEnv(gym.Env):
 
         for _ in range(self.warm_up_steps):
             self.world.tick()
+
         return self._get_obs(), self._get_info(need_scenario_reward=False, reset=True)
 
     def _attach_sensor(self):
@@ -337,6 +338,9 @@ class CarlaEnv(gym.Env):
 
                 # update the cbv action
                 self.scenario_manager.get_update(timestamp, scenario_action)
+
+                # if cbv has changed, update the ego cbv distance
+                update_ego_cbv_dis(self.ego_vehicle, self.cbv)
 
                 # Calculate acceleration and steering
                 if not self.auto_ego:
@@ -428,8 +432,6 @@ class CarlaEnv(gym.Env):
         if need_scenario_reward:
             # the total reward for the cbv training
             info['scenario_agent_reward'] = self._get_scenario_reward()
-        else:
-            reset_ego_cbv_dis(self.ego_vehicle, self.cbv)
 
         if reset:
             info.update({
@@ -637,7 +639,6 @@ class CarlaEnv(gym.Env):
 
         # encourage cbv to get closer to the ego
         ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv)
-        print("ego_cbv_dis_reward", ego_cbv_dis_reward)
 
         # since the obs don't have road info, so no need to include in drivable area info
         in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else True
