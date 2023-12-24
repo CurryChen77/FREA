@@ -194,8 +194,8 @@ class PPO(BasePolicy):
             value_loss = F.mse_loss(value_target, current_value)
             writer.add_scalar("value loss", value_loss, e_i)
             writer.add_scalars("value net mean value", {"value target": torch.mean(value_target), "value net output": torch.mean(current_value)}, e_i)
-            writer.add_scalars("value target min max", {"min": torch.min(value_target), "max": torch.max(value_target)}, e_i)
-            writer.add_scalars("value net min max", {"min": torch.min(current_value), "max": torch.max(current_value)}, e_i)
+            writer.add_scalars("value min-max", {"target-min": torch.min(value_target), "net-min": torch.min(current_value),
+                                                "target-max": torch.max(value_target), "net-max": torch.max(current_value)}, e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
             self.value_optim.step()
@@ -229,7 +229,7 @@ class PPO(BasePolicy):
                         cur_episode = int(name.split(".")[-2])
                         if cur_episode > episode:
                             episode = cur_episode
-        filepath = os.path.join(self.model_path, f'model.ppo.{self.model_type}.{episode:04}.torch')
+        filepath = os.path.join(load_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
             self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}', 'yellow')
             with open(filepath, 'rb') as f:

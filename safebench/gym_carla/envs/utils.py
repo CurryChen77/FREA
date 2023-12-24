@@ -134,6 +134,7 @@ def get_cbv_ego_reward(ego, cbv):
             dis = get_distance_across_centers(ego, cbv)
             CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = dis
     return delta_dis
+    # return np.clip(delta_dis, -1, 1)
 
 
 def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1):

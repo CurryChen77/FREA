@@ -637,6 +637,7 @@ class CarlaEnv(gym.Env):
 
         # encourage cbv to get closer to the ego
         ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv)
+        print("ego_cbv_dis_reward", ego_cbv_dis_reward)
 
         # since the obs don't have road info, so no need to include in drivable area info
         in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else True
