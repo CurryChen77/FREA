@@ -131,7 +131,7 @@ def get_cbv_ego_reward(ego, cbv):
             CarlaDataProvider.ego_cbv_dis[ego_id][cbv_id] = dis
         else:
             print("cbv not in the dict, should not happen")
-    return np.clip(delta_dis, 0, 1)
+    return np.clip(delta_dis, -1, 1)
 
 
 def get_cbv_bv_reward(cbv, search_radius, cbv_nearby_vehicles, tou=1):
