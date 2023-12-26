@@ -653,7 +653,7 @@ class CarlaEnv(gym.Env):
             sparse_reward = 0
 
         # final scenario agent rewards
-        scenario_agent_reward = linear_map(ego_cbv_dis_reward + sparse_reward, [-2, 2], [0, 1])
+        scenario_agent_reward = ego_cbv_dis_reward + 2 * sparse_reward
 
         return scenario_agent_reward
 

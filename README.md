@@ -63,6 +63,9 @@ ssh -X username@host
 
 # Launch in another terminal
 python scripts/run.py --agent_cfg sac.yaml --scenario_cfg standard_train.yaml --mode train_agent
+
+# profile the memory usage
+mprof run python scripts/run.py --agent_cfg sac.yaml --scenario_cfg standard_train.yaml --mode train_agent
 ``````
 
 

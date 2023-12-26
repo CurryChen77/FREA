@@ -98,6 +98,7 @@ class VectorWrapper():
         # return obs
         return self.obs_postprocess(obs_list), info_list
 
+    @profile
     def step(self, ego_actions, scenario_actions):
         """
             ego_actions: [num_alive_scenario]
