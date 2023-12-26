@@ -16,6 +16,10 @@ from safebench.scenario.tools.scenario_utils import compute_box2origin
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
+def linear_map(value, original_range, desired_range):
+    """Linear map of value with original range to desired range."""
+    return desired_range[0] + (value - original_range[0]) * (desired_range[1] - desired_range[0]) / (original_range[1] - original_range[0])
+
 def get_actor_in_drivable_area(actor):
     actor_transform = CarlaDataProvider.get_transform(actor)
     actor_location = actor_transform.location

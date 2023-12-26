@@ -28,8 +28,8 @@ from safebench.gym_carla.envs.misc import (
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    get_actor_in_drivable_area, get_ego_min_dis, get_cbv_bv_reward, get_constrain_h, get_min_distance_across_bboxes, \
-    update_ego_cbv_dis, get_cbv_stuck, get_cbv_ego_reward, calculate_abs_velocity
+    get_actor_in_drivable_area, get_cbv_bv_reward, get_constrain_h, linear_map, \
+    update_ego_cbv_dis, get_cbv_ego_reward, calculate_abs_velocity
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -626,10 +626,11 @@ class CarlaEnv(gym.Env):
 
     def _get_scenario_reward(self):
         """
-            in_drivable_area ~ -1 or 0: whether the cbv are driving on the drivable area
-            cbv_min_dis_reward ~ [-1, 0]: activate when cbv is too close to the other bvs
+            sparse reward:
+            -1:CBV collide with other bvs or not on the road
+            0:CBV normal driving
+            1:CBV collide with ego vehicle
             ego_cbv_dis_reward ~ [-1, 1]: the ratio of (init_ego_cbv_dis-current_ego_cbv_dis)/init_ego_cbv_dis
-            cbv_stuck_reward  ~ -1 or 0: whether the cbv has stuck the traffic flow
         """
         # prevent the cbv getting too close to the other bvs
         cbv_min_dis, cbv_min_dis_reward = get_cbv_bv_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
@@ -638,21 +639,21 @@ class CarlaEnv(gym.Env):
         # cbv_stuck = get_cbv_stuck(self.cbv, self.cbv_nearby_vehicles, self.ego_vehicle, self.ego_nearby_vehicle)
 
         # encourage cbv to get closer to the ego
-        ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv)
+        ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv)  # [-1, 1]
 
         # since the obs don't have road info, so no need to include in drivable area info
-        in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else True
+        in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else True  # True or False
 
         # cbv collision reward
         if (not in_drivable_area) or (cbv_min_dis < 0.01):  # cbv hit other vehicle or hit the road
-            collide_reward = -1
+            sparse_reward = -1
         elif self.collide_with_cbv:  # cbv hit the ego
-            collide_reward = 1
+            sparse_reward = 1
         else:
-            collide_reward = 0
+            sparse_reward = 0
 
         # final scenario agent rewards
-        scenario_agent_reward = ego_cbv_dis_reward + 2 * collide_reward
+        scenario_agent_reward = linear_map(ego_cbv_dis_reward + sparse_reward, [-2, 2], [0, 1])
 
         return scenario_agent_reward
 
@@ -712,4 +713,3 @@ class CarlaEnv(gym.Env):
 
         # remove the ego vehicle after removing all the sensors
         self._remove_ego()
-
