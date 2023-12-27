@@ -98,7 +98,6 @@ class VectorWrapper():
         # return obs
         return self.obs_postprocess(obs_list), info_list
 
-    @profile
     def step(self, ego_actions, scenario_actions):
         """
             ego_actions: [num_alive_scenario]
@@ -164,8 +163,8 @@ class VectorWrapper():
                 train_info_list.append(info[0])
         
         # convert to numpy
-        rewards = np.array(reward_list)
-        dones = np.array(done_list)
+        rewards = np.array(reward_list, dtype=np.float32)
+        dones = np.array(done_list, dtype=np.float32)
         train_infos = np.array(train_info_list)
         transition_infos = np.array(transition_info_list)
 
@@ -220,12 +219,12 @@ class ObservationWrapper(gym.Wrapper):
     def _preprocess_obs(self, obs):
         # only use the 4-dimensional state space
         if self.agent_obs_type == 'simple_state':
-            process_obs = obs['simple_state'][:4].astype(np.float64)
+            process_obs = obs['simple_state'][:4].astype(np.float32)
         # include the pos, speed, compass(yaw angle)
         elif self.agent_obs_type == 'ego_state':
             process_obs = obs['ego_state']
         elif self.agent_obs_type == 'plant':
-            process_obs = obs['plant_encoded_state'].astype(np.float64)
+            process_obs = obs['plant_encoded_state'].astype(np.float32)
         elif self.agent_obs_type == 'no_obs':
             process_obs = obs
         else:

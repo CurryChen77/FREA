@@ -198,15 +198,13 @@ class CarlaEnv(gym.Env):
         return waypoints_list
 
     def cbv_selection(self):
-        cbv_candidates = None
+        cbv_candidates = get_cbv_candidates(self.ego_vehicle, self.search_radius)
         # get the ego min distance of the next obs (s_t+1)
         if self.safety_network_obs_type:
             self.constrain_h = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicle, self.ego_agent_learnable)
 
         # safety network or agent need "plant" style input or cbv selection is attention based
         if self.agent_state_encoder:
-            if not self.safety_network_obs_type:
-                cbv_candidates = get_cbv_candidates(self.ego_vehicle, self.search_radius)
             encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                 self.ego_vehicle, cbv_candidates, self.waypoints, self.red_light_state
             )
@@ -589,7 +587,7 @@ class CarlaEnv(gym.Env):
             }
         elif self.agent_obs_type == 'plant':
             obs = {
-                'plant_encoded_state': self.encoded_state.numpy(),
+                'plant_encoded_state': self.encoded_state.numpy().astype(np.float32),
             }
         elif self.agent_obs_type == 'no_obs':
             obs = None

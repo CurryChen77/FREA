@@ -251,7 +251,6 @@ class CarlaRunner:
         }
         self.birdeye_render = BirdeyeRender(self.world, self.birdeye_params, logger=self.logger)
 
-
     def train(self, data_loader, start_episode=0):
         # create the tensorboard writer
         log_dir = self.logger.output_dir

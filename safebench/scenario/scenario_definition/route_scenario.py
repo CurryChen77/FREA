@@ -265,7 +265,7 @@ class RouteScenario():
             while len(actor_info) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
                 actor_info.append([0] * len(cbv_state))
 
-            actor_info = np.array(actor_info)
+            actor_info = np.array(actor_info, dtype=np.float32)
         else:
             actor_info = None
         return {
@@ -290,7 +290,7 @@ class RouteScenario():
         while len(ego_info) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
             ego_info.append([0] * len(ego_state))
 
-        ego_info = np.array(ego_info)
+        ego_info = np.array(ego_info, dtype=np.float32)
         # get the info of the ego vehicle and the other actors
         return ego_info
 

@@ -33,6 +33,17 @@ class RouteReplayBuffer:
             buffer_capacity=10000,
             logger=None):
         self.mode = mode
+        # define obs shape and action shape for different modes
+        if self.mode == 'train_scenario':
+            self.obs_shape = tuple(scenario_config['scenario_state_shape'])
+            self.action_dim = scenario_config['scenario_action_dim']
+        elif self.mode == 'train_agent':
+            self.obs_shape = agent_config['ego_state_dim']
+            self.action_dim = agent_config['ego_action_dim']
+        elif self.mode == 'train_safety_network':
+            self.obs_shape = tuple(safety_network_config['state_shape'])
+            self.action_dim = safety_network_config['action_dim']
+
         self.buffer_capacity = buffer_capacity
         self.num_scenario = num_scenario
         self.agent_need_obs = True if (agent_config['obs_type'] == 'simple_state' or agent_config['obs_type'] == 'plant') else False
@@ -57,21 +68,21 @@ class RouteReplayBuffer:
         self.buffer_len = 0
         self.full = False
         if self.mode == 'train_scenario':
-            self.buffer_actions = []
-            self.buffer_obs = []
-            self.buffer_next_obs = []
-            self.buffer_rewards = []
-            self.buffer_dones = []
+            self.buffer_actions = np.zeros((self.buffer_capacity, self.action_dim), dtype=np.float32)
+            self.buffer_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
+            self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
+            self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
+            self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
         elif self.mode == 'train_agent':
-            self.buffer_actions = []
-            self.buffer_obs = []
-            self.buffer_next_obs = []
-            self.buffer_rewards = []
-            self.buffer_dones = []
+            self.buffer_actions = np.zeros((self.buffer_capacity, self.action_dim), dtype=np.float32)
+            self.buffer_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
+            self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
+            self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
+            self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
         elif self.mode == 'train_safety_network':
-            self.buffer_next_obs = []
-            self.buffer_constrain_h = []
-            self.buffer_dones = []
+            self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
+            self.buffer_constrain_h = np.zeros(self.buffer_capacity, dtype=np.float32)
+            self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
 
     def streamline_data(self, data_list, additional_dict):
         """
@@ -95,30 +106,16 @@ class RouteReplayBuffer:
         # store for scenario training
         if self.mode == 'train_scenario':
             scenario_actions, dones, obs, next_obs, rewards = self.streamline_data(data_list, additional_dict)
-            if not self.full:
-                for s_i in range(len(dones)):
-                    self.buffer_actions.append(scenario_actions[s_i])
-                    self.buffer_obs.append(obs[s_i])  # cbv obs is scenario_obs
-                    self.buffer_next_obs.append(next_obs[s_i])  # cbv next obs is the scenario_obs from next info
-                    self.buffer_rewards.append(rewards[s_i])  # cbv reward is scenario_agent_reward
-                    self.buffer_dones.append(dones[s_i])
-                    self.pos += 1
-                    self.buffer_len += 1
-                    if self.pos == self.buffer_capacity:
-                        self.full = True
-                        self.pos = 0
-                        break
-            else:
-                for s_i in range(len(dones)):
-                    self.buffer_actions[self.pos] = scenario_actions[s_i]
-                    self.buffer_obs[self.pos] = obs[s_i]  # cbv obs is scenario_obs
-                    self.buffer_next_obs[self.pos] = next_obs[s_i]  # cbv next obs is the scenario_obs from next info
-                    self.buffer_rewards[self.pos] = rewards[s_i]  # cbv reward is scenario_agent_reward
-                    self.buffer_dones[self.pos] = dones[s_i]
-                    self.pos += 1
-                    self.buffer_len += 1
-                    if self.pos == self.buffer_capacity:
-                        self.pos = 0
+            for s_i in range(len(dones)):
+                self.buffer_actions[self.pos] = np.array(scenario_actions[s_i])
+                self.buffer_obs[self.pos] = np.array(obs[s_i])  # cbv obs is scenario_obs
+                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])  # cbv next obs is the scenario_obs from next info
+                self.buffer_rewards[self.pos] = np.array(rewards[s_i])  # cbv reward is scenario_agent_reward
+                self.buffer_dones[self.pos] = np.array(dones[s_i])
+                self.pos += 1
+                if self.pos == self.buffer_capacity:
+                    self.full = True
+                    self.pos = 0
 
         # store for agent training
         elif self.mode == 'train_agent':
@@ -127,30 +124,17 @@ class RouteReplayBuffer:
             next_obs = data_list[3]
             rewards = data_list[4]
             dones = data_list[5]
-            if not self.full:
-                for s_i in range(len(dones)):
-                    self.buffer_actions.append(ego_actions[s_i])
-                    self.buffer_obs.append(obs[s_i])
-                    self.buffer_next_obs.append(next_obs[s_i])
-                    self.buffer_rewards.append(rewards[s_i])
-                    self.buffer_dones.append(dones[s_i])
-                    self.pos += 1
-                    self.buffer_len += 1
-                    if self.pos == self.buffer_capacity:
-                        self.full = True
-                        self.pos = 0
-                        break
-            else:
-                for s_i in range(len(dones)):
-                    self.buffer_actions[self.pos] = ego_actions[s_i]
-                    self.buffer_obs[self.pos] = obs[s_i]
-                    self.buffer_next_obs[self.pos] = next_obs[s_i]
-                    self.buffer_rewards[self.pos] = rewards[s_i]
-                    self.buffer_dones[self.pos] = dones[s_i]
-                    self.pos += 1
-                    self.buffer_len += 1
-                    if self.pos == self.buffer_capacity:
-                        self.pos = 0
+            for s_i in range(len(dones)):
+                self.buffer_actions[self.pos] = np.array(ego_actions[s_i])
+                self.buffer_obs[self.pos] = np.array(obs[s_i])
+                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])
+                self.buffer_rewards[self.pos] = np.array(rewards[s_i])
+                self.buffer_dones[self.pos] = np.array(dones[s_i])
+                self.pos += 1
+                self.buffer_len += 1
+                if self.pos == self.buffer_capacity:
+                    self.full = True
+                    self.pos = 0
 
         # store for agent training
         elif self.mode == 'train_safety_network':
@@ -162,26 +146,19 @@ class RouteReplayBuffer:
             else:
                 raise ValueError(f'Unknown safety_network obs_type')
             constrain_h = [info['constrain_h'] for info in additional_dict[1]]  # the constraint h should from next infos
-            if not self.full:
-                for s_i in range(len(dones)):
-                    self.buffer_next_obs.append(next_obs[s_i])
-                    self.buffer_constrain_h.append(constrain_h[s_i])
-                    self.buffer_dones.append(dones[s_i])
-                    self.pos += 1
-                    self.buffer_len += 1
-                    if self.pos == self.buffer_capacity:
-                        self.full = True
-                        self.pos = 0
-                        break
-            else:
-                for s_i in range(len(dones)):
-                    self.buffer_next_obs[self.pos] = next_obs[s_i]
-                    self.buffer_constrain_h[self.pos] = constrain_h[s_i]
-                    self.buffer_dones[self.pos] = dones[s_i]
-                    self.pos += 1
-                    self.buffer_len += 1
-                    if self.pos == self.buffer_capacity:
-                        self.pos = 0
+
+            for s_i in range(len(dones)):
+                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])
+                self.buffer_constrain_h[self.pos] = np.array(constrain_h[s_i])
+                self.buffer_dones[self.pos] = np.array(dones[s_i])
+                self.pos += 1
+                self.buffer_len += 1
+                if self.pos == self.buffer_capacity:
+                    self.full = True
+                    self.pos = 0
+
+        # get the buffer length
+        self.buffer_len = self.buffer_capacity if self.full else self.pos
 
     def sample(self, batch_size):
         upper_bound = self.buffer_capacity if self.full else self.pos
