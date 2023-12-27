@@ -75,8 +75,8 @@ class RouteReplayBuffer:
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
         elif self.mode == 'train_agent':
             self.buffer_actions = np.zeros((self.buffer_capacity, self.action_dim), dtype=np.float32)
-            self.buffer_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
-            self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
+            self.buffer_obs = np.zeros((self.buffer_capacity, self.obs_shape), dtype=np.float32)
+            self.buffer_next_obs = np.zeros((self.buffer_capacity, self.obs_shape), dtype=np.float32)
             self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
         elif self.mode == 'train_safety_network':

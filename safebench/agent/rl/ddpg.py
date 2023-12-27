@@ -170,7 +170,7 @@ class DDPG(BasePolicy):
             for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
                 target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
-    def save_model(self, episode, map_name):
+    def save_model(self, episode, map_name, replay_buffer):
         states = {
             'actor': self.actor.state_dict(),
             'critic': self.critic.state_dict(),

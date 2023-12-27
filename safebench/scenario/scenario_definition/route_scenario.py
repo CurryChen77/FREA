@@ -190,7 +190,7 @@ class RouteScenario():
             self.logger.log('>> Scenario stops due to off road', color='yellow')
 
         # stuck
-        if self.mode != 'eval' and running_status['stuck'] == Status.FAILURE:
+        if self.mode == 'train_scenario' and running_status['stuck'] == Status.FAILURE:
             stop = True
             self.logger.log('>> Scenario stops due to stuck', color='yellow')
 
@@ -223,7 +223,7 @@ class RouteScenario():
             criteria['driven_distance'] = DrivenDistanceTest(actor=self.ego_vehicle, distance_success=1e4, distance_acceptable=1e4, optional=True)
             criteria['distance_to_route'] = InRouteTest(self.ego_vehicle, route=route, offroad_max=30)
             criteria['lane_invasion'] = KeepLaneTest(actor=self.ego_vehicle, optional=True)  # need sensor
-        else:
+        elif self.mode == 'train_scenario':
             criteria['stuck'] = StuckDetectorTest(actor=self.ego_vehicle, len_thresh=100, speed_thresh=0.1, terminate_on_failure=True)
 
         return criteria

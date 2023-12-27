@@ -241,7 +241,7 @@ class RCSAC(BasePolicy):
             for target_param, param in zip(self.Target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(target_param * (1 - self.tau) + param * self.tau)
 
-    def save_model(self, episode, map_name):
+    def save_model(self, episode, map_name, replay_buffer):
         states = {
             'policy_net': self.policy_net.state_dict(), 
             'value_net': self.value_net.state_dict(), 

@@ -310,9 +310,11 @@ class CarlaRunner:
             self.env.clean_up()
 
             if self.mode == 'train_agent':
+                # training agent focus on cumulated reward per episode
                 writer.add_scalar("Agent_episode_reward", np.sum(agent_episode_reward), e_i)
             if self.mode == 'train_scenario':
-                writer.add_scalar("Scenario_episode_reward", np.sum(scenario_episode_reward), e_i)
+                # training scenario focus on average reward per step
+                writer.add_scalar("Scenario_average_reward_per_step", np.mean(scenario_episode_reward), e_i)
 
             # train on-policy agent or scenario
             if self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':

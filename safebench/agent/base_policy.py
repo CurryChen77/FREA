@@ -31,5 +31,5 @@ class BasePolicy:
     def load_model(self, map_name):
         raise NotImplementedError()
 
-    def save_model(self, episode, map_name):
+    def save_model(self, episode, map_name, replay_buffer):
         raise NotImplementedError()
