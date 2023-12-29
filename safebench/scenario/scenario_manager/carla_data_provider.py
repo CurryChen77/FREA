@@ -39,7 +39,7 @@ class CarlaDataProvider(object):
     _ego_vehicle_route = {}
     egos = []
     _traffic_manager_port = 8000
-    _random_seed = 2000
+    _random_seed = 2
     _rng = random.RandomState(_random_seed)
 
     @staticmethod
@@ -196,7 +196,7 @@ class CarlaDataProvider(object):
     @staticmethod
     def get_random_seed():
         """
-            return true if syncronuous mode is used
+            return random seed
         """
         return CarlaDataProvider._rng
 
@@ -821,6 +821,7 @@ class CarlaDataProvider(object):
         CarlaDataProvider._carla_actor_pool = {}
         CarlaDataProvider._spawn_points = None
         CarlaDataProvider._spawn_index = 0
+        CarlaDataProvider._random_seed += 1  # change the random seed used for spawning initial actors
         CarlaDataProvider._rng = random.RandomState(CarlaDataProvider._random_seed)
 
     @staticmethod
