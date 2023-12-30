@@ -410,7 +410,11 @@ class CarlaEnv(gym.Env):
 
         origin_info = self._get_info(need_scenario_reward=True)  # info of old cbv
 
-        # set ego min distance and controlled bv
+        # if cbv collide with the ego, then remove it
+        if self.collide_with_cbv:
+            self._remove_cbv()
+
+        # select the new cbv
         self.cbv_selection()
 
         updated_cbv_info = self._get_info(need_scenario_reward=False)  # info of new cbv
@@ -683,6 +687,15 @@ class CarlaEnv(gym.Env):
         if self.ego_vehicle is not None and CarlaDataProvider.actor_id_exists(self.ego_vehicle.id):
             CarlaDataProvider.remove_actor_by_id(self.ego_vehicle.id)
         self.ego_vehicle = None
+
+    def _remove_cbv(self):
+        if self.cbv is not None and CarlaDataProvider.actor_id_exists(self.cbv.id):
+            CarlaDataProvider.remove_actor_by_id(self.cbv.id)
+        self.cbv = None
+        self.cbv_nearby_vehicles = None
+        # reset the collision with cbv flag
+        self.collide_with_cbv = False
+        self.scenario_manager.collide_with_cbv = False
 
     def _reset_variables(self):
         self.old_cbv = None

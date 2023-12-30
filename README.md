@@ -31,10 +31,10 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 ./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Another terminal no display pygame
-python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_train.yaml --mode train_scenario
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
 
 # Showing the memory usage
-mprof run --python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_train.yaml --mode train_scenario
+mprof run --python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
 ```
 
 #### Visualize pygame window
@@ -44,7 +44,7 @@ mprof run --python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_tra
 ./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Another terminal, Launch on the virtual display
-DISPLAY=:10 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg sac_eval.yaml --mode eval --render
+DISPLAY=:10 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_eval.yaml --mode eval --render
 ```
 
 * local open terminal

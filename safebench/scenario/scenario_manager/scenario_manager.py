@@ -70,10 +70,10 @@ class ScenarioManager(object):
         self.running_record.append(record)  # contain every step's record
         if stop:
             self._running = False
-            if collision:
-                self._collision = True
-                if collide_with_cbv:
-                    self.collide_with_cbv = True
+        if collision:
+            self._collision = True
+            if collide_with_cbv:
+                self.collide_with_cbv = True
 
     def get_update(self, timestamp, scenario_action):
         if self._timestamp_last_run < timestamp.elapsed_seconds and self._running:

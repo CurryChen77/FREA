@@ -262,9 +262,11 @@ class CollisionTest(Criterion):
         """
         new_status = Status.RUNNING
         collision_vehicle_id = None
-        if self._terminate_on_failure and (self.test_status == "FAILURE"):
-            new_status = Status.FAILURE
+        if self.test_status == "FAILURE":
+            # remove the self.terminate_on_failure
             collision_vehicle_id = self.last_id
+            new_status = Status.FAILURE
+            self.test_status = "RUNNING"  # refresh the status
 
         actor_location = CarlaDataProvider.get_location(self.actor)
         new_registered_collisions = []

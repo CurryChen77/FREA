@@ -176,12 +176,14 @@ class RouteScenario():
         collide_with_cbv = False
         # collision with other objects
         if running_status['collision'][0] == Status.FAILURE:
-            stop = True
             collision = True
             if running_status['collision'][1] is not None and self.cbv is not None and running_status['collision'][1] == self.cbv.id:
+                # if collision with cbv then don't stop the scenario
                 collide_with_cbv = True
-                self.logger.log(f'>> Scenario stops due to collision with cbv', color='yellow')
+                self.logger.log(f'>> Ego collide with cbv', color='yellow')
             else:
+                stop = True
+                collide_with_cbv = False
                 self.logger.log(f'>> Scenario stops due to collision with normal object', color='yellow')
 
         # out of the road detection
@@ -217,14 +219,14 @@ class RouteScenario():
         # the criteria needed both in training and evaluating
         criteria['route_complete'] = RouteCompletionTest(self.ego_vehicle, route=route)
         criteria['off_road'] = OffRoadTest(actor=self.ego_vehicle, optional=True)
-        criteria['collision'] = CollisionTest(actor=self.ego_vehicle, terminate_on_failure=True)  # need sensor
+        criteria['collision'] = CollisionTest(actor=self.ego_vehicle, terminate_on_failure=False)  # don't terminate on failure
         if self.mode == 'eval':
             # extra criteria for evaluating
             criteria['driven_distance'] = DrivenDistanceTest(actor=self.ego_vehicle, distance_success=1e4, distance_acceptable=1e4, optional=True)
             criteria['distance_to_route'] = InRouteTest(self.ego_vehicle, route=route, offroad_max=30)
             criteria['lane_invasion'] = KeepLaneTest(actor=self.ego_vehicle, optional=True)  # need sensor
         elif self.mode == 'train_scenario':
-            criteria['stuck'] = StuckDetectorTest(actor=self.ego_vehicle, len_thresh=100, speed_thresh=0.1, terminate_on_failure=True)
+            criteria['stuck'] = StuckDetectorTest(actor=self.ego_vehicle, len_thresh=100, speed_thresh=0.05, terminate_on_failure=True)
 
         return criteria
 
