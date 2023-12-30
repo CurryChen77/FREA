@@ -28,7 +28,7 @@ from safebench.gym_carla.envs.misc import (
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    get_actor_in_drivable_area, get_cbv_bv_reward, get_constrain_h, linear_map, \
+    get_actor_off_road, get_cbv_bv_reward, get_constrain_h, linear_map, \
     update_ego_cbv_dis, get_cbv_ego_reward, calculate_abs_velocity
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
@@ -640,10 +640,10 @@ class CarlaEnv(gym.Env):
         ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv)  # [-1, 1]
 
         # since the obs don't have road info, so no need to include in drivable area info
-        in_drivable_area = get_actor_in_drivable_area(self.cbv) if self.cbv else True  # True or False
+        off_road = get_actor_off_road(self.cbv) if self.cbv else True  # True or False
 
         # cbv collision reward
-        if (not in_drivable_area) or (cbv_min_dis < 0.01):  # cbv hit other vehicle or hit the road
+        if off_road or (cbv_min_dis < 0.01):  # cbv hit other vehicle or hit the road
             sparse_reward = -1
         elif self.collide_with_cbv:  # cbv hit the ego
             sparse_reward = 1

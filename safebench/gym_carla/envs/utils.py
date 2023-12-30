@@ -20,22 +20,18 @@ def linear_map(value, original_range, desired_range):
     """Linear map of value with original range to desired range."""
     return desired_range[0] + (value - original_range[0]) * (desired_range[1] - desired_range[0]) / (original_range[1] - original_range[0])
 
-def get_actor_in_drivable_area(actor):
-    actor_transform = CarlaDataProvider.get_transform(actor)
-    actor_location = actor_transform.location
-    # move the actor waypoint to the front part of the actor
-    actor_bbox_extent_x = actor.bounding_box.extent.x
-    theta = math.radians(actor_transform.rotation.yaw)
-    delta_x = actor_bbox_extent_x // 2 * math.cos(theta)
-    delta_y = actor_bbox_extent_x // 2 * math.sin(theta)
-    actor_front_location = actor_location + carla.Location(x=delta_x, y=delta_y, z=0.0)
-    # find the nearest waypoint around the actor front location
-    actor_waypoint = CarlaDataProvider.get_map().get_waypoint(actor_front_location)
-    if actor_waypoint.lane_type == carla.LaneType.Driving:
-        in_drivable_area = True
+
+def get_actor_off_road(actor):
+    current_location = CarlaDataProvider.get_location(actor)
+
+    # Get the waypoint at the current location to see if the actor is offroad
+    drive_waypoint = CarlaDataProvider.get_map().get_waypoint(current_location, project_to_road=False)
+    park_waypoint = CarlaDataProvider.get_map().get_waypoint(current_location, project_to_road=False, lane_type=carla.LaneType.Parking)
+    if drive_waypoint or park_waypoint:
+        off_road = False
     else:
-        in_drivable_area = False
-    return in_drivable_area
+        off_road = True
+    return off_road
 
 
 def get_constrain_h(ego_vehicle, search_radius, nearby_vehicles, ego_agent_learnable=False):
