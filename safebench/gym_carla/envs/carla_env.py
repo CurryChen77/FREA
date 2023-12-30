@@ -198,41 +198,43 @@ class CarlaEnv(gym.Env):
         return waypoints_list
 
     def cbv_selection(self):
-        cbv_candidates = get_cbv_candidates(self.ego_vehicle, self.search_radius)
-        # get the ego min distance of the next obs (s_t+1)
-        if self.safety_network_obs_type:
-            self.constrain_h = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicle, self.ego_agent_learnable)
+        # when training the ego agent, don't need to calculate the cbv
+        if self.mode != 'train_agent':
+            cbv_candidates = get_cbv_candidates(self.ego_vehicle, self.search_radius)
+            # get the ego min distance of the next obs (s_t+1)
+            if self.safety_network_obs_type:
+                self.constrain_h = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicle, self.ego_agent_learnable)
 
-        # safety network or agent need "plant" style input or cbv selection is attention based
-        if self.agent_state_encoder:
-            encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
-                self.ego_vehicle, cbv_candidates, self.waypoints, self.red_light_state
-            )
-            self.encoded_state = encoded_state[:, 0, :].squeeze(0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
-        else:
-            most_relevant_vehicle = None
-        self.old_cbv = self.cbv  # for BEV visualization
-        # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
-        if self.cbv_select_method == 'rule-based':
-            self.cbv = find_closest_vehicle(self.ego_vehicle, self.search_radius, cbv_candidates)
-        elif self.cbv_select_method == 'attention-based':
-            assert most_relevant_vehicle is not None, "attention-based cbv selection will got most relevant vehicle from agent state encoder"
-            self.cbv = most_relevant_vehicle
+            # safety network or agent need "plant" style input or cbv selection is attention based
+            if self.agent_state_encoder:
+                encoded_state, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
+                    self.ego_vehicle, cbv_candidates, self.waypoints, self.red_light_state
+                )
+                self.encoded_state = encoded_state[:, 0, :].squeeze(0).detach()  # from tensor (1, x, 512) to (1, 512) to (512)
+            else:
+                most_relevant_vehicle = None
+            self.old_cbv = self.cbv  # for BEV visualization
+            # filter and sort the background vehicle according to the distance to the ego vehicle in ascending order
+            if self.cbv_select_method == 'rule-based':
+                self.cbv = find_closest_vehicle(self.ego_vehicle, self.search_radius, cbv_candidates)
+            elif self.cbv_select_method == 'attention-based':
+                assert most_relevant_vehicle is not None, "attention-based cbv selection will got most relevant vehicle from agent state encoder"
+                self.cbv = most_relevant_vehicle
 
-        # get the nearby vehicles around the cbv
-        if self.cbv:
-            self.cbv_nearby_vehicles = get_nearby_vehicles(self.cbv, self.search_radius)
-            if self.birdeye_render:
-                # update the cbv for BEV visualization
-                if self.old_cbv and self.cbv and self.old_cbv.id != self.cbv.id:  # the cbv has changed, need to remove the old cbv
-                    self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # update the new cbv
-                    self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
-                elif self.old_cbv is not None and self.cbv is None:
-                    self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
-                elif self.old_cbv is None and self.cbv is not None:  # got the initial cbv
-                    self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # add the new cbv
-        else:
-            self.cbv_nearby_vehicles = None
+            # get the nearby vehicles around the cbv
+            if self.cbv:
+                self.cbv_nearby_vehicles = get_nearby_vehicles(self.cbv, self.search_radius)
+                if self.birdeye_render:
+                    # update the cbv for BEV visualization
+                    if self.old_cbv and self.cbv and self.old_cbv.id != self.cbv.id:  # the cbv has changed, need to remove the old cbv
+                        self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # update the new cbv
+                        self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
+                    elif self.old_cbv is not None and self.cbv is None:
+                        self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
+                    elif self.old_cbv is None and self.cbv is not None:  # got the initial cbv
+                        self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # add the new cbv
+            else:
+                self.cbv_nearby_vehicles = None
         self.scenario_manager.update_cbv_nearby_vehicles(self.cbv, self.cbv_nearby_vehicles)
 
     def reset(self, config, env_id):
@@ -259,7 +261,7 @@ class CarlaEnv(gym.Env):
         self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # set controlled bv
-        self.cbv_selection() if self.mode != 'train_agent' else None
+        self.cbv_selection()
 
         # Get actors polygon list (for visualization)
         if self.birdeye_render:
@@ -335,7 +337,7 @@ class CarlaEnv(gym.Env):
                 timestamp = snapshot.timestamp
 
                 # update the cbv action
-                self.scenario_manager.get_update(timestamp, scenario_action)
+                self.scenario_manager.get_update(timestamp, scenario_action) if self.mode != 'train_agent' else None
 
                 # if cbv has changed, update the ego cbv distance
                 update_ego_cbv_dis(self.ego_vehicle, self.cbv)
@@ -415,7 +417,7 @@ class CarlaEnv(gym.Env):
             self._remove_cbv()
 
         # select the new cbv
-        self.cbv_selection() if self.mode != 'train_agent' else None
+        self.cbv_selection()
 
         updated_cbv_info = self._get_info(need_scenario_reward=False)  # info of new cbv
 
@@ -659,13 +661,6 @@ class CarlaEnv(gym.Env):
 
         return scenario_agent_reward
 
-    def _get_cost(self):
-        # cost for collision
-        r_collision = 0
-        if self.collide:
-            r_collision = -1
-        return r_collision
-
     def _terminal(self):
         return not self.scenario_manager._running
 
@@ -691,11 +686,13 @@ class CarlaEnv(gym.Env):
     def _remove_cbv(self):
         if self.cbv is not None and CarlaDataProvider.actor_id_exists(self.cbv.id):
             CarlaDataProvider.remove_actor_by_id(self.cbv.id)
-        self.cbv = None
-        self.cbv_nearby_vehicles = None
-        # reset the collision with cbv flag
-        self.collide_with_cbv = False
-        self.scenario_manager.collide_with_cbv = False
+            self.cbv = None
+            self.cbv_nearby_vehicles = None
+            # reset the collision with cbv flag
+            self.collide_with_cbv = False
+            self.scenario_manager.collide_with_cbv = False
+            # set the prior cbv in the scenario instance to None, to prevent setting a None vehicle to autopilot
+            self.scenario_manager.scenario_instance.prior_cbv = None
 
     def _reset_variables(self):
         self.old_cbv = None

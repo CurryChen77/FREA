@@ -82,4 +82,4 @@ class ScenarioManager(object):
             self._timestamp_last_run = timestamp.elapsed_seconds
             GameTime.on_carla_tick(timestamp)
             # update the scenario instance receiving the scenario action
-            self.scenario_instance.update_behavior(self.cbv, scenario_action) if self.cbv else None
+            self.scenario_instance.update_behavior(self.cbv, scenario_action)

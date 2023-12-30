@@ -114,7 +114,8 @@ class AdvBehaviorSingle(BasicScenario):
                 self.prior_cbv = cbv
             else:
                 if self.prior_cbv != cbv:  # the controlled bv has changed
-                    self.prior_cbv.set_autopilot(enabled=True)  # activate the autopilot mode of prior bv
+                    # activate the autopilot mode of prior bv
+                    self.prior_cbv.set_autopilot(enabled=True) if CarlaDataProvider.actor_id_exists(self.prior_cbv.id) else None
                     cbv.set_autopilot(enabled=False)  # get ready to be controlled
                     self.prior_cbv = cbv  # update the prior controlled bv
             act = self.convert_actions(scenario_action)
