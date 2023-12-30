@@ -259,7 +259,7 @@ class CarlaEnv(gym.Env):
         self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # set controlled bv
-        self.cbv_selection()
+        self.cbv_selection() if self.mode != 'train_agent' else None
 
         # Get actors polygon list (for visualization)
         if self.birdeye_render:
@@ -415,11 +415,11 @@ class CarlaEnv(gym.Env):
             self._remove_cbv()
 
         # select the new cbv
-        self.cbv_selection()
+        self.cbv_selection() if self.mode != 'train_agent' else None
 
         updated_cbv_info = self._get_info(need_scenario_reward=False)  # info of new cbv
 
-        self.visualize_ego_route_cbv() if self.mode == 'eval' else None  # visualize the controlled bv and the waypoints in clients side after tick
+        self.visualize_ego_route_cbv()  # visualize the controlled bv and the waypoints in clients side after tick
 
         # Update timesteps
         self.time_step += 1

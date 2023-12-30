@@ -25,12 +25,14 @@ class ScenarioManager(object):
         self.scenic = use_scenic
         self._collision = False
         self.collide_with_cbv = False
+        self.cbv = None
         self._reset()
 
     def _reset(self):
         #self.scenario = None
         self.route_scenario = None
         self.ego_vehicle = None
+        self.cbv = None
         self._running = False
         self._collision = False
         self.collide_with_cbv = False
@@ -80,4 +82,4 @@ class ScenarioManager(object):
             self._timestamp_last_run = timestamp.elapsed_seconds
             GameTime.on_carla_tick(timestamp)
             # update the scenario instance receiving the scenario action
-            self.scenario_instance.update_behavior(self.cbv, scenario_action)
+            self.scenario_instance.update_behavior(self.cbv, scenario_action) if self.cbv else None
