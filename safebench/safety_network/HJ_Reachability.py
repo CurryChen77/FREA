@@ -61,6 +61,7 @@ class HJR:
 
         self.batch_size = config['batch_size']
         self.train_iteration = config['train_iteration']
+        self.train_interval = config['train_interval']
         self.agent_info = 'ego_' + config['agent_policy_type'] + "_" + config['agent_obs_type']
 
         self.agent_policy_type = config['agent_policy_type']

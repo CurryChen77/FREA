@@ -11,6 +11,6 @@ route_id: null
 model_path: ''
 standard_action: False
 buffer_capacity: 100
-eval_in_train_freq: 10
+
 save_freq: 5
 train_episode: 100

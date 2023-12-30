@@ -12,7 +12,7 @@ ego_action_limit: 1.0
 
 
 train_episode: 500
-eval_in_train_freq: 1
+
 save_freq: 10
 buffer_capacity: 10000
 buffer_start_training: 100

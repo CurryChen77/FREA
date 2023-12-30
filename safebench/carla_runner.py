@@ -142,25 +142,19 @@ class CarlaRunner:
         # prepare parameters
         if self.mode == 'train_agent':
             self.buffer_capacity = agent_config['buffer_capacity']
-            self.eval_in_train_freq = agent_config['eval_in_train_freq']
             self.save_freq = agent_config['save_freq']
             self.train_episode = agent_config['train_episode']
             self.logger.save_config(agent_config)
-            # self.logger.create_training_dir()
         elif self.mode == 'train_scenario':
             self.buffer_capacity = scenario_config['buffer_capacity']
-            self.eval_in_train_freq = scenario_config['eval_in_train_freq']
             self.save_freq = scenario_config['save_freq']
             self.train_episode = scenario_config['train_episode']
             self.logger.save_config(scenario_config)
-            # self.logger.create_training_dir()
         elif self.mode == 'train_safety_network':
             self.buffer_capacity = safety_network_config['buffer_capacity']
-            self.eval_in_train_freq = safety_network_config['eval_in_train_freq']
             self.save_freq = safety_network_config['save_freq']
             self.train_episode = safety_network_config['train_episode']
             self.logger.save_config(safety_network_config)
-            # self.logger.create_training_dir()
         elif self.mode == 'eval':
             self.save_freq = scenario_config['save_freq']
             self.logger.log('>> Evaluation Mode, skip config saving', 'yellow')
@@ -191,9 +185,7 @@ class CarlaRunner:
 
         if self.scenario_config['auto_ego']:
             self.logger.log('>> Using auto-polit for ego vehicle, action of policy will be ignored', 'yellow')
-        if scenario_config['policy_type'] == 'ordinary' and self.mode != 'train_agent':
-            self.logger.log('>> Ordinary scenario can only be used in agent training', 'red')
-            raise Exception()
+
         self.logger.log('>> ' + '-' * 40)
 
         # define agent, scenario and safety network policy
@@ -317,16 +309,11 @@ class CarlaRunner:
 
             # train on-policy agent or scenario
             if self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
-                self.agent_policy.train(replay_buffer, writer, e_i)
-            elif self.mode == 'train_scenario' and self.scenario_policy.type in ['onpolicy']:
-                self.scenario_policy.train(replay_buffer, writer, e_i)
+                self.agent_policy.train(replay_buffer, writer, e_i) if e_i != start_episode and e_i % self.agent_policy.train_interval == 0 else None
+            elif self.mode == 'train_scenario' and self.scenario_policy.type == 'onpolicy':
+                self.scenario_policy.train(replay_buffer, writer, e_i) if e_i != start_episode and e_i % self.scenario_policy.train_interval == 0 else None
             elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'onpolicy':
-                self.safety_network_policy.train(replay_buffer, writer, e_i)
-
-            # eval during training
-            if (e_i+1) % self.eval_in_train_freq == 0:
-                #self.eval(env, data_loader)
-                pass
+                self.safety_network_policy.train(replay_buffer, writer, e_i) if e_i != start_episode and e_i % self.safety_network_policy.train_interval == 0 else None
 
             # save checkpoints
             if e_i != start_episode and e_i % self.save_freq == 0:

@@ -13,23 +13,11 @@ steer_range: [-0.3, 0.3]
 
 
 train_episode: 300
-eval_in_train_freq: 1
 save_freq: 20
 buffer_capacity: 10000
 buffer_start_training: 100
 
 lr: 5.0e-4
-tau: 0.005
 train_iteration: 10
-gamma: 0.99
+train_interval: 5
 batch_size: 64
-
-pretrained_model_path: 'safebench/agent/model_ckpt/PlanT_state_encoder/checkpoints/state_encoder.ckpt'
-
-training:
-  max_NextRouteBBs: 2 # max 10 prevents really high ids if route is long
-
-
-network:
-  hf_checkpoint: "safebench/agent/model_ckpt/PlanT_state_encoder/checkpoints/bert-medium"
-  embd_pdrop: 0.1

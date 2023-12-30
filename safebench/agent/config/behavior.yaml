@@ -6,7 +6,7 @@ results_folder_path: ''
 obs_type: 'no_obs'
 
 train_episode: 2000
-eval_in_train_freq: 1
+
 save_freq: 10
 buffer_capacity: 10000
 buffer_start_training: 100
