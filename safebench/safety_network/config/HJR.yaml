@@ -2,10 +2,6 @@ min_dis_threshold: 0.5
 type: "HJR"
 model_path: 'safebench/safety_network/model_ckpt'
 
-#obs_type: "plant"  # the "plant" contains encoded state from plant
-#state_dim: 512  # the hidden size of the plant encoder
-#action_dim: 2
-
 obs_type: "ego_info"  # "ego_infos" contains ego and the meaningful surrounding vehicle information
 state_dim: 15  # 3*5 actor_number * dim
 state_shape: [3, 5]
@@ -16,7 +12,7 @@ acc_range: [-3.0, 3.0]
 steer_range: [-0.3, 0.3]
 
 
-train_episode: 240
+train_episode: 300
 eval_in_train_freq: 1
 save_freq: 20
 buffer_capacity: 10000

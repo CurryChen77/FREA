@@ -139,13 +139,11 @@ class RouteReplayBuffer:
         # store for agent training
         elif self.mode == 'train_safety_network':
             dones = data_list[5]
-            if self.safety_network_obs_type and self.safety_network_obs_type == 'encoded_state':
-                next_obs = [info['encoded_state'] for info in additional_dict[1]]
-            elif self.safety_network_obs_type and self.safety_network_obs_type == 'ego_info':
-                next_obs = [info['ego_info'] for info in additional_dict[1]]
+            if self.safety_network_obs_type == 'ego_info':
+                next_obs = [info['ego_info'] for info in additional_dict[1]]  # additional_dict[1] means the next info
             else:
                 raise ValueError(f'Unknown safety_network obs_type')
-            constrain_h = [info['constrain_h'] for info in additional_dict[1]]  # the constraint h should from next infos
+            constrain_h = [info['constrain_h'] for info in additional_dict[0]]  # the constraint h should from infos
 
             for s_i in range(len(dones)):
                 self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])

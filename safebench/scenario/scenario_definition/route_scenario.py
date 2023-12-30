@@ -283,7 +283,7 @@ class RouteScenario():
         ego_state = np.array(self._get_actor_state(self.ego_vehicle))
         # relative ego state
         ego_info = []
-        for actor in enumerate(ego_nearby_vehicles):
+        for actor in ego_nearby_vehicles:
             if len(ego_info) < desired_nearby_vehicle:
                 actor_state = np.array(self._get_actor_state(actor)) - ego_state
                 ego_info.append(actor_state)  # all the row contain meaningful vehicle around ego vehicle

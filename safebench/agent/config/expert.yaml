@@ -4,6 +4,8 @@ model_path: ''
 model_type: 'agent'
 results_folder_path: ''
 obs_type: 'ego_state'
+ego_state_dim: 3
+ego_action_dim: 2
 
 train_episode: 2000
 eval_in_train_freq: 1

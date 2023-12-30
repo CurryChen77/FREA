@@ -1,6 +1,6 @@
 obs_type: "plant"
 attention_score: AllLayer
-topk: 7 #1
+topk: 4 #1
 viz_attn_map: False
 
 pretrained_model_path: 'safebench/agent/model_ckpt/PlanT_state_encoder/checkpoints/state_encoder.ckpt'

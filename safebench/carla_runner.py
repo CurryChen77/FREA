@@ -171,14 +171,13 @@ class CarlaRunner:
         # define the ego state encoder if needed
         self.agent_state_encoder = None
         state_encoder_config = None
-        # all the situations that need the state encoder
-        if (self.safety_network_config and self.safety_network_config['obs_type'] == 'plant') or (self.agent_config['obs_type'] == 'plant') or (self.cbv_selection == 'attention-based'):
+        # if the cbv selection method is based on attention
+        if self.cbv_selection == 'attention-based':
             # initial the agent state encoder
             root_path = agent_config['ROOT_DIR']
             state_encoder_path = osp.join(root_path, 'safebench/agent/config/state_encoder.yaml')
             state_encoder_config = load_config(state_encoder_path)
-            if self.cbv_selection == 'attention-based':  # attention-based cbv selection method need to viz the attn map
-                state_encoder_config['viz_attn_map'] = True
+            state_encoder_config['viz_attn_map'] = True if self.mode == 'eval' else None  # viz the attention map when eval
             self.agent_state_encoder = AgentStateEncoder(state_encoder_config, self.logger)
 
         # define agent and scenario
