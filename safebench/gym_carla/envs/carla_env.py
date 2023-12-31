@@ -76,6 +76,7 @@ class CarlaEnv(gym.Env):
         self.gps_route = None
         self.route = None
         self.collide_with_cbv = False
+        self.cbv_terminal = False
         self.collide = False
         self.search_radius = env_params['search_radius']
         self.agent_obs_type = env_params['agent_obs_type']
@@ -407,7 +408,7 @@ class CarlaEnv(gym.Env):
         origin_info = self._get_info(next_info=True)  # info of old cbv
 
         # if cbv collide with the ego, then remove it
-        if self.collide_with_cbv:
+        if self.cbv_terminal:
             self._remove_cbv()
 
         # select the new cbv
@@ -442,7 +443,11 @@ class CarlaEnv(gym.Env):
         # when after the tick before selecting a new cbv
         elif next_info:
             # the total reward for the cbv training
-            info['scenario_agent_reward'] = self._get_scenario_reward()
+            info['cbv_reward'] = self._get_scenario_reward()
+            info['cbv_terminal'] = self.cbv_terminal  # when cbv collide with ego or normal bv, or cbv off the road -> cbv terminated
+            print("cbv terminal", self.cbv_terminal) if self.cbv_terminal is True else None
+            info['cbv_truncated'] = self.cbv_truncated()  # when ego stuck, timeout or max step -> cbv truncated
+            print("cbv_truncated", info['cbv_truncated']) if info['cbv_truncated'] is True else None
             # the safety network only need the ego info at (t+1) step
             if self.safety_network_obs_type == 'ego_info':
                 info['ego_info'] = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicle)
@@ -642,23 +647,31 @@ class CarlaEnv(gym.Env):
         ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv)  # [-1, 1]
 
         # since the obs don't have road info, so no need to include in drivable area info
-        off_road = get_actor_off_road(self.cbv) if self.cbv else True  # True or False
+        off_road = get_actor_off_road(self.cbv) if self.cbv else False  # True or False
 
         # cbv collision reward
         if off_road or (cbv_min_dis < 0.01):  # cbv hit other vehicle or hit the road
             sparse_reward = -1
+            self.cbv_terminal = True
         elif self.collide_with_cbv:  # cbv hit the ego
             sparse_reward = 1
+            self.cbv_terminal = True
         else:
             sparse_reward = 0
 
         # final scenario agent rewards
-        scenario_agent_reward = ego_cbv_dis_reward + 2 * sparse_reward
+        cbv_reward = ego_cbv_dis_reward + 2 * sparse_reward
 
-        return scenario_agent_reward
+        return cbv_reward
 
     def _terminal(self):
         return not self.scenario_manager._running
+
+    def cbv_truncated(self):
+        cbv_truncated = False
+        if self.scenario_manager.truncated:
+            cbv_truncated = True
+        return cbv_truncated
 
     def _remove_sensor(self):
         if self.lidar_sensor is not None:
@@ -689,6 +702,8 @@ class CarlaEnv(gym.Env):
             self.scenario_manager.collide_with_cbv = False
             # set the prior cbv in the scenario instance to None, to prevent setting a None vehicle to autopilot
             self.scenario_manager.scenario_instance.prior_cbv = None
+            print("start remove cbv")
+            self.cbv_terminal = False
 
     def _reset_variables(self):
         self.old_cbv = None
@@ -702,6 +717,7 @@ class CarlaEnv(gym.Env):
         self.waypoints = None
         self.collide_with_cbv = False
         self.collide = False
+        self.cbv_terminal = False
 
     def clean_up(self):
         # remove temp variables

@@ -282,7 +282,7 @@ class CarlaRunner:
 
                 agent_episode_reward.append(np.mean(rewards))
                 if self.mode == 'train_scenario':
-                    scenario_reward = [info['scenario_agent_reward'] for info in next_infos]
+                    scenario_reward = [info['cbv_reward'] for info in next_infos]
                     scenario_reward = np.array(scenario_reward)
                     scenario_episode_reward.append(np.mean(scenario_reward))
 

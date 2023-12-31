@@ -148,8 +148,6 @@ class VectorWrapper():
                             self.logger.log('Scenario with data_id {} is duplicated'.format(current_env.config.data_id))
                         # the running results contain every data id (one specific scenario) running status at each time step
                         self.running_results[current_env.config.data_id] = current_env.scenario_manager.running_record
-                    if self.mode == 'train_scenario' or self.mode == 'train_safety_network':
-                        done = current_env.collide_with_cbv  # when training the cbv and safety network, ego only collide with cbv means dones
                 else:
                     # if scenario is done, no need to do the transition
                     transition_obs_list.append(obs)

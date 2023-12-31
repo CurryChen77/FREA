@@ -80,7 +80,6 @@ class RouteScenario():
             gps_route, route = interpolate_trajectory(self.world, self.config.trajectory)
             ego_vehicle = self._spawn_ego_vehicle(route[0][0], self.config.auto_ego)
 
-        # TODO: ego route will be overwritten by other scenarios
         CarlaDataProvider.set_ego_vehicle_route(ego_vehicle, convert_transform_to_location(route))
         CarlaDataProvider.set_scenario_config(self.config)
 
@@ -172,6 +171,7 @@ class RouteScenario():
             running_status[criterion_name] = criterion.update()
 
         stop = False
+        truncated = False
         collision = False
         collide_with_cbv = False
         # collision with other objects
@@ -191,26 +191,29 @@ class RouteScenario():
             stop = True
             self.logger.log('>> Scenario stops due to off road', color='yellow')
 
-        # stuck
-        if self.mode == 'train_scenario' and running_status['stuck'] == Status.FAILURE:
-            stop = True
-            self.logger.log('>> Scenario stops due to stuck', color='yellow')
-
         # route completed
         if running_status['route_complete'] == 100:
             stop = True
             self.logger.log('>> Scenario stops due to route completion', color='yellow')
 
+        # stuck
+        if self.mode == 'train_scenario' and running_status['stuck'] == Status.FAILURE:
+            stop = True
+            truncated = True
+            self.logger.log('>> Scenario stops due to stuck', color='yellow')
+
         # stop at max step
         if len(running_record) >= self.max_running_step: 
             stop = True
+            truncated = True
             self.logger.log('>> Scenario stops due to max steps', color='yellow')
 
         if running_status['current_game_time'] >= self.timeout:
             stop = True
+            truncated = True
             self.logger.log('>> Scenario stops due to timeout', color='yellow')
 
-        return running_status, stop, collision, collide_with_cbv
+        return running_status, stop, collision, collide_with_cbv, truncated
 
     def _create_criteria(self):
         criteria = {}
@@ -271,7 +274,7 @@ class RouteScenario():
         else:
             actor_info = None
         return {
-            'scenario_obs': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
+            'cbv_obs': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
     def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=3):

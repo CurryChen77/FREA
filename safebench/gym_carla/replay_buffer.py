@@ -19,7 +19,7 @@ class RouteReplayBuffer:
     """
         This buffer supports parallel storing transitions from multiple trajectories.
     """
-    
+
     def __init__(
             self,
             num_scenario,
@@ -84,15 +84,17 @@ class RouteReplayBuffer:
             self.buffer_constrain_h = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
 
-    def streamline_data(self, data_list, additional_dict):
+    def streamline_cbv_data(self, data_list, additional_dict):
         """
-            remove the meaningless data when cbv is None (scenario obs, next scenario obs, scenario action are all None)
+            1. remove the meaningless data when cbv is None (scenario obs, next scenario obs, scenario action are all None)
+            2. remove the truncated cbv data
+            key: the done came from the cbv view instead of ego view
         """
         assert len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
         filtered_data = [
-            (action, done, info['scenario_obs'], next_info['scenario_obs'], next_info['scenario_agent_reward'])
-            for action, done, info, next_info in zip(data_list[1], data_list[5], additional_dict[0], additional_dict[1])
-            if (info['scenario_obs'] is not None) or (next_info['scenario_obs'] is not None) or (action is not None)
+            (action, next_info['cbv_terminal'], info['cbv_obs'], next_info['cbv_obs'], next_info['cbv_reward'])
+            for action, info, next_info in zip(data_list[1], additional_dict[0], additional_dict[1])
+            if ((info['cbv_obs'] is not None) or (next_info['cbv_obs'] is not None) or (action is not None)) and (next_info['cbv_truncated'] is False)
         ]  # assert if scenario obs is None then the next scenario obs and action are all None
         scenario_actions, dones, obs, next_obs, rewards = zip(*filtered_data) if filtered_data else ([], [], [], [], [])
 
@@ -105,12 +107,12 @@ class RouteReplayBuffer:
         """
         # store for scenario training
         if self.mode == 'train_scenario':
-            scenario_actions, dones, obs, next_obs, rewards = self.streamline_data(data_list, additional_dict)
+            scenario_actions, dones, obs, next_obs, rewards = self.streamline_cbv_data(data_list, additional_dict)
             for s_i in range(len(dones)):
                 self.buffer_actions[self.pos] = np.array(scenario_actions[s_i])
-                self.buffer_obs[self.pos] = np.array(obs[s_i])  # cbv obs is scenario_obs
-                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])  # cbv next obs is the scenario_obs from next info
-                self.buffer_rewards[self.pos] = np.array(rewards[s_i])  # cbv reward is scenario_agent_reward
+                self.buffer_obs[self.pos] = np.array(obs[s_i])  # cbv_obs
+                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])  # cbv next obs from next info
+                self.buffer_rewards[self.pos] = np.array(rewards[s_i])  # cbv reward
                 self.buffer_dones[self.pos] = np.array(dones[s_i])
                 self.pos += 1
                 if self.pos == self.buffer_capacity:
@@ -164,25 +166,25 @@ class RouteReplayBuffer:
 
         if self.mode == 'train_scenario':
             batch = {
-                'action': np.stack(self.buffer_actions)[batch_indices],                 # action
-                'scenario_obs': np.stack(self.buffer_obs)[batch_indices, :],            # obs
-                'next_scenario_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
-                'reward': np.stack(self.buffer_rewards)[batch_indices],                 # reward
-                'done': np.stack(self.buffer_dones)[batch_indices],                     # done
+                'action': np.stack(self.buffer_actions)[batch_indices],  # action
+                'cbv_obs': np.stack(self.buffer_obs)[batch_indices, :],  # obs
+                'next_cbv_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
+                'reward': np.stack(self.buffer_rewards)[batch_indices],  # reward
+                'done': np.stack(self.buffer_dones)[batch_indices],  # done
             }
         elif self.mode == 'train_agent':
             batch = {
-                'action': np.stack(self.buffer_actions)[batch_indices],                 # action
-                'obs': np.stack(self.buffer_obs)[batch_indices, :],                     # obs
-                'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],           # next obs
-                'reward': np.stack(self.buffer_rewards)[batch_indices],                 # reward
-                'done': np.stack(self.buffer_dones)[batch_indices],                     # done
+                'action': np.stack(self.buffer_actions)[batch_indices],  # action
+                'obs': np.stack(self.buffer_obs)[batch_indices, :],  # obs
+                'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
+                'reward': np.stack(self.buffer_rewards)[batch_indices],  # reward
+                'done': np.stack(self.buffer_dones)[batch_indices],  # done
             }
         elif self.mode == 'train_safety_network':
             batch = {
-                'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],           # next obs
-                'constrain_h': np.stack(self.buffer_constrain_h)[batch_indices],        # constrain
-                'done': np.stack(self.buffer_dones)[batch_indices],                     # done
+                'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
+                'constrain_h': np.stack(self.buffer_constrain_h)[batch_indices],  # constrain
+                'done': np.stack(self.buffer_dones)[batch_indices],  # done
             }
         else:
             raise ValueError(f'Unknown mode {self.mode}')
