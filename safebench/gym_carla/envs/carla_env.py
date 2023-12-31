@@ -41,7 +41,7 @@ class CarlaEnv(gym.Env):
         An OpenAI-gym style interface for CARLA simulator. 
     """
 
-    def __init__(self, env_params, birdeye_render=None, display=None, world=None, search_radius=40,
+    def __init__(self, env_params, birdeye_render=None, display=None, world=None,
                  safety_network_config=None, agent_state_encoder=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
@@ -60,6 +60,7 @@ class CarlaEnv(gym.Env):
         self.auto_ego = env_params['auto_ego']
         self.enable_sem = env_params['enable_sem']
         self.ego_agent_learnable = env_params['ego_agent_learnable']
+        self.spectator = env_params['spectator']
         self.mode = env_params['mode']
 
         self.lidar_sensor = None
@@ -76,7 +77,7 @@ class CarlaEnv(gym.Env):
         self.route = None
         self.collide_with_cbv = False
         self.collide = False
-        self.search_radius = search_radius
+        self.search_radius = env_params['search_radius']
         self.agent_obs_type = env_params['agent_obs_type']
         self.agent_state_encoder = agent_state_encoder
 
@@ -310,7 +311,7 @@ class CarlaEnv(gym.Env):
 
     def visualize_ego_route_cbv(self):
         # Visualize the controlled bv
-        if self.cbv:
+        if self.cbv and self.spectator:
             cbv_transform = CarlaDataProvider.get_transform(self.cbv)
             cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
             cbv_angle = math.radians(cbv_transform.rotation.yaw)

@@ -53,8 +53,8 @@ class RouteScenario():
         self.mode = mode
         self.timeout = 60
         self.ego_max_driven_distance = 200
-        self.traffic_intensity = config.traffic_intensity
-        self.search_radius = config.search_radius
+        self.traffic_intensity = env_params['traffic_intensity']
+        self.search_radius = env_params['search_radius']
 
         # create the route and ego's position (the start point of the route)
         self.route, self.ego_vehicle, self.gps_route = self._update_route_and_ego(timeout=self.timeout)

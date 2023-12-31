@@ -54,14 +54,9 @@ class CarlaRunner:
 
         self.render = scenario_config['render']
         self.num_scenario = scenario_config['num_scenario']                              # default 2
-        self.search_radius = scenario_config['search_radius']                            # default 20 meters
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.scenario_category = scenario_config['scenario_category']                    # default planning
         self.cbv_selection = scenario_config['cbv_selection']
-
-        # continue training flag
-        self.continue_agent_training = scenario_config['continue_agent_training']        # default False
-        self.continue_scenario_training = scenario_config['continue_scenario_training']  # default False
         self.scenario_id = scenario_config['scenario_id']
 
         # apply settings to carla
@@ -72,7 +67,10 @@ class CarlaRunner:
 
         self.env_params = {
             'mode': self.mode,                                              # the mode of the script
+            'search_radius': 40,                                            # the default search radius
+            'traffic_intensity': 0.7,                                       # the default traffic intensity
             'auto_ego': scenario_config['auto_ego'],
+            'spectator': agent_config['spectator'],                         # whether to put spectator on the world
             'viz_route': agent_config['viz_route'],                         # whether to visualize the route
             'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
             'agent_obs_type': agent_config['obs_type'],                     # default 0 (only 4 dimensions states )
@@ -92,7 +90,7 @@ class CarlaRunner:
             'discrete_steer': [-0.2, 0.0, 0.2],                             # discrete value of steering angles
             'continuous_accel_range': [-3.0, 3.0],                          # continuous acceleration range
             'continuous_steer_range': [-0.3, 0.3],                          # continuous steering angle range
-            'max_episode_step': scenario_config['max_episode_step'],        # maximum timesteps per episode
+            'max_episode_step': 300,                                        # maximum timesteps per episode
             'max_waypt': 12,                                                # maximum number of waypoints
             'lidar_bin': 0.125,                                             # bin size of lidar sensor (meter)
             'out_lane_thres': 4,                                            # threshold for out of lane (meter)
@@ -408,10 +406,8 @@ class CarlaRunner:
                 self.world, 
                 self.birdeye_render, 
                 self.display,
-                self.search_radius,
                 self.safety_network_config,
                 self.agent_state_encoder,
-                self.mode,
                 self.logger,
             )
             self.logger.log(">> Finish scenario initialization")

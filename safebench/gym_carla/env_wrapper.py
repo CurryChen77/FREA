@@ -20,7 +20,7 @@ class VectorWrapper():
         The interface to control a list of environments.
     """
 
-    def __init__(self, env_params, scenario_config, world, birdeye_render, display, search_radius, safety_network_config, agent_state_encoder, mode, logger):
+    def __init__(self, env_params, scenario_config, world, birdeye_render, display, safety_network_config, agent_state_encoder, logger):
         self.logger = logger
         self.world = world
         self.num_scenario = scenario_config['num_scenario']  # default 2
@@ -28,17 +28,16 @@ class VectorWrapper():
         self.frame_skip = scenario_config['frame_skip']  
         self.render = scenario_config['render']
         self.spectator = scenario_config['spectator']
-        self.safety_network_config = safety_network_config
         self.agent_state_encoder = agent_state_encoder
         self.birdeye_render = birdeye_render
-        self.mode = mode
+        self.mode = env_params['mode']
 
         self.env_list = []
         for i in range(self.num_scenario):
             # each small scenario corresponds to a carla_env create the ObservationWrapper()
             env = carla_env(
                 env_params, birdeye_render=birdeye_render, display=display,
-                world=world, search_radius=search_radius, safety_network_config=safety_network_config,
+                world=world, safety_network_config=safety_network_config,
                 agent_state_encoder=agent_state_encoder, logger=logger
             )
             self.env_list.append(env)
@@ -196,12 +195,11 @@ class ObservationWrapper(gym.Wrapper):
     """
         The wrapped carla environment.
     """
-    def __init__(self, env, agent_obs_type, safety_network_obs_type):
+    def __init__(self, env, agent_obs_type):
         super().__init__(env)
         self._env = env  # carla environment
 
         self.agent_obs_type = agent_obs_type
-        self.safety_network_obs_type = safety_network_obs_type
 
     def reset(self, **kwargs):
         obs, info = self._env.reset(**kwargs)
@@ -236,17 +234,11 @@ class ObservationWrapper(gym.Wrapper):
     def _postprocess_action(self, action):
         return action
 
-    def clear_up(self):
-        self._env.clear_up()
+    def clean_up(self):
+        self._env.clean_up()
 
 
-def carla_env(env_params, birdeye_render=None, display=None, world=None, search_radius=0, safety_network_config=None, agent_state_encoder=None, logger=None):
-    if agent_state_encoder:
-        safety_network_obs_type = agent_state_encoder.obs_type
-    elif safety_network_config:
-        safety_network_obs_type = safety_network_config['obs_type']
-    else:
-        safety_network_obs_type = None
+def carla_env(env_params, birdeye_render=None, display=None, world=None, safety_network_config=None, agent_state_encoder=None, logger=None):
     return ObservationWrapper(
         gym.make(
             'carla-v0', 
@@ -254,11 +246,9 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, search_
             birdeye_render=birdeye_render,
             display=display, 
             world=world,
-            search_radius=search_radius,
             safety_network_config=safety_network_config,
             agent_state_encoder=agent_state_encoder,
             logger=logger,
         ), 
         agent_obs_type=env_params['agent_obs_type'],
-        safety_network_obs_type=safety_network_obs_type
     )

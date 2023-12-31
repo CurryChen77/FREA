@@ -25,9 +25,6 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, default='log')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.realpath(__file__)))))
 
-    parser.add_argument('--max_episode_step', type=int, default=300)
-    parser.add_argument('--search_radius', type=int, default=40, help='the radius for agent to search other agents')
-    parser.add_argument('--traffic_intensity', type=int, default=0.7, help='the intensity of initial traffic flow')
     parser.add_argument('--cbv_selection', '-cbv', type=str, default='rule-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--viz_route', '-vr', action='store_true')
@@ -37,8 +34,6 @@ if __name__ == '__main__':
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='behavior.yaml')
     parser.add_argument('--scenario_cfg', nargs='*', type=str, default='standard_eval.yaml')
     parser.add_argument('--safety_network_cfg', nargs='*', type=str, default='HJR.yaml')
-    parser.add_argument('--continue_agent_training', '-cat', type=bool, default=False)
-    parser.add_argument('--continue_scenario_training', '-cst', type=bool, default=False)
 
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--threads', type=int, default=4)
