@@ -102,8 +102,8 @@ class PPO(BasePolicy):
         self.batch_size = config['batch_size']
 
         self.model_type = config['model_type']
-        self.cbv_selection = config['cbv_selection']
-        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.cbv_selection)
+        self.CBV_selection = config['CBV_selection']
+        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.CBV_selection)
         self.scenario_id = config['scenario_id']
         self.agent_info = 'EgoPolicy_' + config['agent_policy'] + "-" + config['agent_obs_type']
         self.safety_network = config['safety_network']
@@ -130,18 +130,22 @@ class PPO(BasePolicy):
             raise ValueError(f'Unknown mode {mode}')
 
     def info_process(self, infos):
-        cbv_obs = []
-        indexes = []  # record the index of not "None" scenario obs, and put the corresponding action at that index
-        for i, i_i in enumerate(infos):
-            if i_i['cbv_obs'] is not None:
-                cbv_obs.append(i_i['cbv_obs'])
-                indexes.append(i)
-        if cbv_obs:
-            info_batch = np.stack(cbv_obs, axis=0)
+        CBVs_obs = []
+        CBVs_id = []
+        env_index = []
+        for i, info in enumerate(infos):
+            for CBV_id, CBV_obs in info['CBVs_obs'].items():
+                CBVs_obs.append(CBV_obs)
+                CBVs_id.append(CBV_id)
+                env_index.append(i)
+        if CBVs_obs:
+            info_batch = np.stack(CBVs_obs, axis=0)
             info_batch = info_batch.reshape(info_batch.shape[0], -1)
         else:
             info_batch = None
-        return info_batch, indexes
+
+        print("when PPO process info, the length of obs is:", len(CBVs_obs))
+        return info_batch, CBVs_id, env_index
 
     def get_init_action(self, state, deterministic=False):
         num_scenario = len(state)
@@ -149,13 +153,14 @@ class PPO(BasePolicy):
         return [None] * num_scenario, additional_in
 
     def get_action(self, state, infos, deterministic=False):
-        state, indexes = self.info_process(infos)
-        scenario_action = [None] * len(infos)
+        state, CBVs_id, env_index = self.info_process(infos)
+        scenario_action = [{} for _ in range(len(infos))]
         if state is not None:
             state_tensor = CUDA(torch.FloatTensor(state))
             action = self.policy.select_action(state_tensor, deterministic)
-            for i, index in enumerate(indexes):
-                scenario_action[index] = action[i]
+
+            for i, (CBV_id, env_id) in enumerate(zip(CBVs_id, env_index)):
+                scenario_action[env_id][CBV_id] = action[i]
         return scenario_action
 
     def train(self, replay_buffer, writer, e_i):
@@ -164,8 +169,8 @@ class PPO(BasePolicy):
         # start to train, use gradient descent without batch size
         for K in range(self.train_iteration):
             batch = replay_buffer.sample(self.batch_size)
-            bn_s = CUDA(torch.FloatTensor(batch['cbv_obs'])).reshape(self.batch_size, -1)
-            bn_s_ = CUDA(torch.FloatTensor(batch['next_cbv_obs'])).reshape(self.batch_size, -1)
+            bn_s = CUDA(torch.FloatTensor(batch['CBVs_obs'])).reshape(self.batch_size, -1)
+            bn_s_ = CUDA(torch.FloatTensor(batch['next_CBVs_obs'])).reshape(self.batch_size, -1)
             bn_a = CUDA(torch.FloatTensor(batch['action']))
             bn_r = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1) # [B, 1]
 

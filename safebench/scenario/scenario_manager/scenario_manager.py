@@ -23,21 +23,19 @@ class ScenarioManager(object):
         self.env_params = env_params
         self.logger = logger
         self.scenic = use_scenic
-        self._collision = False
-        self.collide_with_cbv = False
-        self.truncated = False
-        self.cbv = None
+        self.ego_collision = False
+        self.ego_truncated = False
+        self.CBVs = None
         self._reset()
 
     def _reset(self):
         #self.scenario = None
         self.route_scenario = None
         self.ego_vehicle = None
-        self.cbv = None
+        self.CBVs = None
         self._running = False
-        self._collision = False
-        self.collide_with_cbv = False
-        self.truncated = False
+        self.ego_collision = False
+        self.ego_truncated = False
         self._timestamp_last_run = 0.0
         self.running_record = []
         GameTime.restart()
@@ -52,11 +50,10 @@ class ScenarioManager(object):
         self.ego_vehicle = scenario.ego_vehicle
         self.scenario_instance = scenario.scenario_instance  # the adv behavior single scenario instance
 
-    def update_cbv_nearby_vehicles(self, cbv, cbv_nearby_vehicles):
-        self.cbv = cbv
-        self.cbv_nearby_vehicles = cbv_nearby_vehicles
-        self.route_scenario.cbv = cbv
-        self.route_scenario.cbv_nearby_vehicles = cbv_nearby_vehicles
+    def update_CBV_nearby_vehicles(self, CBVs, CBVs_nearby_vehicles):
+        self.CBVs = CBVs
+        self.route_scenario.CBVs = CBVs
+        self.route_scenario.CBVs_nearby_vehicles = CBVs_nearby_vehicles
 
     def run_scenario(self):
         self._running = True
@@ -70,20 +67,18 @@ class ScenarioManager(object):
         self._running = False
 
     def update_running_status(self):
-        record, stop, collision, collide_with_cbv, truncated = self.route_scenario.get_running_status(self.running_record)
+        record, ego_stop, ego_collision, ego_truncated = self.route_scenario.get_running_status(self.running_record)
         self.running_record.append(record)  # contain every step's record
-        if stop:
+        if ego_stop:
             self._running = False
-        if collision:
-            self._collision = True
-            if collide_with_cbv:
-                self.collide_with_cbv = True
-        if truncated:
-            self.truncated = True
+        if ego_collision:
+            self.ego_collision = True
+        if ego_truncated:
+            self.ego_truncated = True
 
     def get_update(self, timestamp, scenario_action):
         if self._timestamp_last_run < timestamp.elapsed_seconds and self._running:
             self._timestamp_last_run = timestamp.elapsed_seconds
             GameTime.on_carla_tick(timestamp)
             # update the scenario instance receiving the scenario action
-            self.scenario_instance.update_behavior(self.cbv, scenario_action)
+            self.scenario_instance.update_behavior(self.CBVs, scenario_action)

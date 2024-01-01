@@ -30,7 +30,7 @@ class AdvBehaviorSingle(BasicScenario):
         self._map = CarlaDataProvider.get_map()
         self.last_tick_affected_by_traffic = self.ego_vehicle
 
-        self.cbv_traffic_light = None
+        self.CBV_traffic_light = None
         self.last_ego_waypoint = self._map.get_waypoint(self.ego_vehicle.get_location())
         self.signalized_junction = env_params['signalized_junction']
         if self.signalized_junction:
@@ -50,7 +50,6 @@ class AdvBehaviorSingle(BasicScenario):
         self.n_steer = len(self.discrete_act[1])
         self.acc_max = env_params['continuous_accel_range'][1]
         self.steering_max = env_params['continuous_steer_range'][1]
-        self.prior_cbv = None
 
     def convert_actions(self, scenario_actions):
         if self.discrete:
@@ -92,47 +91,18 @@ class AdvBehaviorSingle(BasicScenario):
                 self.traffic_light = traffic_light
                 traffic_light.set_state(carla.TrafficLightState.Green)
                 traffic_light.set_green_time(self.timeout)
-        elif ego_waypoint.is_junction:  # if ego is in the junction and the cbv is stuck by the traffic light, set that traffic light to green
-            if self.prior_cbv and self.prior_cbv.is_at_traffic_light:
-                cbv_traffic_light = self.prior_cbv.get_traffic_light()
-                if cbv_traffic_light and cbv_traffic_light != self.cbv_traffic_light and cbv_traffic_light.state != carla.TrafficLightState.Green:
-                    # for visualization
-                    # base_transform = cbv_traffic_light.get_transform()
-                    # cbv_traffic_light_loc = base_transform.transform(cbv_traffic_light.trigger_volume.location)
-                    # self.world.debug.draw_point(cbv_traffic_light_loc + carla.Location(z=4), size=0.1, life_time=-1)
-                    # print("set cbv next traffic light to green")
-                    self.cbv_traffic_light = cbv_traffic_light
-                    cbv_traffic_light.set_state(carla.TrafficLightState.Green)
-                    cbv_traffic_light.set_green_time(self.timeout)
         self.last_ego_waypoint = ego_waypoint
 
-    def update_behavior(self, cbv, scenario_action):
-        if cbv is not None and scenario_action is not None:
-            # if the controlled bv exists and the scenario policy isn't hardcoded
-            if self.prior_cbv is None:  # the initial time
-                cbv.set_autopilot(enabled=False)  # get ready to be controlled
-                self.prior_cbv = cbv
-            else:
-                if self.prior_cbv != cbv:  # the controlled bv has changed
-                    # activate the autopilot mode of prior bv
-                    self.prior_cbv.set_autopilot(enabled=True) if CarlaDataProvider.actor_id_exists(self.prior_cbv.id) else None
-                    cbv.set_autopilot(enabled=False)  # get ready to be controlled
-                    self.prior_cbv = cbv  # update the prior controlled bv
+    def update_behavior(self, CBVs, scenario_actions):
+        # apply scenario action for each CBV
+        for CBV_id in CBVs.keys():
+            CBV = CBVs[CBV_id]
+            scenario_action = scenario_actions[CBV_id]
             act = self.convert_actions(scenario_action)
-            self.prior_cbv.apply_control(act)  # apply the control of the cbv on the next tick
-        elif cbv is not None and scenario_action is None:
-            # standard scenario agent, not receiving any action, just under autopilot mode
-            if self.prior_cbv is None:  # the initial time
-                self.prior_cbv = cbv
-            else:
-                if self.prior_cbv != cbv:  # the controlled bv has changed
-                    self.prior_cbv = cbv  # update the prior controlled bv
-        else:
-            # have no cbv, set the prior cbv to None
-            self.prior_cbv = None
+            CBV.apply_control(act)  # apply the control of the CBV on the next tick
 
         if self.signalized_junction:  # if the junction is controlled by the signal, the traffic need to be updated
             self.update_traffic_light()
 
     def clean_up(self):
-        self.prior_cbv = None
+        pass

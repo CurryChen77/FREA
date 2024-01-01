@@ -383,11 +383,7 @@ class BirdeyeRender(object):
         self.hero_id = None
         self.hero_transform = None
         self.heros_in_all_envs = []
-        self.cbv_in_all_envs = []
-
-        # cbv
-        self.cbv = None
-        self.cbv_id = None
+        self.CBV_in_all_envs = []
 
         # the actors and map information
         self.vehicle_polygons = []
@@ -428,13 +424,11 @@ class BirdeyeRender(object):
         self.hero_id = hero_id
         self.heros_in_all_envs.append(hero_id)
 
-    def set_cbv(self, cbv, cbv_id):
-        self.cbv = cbv
-        self.cbv_id = cbv_id
-        self.cbv_in_all_envs.append(cbv_id)
+    def set_CBV(self, CBV_id):
+        self.CBV_in_all_envs.append(CBV_id)
 
-    def remove_old_cbv(self, cbv_id):
-        self.cbv_in_all_envs.remove(cbv_id)
+    def remove_old_CBV(self, CBV_id):
+        self.CBV_in_all_envs.remove(CBV_id)
 
     def tick(self, clock):
         actors = self.world.get_actors()
@@ -490,7 +484,7 @@ class BirdeyeRender(object):
                 color_value = max(0.8 - 0.8/lp*(i+1), 0)
                 if ID == self.hero_id or ID in self.heros_in_all_envs:
                     color = pygame.Color(255, math.floor(color_value*255), math.floor(color_value*255))  # red
-                elif ID == self.cbv_id or ID in self.cbv_in_all_envs:  # TODO: can't update in real-time
+                elif ID in self.CBV_in_all_envs:
                     color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255))  # purple
                 else:
                     if actor_type == 'vehicle':
@@ -571,5 +565,5 @@ class BirdeyeRender(object):
 
 
     def clean_up(self):
-        self.cbv_in_all_envs = []
+        self.CBV_in_all_envs = []
         self.heros_in_all_envs = []

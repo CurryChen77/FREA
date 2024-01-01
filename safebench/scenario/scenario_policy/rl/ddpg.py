@@ -117,14 +117,14 @@ class DDPG(BasePolicy):
             raise ValueError(f'Unknown mode {mode}')
     
     def info_process(self, infos):
-        cbv_obs = []
+        CBV_obs = []
         indexes = []  # record the index of not "None" scenario obs, and put the corresponding action at that index
         for i, i_i in enumerate(infos):
-            if i_i['cbv_obs'] is not None:
-                cbv_obs.append(i_i['cbv_obs'])
+            if i_i['CBVs_obs'] is not None:
+                CBV_obs.append(i_i['CBVs_obs'])
                 indexes.append(i)
-        if cbv_obs:
-            info_batch = np.stack(cbv_obs, axis=0)
+        if CBV_obs:
+            info_batch = np.stack(CBV_obs, axis=0)
             info_batch = info_batch.reshape(info_batch.shape[0], -1)
         else:
             info_batch = None
@@ -163,8 +163,8 @@ class DDPG(BasePolicy):
         for it in range(self.update_iteration):
             # sample replay buffer
             batch = replay_buffer.sample(self.batch_size)
-            bn_s = CUDA(torch.FloatTensor(batch['cbv_obs'])).reshape(self.batch_size, -1)
-            bn_s_ = CUDA(torch.FloatTensor(batch['next_cbv_obs'])).reshape(self.batch_size, -1)
+            bn_s = CUDA(torch.FloatTensor(batch['CBVs_obs'])).reshape(self.batch_size, -1)
+            bn_s_ = CUDA(torch.FloatTensor(batch['next_CBVs_obs'])).reshape(self.batch_size, -1)
             bn_a = CUDA(torch.FloatTensor(batch['action']))
             bn_r = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1) # [B, 1]
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1) # [B, 1]

@@ -56,7 +56,7 @@ class CarlaRunner:
         self.num_scenario = scenario_config['num_scenario']                              # default 2
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.scenario_category = scenario_config['scenario_category']                    # default planning
-        self.cbv_selection = scenario_config['cbv_selection']
+        self.CBV_selection = scenario_config['CBV_selection']
         self.scenario_id = scenario_config['scenario_id']
 
         # apply settings to carla
@@ -75,7 +75,7 @@ class CarlaRunner:
             'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
             'agent_obs_type': agent_config['obs_type'],                     # default 0 (only 4 dimensions states )
             'scenario_category': self.scenario_category,
-            'cbv_selection': self.cbv_selection,                            # the method using for selection controlled bv
+            'CBV_selection': self.CBV_selection,                            # the method using for selection controlled bv
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'signalized_junction': False,                                   # whether the junction is controlled by signal
             'warm_up_steps': 4,                                             # number of ticks after spawning the vehicles
@@ -132,7 +132,7 @@ class CarlaRunner:
             scenario=scenario_config['policy_type'],
             safety_network=self.safety_network_name,
             scenario_id=self.scenario_id,
-            cbv_selection=self.cbv_selection,
+            CBV_selection=self.CBV_selection,
             scenario_category=self.scenario_category
         )
         self.logger = Logger(**logger_kwargs)
@@ -163,8 +163,8 @@ class CarlaRunner:
         # define the ego state encoder if needed
         self.agent_state_encoder = None
         state_encoder_config = None
-        # if the cbv selection method is based on attention
-        if self.cbv_selection == 'attention-based':
+        # if the CBV selection method is based on attention
+        if self.CBV_selection == 'attention-based':
             # initial the agent state encoder
             root_path = agent_config['ROOT_DIR']
             state_encoder_path = osp.join(root_path, 'safebench/agent/config/state_encoder.yaml')
@@ -282,7 +282,7 @@ class CarlaRunner:
 
                 agent_episode_reward.append(np.mean(rewards))
                 if self.mode == 'train_scenario':
-                    scenario_reward = [info['cbv_reward'] for info in next_infos]
+                    scenario_reward = [list(info['CBVs_reward'].values()) for info in next_infos]
                     scenario_reward = np.array(scenario_reward)
                     scenario_episode_reward.append(np.mean(scenario_reward))
 

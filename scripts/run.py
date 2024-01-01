@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, default='log')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.realpath(__file__)))))
 
-    parser.add_argument('--cbv_selection', '-cbv', type=str, default='rule-based', choices=['rule-based', 'attention-based'])
+    parser.add_argument('--CBV_selection', '-CBV', type=str, default='rule-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--viz_route', '-vr', action='store_true')
     parser.add_argument('--enable_sem', action='store_true')
@@ -85,12 +85,7 @@ if __name__ == '__main__':
             agent_config.update(args_dict)
             scenario_config.update(args_dict)
 
-            if scenario_config['policy_type'] == 'scenic':
-                from safebench.scenic_runner import ScenicRunner
-                assert scenario_config['num_scenario'] == 1, 'the num_scenario can only be one for scenic now'
-                runner = ScenicRunner(agent_config, scenario_config)
-            else:
-                runner = CarlaRunner(agent_config, scenario_config, safety_network_config)  # create the main runner
+            runner = CarlaRunner(agent_config, scenario_config, safety_network_config)  # create the main runner
 
             # start running
             try:

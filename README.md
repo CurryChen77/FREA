@@ -133,7 +133,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg sac_train.yaml --
   2. **rule-based** (nearest)
 
 ```bash
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_scenario  --cbv_selection 'attention-based'  # different method of selecting controlled bv
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_scenario  --CBV_selection 'attention-based'  # different method of selecting controlled bv
 ```
 
 * Input state
@@ -142,10 +142,10 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
   |           vehicle            |  x   |  y   | yaw  |  Vx  |  Vy  |
   | :--------------------------: | :--: | :--: | :--: | :--: | :--: |
-  | ego state (relative to cbv)  |      |      |      |      |      |
-  | BV_1 state (relative to cbv) |      |      |      |      |      |
-  | BV_2 state (relative to cbv) |      |      |      |      |      |
-  | BV_3 state (relative to cbv) |      |      |      |      |      |
+  | ego state (relative to CBV)  |      |      |      |      |      |
+  | BV_1 state (relative to CBV) |      |      |      |      |      |
+  | BV_2 state (relative to CBV) |      |      |      |      |      |
+  | BV_3 state (relative to CBV) |      |      |      |      |      |
   
   **Tips: if no BV then the corresponding state will set to 0**
   

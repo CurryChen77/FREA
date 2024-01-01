@@ -32,7 +32,7 @@ class CarlaDataProvider(object):
     _map = None
     _sync_flag = False
     _spawn_points = None
-    ego_cbv_dis = {}
+    ego_CBV_dis = {}
     _spawn_index = 0
     _ego_desired_speed = 8  # m/s
     _blueprint_library = None
@@ -388,7 +388,7 @@ class CarlaDataProvider(object):
         """
         CarlaDataProvider._ego_vehicle_route[ego.id] = route
         CarlaDataProvider.egos.append(ego)
-        CarlaDataProvider.ego_cbv_dis[ego.id] = {}  # create an empty dictionary for each ego car
+        CarlaDataProvider.ego_CBV_dis[ego.id] = {}  # create an empty dictionary for each ego car
 
     @staticmethod
     def get_ego_vehicles():
@@ -817,7 +817,7 @@ class CarlaDataProvider(object):
         CarlaDataProvider._ego_vehicle_route.clear()
         CarlaDataProvider.egos = []
         CarlaDataProvider._ego_desired_speed = 8
-        CarlaDataProvider.ego_cbv_dis.clear()
+        CarlaDataProvider.ego_CBV_dis.clear()
         CarlaDataProvider._carla_actor_pool = {}
         CarlaDataProvider._spawn_points = None
         CarlaDataProvider._spawn_index = 0
@@ -856,7 +856,7 @@ class CarlaDataProvider(object):
         CarlaDataProvider._ego_vehicle_route.clear()
         CarlaDataProvider.egos = []
         CarlaDataProvider._ego_desired_speed = 8
-        CarlaDataProvider.ego_cbv_dis.clear()
+        CarlaDataProvider.ego_CBV_dis.clear()
         CarlaDataProvider._carla_actor_pool = {}
         CarlaDataProvider._client = None
         CarlaDataProvider._spawn_points = None

@@ -9,6 +9,7 @@
 """
 import math
 import random
+import weakref
 import copy
 
 import numpy as np
@@ -27,9 +28,9 @@ from safebench.gym_carla.envs.misc import (
     get_preview_lane_dis,
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
-from safebench.gym_carla.envs.utils import get_cbv_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    get_actor_off_road, get_cbv_bv_reward, get_constrain_h, linear_map, \
-    update_ego_cbv_dis, get_cbv_ego_reward, calculate_abs_velocity
+from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
+    get_actor_off_road, get_CBV_bv_reward, get_constrain_h, linear_map, \
+    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -66,18 +67,20 @@ class CarlaEnv(gym.Env):
         self.lidar_sensor = None
         self.camera_sensor = None
         self.sem_sensor = None
+        self.CBVs_collision_sensor = {}
         self.lidar_data = None
         self.lidar_height = 2.1
 
-        self.cbv = None
-        self.cbv_nearby_vehicles = None
-        self.ego_nearby_vehicle = None
-        self.old_cbv = None
+        self.CBVs = {}
+        self.CBVs_nearby_vehicles = {}
         self.gps_route = None
         self.route = None
-        self.collide_with_cbv = False
-        self.cbv_terminal = False
-        self.collide = False
+        self.CBVs_collision = {}
+        self.CBVs_terminal = {}
+        self.CBVs_truncated = {}
+        self.CBVs_need_clean = []
+        self.ego_collide = False
+        self.ego_truncated = False
         self.search_radius = env_params['search_radius']
         self.agent_obs_type = env_params['agent_obs_type']
         self.agent_state_encoder = agent_state_encoder
@@ -88,8 +91,8 @@ class CarlaEnv(gym.Env):
         else:
             self.safety_network_obs_type = None
 
-        # for Cbv
-        self.cbv_select_method = env_params['cbv_selection']
+        # for CBV
+        self.CBVs_select_method = env_params['CBV_selection']
 
         # scenario manager
         use_scenic = True if env_params['scenario_category'] == 'scenic' else False
@@ -197,40 +200,49 @@ class CarlaEnv(gym.Env):
             waypoints_list.append(waypoint)
         return waypoints_list
 
-    def cbv_selection(self):
-        # when training the ego agent, don't need to calculate the cbv
-        if self.mode != 'train_agent' and self.time_step % 5 == 0:
-            # TODO update the cbv per 5 steps
-            cbv_candidates = get_cbv_candidates(self.ego_vehicle, self.search_radius)
+    def set_CBV_sensor(self, CBV):
+        blueprint = CarlaDataProvider._blueprint_library.find('sensor.other.collision')
+        collision_sensor = self.world.spawn_actor(blueprint, carla.Transform(), attach_to=CBV)
+        collision_sensor.listen(lambda event: count_collisions(event))
+        self.CBVs_collision_sensor[CBV.id] = collision_sensor
+        self.CBVs_collision[CBV.id] = None
+        self.CBVs_truncated[CBV.id] = None
 
-            self.old_cbv = self.cbv  # for BEV visualization
+        def count_collisions(event):
+            # Ignore the current one if it is the same id as before
+            self.CBVs_collision[event.actor.id] = event.other_actor.id
+
+    def CBVs_selection(self):
+        # when training the ego agent, don't need to calculate the CBV
+        if self.mode != 'train_agent' and self.time_step % 5 == 0 and len(self.CBVs) <= 2:
 
             # selecting the CBV
             # 1.Rule-based
-            if self.cbv_select_method == 'rule-based':
-                self.cbv = find_closest_vehicle(self.ego_vehicle, self.search_radius, cbv_candidates)
+            if self.CBVs_select_method == 'rule-based':
+                CBV = find_closest_vehicle(self.ego_vehicle, self.search_radius, self.CBV_candidates)
             # 2.attention-based
-            elif self.cbv_select_method == 'attention-based':
+            elif self.CBVs_select_method == 'attention-based':
                 _, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
-                    self.ego_vehicle, cbv_candidates, self.waypoints, self.red_light_state
+                    self.ego_vehicle, self.CBV_candidates, self.waypoints, self.red_light_state
                 )
-                self.cbv = most_relevant_vehicle
-
-            # get the nearby vehicles around the cbv
-            if self.cbv:
-                self.cbv_nearby_vehicles = get_nearby_vehicles(self.cbv, self.search_radius)
-                if self.birdeye_render:
-                    # update the cbv for BEV visualization
-                    if self.old_cbv and self.cbv and self.old_cbv.id != self.cbv.id:  # the cbv has changed, need to remove the old cbv
-                        self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # update the new cbv
-                        self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
-                    elif self.old_cbv is not None and self.cbv is None:
-                        self.birdeye_render.remove_old_cbv(self.old_cbv.id)  # remove the old cbv if exist
-                    elif self.old_cbv is None and self.cbv is not None:  # got the initial cbv
-                        self.birdeye_render.set_cbv(self.cbv, self.cbv.id)  # add the new cbv
+                CBV = most_relevant_vehicle
             else:
-                self.cbv_nearby_vehicles = None
-        self.scenario_manager.update_cbv_nearby_vehicles(self.cbv, self.cbv_nearby_vehicles)
+                raise ValueError(f'Unknown CBV selecting method {self.CBVs_select_method}')
+
+            if CBV:
+                # if CBV not in the CBVs list, put the new one in
+                if CBV.id not in self.CBVs.keys():
+                    self.CBVs[CBV.id] = CBV
+                    CBV.set_autopilot(enabled=False)  # prepared to be controlled
+                    self.set_CBV_sensor(CBV)
+                    # update the CBV for BEV visualization
+                    if self.birdeye_render:
+                        self.birdeye_render.set_CBV(CBV.id)  # TODO still need to remove the terminated CBV using remove_CBV()
+
+                # update the nearby vehicles around the CBV
+                self.CBVs_nearby_vehicles[CBV.id] = get_nearby_vehicles(CBV, self.search_radius)
+        print("CBV list:", self.CBVs.keys())
+        self.scenario_manager.update_CBV_nearby_vehicles(self.CBVs, self.CBVs_nearby_vehicles)
 
     def reset(self, config, env_id):
         self.config = config
@@ -257,10 +269,14 @@ class CarlaEnv(gym.Env):
         self.reset_step += 1
 
         # find ego nearby vehicles
-        self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+        if self.safety_network_obs_type == 'ego_info':
+            self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+
+        # find CBV candidates
+        self.CBV_candidates = get_CBV_candidates(self.ego_vehicle, 20)
 
         # set controlled bv
-        self.cbv_selection()
+        self.CBVs_selection()
 
         # Get actors polygon list (for visualization)
         if self.birdeye_render:
@@ -310,15 +326,16 @@ class CarlaEnv(gym.Env):
                 array = array[:, :, 2]  # from PlanT
                 self.sem_img = array
 
-    def visualize_ego_route_cbv(self):
+    def visualize_ego_route_CBV(self):
         # Visualize the controlled bv
-        if self.cbv and self.spectator:
-            cbv_transform = CarlaDataProvider.get_transform(self.cbv)
-            cbv_begin = carla.Location(x=cbv_transform.location.x, y=cbv_transform.location.y, z=3)
-            cbv_angle = math.radians(cbv_transform.rotation.yaw)
-            cbv_end = cbv_begin + carla.Location(x=math.cos(cbv_angle), y=math.sin(cbv_angle))
-            self.world.debug.draw_arrow(cbv_begin, cbv_end, arrow_size=0.3, color=carla.Color(0, 0, 255, 0),
-                                        life_time=0.11)
+        if self.CBVs and self.spectator:
+            for CBV in self.CBVs.values():
+                CBV_transform = CarlaDataProvider.get_transform(CBV)
+                CBV_begin = carla.Location(x=CBV_transform.location.x, y=CBV_transform.location.y, z=3)
+                CBV_angle = math.radians(CBV_transform.rotation.yaw)
+                CBV_end = CBV_begin + carla.Location(x=math.cos(CBV_angle), y=math.sin(CBV_angle))
+                self.world.debug.draw_arrow(CBV_begin, CBV_end, arrow_size=0.3, color=carla.Color(0, 0, 255, 0),
+                                            life_time=0.11)
 
         # if the ego agent is learnable and need to viz the route, then draw the target waypoints
         if self.ego_agent_learnable and self.viz_route:
@@ -331,11 +348,11 @@ class CarlaEnv(gym.Env):
             if snapshot:
                 timestamp = snapshot.timestamp
 
-                # update the cbv action
+                # update the CBV action
                 self.scenario_manager.get_update(timestamp, scenario_action)
 
-                # if cbv has changed, update the ego cbv distance
-                update_ego_cbv_dis(self.ego_vehicle, self.cbv)
+                # if CBV has changed, update the ego CBV distance
+                update_ego_CBV_dis(self.ego_vehicle, self.CBVs)
 
                 # Calculate acceleration and steering
                 if not self.auto_ego:
@@ -398,31 +415,32 @@ class CarlaEnv(gym.Env):
         self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
-        self.ego_nearby_vehicle = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+        if self.safety_network_obs_type == 'ego_info':
+            self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # update the running status and check whether terminate or not
         self.scenario_manager.update_running_status()
-        self.collide = self.scenario_manager._collision
-        self.collide_with_cbv = self.scenario_manager.collide_with_cbv
+        self.ego_collide = self.scenario_manager.ego_collision
+        self.ego_truncated = self.scenario_manager.ego_truncated
+        self.CBV_candidates = get_CBV_candidates(self.ego_vehicle, 20)
 
-        origin_info = self._get_info(next_info=True)  # info of old cbv
+        origin_info = self._get_info(next_info=True)  # info of old CBV
 
-        # if cbv collide with the ego, then remove it
-        if self.cbv_terminal:
-            self._remove_cbv()
+        # if CBV collided, then remove it
+        self._remove_CBV()
 
-        # select the new cbv
-        self.cbv_selection()
+        # select the new CBV
+        self.CBVs_selection()
 
-        updated_cbv_info = self._get_info(next_info=False)  # info of new cbv
+        updated_CBVs_info = self._get_info(next_info=False)  # info of new CBV
 
-        self.visualize_ego_route_cbv()  # visualize the controlled bv and the waypoints in clients side after tick
+        self.visualize_ego_route_CBV()  # visualize the controlled bv and the waypoints in clients side after tick
 
         # Update timesteps
         self.time_step += 1
         self.total_step += 1
 
-        return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_cbv_info])
+        return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_CBVs_info])
 
     def _get_info(self, next_info, reset=False):
         info = {}
@@ -438,25 +456,32 @@ class CarlaEnv(gym.Env):
             })
             # the safety network only need constrain_h at (t) step
             if self.safety_network_obs_type == 'ego_info':
-                info['constrain_h'] = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicle, self.ego_agent_learnable)
+                info['constrain_h'] = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
 
-        # when after the tick before selecting a new cbv
+        # when after the tick before selecting a new CBV
         elif next_info:
-            # the total reward for the cbv training
-            info['cbv_reward'] = self._get_scenario_reward()
-            info['cbv_terminal'] = self.cbv_terminal  # when cbv collide with ego or normal bv, or cbv off the road -> cbv terminated
-            print("cbv terminal", self.cbv_terminal) if self.cbv_terminal is True else None
-            info['cbv_truncated'] = self.cbv_truncated()  # when ego stuck, timeout or max step -> cbv truncated
-            print("cbv_truncated", info['cbv_truncated']) if info['cbv_truncated'] is True else None
+            print("when preparing cbv reward, terminal, truncated CBVs ", self.CBVs.keys())
+            # the total reward for the CBV training
+            info['CBVs_reward'] = self._get_scenario_reward()
+            print("get next info len of rewards", len(info['CBVs_reward']))
+            # if CBV collide with other vehicles, then terminate
+            self.get_CBVs_terminal()
+            info['CBVs_terminal'] = copy.deepcopy(self.CBVs_terminal)
+            print("get next info len of terminal", len(self.CBVs_terminal))
+            # if Ego stuck, timeout or max step, then truncated
+            self.get_CBVs_truncated()
+            info['CBVs_truncated'] = copy.deepcopy(self.CBVs_truncated)
+            print("get next info len of truncated", len(self.CBVs_truncated))
+
             # the safety network only need the ego info at (t+1) step
             if self.safety_network_obs_type == 'ego_info':
-                info['ego_info'] = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicle)
+                info['ego_info'] = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles)
 
-        # when after selecting a new cbv
+        # when after selecting a new CBV
         elif not next_info:
             # the safety network only need constrain_h at (t) step
             if self.safety_network_obs_type == 'ego_info':
-                info['constrain_h'] = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicle, self.ego_agent_learnable)
+                info['constrain_h'] = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
 
         return info
 
@@ -480,19 +505,6 @@ class CarlaEnv(gym.Env):
             poly = np.matmul(R, poly_local).transpose() + np.repeat([[x, y]], 4, axis=0)
             actor_poly_dict[actor.id] = poly
         return actor_poly_dict
-
-    # def _get_actor_info(self, filt):
-    #     actor_trajectory_dict = {}
-    #     actor_acceleration_dict = {}
-    #     actor_angular_velocity_dict = {}
-    #     actor_velocity_dict = {}
-    #
-    #     for actor in self.world.get_actors().filter(filt):
-    #         actor_trajectory_dict[actor.id] = actor.get_transform()
-    #         actor_acceleration_dict[actor.id] = actor.get_acceleration()
-    #         actor_angular_velocity_dict[actor.id] = actor.get_angular_velocity()
-    #         actor_velocity_dict[actor.id] = actor.get_velocity()
-    #     return actor_trajectory_dict, actor_acceleration_dict, actor_angular_velocity_dict, actor_velocity_dict
 
     def _get_obs(self):
         if self.birdeye_render:
@@ -602,7 +614,7 @@ class CarlaEnv(gym.Env):
 
     def _get_reward(self):
         """ Calculate the step reward. """
-        r_collision = -1 if self.collide else 0
+        r_collision = -1 if self.ego_collide else 0
 
         # reward for steering:
         r_steer = -self.ego_vehicle.get_control().steer ** 2
@@ -635,43 +647,51 @@ class CarlaEnv(gym.Env):
             -1:CBV collide with other bvs or not on the road
             0:CBV normal driving
             1:CBV collide with ego vehicle
-            ego_cbv_dis_reward ~ [-1, 1]: the ratio of (init_ego_cbv_dis-current_ego_cbv_dis)/init_ego_cbv_dis
+            ego_CBV_dis_reward ~ [-1, 1]: the ratio of (init_ego_CBV_dis-current_ego_CBV_dis)/init_ego_CBV_dis
         """
-        # prevent the cbv getting too close to the other bvs
-        cbv_min_dis, cbv_min_dis_reward = get_cbv_bv_reward(self.cbv, self.search_radius, self.cbv_nearby_vehicles)
+        CBVs_reward = {}
+        for CBV_id in self.CBVs.keys():
+            # prevent the CBV getting too close to the other bvs
+            # CBV_min_dis, CBV_min_dis_reward = get_CBV_bv_reward(self.CBVs[CBV_id], self.search_radius, self.CBVs_nearby_vehicles[CBV_id])
 
-        # the reward design to prevent cbv stuck traffic flow
-        # cbv_stuck = get_cbv_stuck(self.cbv, self.cbv_nearby_vehicles, self.ego_vehicle, self.ego_nearby_vehicle)
+            # encourage CBV to get closer to the ego
+            ego_CBV_dis_reward = get_CBV_ego_reward(self.ego_vehicle, self.CBVs[CBV_id])  # [-1, 1]
 
-        # encourage cbv to get closer to the ego
-        ego_cbv_dis_reward = get_cbv_ego_reward(self.ego_vehicle, self.cbv)  # [-1, 1]
+            # CBV collision reward (collide with ego reward -> 1; collide with rest bvs reward -> -1)
+            collision_reward = 1 if self.CBVs_collision[CBV_id] == self.ego_vehicle.id else -1
 
-        # since the obs don't have road info, so no need to include in drivable area info
-        off_road = get_actor_off_road(self.cbv) if self.cbv else False  # True or False
+            # final scenario agent rewards
+            CBVs_reward[CBV_id] = ego_CBV_dis_reward + collision_reward
 
-        # cbv collision reward
-        if off_road or (cbv_min_dis < 0.01):  # cbv hit other vehicle or hit the road
-            sparse_reward = -1
-            self.cbv_terminal = True
-        elif self.collide_with_cbv:  # cbv hit the ego
-            sparse_reward = 1
-            self.cbv_terminal = True
-        else:
-            sparse_reward = 0
+        return CBVs_reward
 
-        # final scenario agent rewards
-        cbv_reward = ego_cbv_dis_reward + 2 * sparse_reward
+    def get_CBVs_terminal(self):
+        self.CBVs_terminal = {}
+        self.CBVs_need_clean = []
+        for CBV_id in self.CBVs.keys():
+            # if CBV collide with the other vehicles, then CBV terminated
+            if self.CBVs_collision[CBV_id] is not None:
+                print("CBV: ", CBV_id, " terminated")
+                self.CBVs_terminal[CBV_id] = True
+                self.CBVs_need_clean.append(CBV_id)
+            else:
+                self.CBVs_terminal[CBV_id] = False
 
-        return cbv_reward
+    def get_CBVs_truncated(self):
+        CBV_candidates_id = set(vehicle.id for vehicle in self.CBV_candidates)
+
+        for CBV_id, CBV in self.CBVs.items():
+            if CBV_id not in CBV_candidates_id:
+                print("CBV:", CBV_id, "no longer exists in the CBV candidates")
+                self.CBVs_truncated[CBV_id] = True
+                self.CBVs_need_clean.append(CBV_id)
+            if self.ego_truncated:
+                print("ego truncated, so CBV truncated")
+                self.CBVs_truncated[CBV_id] = True
+                self.CBVs_need_clean.append(CBV_id)
 
     def _terminal(self):
         return not self.scenario_manager._running
-
-    def cbv_truncated(self):
-        cbv_truncated = False
-        if self.scenario_manager.truncated:
-            cbv_truncated = True
-        return cbv_truncated
 
     def _remove_sensor(self):
         if self.lidar_sensor is not None:
@@ -687,37 +707,47 @@ class CarlaEnv(gym.Env):
             self.sem_sensor.destroy()
             self.sem_sensor = None
 
+    def _remove_CBV_sensor(self, CBV_id):
+        sensor = self.CBVs_collision_sensor[CBV_id]
+        sensor.stop()
+        sensor.destroy()
+        self.CBVs_collision_sensor.pop(CBV_id)
+        self.CBVs_collision.pop(CBV_id)
+
     def _remove_ego(self):
         if self.ego_vehicle is not None and CarlaDataProvider.actor_id_exists(self.ego_vehicle.id):
             CarlaDataProvider.remove_actor_by_id(self.ego_vehicle.id)
         self.ego_vehicle = None
 
-    def _remove_cbv(self):
-        if self.cbv is not None and CarlaDataProvider.actor_id_exists(self.cbv.id):
-            CarlaDataProvider.remove_actor_by_id(self.cbv.id)
-            self.cbv = None
-            self.cbv_nearby_vehicles = None
-            # reset the collision with cbv flag
-            self.collide_with_cbv = False
-            self.scenario_manager.collide_with_cbv = False
-            # set the prior cbv in the scenario instance to None, to prevent setting a None vehicle to autopilot
-            self.scenario_manager.scenario_instance.prior_cbv = None
-            print("start remove cbv")
-            self.cbv_terminal = False
+    def _remove_CBV(self):
+        for CBV_id in self.CBVs_need_clean:
+            print("starting removing CBV:", CBV_id)
+            if CarlaDataProvider.actor_id_exists(CBV_id):
+                # remove sensor
+                self._remove_CBV_sensor(CBV_id)
+                # remove CBV
+                CarlaDataProvider.remove_actor_by_id(CBV_id)
+                self.CBVs.pop(CBV_id)
+                self.CBVs_nearby_vehicles.pop(CBV_id)
+                self.CBVs_terminal.pop(CBV_id)
+                self.CBVs_truncated.pop(CBV_id)
+                if self.birdeye_render:
+                    self.birdeye_render.remove_old_CBV(CBV_id)
+        self.CBVs_need_clean = []
 
     def _reset_variables(self):
-        self.old_cbv = None
-        self.cbv = None
-        self.ego_nearby_vehicle = None
-        self.cbv_nearby_vehicles = None
-        self.old_cbv = None
+        self.CBVs = {}
+        self.CBVs_nearby_vehicles = {}
         self.gps_route = None
         self.route = None
         self.global_route_waypoints = None
         self.waypoints = None
-        self.collide_with_cbv = False
-        self.collide = False
-        self.cbv_terminal = False
+        self.ego_collide = False
+        self.CBVs_collision = {}
+        self.CBVs_terminal = {}
+        self.CBVs_truncated = {}
+        self.CBVs_collision_sensor = {}
+        self.CBVs_need_clean = []
 
     def clean_up(self):
         # remove temp variables

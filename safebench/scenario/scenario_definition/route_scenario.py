@@ -59,8 +59,8 @@ class RouteScenario():
         # create the route and ego's position (the start point of the route)
         self.route, self.ego_vehicle, self.gps_route = self._update_route_and_ego(timeout=self.timeout)
         self.background_actors = []
-        self.cbv = None
-        self.cbv_nearby_vehicles = None
+        self.CBVs = {}
+        self.CBVs_nearby_vehicles = {}
         self.criteria = self._create_criteria()
         self.scenario_instance = AdvBehaviorSingle(self.world, self.ego_vehicle, env_params)  # create the scenario instance
 
@@ -170,50 +170,47 @@ class RouteScenario():
         for criterion_name, criterion in self.criteria.items():
             running_status[criterion_name] = criterion.update()
 
-        stop = False
-        truncated = False
-        collision = False
-        collide_with_cbv = False
+        ego_stop = False
+        ego_truncated = False
+        ego_collision = False
         # collision with other objects
         if running_status['collision'][0] == Status.FAILURE:
-            collision = True
-            if running_status['collision'][1] is not None and self.cbv is not None and running_status['collision'][1] == self.cbv.id:
-                # if collision with cbv then don't stop the scenario
-                collide_with_cbv = True
-                self.logger.log(f'>> Ego collide with cbv', color='yellow')
+            ego_collision = True
+            if running_status['collision'][1] is not None and running_status['collision'][1] in self.CBVs.keys():
+                # if collision with CBV then don't stop the scenario
+                self.logger.log(f'>> Ego collide with CBV', color='yellow')
             else:
-                stop = True
-                collide_with_cbv = False
+                ego_stop = True
                 self.logger.log(f'>> Scenario stops due to collision with normal object', color='yellow')
 
         # out of the road detection
         if running_status['off_road'] == Status.FAILURE:
-            stop = True
+            ego_stop = True
             self.logger.log('>> Scenario stops due to off road', color='yellow')
 
         # route completed
         if running_status['route_complete'] == 100:
-            stop = True
+            ego_stop = True
             self.logger.log('>> Scenario stops due to route completion', color='yellow')
 
         # stuck
         if self.mode == 'train_scenario' and running_status['stuck'] == Status.FAILURE:
-            stop = True
-            truncated = True
+            ego_stop = True
+            ego_truncated = True
             self.logger.log('>> Scenario stops due to stuck', color='yellow')
 
         # stop at max step
         if len(running_record) >= self.max_running_step: 
-            stop = True
-            truncated = True
+            ego_stop = True
+            ego_truncated = True
             self.logger.log('>> Scenario stops due to max steps', color='yellow')
 
         if running_status['current_game_time'] >= self.timeout:
-            stop = True
-            truncated = True
+            ego_stop = True
+            ego_truncated = True
             self.logger.log('>> Scenario stops due to timeout', color='yellow')
 
-        return running_status, stop, collision, collide_with_cbv, truncated
+        return running_status, ego_stop, ego_collision, ego_truncated
 
     def _create_criteria(self):
         criteria = {}
@@ -251,30 +248,29 @@ class RouteScenario():
             first row is ego's relative state (x, y, yaw, vx, vy)
             rest row are other bv's relative state (x, y, yaw, vx, vy)
         '''
-        if self.cbv:  # the cbv is not None
+        CBVs_obs = {}
+        for CBV_id in self.CBVs.keys():
             # absolute state
-            cbv_state = np.array(self._get_actor_state(self.cbv))
+            CBV_state = np.array(self._get_actor_state(self.CBVs[CBV_id]))
             # relative state
-            ego_state = np.array(self._get_actor_state(self.ego_vehicle)) - cbv_state
-
+            ego_state = np.array(self._get_actor_state(self.ego_vehicle)) - CBV_state
             actor_info = [ego_state]  # the first info belongs to the ego vehicle
-            for actor in self.cbv_nearby_vehicles:
+            for actor in self.CBVs_nearby_vehicles[CBV_id]:
                 if actor.id == self.ego_vehicle.id:
                     continue  # except the ego actor
                 elif len(actor_info) < desired_nearby_vehicle:
-                    actor_state = np.array(self._get_actor_state(actor)) - cbv_state
+                    actor_state = np.array(self._get_actor_state(actor)) - CBV_state
                     actor_info.append(actor_state)  # add the info of the other actor to the list
                 else:
                     # avoiding too many nearby vehicles
                     break
             while len(actor_info) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
-                actor_info.append([0] * len(cbv_state))
+                actor_info.append([0] * len(CBV_state))
 
-            actor_info = np.array(actor_info, dtype=np.float32)
-        else:
-            actor_info = None
+            CBVs_obs[CBV_id] = np.array(actor_info, dtype=np.float32)
+
         return {
-            'cbv_obs': actor_info  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
+            'CBVs_obs': CBVs_obs  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
     def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=3):

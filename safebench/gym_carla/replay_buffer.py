@@ -54,7 +54,7 @@ class RouteReplayBuffer:
         self.logger = logger
 
         if scenario_policy_type == 'offpolicy' and start_episode != 0:
-            model_path = os.path.join(scenario_config['ROOT_DIR'], scenario_config['model_path'], scenario_config['cbv_selection'])
+            model_path = os.path.join(scenario_config['ROOT_DIR'], scenario_config['model_path'], scenario_config['CBV_selection'])
             agent_info = 'EgoPolicy_' + scenario_config['agent_policy'] + "-" + scenario_config['agent_obs_type']
             safety_network = scenario_config['safety_network']
             scenario_name = "all" if scenario_config['scenario_id'] is None else 'scenario' + str(scenario_config['scenario_id'])
@@ -84,21 +84,45 @@ class RouteReplayBuffer:
             self.buffer_constrain_h = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
 
-    def streamline_cbv_data(self, data_list, additional_dict):
+    def streamline_CBV_data(self, data_list, additional_dict):
         """
-            1. remove the meaningless data when cbv is None (scenario obs, next scenario obs, scenario action are all None)
-            2. remove the truncated cbv data
-            key: the done came from the cbv view instead of ego view
+            1. remove the meaningless data when CBV is None (scenario obs, next scenario obs, scenario action are all None)
+            2. remove the truncated CBV data
+            key: the done came from the CBV view instead of ego view
         """
         assert len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
-        filtered_data = [
-            (action, next_info['cbv_terminal'], info['cbv_obs'], next_info['cbv_obs'], next_info['cbv_reward'])
-            for action, info, next_info in zip(data_list[1], additional_dict[0], additional_dict[1])
-            if ((info['cbv_obs'] is not None) or (next_info['cbv_obs'] is not None) or (action is not None)) and (next_info['cbv_truncated'] is False)
-        ]  # assert if scenario obs is None then the next scenario obs and action are all None
-        scenario_actions, dones, obs, next_obs, rewards = zip(*filtered_data) if filtered_data else ([], [], [], [], [])
+        scenario_actions = []
+        terminals = []
+        obs = []
+        next_obs = []
+        rewards = []
+        for actions, infos, next_infos in zip(data_list[1], additional_dict[0], additional_dict[1]):
+            print("starting storing-------------------")
+            print("action length is:", len(actions))
+            print("next obs length is:", len(next_infos['CBVs_obs']))
+            print("obs length is:", len(infos['CBVs_obs']))
+            print("reward length is:", len(next_infos['CBVs_reward']))
+            print("truncated length is:", len(next_infos['CBVs_truncated']))
+            print("terminal length is:", len(next_infos['CBVs_terminal']))
+            assert len(actions) == len(next_infos['CBVs_obs']) == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "CBVs should be the same"
 
-        return scenario_actions, dones, obs, next_obs, rewards
+            for CBV_id in actions.keys():
+                if next_infos['CBVs_truncated'][CBV_id] is not True:
+                    # store the trajectory that is not truncated
+                    scenario_actions.append(actions[CBV_id])
+                    terminals.append(next_infos['CBVs_terminal'][CBV_id])
+                    obs.append(infos['CBVs_obs'][CBV_id])
+                    next_obs.append(next_infos['CBVs_obs'][CBV_id])
+                    rewards.append(next_infos['CBVs_reward'][CBV_id])
+
+        # filtered_data = [
+        #     (action, next_info['CBVs_terminal'], info['CBVs_obs'], next_info['CBVs_obs'], next_info['CBVs_reward'])
+        #     for action, info, next_info in zip(data_list[1], additional_dict[0], additional_dict[1])
+        #     if ((info['CBVs_obs'] is not None) or (next_info['CBVs_obs'] is not None) or (action is not None)) and (next_info['CBV_truncated'] is False)
+        # ]  # assert if scenario obs is None then the next scenario obs and action are all None
+        # scenario_actions, dones, obs, next_obs, rewards = zip(*filtered_data) if filtered_data else ([], [], [], [], [])
+
+        return scenario_actions, terminals, obs, next_obs, rewards
 
     def store(self, data_list, additional_dict):
         """
@@ -107,12 +131,12 @@ class RouteReplayBuffer:
         """
         # store for scenario training
         if self.mode == 'train_scenario':
-            scenario_actions, dones, obs, next_obs, rewards = self.streamline_cbv_data(data_list, additional_dict)
+            scenario_actions, dones, obs, next_obs, rewards = self.streamline_CBV_data(data_list, additional_dict)
             for s_i in range(len(dones)):
                 self.buffer_actions[self.pos] = np.array(scenario_actions[s_i])
-                self.buffer_obs[self.pos] = np.array(obs[s_i])  # cbv_obs
-                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])  # cbv next obs from next info
-                self.buffer_rewards[self.pos] = np.array(rewards[s_i])  # cbv reward
+                self.buffer_obs[self.pos] = np.array(obs[s_i])  # CBV_obs
+                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])  # CBV next obs from next info
+                self.buffer_rewards[self.pos] = np.array(rewards[s_i])  # CBV reward
                 self.buffer_dones[self.pos] = np.array(dones[s_i])
                 self.pos += 1
                 if self.pos == self.buffer_capacity:
@@ -167,8 +191,8 @@ class RouteReplayBuffer:
         if self.mode == 'train_scenario':
             batch = {
                 'action': np.stack(self.buffer_actions)[batch_indices],  # action
-                'cbv_obs': np.stack(self.buffer_obs)[batch_indices, :],  # obs
-                'next_cbv_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
+                'CBVs_obs': np.stack(self.buffer_obs)[batch_indices, :],  # obs
+                'next_CBVs_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
                 'reward': np.stack(self.buffer_rewards)[batch_indices],  # reward
                 'done': np.stack(self.buffer_dones)[batch_indices],  # done
             }
