@@ -99,7 +99,6 @@ class RouteReplayBuffer:
         for actions, infos, next_infos in zip(data_list[1], additional_dict[0], additional_dict[1]):
             assert len(actions) == len(next_infos['CBVs_obs']) == len(infos['CBVs_obs']) \
                 == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "length of the trajectory should be the same"
-
             for CBV_id in actions.keys():
                 if next_infos['CBVs_truncated'][CBV_id] is not True:
                     # store the trajectory that is not truncated
@@ -108,7 +107,6 @@ class RouteReplayBuffer:
                     obs.append(infos['CBVs_obs'][CBV_id])
                     next_obs.append(next_infos['CBVs_obs'][CBV_id])
                     rewards.append(next_infos['CBVs_reward'][CBV_id])
-
         return scenario_actions, terminated, obs, next_obs, rewards
 
     def store(self, data_list, additional_dict):

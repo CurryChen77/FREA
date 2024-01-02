@@ -280,10 +280,10 @@ class CarlaRunner:
                 infos = next_transition_infos
                 obs = copy.deepcopy(next_transition_obs)
 
-                agent_episode_reward.append(np.mean(rewards))
+                if self.mode == 'train_agent':
+                    agent_episode_reward.append(np.mean(rewards))
                 if self.mode == 'train_scenario':
-                    scenario_reward = [list(info['CBVs_reward'].values()) for info in next_infos]
-                    scenario_reward = np.array(scenario_reward)
+                    scenario_reward = np.concatenate([np.array(list(info['CBVs_reward'].values())) for info in next_infos])
                     scenario_episode_reward.append(np.mean(scenario_reward))
 
                 # train off-policy agent or scenario

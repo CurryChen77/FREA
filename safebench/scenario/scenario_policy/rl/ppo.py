@@ -144,7 +144,6 @@ class PPO(BasePolicy):
         else:
             info_batch = None
 
-        print("when PPO process info, the length of obs is:", len(CBVs_obs))
         return info_batch, CBVs_id, env_index
 
     def get_init_action(self, state, deterministic=False):

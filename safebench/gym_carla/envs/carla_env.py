@@ -664,21 +664,13 @@ class CarlaEnv(gym.Env):
         CBVs_terminated = {}
         for CBV_id in self.CBVs.keys():
             # if CBV collide with the other vehicles, then CBV terminated
-            if self.CBVs_collision[CBV_id] is not None:
-                print("CBV: ", CBV_id, " terminated")
-                CBVs_terminated[CBV_id] = True
-            else:
-                CBVs_terminated[CBV_id] = False
+            CBVs_terminated[CBV_id] = True if self.CBVs_collision[CBV_id] is not None else False
         return CBVs_terminated
 
     def _get_CBVs_truncated(self):
         CBVs_truncated = {}
         for CBV_id, CBV in self.CBVs.items():
-            if CBV_id not in self.CBV_candidates_id:  # the CBV candidates id came from the last step
-                print("CBV:", CBV_id, "no longer exists in the CBV candidates")
-                CBVs_truncated[CBV_id] = True
-            elif self.ego_truncated:
-                print("ego truncated, so CBV truncated")
+            if CBV_id not in self.CBV_candidates_id or self.ego_truncated:  # the CBV candidates id came from the last step
                 CBVs_truncated[CBV_id] = True
             else:
                 CBVs_truncated[CBV_id] = False
@@ -707,7 +699,6 @@ class CarlaEnv(gym.Env):
                 sensor.stop()
                 sensor.destroy()
             self.CBVs_collision_sensor = {}
-            print("successfully destroy the rest CBV collision sensor")
 
     def _remove_CBV_sensor(self, CBV_id):
         sensor = self.CBVs_collision_sensor[CBV_id]
@@ -725,7 +716,6 @@ class CarlaEnv(gym.Env):
         # remove the truncated CBV from the CBV list and set them free to normal bvs
         for CBV_id, truncated in CBVs_truncated.items():
             if truncated:
-                print("CBV:", CBV_id, "truncated, need to set them free")
                 self._remove_CBV_sensor(CBV_id)  # remove the CBV collision sensor
                 self.CBVs[CBV_id].set_autopilot(enabled=True)  # set the original CBV to normal bvs
                 # remove the truncated CBV from existing CBV list
@@ -737,7 +727,6 @@ class CarlaEnv(gym.Env):
         # clean the terminated CBV
         for CBV_id, terminated in CBVs_terminated.items():
             if terminated:
-                print("CBV:", CBV_id, "terminated, need cleaning")
                 # remove sensor
                 self._remove_CBV_sensor(CBV_id)
                 # clean the CBV from the environment
