@@ -709,7 +709,7 @@ class CarlaDataProvider(object):
             Return list of actors and their ids
             Note: iteritems from six is used to allow compatibility with Python 2 and 3
         """
-        return iteritems(CarlaDataProvider._carla_actor_pool)
+        return CarlaDataProvider._carla_actor_pool
 
     @staticmethod
     def actor_id_exists(actor_id):

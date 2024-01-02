@@ -189,8 +189,6 @@ def find_closest_vehicle(ego_vehicle, radius=40, CBV_candidates=None):
     min_dis = radius
     CBV = None
     ego_location = CarlaDataProvider.get_location(ego_vehicle)
-    if CBV_candidates is None:
-        CBV_candidates = get_CBV_candidates(ego_vehicle, radius)  # find the CBV candidates
 
     for vehicle in CBV_candidates:
         vehicle_location = CarlaDataProvider.get_location(vehicle)
@@ -208,14 +206,14 @@ def get_nearby_vehicles(center_vehicle, radius=40):
     '''
     center_location = CarlaDataProvider.get_location(center_vehicle)
 
-    # get all the vehicles on the world
-    all_vehicles = CarlaDataProvider._world.get_actors().filter('vehicle.*')
+    # get all the vehicles on the world using CarlaDataProvider
+    all_vehicles = CarlaDataProvider.get_actors()
 
     # store the nearby vehicle information [vehicle, distance]
     nearby_vehicles_info = []
 
-    for vehicle in all_vehicles:
-        if vehicle.id != center_vehicle.id:  # except the center vehicle
+    for vehicle_id, vehicle in all_vehicles.items():
+        if vehicle_id != center_vehicle.id:  # except the center vehicle
             # the location of other vehicles
             vehicle_location = CarlaDataProvider.get_location(vehicle)
             distance = center_location.distance(vehicle_location)
@@ -241,11 +239,11 @@ def get_CBV_candidates(center_vehicle, radius=40):
     center_forward_vector = center_transform.rotation.get_forward_vector()
 
     # get all the vehicles on the world
-    all_vehicles = CarlaDataProvider._world.get_actors().filter('vehicle.*')
+    all_vehicles = CarlaDataProvider.get_actors()  # use the actors pool in CarlaDataProvider
     # store the nearby vehicle information [vehicle, distance]
     nearby_vehicles_info = []
-    for vehicle in all_vehicles:
-        if vehicle.id != center_vehicle.id:  # 1. except the center vehicle
+    for vehicle_id, vehicle in all_vehicles.items():
+        if vehicle_id != center_vehicle.id:  # 1. except the center vehicle
             vehicle_transform = CarlaDataProvider.get_transform(vehicle)
             vehicle_location = vehicle_transform.location
 
@@ -256,15 +254,14 @@ def get_CBV_candidates(center_vehicle, radius=40):
             if dot_product > 0.0 or abs(center_transform.rotation.yaw - vehicle_transform.rotation.yaw) < 45:
                 distance = center_location.distance(vehicle_location)
                 if distance <= radius:
-                    nearby_vehicles_info.append([vehicle, distance])
+                    nearby_vehicles_info.append([vehicle, distance, vehicle_id])
 
     # sort the nearby vehicles according to the distance in ascending order
     nearby_vehicles_info.sort(key=lambda x: x[1])
 
-    # return the nearby vehicles list
-    nearby_vehicles = [info[0] for info in nearby_vehicles_info]
+    nearby_vehicles, _, nearby_vehicles_id = zip(*nearby_vehicles_info) if nearby_vehicles_info else ([], [], [])
 
-    return nearby_vehicles
+    return nearby_vehicles, nearby_vehicles_id
 
 
 def get_min_distance_across_bboxes(veh1, veh2):

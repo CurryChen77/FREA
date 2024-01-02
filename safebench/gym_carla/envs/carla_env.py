@@ -79,6 +79,7 @@ class CarlaEnv(gym.Env):
         self.CBVs_terminal = {}
         self.CBVs_truncated = {}
         self.CBVs_need_clean = []
+        self.CBV_candidates_id = None
         self.ego_collide = False
         self.ego_truncated = False
         self.search_radius = env_params['search_radius']
@@ -215,32 +216,35 @@ class CarlaEnv(gym.Env):
     def CBVs_selection(self):
         # when training the ego agent, don't need to calculate the CBV
         if self.mode != 'train_agent' and self.time_step % 5 == 0 and len(self.CBVs) <= 2:
+            # select the candidates of CBVs
+            CBV_candidates, self.CBV_candidates_id = get_CBV_candidates(self.ego_vehicle, 20)
+            if CBV_candidates:
+                # selecting the CBV
+                # 1.Rule-based
+                if self.CBVs_select_method == 'rule-based':
+                    CBV = find_closest_vehicle(self.ego_vehicle, self.search_radius, CBV_candidates)
+                # 2.attention-based
+                elif self.CBVs_select_method == 'attention-based':
+                    _, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
+                        self.ego_vehicle, CBV_candidates, self.waypoints, self.red_light_state
+                    )
+                    CBV = most_relevant_vehicle
+                else:
+                    raise ValueError(f'Unknown CBV selecting method {self.CBVs_select_method}')
 
-            # selecting the CBV
-            # 1.Rule-based
-            if self.CBVs_select_method == 'rule-based':
-                CBV = find_closest_vehicle(self.ego_vehicle, self.search_radius, self.CBV_candidates)
-            # 2.attention-based
-            elif self.CBVs_select_method == 'attention-based':
-                _, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
-                    self.ego_vehicle, self.CBV_candidates, self.waypoints, self.red_light_state
-                )
-                CBV = most_relevant_vehicle
-            else:
-                raise ValueError(f'Unknown CBV selecting method {self.CBVs_select_method}')
+                if CBV:
+                    # if CBV not in the CBVs list, put the new one in
+                    if CBV.id not in self.CBVs.keys():
+                        self.CBVs[CBV.id] = CBV
+                        CBV.set_autopilot(enabled=False)  # prepared to be controlled
+                        print("setting CBV:", CBV.id, "collision sensor")
+                        self.set_CBV_sensor(CBV)
+                        # update the CBV for BEV visualization
+                        if self.birdeye_render:
+                            self.birdeye_render.set_CBV(CBV.id)
 
-            if CBV:
-                # if CBV not in the CBVs list, put the new one in
-                if CBV.id not in self.CBVs.keys():
-                    self.CBVs[CBV.id] = CBV
-                    CBV.set_autopilot(enabled=False)  # prepared to be controlled
-                    self.set_CBV_sensor(CBV)
-                    # update the CBV for BEV visualization
-                    if self.birdeye_render:
-                        self.birdeye_render.set_CBV(CBV.id)  # TODO still need to remove the terminated CBV using remove_CBV()
-
-                # update the nearby vehicles around the CBV
-                self.CBVs_nearby_vehicles[CBV.id] = get_nearby_vehicles(CBV, self.search_radius)
+                    # update the nearby vehicles around the CBV
+                    self.CBVs_nearby_vehicles[CBV.id] = get_nearby_vehicles(CBV, self.search_radius)
         print("CBV list:", self.CBVs.keys())
         self.scenario_manager.update_CBV_nearby_vehicles(self.CBVs, self.CBVs_nearby_vehicles)
 
@@ -271,9 +275,6 @@ class CarlaEnv(gym.Env):
         # find ego nearby vehicles
         if self.safety_network_obs_type == 'ego_info':
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
-
-        # find CBV candidates
-        self.CBV_candidates = get_CBV_candidates(self.ego_vehicle, 20)
 
         # set controlled bv
         self.CBVs_selection()
@@ -422,7 +423,6 @@ class CarlaEnv(gym.Env):
         self.scenario_manager.update_running_status()
         self.ego_collide = self.scenario_manager.ego_collision
         self.ego_truncated = self.scenario_manager.ego_truncated
-        self.CBV_candidates = get_CBV_candidates(self.ego_vehicle, 20)
 
         origin_info = self._get_info(next_info=True)  # info of old CBV
 
@@ -487,7 +487,7 @@ class CarlaEnv(gym.Env):
 
     def _get_actor_polygons(self, filt):
         actor_poly_dict = {}
-        for actor in self.world.get_actors().filter(filt):
+        for actor in CarlaDataProvider._world.get_actors().filter(filt):
             # Get x, y and yaw of the actor
             trans = actor.get_transform()
             x = trans.location.x
@@ -678,10 +678,8 @@ class CarlaEnv(gym.Env):
                 self.CBVs_terminal[CBV_id] = False
 
     def get_CBVs_truncated(self):
-        CBV_candidates_id = set(vehicle.id for vehicle in self.CBV_candidates)
-
         for CBV_id, CBV in self.CBVs.items():
-            if CBV_id not in CBV_candidates_id:
+            if CBV_id not in self.CBV_candidates_id:
                 print("CBV:", CBV_id, "no longer exists in the CBV candidates")
                 self.CBVs_truncated[CBV_id] = True
                 self.CBVs_need_clean.append(CBV_id)
@@ -706,6 +704,13 @@ class CarlaEnv(gym.Env):
             self.sem_sensor.stop()
             self.sem_sensor.destroy()
             self.sem_sensor = None
+        if self.CBVs_collision_sensor:
+            # remove the collision sensor that have not been destroyed
+            for sensor in self.CBVs_collision_sensor.values():
+                sensor.stop()
+                sensor.destroy()
+            self.CBVs_collision_sensor = {}
+            print("successfully destroy the rest CBV collision sensor")
 
     def _remove_CBV_sensor(self, CBV_id):
         sensor = self.CBVs_collision_sensor[CBV_id]
@@ -743,10 +748,10 @@ class CarlaEnv(gym.Env):
         self.global_route_waypoints = None
         self.waypoints = None
         self.ego_collide = False
+        self.CBV_candidates_id = None
         self.CBVs_collision = {}
         self.CBVs_terminal = {}
         self.CBVs_truncated = {}
-        self.CBVs_collision_sensor = {}
         self.CBVs_need_clean = []
 
     def clean_up(self):
