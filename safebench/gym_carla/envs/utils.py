@@ -238,8 +238,8 @@ def get_CBV_candidates(center_vehicle, radius=40):
     center_location = center_transform.location
     center_forward_vector = center_transform.rotation.get_forward_vector()
 
-    # get all the vehicles on the world
-    all_vehicles = CarlaDataProvider.get_actors()  # use the actors pool in CarlaDataProvider
+    # get all the vehicles use the actors pool in CarlaDataProvider
+    all_vehicles = CarlaDataProvider.get_actors()
     # store the nearby vehicle information [vehicle, distance]
     nearby_vehicles_info = []
     for vehicle_id, vehicle in all_vehicles.items():

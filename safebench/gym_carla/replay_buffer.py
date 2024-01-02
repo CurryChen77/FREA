@@ -92,37 +92,24 @@ class RouteReplayBuffer:
         """
         assert len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
         scenario_actions = []
-        terminals = []
+        terminated = []
         obs = []
         next_obs = []
         rewards = []
         for actions, infos, next_infos in zip(data_list[1], additional_dict[0], additional_dict[1]):
-            print("starting storing-------------------")
-            print("action length is:", len(actions))
-            print("next obs length is:", len(next_infos['CBVs_obs']))
-            print("obs length is:", len(infos['CBVs_obs']))
-            print("reward length is:", len(next_infos['CBVs_reward']))
-            print("truncated length is:", len(next_infos['CBVs_truncated']))
-            print("terminal length is:", len(next_infos['CBVs_terminal']))
-            assert len(actions) == len(next_infos['CBVs_obs']) == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "CBVs should be the same"
+            assert len(actions) == len(next_infos['CBVs_obs']) == len(infos['CBVs_obs']) \
+                == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "length of the trajectory should be the same"
 
             for CBV_id in actions.keys():
                 if next_infos['CBVs_truncated'][CBV_id] is not True:
                     # store the trajectory that is not truncated
                     scenario_actions.append(actions[CBV_id])
-                    terminals.append(next_infos['CBVs_terminal'][CBV_id])
+                    terminated.append(next_infos['CBVs_terminated'][CBV_id])
                     obs.append(infos['CBVs_obs'][CBV_id])
                     next_obs.append(next_infos['CBVs_obs'][CBV_id])
                     rewards.append(next_infos['CBVs_reward'][CBV_id])
 
-        # filtered_data = [
-        #     (action, next_info['CBVs_terminal'], info['CBVs_obs'], next_info['CBVs_obs'], next_info['CBVs_reward'])
-        #     for action, info, next_info in zip(data_list[1], additional_dict[0], additional_dict[1])
-        #     if ((info['CBVs_obs'] is not None) or (next_info['CBVs_obs'] is not None) or (action is not None)) and (next_info['CBV_truncated'] is False)
-        # ]  # assert if scenario obs is None then the next scenario obs and action are all None
-        # scenario_actions, dones, obs, next_obs, rewards = zip(*filtered_data) if filtered_data else ([], [], [], [], [])
-
-        return scenario_actions, terminals, obs, next_obs, rewards
+        return scenario_actions, terminated, obs, next_obs, rewards
 
     def store(self, data_list, additional_dict):
         """

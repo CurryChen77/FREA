@@ -563,7 +563,6 @@ class BirdeyeRender(object):
         else:
             raise ValueError('hero_actor is None')
 
-
     def clean_up(self):
         self.CBV_in_all_envs = []
         self.heros_in_all_envs = []

@@ -291,9 +291,12 @@ class RouteScenario():
         while len(ego_info) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
             ego_info.append([0] * len(ego_state))
 
-        ego_info = np.array(ego_info, dtype=np.float32)
         # get the info of the ego vehicle and the other actors
-        return ego_info
+        ego_info = np.array(ego_info, dtype=np.float32)
+
+        return {
+            'ego_info': ego_info
+        }
 
     def clean_up(self):
         # stop criterion and destroy sensors
