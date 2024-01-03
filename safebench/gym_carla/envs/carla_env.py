@@ -76,7 +76,6 @@ class CarlaEnv(gym.Env):
         self.gps_route = None
         self.route = None
         self.CBVs_collision = {}
-        self.CBV_candidates_id = None
         self.ego_collide = False
         self.search_radius = env_params['search_radius']
         self.agent_obs_type = env_params['agent_obs_type']
@@ -210,9 +209,9 @@ class CarlaEnv(gym.Env):
 
     def CBVs_selection(self):
         # when training the ego agent, don't need to calculate the CBV
-        if self.mode != 'train_agent' and self.time_step % 10 == 0 and len(self.CBVs) < 2:
+        if self.mode != 'train_agent' and self.time_step % 5 == 0 and len(self.CBVs) < 2:
             # select the candidates of CBVs
-            CBV_candidates, self.CBV_candidates_id = get_CBV_candidates(self.ego_vehicle, 20)
+            CBV_candidates, _ = get_CBV_candidates(self.ego_vehicle, 100)
             if CBV_candidates:
                 # selecting the CBV
                 # 1.Rule-based
@@ -322,14 +321,10 @@ class CarlaEnv(gym.Env):
 
     def visualize_ego_route_CBV(self):
         # Visualize the controlled bv
-        if self.CBVs and self.spectator:
-            for CBV in self.CBVs.values():
-                CBV_transform = CarlaDataProvider.get_transform(CBV)
-                CBV_begin = carla.Location(x=CBV_transform.location.x, y=CBV_transform.location.y, z=3)
-                CBV_angle = math.radians(CBV_transform.rotation.yaw)
-                CBV_end = CBV_begin + carla.Location(x=math.cos(CBV_angle), y=math.sin(CBV_angle))
-                self.world.debug.draw_arrow(CBV_begin, CBV_end, arrow_size=0.3, color=carla.Color(0, 0, 255, 0),
-                                            life_time=0.11)
+        # if self.CBVs and self.spectator:
+        #     for CBV in self.CBVs.values():
+        #         CBV_location = CarlaDataProvider.get_location(CBV)
+        #         self.world.debug.draw_point(CBV_location + carla.Location(z=3), size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11)
 
         # if the ego agent is learnable and need to viz the route, then draw the target waypoints
         if self.ego_agent_learnable and self.viz_route:
@@ -419,7 +414,7 @@ class CarlaEnv(gym.Env):
         origin_info = self._get_info(next_info=True)  # info of old CBV
 
         # if CBV collided, then remove it
-        self._remove_and_clean_CBV(origin_info['CBVs_truncated'], origin_info['CBVs_terminated'])
+        self._remove_and_clean_CBV(origin_info['CBVs_terminated'])
 
         # select the new CBV
         self.CBVs_selection() if self.scenario_manager.running else None
@@ -667,7 +662,7 @@ class CarlaEnv(gym.Env):
         CBVs_truncated = {}
         for CBV_id, CBV in self.CBVs.items():
             # if the Ego stop or the CBV no longer exists in the CBV candidates, then the CBV is truncated
-            if CBV_id not in self.CBV_candidates_id or not self.scenario_manager.running:
+            if self.scenario_manager.running:
                 CBVs_truncated[CBV_id] = True
             else:
                 CBVs_truncated[CBV_id] = False
@@ -709,8 +704,7 @@ class CarlaEnv(gym.Env):
             CarlaDataProvider.remove_actor_by_id(self.ego_vehicle.id)
         self.ego_vehicle = None
 
-    def _remove_and_clean_CBV(self, CBVs_truncated, CBVs_terminated):
-        # TODO maybe if the CBV is truncated, we don't need to clean the CBV
+    def _remove_and_clean_CBV(self, CBVs_terminated):
         # # remove the truncated CBV from the CBV list and set them free to normal bvs
         # for CBV_id, truncated in CBVs_truncated.items():
         #     if truncated:
@@ -745,7 +739,6 @@ class CarlaEnv(gym.Env):
         self.global_route_waypoints = None
         self.waypoints = None
         self.ego_collide = False
-        self.CBV_candidates_id = None
         self.CBVs_collision = {}
 
     def clean_up(self):
