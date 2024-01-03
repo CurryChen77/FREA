@@ -25,6 +25,7 @@ class ScenarioManager(object):
         self.scenic = use_scenic
         self.ego_collision = False
         self.ego_truncated = False
+        self.running = False
         self.CBVs = None
         self._reset()
 
@@ -33,7 +34,7 @@ class ScenarioManager(object):
         self.route_scenario = None
         self.ego_vehicle = None
         self.CBVs = None
-        self._running = False
+        self.running = False
         self.ego_collision = False
         self.ego_truncated = False
         self._timestamp_last_run = 0.0
@@ -56,7 +57,7 @@ class ScenarioManager(object):
         self.route_scenario.CBVs_nearby_vehicles = CBVs_nearby_vehicles
 
     def run_scenario(self):
-        self._running = True
+        self.running = True
         self._init_scenarios()  # generate the background vehicle
 
     def _init_scenarios(self):
@@ -64,20 +65,20 @@ class ScenarioManager(object):
         self.route_scenario.initialize_actors()  # generate the background vehicle
     
     def stop_scenario(self):
-        self._running = False
+        self.running = False
 
     def update_running_status(self):
         record, ego_stop, ego_collision, ego_truncated = self.route_scenario.get_running_status(self.running_record)
         self.running_record.append(record)  # contain every step's record
         if ego_stop:
-            self._running = False
+            self.running = False
         if ego_collision:
             self.ego_collision = True
         if ego_truncated:
             self.ego_truncated = True
 
     def get_update(self, timestamp, scenario_action):
-        if self._timestamp_last_run < timestamp.elapsed_seconds and self._running:
+        if self._timestamp_last_run < timestamp.elapsed_seconds and self.running:
             self._timestamp_last_run = timestamp.elapsed_seconds
             GameTime.on_carla_tick(timestamp)
             # update the scenario instance receiving the scenario action

@@ -354,10 +354,7 @@ class CarlaRunner:
 
                 # save video
                 if self.save_video:
-                    if self.scenario_category == 'planning':
-                        self.logger.add_frame(pygame.surfarray.array3d(self.display).transpose(1, 0, 2))
-                    else:
-                        self.logger.add_frame({s_i['scenario_id']: ego_actions[n_i]['annotated_image'] for n_i, s_i in enumerate(infos)})
+                    self.logger.add_frame(pygame.surfarray.array3d(self.display).transpose(1, 0, 2))
 
                 # accumulate scores of corresponding scenario
                 reward_idx = 0
