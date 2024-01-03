@@ -30,7 +30,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
     get_actor_off_road, get_CBV_bv_reward, get_constrain_h, linear_map, \
-    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity
+    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -321,10 +321,10 @@ class CarlaEnv(gym.Env):
 
     def visualize_ego_route_CBV(self):
         # Visualize the controlled bv
-        # if self.CBVs and self.spectator:
-        #     for CBV in self.CBVs.values():
-        #         CBV_location = CarlaDataProvider.get_location(CBV)
-        #         self.world.debug.draw_point(CBV_location + carla.Location(z=3), size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11)
+        if self.CBVs and self.spectator:
+            for CBV in self.CBVs.values():
+                CBV_location = CarlaDataProvider.get_location(CBV)
+                self.world.debug.draw_point(CBV_location + carla.Location(z=3), size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11)
 
         # if the ego agent is learnable and need to viz the route, then draw the target waypoints
         if self.ego_agent_learnable and self.viz_route:
@@ -414,7 +414,7 @@ class CarlaEnv(gym.Env):
         origin_info = self._get_info(next_info=True)  # info of old CBV
 
         # if CBV collided, then remove it
-        self._remove_and_clean_CBV(origin_info['CBVs_terminated'])
+        self._remove_and_clean_CBV(origin_info)
 
         # select the new CBV
         self.CBVs_selection() if self.scenario_manager.running else None
@@ -661,8 +661,11 @@ class CarlaEnv(gym.Env):
     def _get_CBVs_truncated(self):
         CBVs_truncated = {}
         for CBV_id, CBV in self.CBVs.items():
-            # if the Ego stop or the CBV no longer exists in the CBV candidates, then the CBV is truncated
-            if self.scenario_manager.running:
+            if not self.scenario_manager.running:
+                # if the Ego stop or the CBV no longer exists in the CBV candidates, then the CBV is truncated
+                CBVs_truncated[CBV_id] = True
+            elif get_distance_across_centers(self.ego_vehicle, CBV) > self.search_radius:
+                # if the CBV is too far away from the ego vehicle, then no long need the CBV
                 CBVs_truncated[CBV_id] = True
             else:
                 CBVs_truncated[CBV_id] = False
@@ -704,20 +707,22 @@ class CarlaEnv(gym.Env):
             CarlaDataProvider.remove_actor_by_id(self.ego_vehicle.id)
         self.ego_vehicle = None
 
-    def _remove_and_clean_CBV(self, CBVs_terminated):
-        # # remove the truncated CBV from the CBV list and set them free to normal bvs
-        # for CBV_id, truncated in CBVs_truncated.items():
-        #     if truncated:
-        #         CBV = self.CBVs.pop(CBV_id, None)
-        #         if CBV is not None:
-        #             self._remove_CBV_sensor(CBV_id)  # remove the CBV collision sensor
-        #             # remove the truncated CBV from existing CBV list
-        #             CBV.set_autopilot(enabled=True)  # set the original CBV to normal bvs
-        #             self.CBVs_nearby_vehicles.pop(CBV_id)
-        #             if self.birdeye_render:
-        #                 self.birdeye_render.remove_old_CBV(CBV_id)
+    def _remove_and_clean_CBV(self, info):
+        # remove the truncated CBV from the CBV list and set them free to normal bvs
+        CBVs_truncated = info['CBVs_truncated']
+        for CBV_id, truncated in CBVs_truncated.items():
+            if truncated:
+                CBV = self.CBVs.pop(CBV_id, None)
+                if CBV is not None:
+                    self._remove_CBV_sensor(CBV_id)  # remove the CBV collision sensor
+                    # remove the truncated CBV from existing CBV list
+                    CBV.set_autopilot(enabled=True)  # set the original CBV to normal bvs
+                    self.CBVs_nearby_vehicles.pop(CBV_id)
+                    if self.birdeye_render:
+                        self.birdeye_render.remove_old_CBV(CBV_id)
 
         # clean the terminated CBV
+        CBVs_terminated = info['CBVs_terminated']
         for CBV_id, terminated in CBVs_terminated.items():
             if terminated:
                 CBV = self.CBVs.pop(CBV_id, None)

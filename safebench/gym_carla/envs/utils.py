@@ -181,7 +181,7 @@ def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_
     return nearby_spawn_points
 
 
-def find_closest_vehicle(ego_vehicle, radius=40, CBV_candidates=None):
+def find_closest_vehicle(ego_vehicle, radius=20, CBV_candidates=None):
     '''
         rule-based method to find the CBV:
         find the closest vehicle among all the CBV candidates
@@ -200,7 +200,7 @@ def find_closest_vehicle(ego_vehicle, radius=40, CBV_candidates=None):
     return CBV
 
 
-def get_nearby_vehicles(center_vehicle, radius=40):
+def get_nearby_vehicles(center_vehicle, radius=20):
     '''
         return the nearby vehicles around the center vehicle
     '''
