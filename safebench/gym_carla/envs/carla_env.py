@@ -209,7 +209,7 @@ class CarlaEnv(gym.Env):
 
     def CBVs_selection(self):
         # when training the ego agent, don't need to calculate the CBV
-        if self.mode != 'train_agent' and self.time_step % 5 == 0 and len(self.CBVs) < 2:
+        if self.mode != 'train_agent' and len(self.CBVs) < 2 and self.time_step % 2 == 0:
             # select the candidates of CBVs
             CBV_candidates, _ = get_CBV_candidates(self.ego_vehicle, 100)
             if CBV_candidates:

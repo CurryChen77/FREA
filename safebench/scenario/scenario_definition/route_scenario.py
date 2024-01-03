@@ -226,7 +226,7 @@ class RouteScenario():
             criteria['distance_to_route'] = InRouteTest(self.ego_vehicle, route=route, offroad_max=30)
             criteria['lane_invasion'] = KeepLaneTest(actor=self.ego_vehicle, optional=True)  # need sensor
         elif self.mode == 'train_scenario':
-            criteria['stuck'] = StuckDetectorTest(actor=self.ego_vehicle, len_thresh=100, speed_thresh=0.05, terminate_on_failure=True)
+            criteria['stuck'] = StuckDetectorTest(actor=self.ego_vehicle, len_thresh=120, speed_thresh=0.05, terminate_on_failure=True)
 
         return criteria
 
