@@ -280,9 +280,8 @@ def get_CBV_candidates(center_vehicle, ego_fov=100):
                     else:
                         # 2.4 the vehicle is on the opposite lane but within center vehicle's Field of View
                         relative_direction = (vehicle_location - center_location)
-                        delta_angle = math.degrees(math.acos(
-                            center_forward_vector.dot(relative_direction) / (relative_direction.length() * center_forward_vector.length())
-                        ))
+                        delta_angle = math.degrees(center_forward_vector.get_vector_angle(relative_direction))
+
                         if abs(delta_angle) < ego_fov / 2:
                             candidates_info.append([vehicle, vehicle_id])
                             # # viz
