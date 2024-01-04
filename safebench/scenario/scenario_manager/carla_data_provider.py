@@ -35,7 +35,7 @@ class CarlaDataProvider(object):
     ego_CBV_dis = {}
     ego_CBV_initial_dis = {}
     _spawn_index = 0
-    _ego_desired_speed = 8  # m/s
+    _ego_desired_speed = 6  # m/s
     _blueprint_library = None
     _ego_vehicle_route = {}
     egos = []
@@ -818,7 +818,7 @@ class CarlaDataProvider(object):
         # CarlaDataProvider._client = None
         CarlaDataProvider._ego_vehicle_route.clear()
         CarlaDataProvider.egos = []
-        CarlaDataProvider._ego_desired_speed = 8
+        CarlaDataProvider._ego_desired_speed = 6
         CarlaDataProvider.ego_CBV_dis.clear()
         CarlaDataProvider.ego_CBV_initial_dis.clear()
         CarlaDataProvider._carla_actor_pool = {}
@@ -858,7 +858,7 @@ class CarlaDataProvider(object):
         CarlaDataProvider._sync_flag = False
         CarlaDataProvider._ego_vehicle_route.clear()
         CarlaDataProvider.egos = []
-        CarlaDataProvider._ego_desired_speed = 8
+        CarlaDataProvider._ego_desired_speed = 6
         CarlaDataProvider.ego_CBV_dis.clear()
         CarlaDataProvider.ego_CBV_initial_dis.clear()
         CarlaDataProvider._carla_actor_pool = {}

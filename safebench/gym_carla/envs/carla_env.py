@@ -211,7 +211,7 @@ class CarlaEnv(gym.Env):
         # when training the ego agent, don't need to calculate the CBV
         if self.mode != 'train_agent' and len(self.CBVs) < 2 and self.time_step % 2 == 0:
             # select the candidates of CBVs
-            CBV_candidates, _ = get_CBV_candidates(self.ego_vehicle, 100)
+            CBV_candidates, _ = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, ego_fov=90)
             if CBV_candidates:
                 # selecting the CBV
                 # 1.Rule-based
@@ -260,7 +260,7 @@ class CarlaEnv(gym.Env):
         # route planner for ego vehicle
         self.global_route_waypoints = self._global_route_to_waypoints()  # the initial route waypoints from the config
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
-        self.waypoints, _, _, _, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
+        self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
 
         # Update time_steps
         self.time_step = 0
@@ -403,7 +403,7 @@ class CarlaEnv(gym.Env):
 
         # route planner
         # self.waypoints: the waypoints from the waypoints buffer, needed to be followed
-        self.waypoints, _, _, _, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
+        self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
         if self.safety_network_obs_type == 'ego_info':
@@ -662,11 +662,12 @@ class CarlaEnv(gym.Env):
 
     def _get_CBVs_truncated(self):
         CBVs_truncated = {}
+        _, candidates_id = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, ego_fov=100)
         for CBV_id, CBV in self.CBVs.items():
             if not self.scenario_manager.running:
                 # if the Ego stop or the CBV no longer exists in the CBV candidates, then the CBV is truncated
                 CBVs_truncated[CBV_id] = True
-            elif get_distance_across_centers(self.ego_vehicle, CBV) > self.search_radius:
+            elif CBV_id not in candidates_id:
                 # if the CBV is too far away from the ego vehicle, then no long need the CBV
                 CBVs_truncated[CBV_id] = True
             else:
