@@ -93,6 +93,19 @@ def update_ego_CBV_dis(ego, CBVs):
         CarlaDataProvider.ego_CBV_dis[ego_id][CBV_id] = get_distance_across_centers(ego, CBV)
 
 
+def set_ego_CBV_initial_dis(ego, CBV):
+    """
+        the initial distance, when CBV is added in to the CBVs
+    """
+    CarlaDataProvider.ego_CBV_initial_dis[ego.id][CBV.id] = get_distance_across_centers(ego, CBV)
+
+
+def remove_ego_CBV_initial_dis(ego, CBV):
+    """
+        the initial distance, when CBV is added in to the CBVs
+    """
+    CarlaDataProvider.ego_CBV_initial_dis[ego.id].pop(CBV.id)
+
 # def get_CBV_stuck(CBV, CBV_nearby_vehicles, ego, ego_nearby_vehicles):
 #     """
 #         if CBV movement causing stuck in the traffic flow especially for ego, punish this
@@ -115,19 +128,19 @@ def update_ego_CBV_dis(ego, CBVs):
 
 def get_CBV_ego_reward(ego, CBV):
     '''
-        delta distance calculation
+        distance ratio and delta distance calculation
     '''
     delta_dis = 0.0
-    ego_id = ego.id
-    if CBV:
-        CBV_id = CBV.id
-        if CBV_id in CarlaDataProvider.ego_CBV_dis[ego_id].keys():  # whether the current are in the old CBV list
-            dis = get_distance_across_centers(ego, CBV)
-            # delta_dis > 0 means ego and CBV are getting closer, otherwise punish CBV drive away from ego
-            delta_dis = round(CarlaDataProvider.ego_CBV_dis[ego_id][CBV_id] - dis, 4)
-        else:
-            print("CBV not in the dict, should not happen")
-    return np.clip(delta_dis, -1, 1)
+
+    dis = get_distance_across_centers(ego, CBV)
+    # delta_dis > 0 means ego and CBV are getting closer, otherwise punish CBV drive away from ego
+    delta_dis = np.clip(CarlaDataProvider.ego_CBV_dis[ego.id][CBV.id] - dis, a_min=-1., a_max=1.)
+
+    # distance ratio
+    init_dis = CarlaDataProvider.ego_CBV_initial_dis[ego.id][CBV.id]
+    dis_ratio = np.clip((init_dis - dis)/init_dis, a_min=-1., a_max=1.)
+
+    return delta_dis, dis_ratio
 
 
 def get_CBV_bv_reward(CBV, search_radius, CBV_nearby_vehicles, tou=1):

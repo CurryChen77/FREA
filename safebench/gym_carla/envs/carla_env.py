@@ -30,7 +30,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
     get_actor_off_road, get_CBV_bv_reward, get_constrain_h, linear_map, \
-    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers
+    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -230,6 +230,8 @@ class CarlaEnv(gym.Env):
                     # if CBV not in the CBVs list, put the new one in
                     if CBV.id not in self.CBVs.keys():
                         self.CBVs[CBV.id] = CBV
+                        # set the initial ego CBV distance
+                        set_ego_CBV_initial_dis(self.ego_vehicle, CBV)
                         CBV.set_autopilot(enabled=False)  # prepared to be controlled
                         self.register_CBV_sensor(CBV)
                         # update the CBV for BEV visualization
@@ -638,7 +640,7 @@ class CarlaEnv(gym.Env):
             # CBV_min_dis, CBV_min_dis_reward = get_CBV_bv_reward(self.CBVs[CBV_id], self.search_radius, self.CBVs_nearby_vehicles[CBV_id])
 
             # encourage CBV to get closer to the ego
-            ego_CBV_dis_reward = get_CBV_ego_reward(self.ego_vehicle, self.CBVs[CBV_id])  # [-1, 1]
+            delta_dis, dis_ratio = get_CBV_ego_reward(self.ego_vehicle, self.CBVs[CBV_id])  # [-1, 1]
 
             # CBV collision reward (collide with ego reward -> 1; collide with rest bvs reward -> -1)
             if self.CBVs_collision[CBV_id] is not None:
@@ -647,7 +649,7 @@ class CarlaEnv(gym.Env):
                 collision_reward = 0
 
                 # final scenario agent rewards
-            CBVs_reward[CBV_id] = ego_CBV_dis_reward + collision_reward
+            CBVs_reward[CBV_id] = delta_dis + 2 * dis_ratio + 2 * collision_reward
 
         return CBVs_reward
 
@@ -714,7 +716,10 @@ class CarlaEnv(gym.Env):
             if truncated:
                 CBV = self.CBVs.pop(CBV_id, None)
                 if CBV is not None:
-                    self._remove_CBV_sensor(CBV_id)  # remove the CBV collision sensor
+                    # remove the initial ego CBV distance
+                    remove_ego_CBV_initial_dis(self.ego_vehicle, CBV)
+                    # remove the CBV collision sensor
+                    self._remove_CBV_sensor(CBV_id)
                     # remove the truncated CBV from existing CBV list
                     CBV.set_autopilot(enabled=True)  # set the original CBV to normal bvs
                     self.CBVs_nearby_vehicles.pop(CBV_id)
@@ -727,6 +732,8 @@ class CarlaEnv(gym.Env):
             if terminated:
                 CBV = self.CBVs.pop(CBV_id, None)
                 if CBV is not None:
+                    # remove the initial ego CBV distance
+                    remove_ego_CBV_initial_dis(self.ego_vehicle, CBV)
                     # remove sensor
                     self._remove_CBV_sensor(CBV_id)
                     # clean the CBV from the environment

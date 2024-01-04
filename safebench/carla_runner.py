@@ -284,7 +284,8 @@ class CarlaRunner:
                     agent_episode_reward.append(np.mean(rewards))
                 if self.mode == 'train_scenario':
                     scenario_reward = np.concatenate([np.array(list(info['CBVs_reward'].values())) for info in next_infos])
-                    scenario_episode_reward.append(np.mean(scenario_reward))
+                    if scenario_reward.size != 0:
+                        scenario_episode_reward.append(np.mean(scenario_reward))
 
                 # train off-policy agent or scenario
                 if self.mode == 'train_agent' and self.agent_policy.type == 'offpolicy':
@@ -303,7 +304,7 @@ class CarlaRunner:
                 writer.add_scalar("Agent_episode_reward", np.sum(agent_episode_reward), e_i)
             if self.mode == 'train_scenario':
                 # training scenario focus on average reward per step
-                writer.add_scalar("Scenario_average_reward_per_step", np.mean(scenario_episode_reward), e_i)
+                writer.add_scalar("Scenario_average_reward_per_step", np.sum(scenario_episode_reward), e_i)
 
             # train on-policy agent or scenario
             if self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
