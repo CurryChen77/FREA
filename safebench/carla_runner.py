@@ -285,7 +285,7 @@ class CarlaRunner:
                 if self.mode == 'train_scenario':
                     scenario_reward = np.concatenate([np.array(list(info['CBVs_reward'].values())) for info in next_infos])
                     if scenario_reward.size != 0:
-                        scenario_episode_reward.append(np.mean(scenario_reward))
+                        scenario_episode_reward.append(np.sum(scenario_reward))
 
                 # train off-policy agent or scenario
                 if self.mode == 'train_agent' and self.agent_policy.type == 'offpolicy':

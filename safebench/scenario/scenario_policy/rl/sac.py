@@ -141,18 +141,21 @@ class SAC(BasePolicy):
             raise ValueError(f'Unknown mode {mode}')
 
     def info_process(self, infos):
-        CBV_obs = []
-        indexes = []  # record the index of not "None" scenario obs, and put the corresponding action at that index
-        for i, i_i in enumerate(infos):
-            if i_i['CBVs_obs'] is not None:
-                CBV_obs.append(i_i['CBVs_obs'])
-                indexes.append(i)
-        if CBV_obs:
-            info_batch = np.stack(CBV_obs, axis=0)
+        CBVs_obs = []
+        CBVs_id = []
+        env_index = []
+        for i, info in enumerate(infos):
+            for CBV_id, CBV_obs in info['CBVs_obs'].items():
+                CBVs_obs.append(CBV_obs)
+                CBVs_id.append(CBV_id)
+                env_index.append(i)
+        if CBVs_obs:
+            info_batch = np.stack(CBVs_obs, axis=0)
             info_batch = info_batch.reshape(info_batch.shape[0], -1)
         else:
             info_batch = None
-        return info_batch, indexes
+
+        return info_batch, CBVs_id, env_index
 
     def get_init_action(self, state, deterministic=False):
         num_scenario = len(state)
@@ -163,8 +166,8 @@ class SAC(BasePolicy):
         """
             the state came from transition info, so need to be further processed
         """
-        state, indexes = self.info_process(infos)  # remove some "None" scenario obs
-        scenario_action = [None] * len(infos)  # change the corresponding action output
+        state, CBVs_id, env_index = self.info_process(infos)
+        scenario_action = [{} for _ in range(len(infos))]
         if state is not None:
             state = CUDA(torch.FloatTensor(state))
             mu, log_sigma = self.policy_net(state)
@@ -176,8 +179,8 @@ class SAC(BasePolicy):
                 dist = Normal(mu, sigma)
                 z = dist.sample()
                 action = torch.tanh(z)
-            for i, index in enumerate(indexes):
-                scenario_action[index] = CPU(action[i])
+            for i, (CBV_id, env_id) in enumerate(zip(CBVs_id, env_index)):
+                scenario_action[env_id][CBV_id] = CPU(action[i])
         return scenario_action
 
     def get_action_log_prob(self, state):
