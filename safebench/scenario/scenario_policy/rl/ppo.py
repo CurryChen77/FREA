@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：ppo.py
+@File    ：ppo_old.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/4
@@ -57,7 +57,7 @@ class PolicyNetwork(nn.Module):
             else:
                 n = Normal(mu, std)
                 action = n.sample()
-        return CPU(action)
+        return action
 
 
 class ValueNetwork(nn.Module):
@@ -94,12 +94,14 @@ class PPO(BasePolicy):
         self.gamma = config['gamma']
         self.policy_lr = config['policy_lr']
         self.value_lr = config['value_lr']
-        self.train_iteration = config['train_iteration']
+        self.train_repeat_times = config['train_repeat_times']
         self.train_interval = config['train_interval']
         self.state_dim = config['scenario_state_dim']
         self.action_dim = config['scenario_action_dim']
         self.clip_epsilon = config['clip_epsilon']
         self.batch_size = config['batch_size']
+        self.lambda_gae_adv = config['lambda_gae_adv']
+        self.lambda_entropy = config['lambda_entropy']
 
         self.model_type = config['model_type']
         self.CBV_selection = config['CBV_selection']
@@ -113,6 +115,7 @@ class PPO(BasePolicy):
         self.optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
         self.value = CUDA(ValueNetwork(state_dim=self.state_dim))
         self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr)
+        self.value_criterion = nn.MSELoss()
 
         self.mode = 'train'
 
@@ -146,64 +149,93 @@ class PPO(BasePolicy):
 
         return info_batch, CBVs_id, env_index
 
-    def get_init_action(self, state, deterministic=False):
-        num_scenario = len(state)
-        additional_in = {}
-        return [None] * num_scenario, additional_in
-
     def get_action(self, state, infos, deterministic=False):
         state, CBVs_id, env_index = self.info_process(infos)
         scenario_action = [{} for _ in range(len(infos))]
+        scenario_log_prob = [{} for _ in range(len(infos))]
         if state is not None:
             state_tensor = CUDA(torch.FloatTensor(state))
             action = self.policy.select_action(state_tensor, deterministic)
+            mu, std = self.policy(state_tensor)
+            dist = Normal(mu, std)
+            log_prob = dist.log_prob(action).sum(dim=1)
 
             for i, (CBV_id, env_id) in enumerate(zip(CBVs_id, env_index)):
-                scenario_action[env_id][CBV_id] = action[i]
-        return scenario_action
+                scenario_action[env_id][CBV_id] = CPU(action[i])
+                scenario_log_prob[env_id][CBV_id] = CPU(log_prob[i])
+        return scenario_action, scenario_log_prob
+
+    def get_advantages_vtrace(self, rewards, undones, values, next_values):
+        advantages = torch.empty_like(values)  # advantage value
+
+        masks = undones * self.gamma
+        horizon_len = rewards.shape[0]
+
+        advantage = torch.zeros_like(values[0])  # last advantage value by GAE (Generalized Advantage Estimate)
+
+        for t in range(horizon_len - 1, -1, -1):
+            delta = rewards[t] + masks[t] * next_values[t] - values[t]
+            advantages[t] = delta + masks[t] * self.lambda_gae_adv * advantage
+            advantage = next_values[t]
+        return advantages
 
     def train(self, replay_buffer, writer, e_i):
         self.old_policy.load_state_dict(self.policy.state_dict())
+        with torch.no_grad():
+            batch = replay_buffer.get()
+
+            states = CUDA(torch.FloatTensor(batch['obs']))
+            next_states = CUDA(torch.FloatTensor(batch['next_obs']))
+            actions = CUDA(torch.FloatTensor(batch['actions']))
+            log_probs = CUDA(torch.FloatTensor(batch['log_probs']))
+            rewards = CUDA(torch.FloatTensor(batch['rewards']))
+            undones = CUDA(torch.FloatTensor(1-batch['dones']))
+            buffer_size = states.shape[0]
+
+            values = self.value(states)
+            next_values = self.value(next_states)
+
+            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values)
+            reward_sums = advantages + values
+            del rewards, undones, values
+
+            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-4)
 
         # start to train, use gradient descent without batch size
-        for K in range(self.train_iteration):
-            batch = replay_buffer.sample(self.batch_size)
-            bn_s = CUDA(torch.FloatTensor(batch['CBVs_obs'])).reshape(self.batch_size, -1)
-            bn_s_ = CUDA(torch.FloatTensor(batch['next_CBVs_obs'])).reshape(self.batch_size, -1)
-            bn_a = CUDA(torch.FloatTensor(batch['action']))
-            bn_r = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1) # [B, 1]
+        update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
+        print("buffer size", buffer_size)
+        print("update times", update_times)
+        for _ in range(update_times):
+            indices = torch.randint(buffer_size, size=(self.batch_size,), requires_grad=False)
+            state = states[indices]
+            action = actions[indices]
+            log_prob = log_probs[indices]
+            advantage = advantages[indices]
+            reward_sum = reward_sums[indices]
 
-            with torch.no_grad():
-                old_mu, old_std = self.old_policy(bn_s)
-                old_n = Normal(old_mu, old_std)
-                value_target = bn_r + self.gamma * self.value(bn_s_)
-                advantage = value_target - self.value(bn_s)
+            # update value function
+            value = self.value(state)
+            value_loss = self.value_criterion(reward_sum, value)
+            writer.add_scalar("value loss", value_loss, e_i)
+            self.value_optim.zero_grad()
+            value_loss.backward()
+            self.value_optim.step()
 
             # update policy
-            mu, std = self.policy(bn_s)
-            n = Normal(mu, std)
-            log_prob = n.log_prob(bn_a)
-            old_log_prob = old_n.log_prob(bn_a)
-            ratio = torch.exp(log_prob - old_log_prob)
+            mu, std = self.policy(state)
+            dist = Normal(mu, std)
+            new_log_prob = dist.log_prob(action).sum(dim=1)
+            entropy = dist.entropy().sum(dim=1)
+
+            ratio = torch.exp(new_log_prob - log_prob)
             L1 = ratio * advantage
             L2 = torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon) * advantage
-            loss = torch.min(L1, L2)
-            loss = -loss.mean()
+            surrogate = torch.min(L1, L2).mean()
+            loss = surrogate + entropy.mean() * self.lambda_entropy
             writer.add_scalar("policy loss", loss, e_i)
             self.optim.zero_grad()
             loss.backward()
             self.optim.step()
-
-            # update value function
-            current_value = self.value(bn_s)
-            value_loss = F.mse_loss(value_target, current_value)
-            writer.add_scalar("value loss", value_loss, e_i)
-            writer.add_scalars("value net mean value", {"value target": torch.mean(value_target), "value net output": torch.mean(current_value)}, e_i)
-            writer.add_scalars("value min-max", {"target-min": torch.min(value_target), "net-min": torch.min(current_value),
-                                                "target-max": torch.max(value_target), "net-max": torch.max(current_value)}, e_i)
-            self.value_optim.zero_grad()
-            value_loss.backward()
-            self.value_optim.step()
 
         # reset buffer
         replay_buffer.reset_buffer()
