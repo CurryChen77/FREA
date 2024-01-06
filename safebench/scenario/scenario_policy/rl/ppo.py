@@ -115,7 +115,7 @@ class PPO(BasePolicy):
         self.optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
         self.value = CUDA(ValueNetwork(state_dim=self.state_dim))
         self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr)
-        self.value_criterion = nn.MSELoss()
+        self.value_criterion = nn.SmoothL1Loss()
 
         self.mode = 'train'
 
@@ -166,6 +166,9 @@ class PPO(BasePolicy):
         return scenario_action, scenario_log_prob
 
     def get_advantages_vtrace(self, rewards, undones, values, next_values):
+        """
+            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
+        """
         advantages = torch.empty_like(values)  # advantage value
 
         masks = undones * self.gamma
@@ -175,12 +178,15 @@ class PPO(BasePolicy):
 
         for t in range(horizon_len - 1, -1, -1):
             delta = rewards[t] + masks[t] * next_values[t] - values[t]
-            advantages[t] = delta + masks[t] * self.lambda_gae_adv * advantage
-            advantage = next_values[t]
+            advantages[t] = advantage = delta + masks[t] * self.lambda_gae_adv * advantage
         return advantages
 
     def train(self, replay_buffer, writer, e_i):
+        """
+            from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
+        """
         self.old_policy.load_state_dict(self.policy.state_dict())
+
         with torch.no_grad():
             batch = replay_buffer.get()
 
@@ -203,8 +209,8 @@ class PPO(BasePolicy):
 
         # start to train, use gradient descent without batch size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
-        print("buffer size", buffer_size)
-        print("update times", update_times)
+        assert update_times >= 1
+
         for _ in range(update_times):
             indices = torch.randint(buffer_size, size=(self.batch_size,), requires_grad=False)
             state = states[indices]
@@ -227,14 +233,14 @@ class PPO(BasePolicy):
             new_log_prob = dist.log_prob(action).sum(dim=1)
             entropy = dist.entropy().sum(dim=1)
 
-            ratio = torch.exp(new_log_prob - log_prob)
+            ratio = torch.exp(new_log_prob - log_prob.detach())
             L1 = ratio * advantage
             L2 = torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon) * advantage
             surrogate = torch.min(L1, L2).mean()
-            loss = surrogate + entropy.mean() * self.lambda_entropy
-            writer.add_scalar("policy loss", loss, e_i)
+            actor_loss = -1 * (surrogate + entropy.mean() * self.lambda_entropy)
+            writer.add_scalar("actor loss", actor_loss, e_i)
             self.optim.zero_grad()
-            loss.backward()
+            actor_loss.backward()
             self.optim.step()
 
         # reset buffer

@@ -397,7 +397,7 @@ class RolloutBuffer:
                 else:
                     self.temp_buffer['dones'][CBV_id].append(False)
 
-        return np.array(processed_actions), np.array(processed_log_probs), np.array(processed_obs), np.array(processed_next_obs), np.array(processed_rewards), np.array(processed_dones)
+        return processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones
 
     def store(self, data_list, additional_dict):
         """
@@ -413,12 +413,12 @@ class RolloutBuffer:
                     self.full = True
                     self.pos = 0
 
-                self.buffer_actions[self.pos:self.pos+length, :] = scenario_actions
-                self.buffer_log_probs[self.pos:self.pos+length] = scenario_log_probs
-                self.buffer_obs[self.pos:self.pos+length, :] = obs  # CBV_obs
-                self.buffer_next_obs[self.pos:self.pos+length, :] = next_obs  # CBV next obs from next info
-                self.buffer_rewards[self.pos:self.pos+length] = rewards  # CBV reward
-                self.buffer_dones[self.pos:self.pos+length] = dones
+                self.buffer_actions[self.pos:self.pos+length, :] = np.array(scenario_actions)
+                self.buffer_log_probs[self.pos:self.pos+length] = np.array(scenario_log_probs)
+                self.buffer_obs[self.pos:self.pos+length, :] = np.array(obs)  # CBV_obs
+                self.buffer_next_obs[self.pos:self.pos+length, :] = np.array(next_obs)  # CBV next obs from next info
+                self.buffer_rewards[self.pos:self.pos+length] = np.array(rewards)  # CBV reward
+                self.buffer_dones[self.pos:self.pos+length] = np.array(dones)
                 self.pos += length
 
         # store for agent training
