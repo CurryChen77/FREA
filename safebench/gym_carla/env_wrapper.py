@@ -97,23 +97,24 @@ class VectorWrapper():
         # return obs
         return self.obs_postprocess(obs_list), info_list
 
-    def step(self, ego_actions, scenario_actions, onpolicy=False):
+    def step(self, ego_actions, scenario_actions, onpolicy):
         """
             ego_actions: [num_alive_scenario]
             scenario_actions: [num_alive_scenario]
         """
-        if onpolicy:
+        if onpolicy['scenario']:
             # onpolicy scenario actions [actions, log_probs]
-            CBV_actions = scenario_actions[0]
-        else:
-            CBV_actions = scenario_actions
+            scenario_actions = scenario_actions[0]
+        if onpolicy['agent']:
+            ego_actions = ego_actions[0]
+
         # apply action
         action_idx = 0  # action idx should match the env that is not finished
         for e_i in range(self.num_scenario):
             if not self.finished_env[e_i]:
                 processed_action = self.env_list[e_i]._postprocess_action(ego_actions[action_idx])
                 # TODO: pre-process scenario action
-                self.env_list[e_i].step_before_tick(processed_action, CBV_actions[action_idx])
+                self.env_list[e_i].step_before_tick(processed_action, scenario_actions[action_idx])
                 action_idx += 1
 
         if self.spectator:

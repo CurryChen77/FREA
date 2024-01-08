@@ -347,6 +347,7 @@ class RolloutBuffer:
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
         elif self.mode == 'train_agent':
             self.buffer_actions = np.zeros((self.buffer_capacity, self.action_dim), dtype=np.float32)
+            self.buffer_log_probs = np.zeros((self.buffer_capacity), dtype=np.float32)
             self.buffer_obs = np.zeros((self.buffer_capacity, self.obs_shape), dtype=np.float32)
             self.buffer_next_obs = np.zeros((self.buffer_capacity, self.obs_shape), dtype=np.float32)
             self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
@@ -423,24 +424,26 @@ class RolloutBuffer:
 
         # store for agent training
         elif self.mode == 'train_agent':
-            ego_actions = data_list[0]
+            ego_actions, ego_log_probs = data_list[0]
             obs = data_list[2]
             next_obs = data_list[3]
             rewards = data_list[4]
             dones = data_list[5]
-            for s_i in range(len(dones)):
-                self.buffer_actions[self.pos] = np.array(ego_actions[s_i])
-                self.buffer_obs[self.pos] = np.array(obs[s_i])
-                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])
-                self.buffer_rewards[self.pos] = np.array(rewards[s_i])
-                self.buffer_dones[self.pos] = np.array(dones[s_i])
-                self.pos += 1
-                self.buffer_len += 1
-                if self.pos == self.buffer_capacity:
+            length = len(dones)
+            if length > 0:
+                if self.pos + length >= self.buffer_capacity:
                     self.full = True
                     self.pos = 0
 
-        # store for agent training
+            self.buffer_actions[self.pos:self.pos + length, :] = np.array(ego_actions)
+            self.buffer_log_probs[self.pos:self.pos + length] = np.array(ego_log_probs)
+            self.buffer_obs[self.pos:self.pos + length, :] = np.array(obs)  # CBV_obs
+            self.buffer_next_obs[self.pos:self.pos + length, :] = np.array(next_obs)  # CBV next obs from next info
+            self.buffer_rewards[self.pos:self.pos + length] = np.array(rewards)  # CBV reward
+            self.buffer_dones[self.pos:self.pos + length] = np.array(dones)
+            self.pos += length
+
+        # TODO store for agent training
         elif self.mode == 'train_safety_network':
             dones = data_list[5]
             if self.safety_network_obs_type == 'ego_info':
@@ -475,13 +478,15 @@ class RolloutBuffer:
             }
         elif self.mode == 'train_agent':
             batch = {
-                'action': self.buffer_actions[:upper_bound, :],  # action
-                'obs': self.buffer_obs[:upper_bound, :],  # obs
-                'next_obs': self.buffer_next_obs[:upper_bound, :],  # next obs
-                'reward': self.buffer_rewards[:upper_bound],  # reward
-                'done': self.buffer_dones[:upper_bound],  # done
+                'actions': self.buffer_actions[:upper_bound, ...],  # action
+                'log_probs': self.buffer_log_probs[:upper_bound],  # action log probability
+                'obs': self.buffer_obs[:upper_bound, ...].reshape((-1, self.state_dim)),  # obs
+                'next_obs': self.buffer_next_obs[:upper_bound, ...].reshape((-1, self.state_dim)),  # next obs
+                'rewards': self.buffer_rewards[:upper_bound],  # reward
+                'dones': self.buffer_dones[:upper_bound],  # done
             }
         elif self.mode == 'train_safety_network':
+            # TODO
             batch = {
                 'next_obs': self.buffer_next_obs[:upper_bound, :],  # next obs
                 'constrain_h': self.buffer_constrain_h[:upper_bound],  # constrain
@@ -491,76 +496,3 @@ class RolloutBuffer:
             raise ValueError(f'Unknown mode {self.mode}')
 
         return batch
-
-    def save_buffer(self, dir_path, filename):
-        if self.mode == 'train_scenario':
-            buffer = {
-                'buffer_actions': self.buffer_actions,
-                'buffer_obs': self.buffer_obs,
-                'buffer_next_obs': self.buffer_next_obs,
-                'buffer_rewards': self.buffer_rewards,
-                'buffer_dones': self.buffer_dones,
-                'buffer_infos': [self.pos, self.buffer_len, self.full]
-            }
-        elif self.mode == 'train_agent':
-            buffer = {
-                'buffer_actions': self.buffer_actions,
-                'buffer_obs': self.buffer_obs,
-                'buffer_next_obs': self.buffer_next_obs,
-                'buffer_rewards': self.buffer_rewards,
-                'buffer_dones': self.buffer_dones,
-                'buffer_infos': [self.pos, self.buffer_len, self.full]
-            }
-        elif self.mode == 'train_safety_network':
-            buffer = {
-                'buffer_next_obs': self.buffer_next_obs,
-                'buffer_constrain_h': self.buffer_constrain_h,
-                'buffer_dones': self.buffer_dones,
-                'buffer_infos': [self.pos, self.buffer_len, self.full]
-            }
-        else:
-            raise ValueError(f'Unknown mode {self.mode}')
-
-        path = os.path.join(dir_path, filename)
-        with open(path, 'wb') as file:
-            pickle.dump(buffer, file)
-
-    def load_buffer(self, dir_path, filename):
-        path = os.path.join(dir_path, filename)
-        if os.path.exists(path):
-            try:
-                with open(path, 'rb') as file:
-                    buffer = pickle.load(file)
-                    self.logger.log(f'>> Successfully loading the replay buffer checkpoint', 'yellow')
-            except Exception as e:
-                print(f"An error occurred: {e}")
-        else:
-            print(f"File {filename} not found in {dir_path}.")
-
-        if self.mode == 'train_scenario':
-            self.buffer_actions = buffer['buffer_actions']
-            self.buffer_obs = buffer['buffer_obs']
-            self.buffer_next_obs = buffer['buffer_next_obs']
-            self.buffer_rewards = buffer['buffer_rewards']
-            self.buffer_dones = buffer['buffer_dones']
-            self.pos = buffer['buffer_infos'][0]
-            self.buffer_len = buffer['buffer_infos'][1]
-            self.full = buffer['buffer_infos'][2]
-        elif self.mode == 'train_agent':
-            self.buffer_actions = buffer['buffer_actions']
-            self.buffer_obs = buffer['buffer_obs']
-            self.buffer_next_obs = buffer['buffer_next_obs']
-            self.buffer_rewards = buffer['buffer_rewards']
-            self.buffer_dones = buffer['buffer_dones']
-            self.pos = buffer['buffer_infos'][0]
-            self.buffer_len = buffer['buffer_infos'][1]
-            self.full = buffer['buffer_infos'][2]
-        elif self.mode == 'train_safety_network':
-            self.buffer_next_obs = buffer['buffer_next_obs']
-            self.buffer_constrain_h = buffer['buffer_constrain_h']
-            self.buffer_dones = buffer['buffer_dones']
-            self.pos = buffer['buffer_infos'][0]
-            self.buffer_len = buffer['buffer_infos'][1]
-            self.full = buffer['buffer_infos'][2]
-        else:
-            raise ValueError(f'Unknown mode {self.mode}')

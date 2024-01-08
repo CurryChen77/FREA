@@ -221,7 +221,7 @@ class PPO(BasePolicy):
 
             # update value function
             value = self.value(state)
-            value_loss = self.value_criterion(reward_sum, value)
+            value_loss = self.value_criterion(reward_sum, value)  # the value criterion is SmoothL1Loss() instead of MSE
             writer.add_scalar("value loss", value_loss, e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
@@ -237,10 +237,10 @@ class PPO(BasePolicy):
             L1 = ratio * advantage
             L2 = torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon) * advantage
             surrogate = torch.min(L1, L2).mean()
-            actor_loss = -1 * (surrogate + entropy.mean() * self.lambda_entropy)
+            actor_loss = surrogate + entropy.mean() * self.lambda_entropy
             writer.add_scalar("actor loss", actor_loss, e_i)
             self.optim.zero_grad()
-            actor_loss.backward()
+            (-actor_loss).backward()
             self.optim.step()
 
         # reset buffer

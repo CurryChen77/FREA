@@ -58,7 +58,7 @@ class PolicyNetwork(nn.Module):
             else:
                 n = Normal(mu, std)
                 action = n.sample()
-        return CPU(action)
+        return action
 
 
 class ValueNetwork(nn.Module):
@@ -95,12 +95,14 @@ class PPO(BasePolicy):
         self.gamma = config['gamma']
         self.policy_lr = config['policy_lr']
         self.value_lr = config['value_lr']
-        self.train_iteration = config['train_iteration']
+        self.train_repeat_times = config['train_repeat_times']
         self.train_interval = config['train_interval']
         self.state_dim = config['ego_state_dim']
         self.action_dim = config['ego_action_dim']
         self.clip_epsilon = config['clip_epsilon']
         self.batch_size = config['batch_size']
+        self.lambda_gae_adv = config['lambda_gae_adv']
+        self.lambda_entropy = config['lambda_entropy']
 
         self.model_type = config['model_type']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
@@ -113,6 +115,7 @@ class PPO(BasePolicy):
         self.optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
         self.value = CUDA(ValueNetwork(state_dim=self.state_dim))
         self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr)
+        self.value_criterion = nn.SmoothL1Loss()
 
         self.mode = 'train'
 
@@ -132,51 +135,88 @@ class PPO(BasePolicy):
     def get_action(self, state, infos, deterministic=False):
         state_tensor = CUDA(torch.FloatTensor(state))
         action = self.policy.select_action(state_tensor, deterministic)
-        return action
+        mu, std = self.policy(state_tensor)
+        dist = Normal(mu, std)
+        log_prob = dist.log_prob(action).sum(dim=1)
+        return CPU(action), CPU(log_prob)
+
+    def get_advantages_vtrace(self, rewards, undones, values, next_values):
+        """
+            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
+        """
+        advantages = torch.empty_like(values)  # advantage value
+
+        masks = undones * self.gamma
+        horizon_len = rewards.shape[0]
+
+        advantage = torch.zeros_like(values[0])  # last advantage value by GAE (Generalized Advantage Estimate)
+
+        for t in range(horizon_len - 1, -1, -1):
+            delta = rewards[t] + masks[t] * next_values[t] - values[t]
+            advantages[t] = advantage = delta + masks[t] * self.lambda_gae_adv * advantage
+        return advantages
 
     def train(self, replay_buffer, writer, e_i):
+        """
+            from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
+        """
         self.old_policy.load_state_dict(self.policy.state_dict())
 
+        with torch.no_grad():
+            batch = replay_buffer.get()
+
+            states = CUDA(torch.FloatTensor(batch['obs']))
+            next_states = CUDA(torch.FloatTensor(batch['next_obs']))
+            actions = CUDA(torch.FloatTensor(batch['actions']))
+            log_probs = CUDA(torch.FloatTensor(batch['log_probs']))
+            rewards = CUDA(torch.FloatTensor(batch['rewards']))
+            undones = CUDA(torch.FloatTensor(1-batch['dones']))
+            buffer_size = states.shape[0]
+
+            values = self.value(states)
+            next_values = self.value(next_states)
+
+            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values)
+            reward_sums = advantages + values
+            del rewards, undones, values
+
+            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-4)
+
         # start to train, use gradient descent without batch size
-        for K in range(self.train_iteration):
-            batch = replay_buffer.sample(self.batch_size)
-            bn_s = CUDA(torch.FloatTensor(batch['obs']))
-            bn_a = CUDA(torch.FloatTensor(batch['action']))
-            bn_r = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1) # [B, 1]
-            bn_s_ = CUDA(torch.FloatTensor(batch['next_obs']))
-            # bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1) # [B, 1]
+        update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
+        assert update_times >= 1
 
-            with torch.no_grad():
-                old_mu, old_std = self.old_policy(bn_s)
-                old_n = Normal(old_mu, old_std)
-                value_target = bn_r + self.gamma * self.value(bn_s_)
-                advantage = value_target - self.value(bn_s)
-
-            # update policy
-            mu, std = self.policy(bn_s)
-            n = Normal(mu, std)
-            log_prob = n.log_prob(bn_a)
-            old_log_prob = old_n.log_prob(bn_a)
-            ratio = torch.exp(log_prob - old_log_prob)
-            L1 = ratio * advantage
-            L2 = torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon) * advantage
-            loss = torch.min(L1, L2)
-            loss = -loss.mean()
-            writer.add_scalar("policy loss", loss, e_i)
-            self.optim.zero_grad()
-            loss.backward()
-            self.optim.step()
+        for _ in range(update_times):
+            indices = torch.randint(buffer_size, size=(self.batch_size,), requires_grad=False)
+            state = states[indices]
+            action = actions[indices]
+            log_prob = log_probs[indices]
+            advantage = advantages[indices]
+            reward_sum = reward_sums[indices]
 
             # update value function
-            current_value = self.value(bn_s)
-            value_loss = F.mse_loss(value_target, current_value)
+            value = self.value(state)
+            value_loss = self.value_criterion(reward_sum, value)  # the value criterion is SmoothL1Loss() instead of MSE
+            writer.add_scalar("value loss", value_loss, e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
-            writer.add_scalar("value loss", value_loss, e_i)
-            writer.add_scalars("value net mean value", {"value target": torch.mean(value_target), "value net output": torch.mean(current_value)}, e_i)
-            writer.add_scalars("value min-max", {"target-min": torch.min(value_target), "net-min": torch.min(current_value),
-                                                "target-max": torch.max(value_target), "net-max": torch.max(current_value)}, e_i)
             self.value_optim.step()
+
+            # update policy
+            mu, std = self.policy(state)
+            dist = Normal(mu, std)
+            new_log_prob = dist.log_prob(action).sum(dim=1)
+            entropy = dist.entropy().sum(dim=1)
+
+            ratio = torch.exp(new_log_prob - log_prob.detach())
+            L1 = ratio * advantage
+            L2 = torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon) * advantage
+            surrogate = torch.min(L1, L2).mean()
+            actor_loss = surrogate + entropy.mean() * self.lambda_entropy
+            writer.add_scalar("actor loss", actor_loss, e_i)
+            self.optim.zero_grad()
+            (-actor_loss).backward()
+            self.optim.step()
 
         # reset buffer
         replay_buffer.reset_buffer()

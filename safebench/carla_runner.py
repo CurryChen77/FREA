@@ -247,20 +247,7 @@ class CarlaRunner:
         writer = SummaryWriter(log_dir=writer_dir)
 
         # general buffer for both agent and scenario
-        if self.agent_policy.type == 'offpolicy' or self.scenario_policy.type == 'offpolicy' or (self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy'):
-            buffer = ReplayBuffer(
-                self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
-            )
-            onpolicy = False
-        elif self.agent_policy.type == 'onpolicy' or self.scenario_policy.type == 'onpolicy' or (self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy'):
-            buffer = RolloutBuffer(
-                self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
-            )
-            onpolicy = True
-        else:
-            raise NotImplementedError(f"Unsupported RL policy")
+        buffer, onpolicy = self.check_onpolicy(start_episode=start_episode)
 
         data_loader.set_mode("train")
 
@@ -342,10 +329,9 @@ class CarlaRunner:
         data_loader.set_mode("eval")
         data_loader.reset_idx_counter()
         self.scenario_policy.load_model(map_name=self.current_map)  # using overall model, the loading process only needs to be executed once
-        if self.agent_policy.type == 'offpolicy' or self.scenario_policy.type == 'offpolicy' or (self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy'):
-            onpolicy = False
-        elif self.agent_policy.type == 'onpolicy' or self.scenario_policy.type == 'onpolicy' or (self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy'):
-            onpolicy = True
+
+        _, onpolicy = self.check_onpolicy()
+
         while len(data_loader) > 0:
             # sample scenarios
             sampled_scenario_configs, num_sampled_scenario = data_loader.sampler()
@@ -475,6 +461,58 @@ class CarlaRunner:
                 self.train(data_loader, start_episode)
             else:
                 raise NotImplementedError(f"Unsupported mode: {self.mode}.")
+
+    def check_onpolicy(self, start_episode=None):
+        onpolicy = {'agent': False, 'scenario': False, 'safety_network': False}
+        buffer = None
+        if self.mode == 'train_agent':
+            if self.agent_policy.type == 'onpolicy':
+                buffer = RolloutBuffer(
+                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
+                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                )
+                onpolicy['agent'] = True
+            else:
+                buffer = ReplayBuffer(
+                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
+                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                )
+        elif self.mode == 'train_scenario':
+            if self.scenario_policy.type == 'onpolicy':
+                buffer = RolloutBuffer(
+                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
+                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                )
+                onpolicy['scenario'] = True
+            else:
+                buffer = ReplayBuffer(
+                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
+                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                )
+        elif self.mode == 'train_safety_network':
+            if self.safety_network_policy.type == 'onpolicy':
+                buffer = RolloutBuffer(
+                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
+                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                )
+                onpolicy['safety_network'] = True
+            else:
+                buffer = ReplayBuffer(
+                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
+                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                )
+        elif self.mode == 'eval':
+            if self.agent_policy.type == 'onpolicy':
+                onpolicy['agent'] = True
+            if self.scenario_policy.type == 'onpolicy':
+                onpolicy['scenario'] = True
+            if self.safety_network_policy.type == 'onpolicy':
+                onpolicy['safety_network'] = True
+        else:
+            raise NotImplementedError(f"no this mode")
+
+        return buffer, onpolicy
+
 
     def check_continue_training(self, policy):
         # load previous checkpoint
