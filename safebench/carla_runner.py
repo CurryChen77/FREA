@@ -342,6 +342,10 @@ class CarlaRunner:
         data_loader.set_mode("eval")
         data_loader.reset_idx_counter()
         self.scenario_policy.load_model(map_name=self.current_map)  # using overall model, the loading process only needs to be executed once
+        if self.agent_policy.type == 'offpolicy' or self.scenario_policy.type == 'offpolicy' or (self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy'):
+            onpolicy = False
+        elif self.agent_policy.type == 'onpolicy' or self.scenario_policy.type == 'onpolicy' or (self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy'):
+            onpolicy = True
         while len(data_loader) > 0:
             # sample scenarios
             sampled_scenario_configs, num_sampled_scenario = data_loader.sampler()
@@ -359,7 +363,7 @@ class CarlaRunner:
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=True)
 
                 # apply action to env and get obs
-                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions)
+                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy=onpolicy)
 
                 infos = next_transition_infos
                 obs = next_transition_obs

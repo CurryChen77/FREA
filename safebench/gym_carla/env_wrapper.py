@@ -97,7 +97,7 @@ class VectorWrapper():
         # return obs
         return self.obs_postprocess(obs_list), info_list
 
-    def step(self, ego_actions, scenario_actions, onpolicy):
+    def step(self, ego_actions, scenario_actions, onpolicy=False):
         """
             ego_actions: [num_alive_scenario]
             scenario_actions: [num_alive_scenario]
