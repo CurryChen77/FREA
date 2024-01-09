@@ -111,7 +111,6 @@ class PPO(BasePolicy):
         self.safety_network = config['safety_network']
 
         self.policy = CUDA(PolicyNetwork(state_dim=self.state_dim, action_dim=self.action_dim))
-        self.old_policy = CUDA(PolicyNetwork(state_dim=self.state_dim, action_dim=self.action_dim))
         self.optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
         self.value = CUDA(ValueNetwork(state_dim=self.state_dim))
         self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr)
@@ -123,11 +122,9 @@ class PPO(BasePolicy):
         self.mode = mode
         if mode == 'train':
             self.policy.train()
-            self.old_policy.train()
             self.value.train()
         elif mode == 'eval':
             self.policy.eval()
-            self.old_policy.eval()
             self.value.eval()
         else:
             raise ValueError(f'Unknown mode {mode}')
@@ -185,7 +182,6 @@ class PPO(BasePolicy):
         """
             from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
         """
-        self.old_policy.load_state_dict(self.policy.state_dict())
 
         with torch.no_grad():
             batch = replay_buffer.get()
@@ -203,7 +199,7 @@ class PPO(BasePolicy):
 
             advantages = self.get_advantages_vtrace(rewards, undones, values, next_values)
             reward_sums = advantages + values
-            del rewards, undones, values
+            del rewards, undones, values, next_values
 
             advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-4)
 

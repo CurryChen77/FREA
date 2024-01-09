@@ -13,7 +13,7 @@ import traceback
 import numpy as np
 import carla
 
-from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity
+from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity, get_relative_info
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
@@ -240,7 +240,7 @@ class RouteScenario():
         velocity = CarlaDataProvider.get_velocity(actor)
         # acc = actor.get_acceleration()
         # [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
-        return [actor_x, actor_y, actor_yaw, velocity.x, velocity.y]
+        return actor_x, actor_y, actor_yaw, velocity.x, velocity.y
 
     def update_info(self, desired_nearby_vehicle=3):
         '''
@@ -251,15 +251,15 @@ class RouteScenario():
         CBVs_obs = {}
         for CBV_id in self.CBVs.keys():
             # absolute state
-            CBV_state = np.array(self._get_actor_state(self.CBVs[CBV_id]))
+            CBV_state = self._get_actor_state(self.CBVs[CBV_id])
             # relative state
-            ego_state = np.array(self._get_actor_state(self.ego_vehicle)) - CBV_state
+            ego_state = get_relative_info(self._get_actor_state(self.ego_vehicle), CBV_state)
             actor_info = [ego_state]  # the first info belongs to the ego vehicle
             for actor in self.CBVs_nearby_vehicles[CBV_id]:
                 if actor.id == self.ego_vehicle.id:
                     continue  # except the ego actor
                 elif len(actor_info) < desired_nearby_vehicle:
-                    actor_state = np.array(self._get_actor_state(actor)) - CBV_state
+                    actor_state = get_relative_info(self._get_actor_state(actor), CBV_state)
                     actor_info.append(actor_state)  # add the info of the other actor to the list
                 else:
                     # avoiding too many nearby vehicles
@@ -268,7 +268,6 @@ class RouteScenario():
                 actor_info.append([0] * len(CBV_state))
 
             CBVs_obs[CBV_id] = np.array(actor_info, dtype=np.float32)
-
         return {
             'CBVs_obs': CBVs_obs  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
@@ -279,12 +278,12 @@ class RouteScenario():
             all the rows are other bv's relative state
         '''
         # absolute ego state
-        ego_state = np.array(self._get_actor_state(self.ego_vehicle))
+        ego_state = self._get_actor_state(self.ego_vehicle)
         # relative ego state
         ego_info = []
         for actor in ego_nearby_vehicles:
             if len(ego_info) < desired_nearby_vehicle:
-                actor_state = np.array(self._get_actor_state(actor)) - ego_state
+                actor_state = get_relative_info(self._get_actor_state(actor), ego_state)
                 ego_info.append(actor_state)  # all the row contain meaningful vehicle around ego vehicle
             else:
                 break

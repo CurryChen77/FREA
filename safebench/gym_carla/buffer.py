@@ -296,13 +296,13 @@ class RolloutBuffer:
             safety_network_config=None,
             buffer_capacity=10000,
             logger=None):
-        self.temp_buffer = {'actions': {}, 'obs': {}, 'next_obs': {}, 'rewards': {}, 'dones': {}}
         self.mode = mode
         self.buffer_capacity = buffer_capacity
         self.num_scenario = num_scenario
         self.buffer_len = 0
         # define obs shape and action shape for different modes
         if self.mode == 'train_scenario':
+            self.temp_buffer = {'actions': {}, 'obs': {}, 'next_obs': {}, 'rewards': {}, 'dones': {}}
             self.obs_shape = tuple(scenario_config['scenario_state_shape'])
             self.action_dim = scenario_config['scenario_action_dim']
             self.state_dim = scenario_config['scenario_state_dim']

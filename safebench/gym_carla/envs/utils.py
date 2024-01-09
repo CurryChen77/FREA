@@ -242,6 +242,24 @@ def get_nearby_vehicles(center_vehicle, radius=20):
     return nearby_vehicles
 
 
+def get_relative_info(global_info, ego_info):
+    """
+        Transform vehicle to ego coordinate
+        :param global_info: surrounding vehicle's global info
+        :param ego_info: ego vehicle info
+        :return: tuple of the pose of the surrounding vehicle in ego coordinate
+    """
+    x, y, yaw, vx, vy = global_info
+    ego_x, ego_y, ego_yaw, ego_vx, ego_vy = ego_info
+    R = np.array([[np.cos(ego_yaw), np.sin(ego_yaw)],
+                                [-np.sin(ego_yaw), np.cos(ego_yaw)]])
+    location_local = R.dot(np.array([x - ego_x, y - ego_y]))
+    velocity_local = R.dot(np.array([vx - ego_vx, vy - ego_vy]))
+    yaw_local = yaw - ego_yaw
+    local_info = [location_local[0], location_local[1], yaw_local, velocity_local[0], velocity_local[1]]
+    return local_info
+
+
 def get_CBV_candidates(center_vehicle, target_waypoint, search_radius, ego_fov=90):
     '''
         the foundation for the CBV selection, selecting the candidates nearby vehicles based on specific traffic rules
