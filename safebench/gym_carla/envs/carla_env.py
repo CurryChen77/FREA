@@ -649,7 +649,7 @@ class CarlaEnv(gym.Env):
                 collision_reward = 0
 
                 # final scenario agent rewards
-            CBVs_reward[CBV_id] = delta_dis + 2 * dis_ratio + 2 * collision_reward
+            CBVs_reward[CBV_id] = delta_dis + dis_ratio + 2 * collision_reward
 
         return CBVs_reward
 

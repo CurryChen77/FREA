@@ -197,13 +197,13 @@ class SAC(BasePolicy):
         log_prob = torch.sum(log_prob, dim=1, keepdim=True) 
         return action, log_prob, z, batch_mu, batch_log_sigma
 
-    def train(self, replay_buffer, writer, e_i):
-        if replay_buffer.buffer_len < self.buffer_start_training:
+    def train(self, buffer, writer, e_i):
+        if buffer.buffer_len < self.buffer_start_training:
             return
 
         for _ in range(self.update_iteration):
             # sample replay buffer
-            batch = replay_buffer.sample(self.batch_size)
+            batch = buffer.sample(self.batch_size)
             bn_s = CUDA(torch.FloatTensor(batch['CBVs_obs'])).reshape(self.batch_size, -1)
             bn_s_ = CUDA(torch.FloatTensor(batch['next_CBVs_obs'])).reshape(self.batch_size, -1)
             bn_a = CUDA(torch.FloatTensor(batch['action']))
@@ -255,7 +255,7 @@ class SAC(BasePolicy):
             for target_param, param in zip(self.Target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(target_param.data * (1 - self.tau) + param.data * self.tau)
 
-    def save_model(self, episode, map_name, replay_buffer):
+    def save_model(self, episode, map_name, buffer):
         states = {
             'policy_net': self.policy_net.state_dict(), 
             'value_net': self.value_net.state_dict(), 
@@ -272,7 +272,7 @@ class SAC(BasePolicy):
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
         # save the replay buffer for the save
-        replay_buffer.save_buffer(dir_path=save_dir, filename=f'buffer.{episode:04}.pkl')
+        buffer.save_buffer(dir_path=save_dir, filename=f'buffer.{episode:04}.pkl')
 
     # the loading method corresponds to the episode saving method
     def load_model(self, map_name, episode=None):

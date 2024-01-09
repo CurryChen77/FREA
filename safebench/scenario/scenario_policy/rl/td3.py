@@ -179,14 +179,14 @@ class TD3(BasePolicy):
         policy_loss = (-qval_batch).mean()
         return policy_loss
 
-    def train(self, replay_buffer, writer, e_i):
-        if replay_buffer.buffer_len < self.buffer_start_training:
+    def train(self, buffer, writer, e_i):
+        if buffer.buffer_len < self.buffer_start_training:
             return
 
         q1_loss, q2_loss, pi_loss = 0, 0, None
         for _ in range(self.update_iteration):
             # sample replay buffer
-            batch = replay_buffer.sample(self.batch_size)
+            batch = buffer.sample(self.batch_size)
             bn_s = CUDA(torch.FloatTensor(batch['CBVs_obs'])).reshape(self.batch_size, -1)
             bn_s_ = CUDA(torch.FloatTensor(batch['next_CBVs_obs'])).reshape(self.batch_size, -1)
             bn_a = CUDA(torch.FloatTensor(batch['action']))
@@ -222,7 +222,7 @@ class TD3(BasePolicy):
                 self.update_target()
                 pi_loss += pi_loss_step.detach().item()
 
-    def save_model(self, episode, map_name, replay_buffer):
+    def save_model(self, episode, map_name, buffer):
         states = {
             'q_funcs': self.q_funcs.state_dict(),
             'target_q_funcs': self.target_q_funcs.state_dict(),

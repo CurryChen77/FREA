@@ -17,7 +17,7 @@ class BasePolicy:
         self.continue_episode = 0
         self.num_scenario = config['num_scenario']
 
-    def train(self, replay_buffer, writer, e_i):
+    def train(self, buffer, writer, e_i):
         raise NotImplementedError()
 
     def set_mode(self, mode):
@@ -32,5 +32,5 @@ class BasePolicy:
     def load_model(self, map_name, scenario_configs=None):
         raise NotImplementedError()
 
-    def save_model(self, episode, map_name, replay_buffer):
+    def save_model(self, episode, map_name, buffer):
         raise NotImplementedError()

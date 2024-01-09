@@ -315,11 +315,11 @@ class CarlaRunner:
             # save checkpoints
             if e_i != start_episode and e_i % self.save_freq == 0:
                 if self.mode == 'train_agent':
-                    self.agent_policy.save_model(e_i, map_name=self.current_map, replay_buffer=buffer)
+                    self.agent_policy.save_model(e_i, map_name=self.current_map, buffer=buffer)
                 if self.mode == 'train_scenario':
-                    self.scenario_policy.save_model(e_i, map_name=self.current_map, replay_buffer=buffer)
+                    self.scenario_policy.save_model(e_i, map_name=self.current_map, buffer=buffer)
                 if self.mode == 'train_safety_network':
-                    self.safety_network_policy.save_model(e_i, map_name=self.current_map, replay_buffer=buffer)
+                    self.safety_network_policy.save_model(e_i, map_name=self.current_map, buffer=buffer)
 
         # close the tensorboard writer
         writer.close()

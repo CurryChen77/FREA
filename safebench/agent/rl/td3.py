@@ -206,7 +206,7 @@ class TD3(BasePolicy):
 
         return q1_loss, q2_loss, pi_loss
 
-    def save_model(self, episode, map_name, replay_buffer):
+    def save_model(self, episode, map_name, buffer):
         states = {
             'q_funcs': self.q_funcs.state_dict(),
             'target_q_funcs': self.target_q_funcs.state_dict(),

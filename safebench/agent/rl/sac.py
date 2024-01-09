@@ -218,7 +218,7 @@ class SAC(BasePolicy):
             for target_param, param in zip(self.Target_value_net.parameters(), self.value_net.parameters()):
                 target_param.data.copy_(target_param.data * (1 - self.tau) + param.data * self.tau)
 
-    def save_model(self, episode, map_name, replay_buffer):
+    def save_model(self, episode, map_name, buffer):
         states = {
             'policy_net': self.policy_net.state_dict(), 
             'value_net': self.value_net.state_dict(), 
@@ -235,7 +235,7 @@ class SAC(BasePolicy):
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
         # save the replay buffer for the save
-        replay_buffer.save_buffer(dir_path=save_dir, filename=f'buffer.{episode:04}.pkl')
+        buffer.save_buffer(dir_path=save_dir, filename=f'buffer.{episode:04}.pkl')
 
     def load_model(self, map_name, episode=None):
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)

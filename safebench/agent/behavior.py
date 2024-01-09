@@ -78,5 +78,5 @@ class CarlaBehaviorAgent(BasePolicy):
     def load_model(self, map_name):
         pass
 
-    def save_model(self, episode, map_name):
+    def save_model(self, episode, map_name, buffer):
         pass

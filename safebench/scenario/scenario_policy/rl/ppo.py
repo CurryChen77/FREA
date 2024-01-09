@@ -178,13 +178,13 @@ class PPO(BasePolicy):
             advantages[t] = advantage = delta + masks[t] * self.lambda_gae_adv * advantage
         return advantages
 
-    def train(self, replay_buffer, writer, e_i):
+    def train(self, buffer, writer, e_i):
         """
             from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
         """
 
         with torch.no_grad():
-            batch = replay_buffer.get()
+            batch = buffer.get()
 
             states = CUDA(torch.FloatTensor(batch['obs']))
             next_states = CUDA(torch.FloatTensor(batch['next_obs']))
@@ -240,9 +240,9 @@ class PPO(BasePolicy):
             self.optim.step()
 
         # reset buffer
-        replay_buffer.reset_buffer()
+        buffer.reset_buffer()
 
-    def save_model(self, episode, map_name, replay_buffer):
+    def save_model(self, episode, map_name, buffer):
         states = {
             'policy': self.policy.state_dict(),
             'value': self.value.state_dict(),

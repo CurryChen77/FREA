@@ -155,14 +155,14 @@ class DDPG(BasePolicy):
 
         return scenario_action
 
-    def train(self, replay_buffer, writer, e_i):
+    def train(self, buffer, writer, e_i):
         # check if memory is enough for one batch
-        if replay_buffer.buffer_len < self.buffer_start_training:
+        if buffer.buffer_len < self.buffer_start_training:
             return
 
         for it in range(self.update_iteration):
             # sample replay buffer
-            batch = replay_buffer.sample(self.batch_size)
+            batch = buffer.sample(self.batch_size)
             bn_s = CUDA(torch.FloatTensor(batch['CBVs_obs'])).reshape(self.batch_size, -1)
             bn_s_ = CUDA(torch.FloatTensor(batch['next_CBVs_obs'])).reshape(self.batch_size, -1)
             bn_a = CUDA(torch.FloatTensor(batch['action']))
@@ -201,7 +201,7 @@ class DDPG(BasePolicy):
             for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
                 target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
-    def save_model(self, episode, map_name, replay_buffer):
+    def save_model(self, episode, map_name, buffer):
         states = {
             'actor': self.actor.state_dict(),
             'critic': self.critic.state_dict(),
