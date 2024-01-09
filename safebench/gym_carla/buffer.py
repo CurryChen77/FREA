@@ -298,61 +298,62 @@ class RolloutBuffer:
             logger=None):
         self.temp_buffer = {'actions': {}, 'obs': {}, 'next_obs': {}, 'rewards': {}, 'dones': {}}
         self.mode = mode
+        self.buffer_capacity = buffer_capacity
+        self.num_scenario = num_scenario
+        self.buffer_len = 0
         # define obs shape and action shape for different modes
         if self.mode == 'train_scenario':
             self.obs_shape = tuple(scenario_config['scenario_state_shape'])
             self.action_dim = scenario_config['scenario_action_dim']
             self.state_dim = scenario_config['scenario_state_dim']
+            self.scenario_pos = 0
+            self.scenario_full = False
         elif self.mode == 'train_agent':
-            self.obs_shape = agent_config['ego_state_dim']
+            self.obs_shape = tuple([agent_config['ego_state_dim']])
             self.action_dim = agent_config['ego_action_dim']
             self.state_dim = agent_config['ego_state_dim']
+            self.agent_pos = [0] * self.num_scenario
+            self.agent_full = [False] * self.num_scenario
         elif self.mode == 'train_safety_network':
             self.obs_shape = tuple(safety_network_config['state_shape'])
             self.action_dim = safety_network_config['action_dim']
             self.state_dim = safety_network_config['state_dim']
+            self.safety_network_pos = 0
+            self.safety_network_full = False
         else:
             raise ValueError
 
-        self.buffer_capacity = buffer_capacity
-        self.num_scenario = num_scenario
         self.agent_need_obs = True if (agent_config['obs_type'] == 'simple_state' or agent_config['obs_type'] == 'plant') else False
         self.safety_network_obs_type = safety_network_config['obs_type'] if safety_network_config else None
-        self.pos = 0
-        self.buffer_len = 0
-        self.full = False
+
         self.logger = logger
 
-        if scenario_policy_type == 'offpolicy' and start_episode != 0:
-            model_path = os.path.join(scenario_config['ROOT_DIR'], scenario_config['model_path'], scenario_config['CBV_selection'])
-            agent_info = 'EgoPolicy_' + scenario_config['agent_policy'] + "-" + scenario_config['agent_obs_type']
-            safety_network = scenario_config['safety_network']
-            scenario_name = "all" if scenario_config['scenario_id'] is None else 'scenario' + str(scenario_config['scenario_id'])
-            load_dir = os.path.join(model_path, agent_info, safety_network, scenario_name + "_" + current_map)
-            self.load_buffer(dir_path=load_dir, filename=f'buffer.{start_episode:04}.pkl')
-        else:
-            self.reset_buffer()
+        self.reset_buffer()
 
     def reset_buffer(self):
-        self.pos = 0
         self.buffer_len = 0
-        self.full = False
-        self.temp_buffer = {'actions': {}, 'log_probs': {}, 'obs': {}, 'next_obs': {}, 'rewards': {}, 'dones': {}}
         if self.mode == 'train_scenario':
+            self.scenario_pos = 0
+            self.scenario_full = False
+            self.temp_buffer = {'actions': {}, 'log_probs': {}, 'obs': {}, 'next_obs': {}, 'rewards': {}, 'dones': {}}
             self.buffer_actions = np.zeros((self.buffer_capacity, self.action_dim), dtype=np.float32)
-            self.buffer_log_probs = np.zeros((self.buffer_capacity), dtype=np.float32)
+            self.buffer_log_probs = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
             self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
             self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
         elif self.mode == 'train_agent':
-            self.buffer_actions = np.zeros((self.buffer_capacity, self.action_dim), dtype=np.float32)
-            self.buffer_log_probs = np.zeros((self.buffer_capacity), dtype=np.float32)
-            self.buffer_obs = np.zeros((self.buffer_capacity, self.obs_shape), dtype=np.float32)
-            self.buffer_next_obs = np.zeros((self.buffer_capacity, self.obs_shape), dtype=np.float32)
-            self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
-            self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
+            self.agent_pos = [0] * self.num_scenario
+            self.agent_full = [False] * self.num_scenario
+            self.buffer_actions = np.zeros((self.buffer_capacity, self.num_scenario, self.action_dim), dtype=np.float32)
+            self.buffer_log_probs = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
+            self.buffer_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
+            self.buffer_next_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
+            self.buffer_rewards = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
+            self.buffer_dones = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
         elif self.mode == 'train_safety_network':
+            self.safety_network_pos = 0
+            self.safety_network_full = False
             self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
             self.buffer_constrain_h = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
@@ -364,9 +365,10 @@ class RolloutBuffer:
             key: the done came from the CBV view instead of ego view
         """
         processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones = [], [], [], [], [], []
-        scenario_actions, scenario_log_probs = data_list[1]
-        assert len(scenario_actions) == len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
-        for actions, log_probs, infos, next_infos in zip(scenario_actions, scenario_log_probs, additional_dict[0], additional_dict[1]):
+        all_scenario_actions, all_scenario_log_probs = data_list[1]  # scenario actions are in the datalist[1]
+
+        assert len(all_scenario_actions) == len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
+        for actions, log_probs, infos, next_infos in zip(all_scenario_actions, all_scenario_log_probs, additional_dict[0], additional_dict[1]):
             assert len(actions) == len(next_infos['CBVs_obs']) == len(infos['CBVs_obs']) \
                 == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "length of the trajectory should be the same"
             for CBV_id in actions.keys():
@@ -408,40 +410,52 @@ class RolloutBuffer:
         # store for scenario training
         if self.mode == 'train_scenario':
             scenario_actions, scenario_log_probs, obs, next_obs, rewards, dones = self.process_CBV_data(data_list, additional_dict)
+
             length = len(dones)
             if length > 0:
-                if self.pos + length >= self.buffer_capacity:
-                    self.full = True
-                    self.pos = 0
+                if self.scenario_pos + length >= self.buffer_capacity:
+                    self.scenario_full = True
+                    self.scenario_pos = 0
 
-                self.buffer_actions[self.pos:self.pos+length, :] = np.array(scenario_actions)
-                self.buffer_log_probs[self.pos:self.pos+length] = np.array(scenario_log_probs)
-                self.buffer_obs[self.pos:self.pos+length, :] = np.array(obs)  # CBV_obs
-                self.buffer_next_obs[self.pos:self.pos+length, :] = np.array(next_obs)  # CBV next obs from next info
-                self.buffer_rewards[self.pos:self.pos+length] = np.array(rewards)  # CBV reward
-                self.buffer_dones[self.pos:self.pos+length] = np.array(dones)
-                self.pos += length
+                self.buffer_actions[self.scenario_pos:self.scenario_pos+length, :] = np.array(scenario_actions)
+                self.buffer_log_probs[self.scenario_pos:self.scenario_pos+length] = np.array(scenario_log_probs)
+                self.buffer_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(obs)  # CBV_obs
+                self.buffer_next_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(next_obs)  # CBV next obs from next info
+                self.buffer_rewards[self.scenario_pos:self.scenario_pos+length] = np.array(rewards)  # CBV reward
+                self.buffer_dones[self.scenario_pos:self.scenario_pos+length] = np.array(dones)
+                self.scenario_pos += length
+            # get the buffer length
+            self.buffer_len = self.buffer_capacity if self.scenario_full else self.scenario_pos
 
         # store for agent training
         elif self.mode == 'train_agent':
-            ego_actions, ego_log_probs = data_list[0]
-            obs = data_list[2]
-            next_obs = data_list[3]
-            rewards = data_list[4]
-            dones = data_list[5]
-            length = len(dones)
-            if length > 0:
-                if self.pos + length >= self.buffer_capacity:
-                    self.full = True
-                    self.pos = 0
+            all_agent_actions, all_agent_log_probs = data_list[0]  # agent actions are in data_list[0]
+            all_obs = data_list[2]
+            all_next_obs = data_list[3]
+            all_rewards = data_list[4]
+            all_dones = data_list[5]
+            all_next_infos = additional_dict[1]
 
-            self.buffer_actions[self.pos:self.pos + length, :] = np.array(ego_actions)
-            self.buffer_log_probs[self.pos:self.pos + length] = np.array(ego_log_probs)
-            self.buffer_obs[self.pos:self.pos + length, :] = np.array(obs)  # CBV_obs
-            self.buffer_next_obs[self.pos:self.pos + length, :] = np.array(next_obs)  # CBV next obs from next info
-            self.buffer_rewards[self.pos:self.pos + length] = np.array(rewards)  # CBV reward
-            self.buffer_dones[self.pos:self.pos + length] = np.array(dones)
-            self.pos += length
+            assert len(all_agent_actions) == len(all_obs) == len(all_next_obs) == len(all_rewards) == len(all_dones), "the length of trajectory should be the same"
+            for ego_actions, ego_log_probs, obs, next_obs, rewards, dones, next_infos in zip(all_agent_actions, all_agent_log_probs, all_obs, all_next_obs, all_rewards, all_dones, all_next_infos):
+                scenario_id = next_infos['scenario_id']
+
+                self.buffer_actions[self.agent_pos[scenario_id], scenario_id, :] = np.array(ego_actions)
+                self.buffer_log_probs[self.agent_pos[scenario_id], scenario_id] = np.array(ego_log_probs)
+                self.buffer_obs[self.agent_pos[scenario_id], scenario_id, :] = np.array(obs)  # CBV_obs
+                self.buffer_next_obs[self.agent_pos[scenario_id], scenario_id, :] = np.array(next_obs)  # CBV next obs from next info
+                self.buffer_rewards[self.agent_pos[scenario_id], scenario_id] = np.array(rewards)  # CBV reward
+                self.buffer_dones[self.agent_pos[scenario_id], scenario_id] = np.array(dones)
+                self.agent_pos[scenario_id] += 1
+                if self.agent_pos[scenario_id] >= self.buffer_capacity:
+                    self.agent_full[scenario_id] = True
+                    self.agent_pos[scenario_id] = 0
+
+            buffer_len = 0
+            # get the buffer length
+            for pos, full in zip(self.agent_pos, self.agent_full):
+                buffer_len += self.buffer_capacity if full else pos
+            self.buffer_len = buffer_len
 
         # TODO store for agent training
         elif self.mode == 'train_safety_network':
@@ -453,21 +467,20 @@ class RolloutBuffer:
             constrain_h = [info['constrain_h'] for info in additional_dict[0]]  # the constraint h should from infos
 
             for s_i in range(len(dones)):
-                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])
-                self.buffer_constrain_h[self.pos] = np.array(constrain_h[s_i])
-                self.buffer_dones[self.pos] = np.array(dones[s_i])
-                self.pos += 1
-                self.buffer_len += 1
-                if self.pos == self.buffer_capacity:
-                    self.full = True
-                    self.pos = 0
+                self.buffer_next_obs[self.safety_network_pos] = np.array(next_obs[s_i])
+                self.buffer_constrain_h[self.safety_network_pos] = np.array(constrain_h[s_i])
+                self.buffer_dones[self.safety_network_pos] = np.array(dones[s_i])
+                self.safety_network_pos += 1
+                if self.safety_network_pos == self.buffer_capacity:
+                    self.safety_network_full = True
+                    self.safety_network_pos = 0
 
-        # get the buffer length
-        self.buffer_len = self.buffer_capacity if self.full else self.pos
+            # get the buffer length
+            self.buffer_len = self.buffer_capacity if self.safety_network_full else self.safety_network_pos
 
     def get(self):
-        upper_bound = self.buffer_capacity if self.full else self.pos
         if self.mode == 'train_scenario':
+            upper_bound = self.buffer_capacity if self.scenario_full else self.scenario_pos
             batch = {
                 'actions': self.buffer_actions[:upper_bound, ...],  # action
                 'log_probs': self.buffer_log_probs[:upper_bound],  # action log probability
@@ -477,16 +490,33 @@ class RolloutBuffer:
                 'dones': self.buffer_dones[:upper_bound],  # done
             }
         elif self.mode == 'train_agent':
+            index = 0
+            actions = np.zeros((self.buffer_len, self.action_dim), dtype=np.float32)
+            log_probs = np.zeros(self.buffer_len, dtype=np.float32)
+            obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
+            next_obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
+            rewards = np.zeros(self.buffer_len, dtype=np.float32)
+            dones = np.zeros(self.buffer_len, dtype=np.float32)
+            for scenario_id in range(self.num_scenario):
+                upper_bound = self.buffer_capacity if self.agent_full[scenario_id] else self.agent_pos[scenario_id]
+                actions[index:index+upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
+                log_probs[index:index+upper_bound] = self.buffer_log_probs[:upper_bound, scenario_id]
+                obs[index:index+upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
+                next_obs[index:index+upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]
+                rewards[index:index+upper_bound] = self.buffer_rewards[:upper_bound, scenario_id]
+                dones[index:index+upper_bound] = self.buffer_dones[:upper_bound, scenario_id]
+                index += upper_bound
+
             batch = {
-                'actions': self.buffer_actions[:upper_bound, ...],  # action
-                'log_probs': self.buffer_log_probs[:upper_bound],  # action log probability
-                'obs': self.buffer_obs[:upper_bound, ...].reshape((-1, self.state_dim)),  # obs
-                'next_obs': self.buffer_next_obs[:upper_bound, ...].reshape((-1, self.state_dim)),  # next obs
-                'rewards': self.buffer_rewards[:upper_bound],  # reward
-                'dones': self.buffer_dones[:upper_bound],  # done
+                'actions': actions,  # action
+                'log_probs': log_probs,  # action log probability
+                'obs': obs.reshape((-1, self.state_dim)),  # obs
+                'next_obs': next_obs.reshape((-1, self.state_dim)),  # next obs
+                'rewards': rewards,  # reward
+                'dones': dones,  # done
             }
         elif self.mode == 'train_safety_network':
-            # TODO
+            upper_bound = self.buffer_capacity if self.safety_network_full else self.safety_network_pos
             batch = {
                 'next_obs': self.buffer_next_obs[:upper_bound, :],  # next obs
                 'constrain_h': self.buffer_constrain_h[:upper_bound],  # constrain
