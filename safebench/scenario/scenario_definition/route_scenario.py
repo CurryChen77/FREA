@@ -253,13 +253,13 @@ class RouteScenario():
             # absolute state
             CBV_state = self._get_actor_state(self.CBVs[CBV_id])
             # relative state
-            ego_state = get_relative_info(self._get_actor_state(self.ego_vehicle), CBV_state)
+            ego_state = get_relative_info(global_info=self._get_actor_state(self.ego_vehicle), ego_info=CBV_state)
             actor_info = [ego_state]  # the first info belongs to the ego vehicle
             for actor in self.CBVs_nearby_vehicles[CBV_id]:
                 if actor.id == self.ego_vehicle.id:
                     continue  # except the ego actor
                 elif len(actor_info) < desired_nearby_vehicle:
-                    actor_state = get_relative_info(self._get_actor_state(actor), CBV_state)
+                    actor_state = get_relative_info(global_info=self._get_actor_state(actor), ego_info=CBV_state)
                     actor_info.append(actor_state)  # add the info of the other actor to the list
                 else:
                     # avoiding too many nearby vehicles
@@ -283,7 +283,7 @@ class RouteScenario():
         ego_info = []
         for actor in ego_nearby_vehicles:
             if len(ego_info) < desired_nearby_vehicle:
-                actor_state = get_relative_info(self._get_actor_state(actor), ego_state)
+                actor_state = get_relative_info(global_info=self._get_actor_state(actor), ego_info=ego_state)
                 ego_info.append(actor_state)  # all the row contain meaningful vehicle around ego vehicle
             else:
                 break

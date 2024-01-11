@@ -506,13 +506,12 @@ class CarlaRunner:
                 onpolicy['agent'] = True
             if self.scenario_policy.type == 'onpolicy':
                 onpolicy['scenario'] = True
-            if self.safety_network_policy.type == 'onpolicy':
+            if self.safety_network_config and self.safety_network_policy.type == 'onpolicy':
                 onpolicy['safety_network'] = True
         else:
             raise NotImplementedError(f"no this mode")
 
         return buffer, onpolicy
-
 
     def check_continue_training(self, policy):
         # load previous checkpoint

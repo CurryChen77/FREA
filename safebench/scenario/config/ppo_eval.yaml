@@ -22,8 +22,10 @@ buffer_capacity: 2500
 
 clip_epsilon: 0.2
 gamma: 0.99
-train_iteration: 4   # how many times training
-train_interval: 4     # how often training
+train_repeat_times: 4
+train_interval: 4
 policy_lr: 1.0e-4
 value_lr: 1.0e-4
 batch_size: 256
+lambda_gae_adv: 0.98
+lambda_entropy: 0.01
