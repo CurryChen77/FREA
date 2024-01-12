@@ -242,6 +242,13 @@ def get_nearby_vehicles(center_vehicle, radius=20):
     return nearby_vehicles
 
 
+def normalize_angle(x):
+    x = x % (2 * np.pi)  # force in range [0, 2 pi)
+    if x > np.pi:  # move to [-pi, pi)
+        x -= 2 * np.pi
+    return x
+
+
 def get_relative_info(global_info, ego_info):
     """
         Transform vehicle to ego coordinate
@@ -251,11 +258,12 @@ def get_relative_info(global_info, ego_info):
     """
     x, y, yaw, vx, vy = global_info
     ego_x, ego_y, ego_yaw, ego_vx, ego_vy = ego_info
+    # the rotation matrix of the left hand side
     R = np.array([[np.cos(ego_yaw), np.sin(ego_yaw)],
                                 [-np.sin(ego_yaw), np.cos(ego_yaw)]])
     location_local = R.dot(np.array([x - ego_x, y - ego_y]))
     velocity_local = R.dot(np.array([vx - ego_vx, vy - ego_vy]))
-    yaw_local = yaw - ego_yaw
+    yaw_local = normalize_angle(yaw - ego_yaw)
     local_info = [location_local[0], location_local[1], yaw_local, velocity_local[0], velocity_local[1]]
     return local_info
 
