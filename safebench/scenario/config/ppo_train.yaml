@@ -8,8 +8,10 @@ scenario_id: 9  # default null -> save and load an "all" model for all scenarios
 route_id: null
 
 # for scenario id 8
-scenario_state_dim: 15 # 3*5 - actor number * actor info dim
-scenario_state_shape: [3, 5]
+#scenario_state_dim: 15 # 3*5 - actor number * actor info dim
+#scenario_state_shape: [3, 5]
+scenario_state_dim: 7 # 3*5 - actor number * actor info dim
+scenario_state_shape: [7, ]
 scenario_action_dim: 2
 
 # for PPO policy model
