@@ -335,13 +335,14 @@ class RolloutBuffer:
         if self.mode == 'train_scenario':
             self.scenario_pos = 0
             self.scenario_full = False
-            self.temp_buffer = {'actions': {}, 'log_probs': {}, 'obs': {}, 'next_obs': {}, 'rewards': {}, 'dones': {}}
+            self.temp_buffer = {'actions': {}, 'log_probs': {}, 'obs': {}, 'next_obs': {}, 'rewards': {}, 'dones': {}, 'terminated': {}}
             self.buffer_actions = np.zeros((self.buffer_capacity, self.action_dim), dtype=np.float32)
             self.buffer_log_probs = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
             self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
             self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
+            self.buffer_terminated = np.zeros((self.buffer_capacity), dtype=np.float32)
         elif self.mode == 'train_agent':
             self.agent_pos = [0] * self.num_scenario
             self.agent_full = [False] * self.num_scenario
@@ -361,10 +362,9 @@ class RolloutBuffer:
     def process_CBV_data(self, data_list, additional_dict):
         """
             1. remove the meaningless data when CBV is None (scenario obs, next scenario obs, scenario action are all None)
-            2. remove the truncated CBV data
             key: the done came from the CBV view instead of ego view
         """
-        processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones = [], [], [], [], [], []
+        processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones, processed_terminated = [], [], [], [], [], [], []
         all_scenario_actions, all_scenario_log_probs = data_list[1]  # scenario actions are in the datalist[1]
 
         assert len(all_scenario_actions) == len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
@@ -380,16 +380,17 @@ class RolloutBuffer:
                     self.temp_buffer['next_obs'][CBV_id] = []
                     self.temp_buffer['rewards'][CBV_id] = []
                     self.temp_buffer['dones'][CBV_id] = []
+                    self.temp_buffer['terminated'][CBV_id] = []
 
                 # add one-step trajectory in to the corresponding CBV dict
                 self.temp_buffer['actions'][CBV_id].append(actions[CBV_id])
-
                 self.temp_buffer['log_probs'][CBV_id].append(log_probs[CBV_id])
                 self.temp_buffer['obs'][CBV_id].append(infos['CBVs_obs'][CBV_id])
                 self.temp_buffer['next_obs'][CBV_id].append(next_infos['CBVs_obs'][CBV_id])
                 self.temp_buffer['rewards'][CBV_id].append(next_infos['CBVs_reward'][CBV_id])
                 if next_infos['CBVs_terminated'][CBV_id] or next_infos['CBVs_truncated'][CBV_id]:
                     self.temp_buffer['dones'][CBV_id].append(True)
+                    self.temp_buffer['terminated'][CBV_id].append(next_infos['CBVs_terminated'][CBV_id])
                     # the continuous trajectory of the CBV is completed, copy the whole trajectory into the list for further storing
                     processed_actions.extend(self.temp_buffer['actions'].pop(CBV_id))
                     processed_log_probs.extend(self.temp_buffer['log_probs'].pop(CBV_id))
@@ -397,10 +398,12 @@ class RolloutBuffer:
                     processed_next_obs.extend(self.temp_buffer['next_obs'].pop(CBV_id))
                     processed_rewards.extend(self.temp_buffer['rewards'].pop(CBV_id))
                     processed_dones.extend(self.temp_buffer['dones'].pop(CBV_id))
+                    processed_terminated.extend(self.temp_buffer['terminated'].pop(CBV_id))
                 else:
                     self.temp_buffer['dones'][CBV_id].append(False)
+                    self.temp_buffer['terminated'][CBV_id].append(False)
 
-        return processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones
+        return processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones, processed_terminated
 
     def store(self, data_list, additional_dict):
         """
@@ -409,7 +412,7 @@ class RolloutBuffer:
         """
         # store for scenario training
         if self.mode == 'train_scenario':
-            scenario_actions, scenario_log_probs, obs, next_obs, rewards, dones = self.process_CBV_data(data_list, additional_dict)
+            scenario_actions, scenario_log_probs, obs, next_obs, rewards, dones, terminated = self.process_CBV_data(data_list, additional_dict)
 
             length = len(dones)
             if length > 0:
@@ -423,6 +426,7 @@ class RolloutBuffer:
                 self.buffer_next_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(next_obs)  # CBV next obs from next info
                 self.buffer_rewards[self.scenario_pos:self.scenario_pos+length] = np.array(rewards)  # CBV reward
                 self.buffer_dones[self.scenario_pos:self.scenario_pos+length] = np.array(dones)
+                self.buffer_terminated[self.scenario_pos:self.scenario_pos+length] = np.array(terminated)
                 self.scenario_pos += length
             # get the buffer length
             self.buffer_len = self.buffer_capacity if self.scenario_full else self.scenario_pos
@@ -488,6 +492,7 @@ class RolloutBuffer:
                 'next_obs': self.buffer_next_obs[:upper_bound, ...].reshape((-1, self.state_dim)),  # next obs
                 'rewards': self.buffer_rewards[:upper_bound],  # reward
                 'dones': self.buffer_dones[:upper_bound],  # done
+                'terminated': self.buffer_terminated[:upper_bound]  # terminated
             }
         elif self.mode == 'train_agent':
             index = 0

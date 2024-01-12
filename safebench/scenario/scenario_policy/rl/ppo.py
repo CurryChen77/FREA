@@ -162,20 +162,21 @@ class PPO(BasePolicy):
                 scenario_log_prob[env_id][CBV_id] = CPU(log_prob[i])
         return scenario_action, scenario_log_prob
 
-    def get_advantages_vtrace(self, rewards, undones, values, next_values):
+    def get_advantages_vtrace(self, rewards, undones, values, next_values, unterminated):
         """
+            unterminated: if the CBV collide with object, then it is terminated
+            undone: if the CBV is stuck or collide or max step will done
             https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
         """
         advantages = torch.empty_like(values)  # advantage value
 
-        masks = undones * self.gamma
         horizon_len = rewards.shape[0]
 
         advantage = torch.zeros_like(values[0])  # last advantage value by GAE (Generalized Advantage Estimate)
 
         for t in range(horizon_len - 1, -1, -1):
-            delta = rewards[t] + masks[t] * next_values[t] - values[t]
-            advantages[t] = advantage = delta + masks[t] * self.lambda_gae_adv * advantage
+            delta = rewards[t] + unterminated[t] * self.gamma * next_values[t] - values[t]
+            advantages[t] = advantage = delta + undones[t] * self.gamma * self.lambda_gae_adv * advantage
         return advantages
 
     def train(self, buffer, writer, e_i):
@@ -192,12 +193,13 @@ class PPO(BasePolicy):
             log_probs = CUDA(torch.FloatTensor(batch['log_probs']))
             rewards = CUDA(torch.FloatTensor(batch['rewards']))
             undones = CUDA(torch.FloatTensor(1-batch['dones']))
+            unterminated = CUDA(torch.FloatTensor(1-batch['terminated']))
             buffer_size = states.shape[0]
 
             values = self.value(states)
             next_values = self.value(next_states)
 
-            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values)
+            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
             reward_sums = advantages + values
             del rewards, undones, values, next_values
 
@@ -233,10 +235,10 @@ class PPO(BasePolicy):
             L1 = ratio * advantage
             L2 = torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon) * advantage
             surrogate = torch.min(L1, L2).mean()
-            actor_loss = surrogate + entropy.mean() * self.lambda_entropy
+            actor_loss = -1 * (surrogate + entropy.mean() * self.lambda_entropy)
             writer.add_scalar("actor loss", actor_loss, e_i)
             self.optim.zero_grad()
-            (-actor_loss).backward()
+            actor_loss.backward()
             self.optim.step()
 
         # reset buffer

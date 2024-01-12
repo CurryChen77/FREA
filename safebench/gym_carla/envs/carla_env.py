@@ -205,7 +205,7 @@ class CarlaEnv(gym.Env):
 
         def count_collisions(event):
             # Ignore the current one if it is the same id as before
-            self.CBVs_collision[event.actor.id] = event.other_actor.id
+            self.CBVs_collision[event.actor.id] = event.other_actor
 
     def CBVs_selection(self):
         # when training the ego agent, don't need to calculate the CBV
@@ -644,7 +644,10 @@ class CarlaEnv(gym.Env):
 
             # CBV collision reward (collide with ego reward -> 1; collide with rest bvs reward -> -1)
             if self.CBVs_collision[CBV_id] is not None:
-                collision_reward = 1 if self.CBVs_collision[CBV_id] == self.ego_vehicle.id else -1
+                if self.CBVs_collision[CBV_id].id == self.ego_vehicle.id:
+                    collision_reward = 1
+                else:
+                    collision_reward = 0
             else:
                 collision_reward = 0
 
