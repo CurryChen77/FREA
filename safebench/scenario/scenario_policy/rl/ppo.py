@@ -102,6 +102,7 @@ class PPO(BasePolicy):
         self.batch_size = config['batch_size']
         self.lambda_gae_adv = config['lambda_gae_adv']
         self.lambda_entropy = config['lambda_entropy']
+        self.max_train_episode = config['train_episode']
 
         self.model_type = config['model_type']
         self.CBV_selection = config['CBV_selection']
@@ -111,7 +112,7 @@ class PPO(BasePolicy):
         self.safety_network = config['safety_network']
 
         self.policy = CUDA(PolicyNetwork(state_dim=self.state_dim, action_dim=self.action_dim))
-        self.optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
+        self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
         self.value = CUDA(ValueNetwork(state_dim=self.state_dim))
         self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr)
         self.value_criterion = nn.SmoothL1Loss()
@@ -128,6 +129,14 @@ class PPO(BasePolicy):
             self.value.eval()
         else:
             raise ValueError(f'Unknown mode {mode}')
+
+    def lr_decay(self, e_i):
+        lr_policy_now = self.policy_lr * (1 - e_i / self.max_train_episode)
+        lr_value_now = self.value_lr * (1 - e_i / self.max_train_episode)
+        for p in self.policy_optim.param_groups:
+            p['lr'] = lr_policy_now
+        for p in self.value_optim.param_groups:
+            p['lr'] = lr_value_now
 
     def info_process(self, infos):
         CBVs_obs = []
@@ -185,6 +194,9 @@ class PPO(BasePolicy):
         """
 
         with torch.no_grad():
+            # learning rate decay
+            self.lr_decay(e_i)
+
             batch = buffer.get()
 
             states = CUDA(torch.FloatTensor(batch['obs']))
@@ -223,6 +235,7 @@ class PPO(BasePolicy):
             writer.add_scalar("value loss", value_loss, e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
+            nn.utils.clip_grad_norm_(self.value.parameters(), 0.5)
             self.value_optim.step()
 
             # update policy
@@ -237,9 +250,10 @@ class PPO(BasePolicy):
             surrogate = torch.min(L1, L2).mean()
             actor_loss = -1 * (surrogate + entropy.mean() * self.lambda_entropy)
             writer.add_scalar("actor loss", actor_loss, e_i)
-            self.optim.zero_grad()
+            self.policy_optim.zero_grad()
             actor_loss.backward()
-            self.optim.step()
+            nn.utils.clip_grad_norm_(self.policy.parameters(), 0.5)
+            self.policy_optim.step()
 
         # reset buffer
         buffer.reset_buffer()
@@ -248,7 +262,7 @@ class PPO(BasePolicy):
         states = {
             'policy': self.policy.state_dict(),
             'value': self.value.state_dict(),
-            'optim': self.optim.state_dict(),
+            'policy_optim': self.policy_optim.state_dict(),
             'value_optim': self.value_optim.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
@@ -277,7 +291,7 @@ class PPO(BasePolicy):
                 checkpoint = torch.load(f)
             self.policy.load_state_dict(checkpoint['policy'])
             self.value.load_state_dict(checkpoint['value'])
-            self.optim.load_state_dict(checkpoint['optim'])
+            self.policy_optim.load_state_dict(checkpoint['policy_optim'])
             self.value_optim.load_state_dict(checkpoint['value_optim'])
             self.continue_episode = episode
         else:
