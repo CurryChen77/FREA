@@ -195,7 +195,7 @@ class PPO(BasePolicy):
 
         with torch.no_grad():
             # learning rate decay
-            self.lr_decay(e_i)
+            self.lr_decay(e_i)  # add the learning rate decay
 
             batch = buffer.get()
 
