@@ -14,7 +14,7 @@ import numpy as np
 import carla
 
 from safebench.gym_carla.envs.misc import compute_magnitude_angle
-from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity, get_relative_info
+from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity, get_relative_info, get_forward_speed
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
@@ -243,96 +243,73 @@ class RouteScenario():
         # [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
         return actor_x, actor_y, actor_yaw, velocity.x, velocity.y
 
-    def update_info(self, desired_nearby_vehicle=3):
+    def update_info(self, vehicle_count=3):
         '''
             scenario agent state:
-            first row is ego's relative state (x, y, yaw, vx, vy)
-            rest row are other bv's relative state (x, y, yaw, vx, vy)
+            first row is CBV's relative state [x, y, bbox_x, bbox_y, yaw, forward speed]
+            second row is ego's relative state [x, y, bbox_x, bbox_y, yaw, forward speed]
+            rest row are other bv's relative state [x, y, bbox_x, bbox_y, yaw, forward speed]
         '''
         CBVs_obs = {}
-        for CBV_id in self.CBVs.keys():
-            # absolute state
-            CBV_trans = CarlaDataProvider.get_transform(self.CBVs[CBV_id])
-            CBV_loc = CBV_trans.location
-            CBV_yaw = CBV_trans.rotation.yaw
-            CBV_velocity = calculate_abs_velocity(CarlaDataProvider.get_velocity(self.CBVs[CBV_id]))
+        for CBV_id, CBV in self.CBVs.items():
+            actors_info = []
+            # the basic information about the CBV (center vehicle)
+            CBV_transform = CarlaDataProvider.get_transform(CBV)
+            CBV_matrix = np.array(CBV_transform.get_matrix())
+            CBV_yaw = CBV_transform.rotation.yaw / 180 * np.pi
+            # the relative CBV info
+            CBV_info = get_relative_info(actor=CBV, center_yaw=CBV_yaw, center_matrix=CBV_matrix)
+            actors_info.append(CBV_info)
+            # the relative ego info
+            ego_info = get_relative_info(actor=self.ego_vehicle, center_yaw=CBV_yaw, center_matrix=CBV_matrix)
+            actors_info.append(ego_info)
 
-            ego_loc = CarlaDataProvider.get_location(self.ego_vehicle)
-            ego_relative_dis, ego_relative_angle = compute_magnitude_angle(ego_loc, CBV_loc, CBV_yaw)
-
-            actor_info = [CBV_velocity, ego_relative_dis, ego_relative_angle]  # the first info belongs to the ego vehicle
+            # the first info belongs to the ego vehicle
             for actor in self.CBVs_nearby_vehicles[CBV_id]:
                 if actor.id == self.ego_vehicle.id:
                     continue  # except the ego actor
-                elif (len(actor_info)-1)/2 < desired_nearby_vehicle:
-                    actor_loc = CarlaDataProvider.get_location(actor)
-                    actor_relative_dis, actor_relative_angle = compute_magnitude_angle(actor_loc, CBV_loc, CBV_yaw)
-                    actor_info.extend([actor_relative_dis, actor_relative_angle])
+                elif len(actors_info) < vehicle_count:
+                    actor_info = get_relative_info(actor=actor, center_yaw=CBV_yaw, center_matrix=CBV_matrix)
+                    actors_info.append(actor_info)
                 else:
                     # avoiding too many nearby vehicles
                     break
-            while (len(actor_info)-1)/2 < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
-                actor_info.extend([0, 0])
+            while len(actors_info) < vehicle_count:  # if no enough nearby vehicles, padding with 0
+                actors_info.append([0] * len(CBV_info))
 
-            CBVs_obs[CBV_id] = np.array(actor_info, dtype=np.float32)
-
+            CBVs_obs[CBV_id] = np.array(actors_info, dtype=np.float32)
         return {
             'CBVs_obs': CBVs_obs  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
-    # def update_info(self, desired_nearby_vehicle=3):
-    #     '''
-    #         scenario agent state:
-    #         first row is ego's relative state (x, y, yaw, vx, vy)
-    #         rest row are other bv's relative state (x, y, yaw, vx, vy)
-    #     '''
-    #     CBVs_obs = {}
-    #     for CBV_id in self.CBVs.keys():
-    #         # absolute state
-    #         CBV_state = self._get_actor_state(self.CBVs[CBV_id])
-    #         # relative state
-    #         ego_state = get_relative_info(global_info=self._get_actor_state(self.ego_vehicle), ego_info=CBV_state)
-    #         actor_info = [ego_state]  # the first info belongs to the ego vehicle
-    #         for actor in self.CBVs_nearby_vehicles[CBV_id]:
-    #             if actor.id == self.ego_vehicle.id:
-    #                 continue  # except the ego actor
-    #             elif len(actor_info) < desired_nearby_vehicle:
-    #                 actor_state = get_relative_info(global_info=self._get_actor_state(actor), ego_info=CBV_state)
-    #                 actor_info.append(actor_state)  # add the info of the other actor to the list
-    #             else:
-    #                 # avoiding too many nearby vehicles
-    #                 break
-    #         while len(actor_info) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
-    #             actor_info.append([0] * len(CBV_state))
-    #
-    #         CBVs_obs[CBV_id] = np.array(actor_info, dtype=np.float32)
-    #     return {
-    #         'CBVs_obs': CBVs_obs  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
-    #     }
 
     def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=3):
         '''
             safety network input state:
             all the rows are other bv's relative state
         '''
-        # absolute ego state
-        ego_state = self._get_actor_state(self.ego_vehicle)
-        # relative ego state
-        ego_info = []
+        infos = []
+        # the basic information about the ego (center vehicle)
+        ego_transform = CarlaDataProvider.get_transform(self.ego_vehicle)
+        ego_matrix = np.array(ego_transform.get_matrix())
+        ego_yaw = ego_transform.rotation.yaw / 180 * np.pi
+        # the relative CBV info
+        ego_info = get_relative_info(actor=self.ego_vehicle, center_yaw=ego_yaw, center_matrix=ego_matrix)
+        infos.append(ego_info)
         for actor in ego_nearby_vehicles:
-            if len(ego_info) < desired_nearby_vehicle:
-                actor_state = get_relative_info(global_info=self._get_actor_state(actor), ego_info=ego_state)
-                ego_info.append(actor_state)  # all the row contain meaningful vehicle around ego vehicle
+            if len(infos) < desired_nearby_vehicle:
+                actor_info = get_relative_info(actor=actor, center_yaw=ego_yaw, center_matrix=ego_matrix)
+                infos.append(actor_info)
             else:
                 break
-        while len(ego_info) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
-            ego_info.append([0] * len(ego_state))
+        while len(infos) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+            infos.append([0] * len(ego_info))
 
         # get the info of the ego vehicle and the other actors
-        ego_info = np.array(ego_info, dtype=np.float32)
+        infos = np.array(infos, dtype=np.float32)
 
         return {
-            'ego_info': ego_info
+            'ego_info': infos
         }
 
     def clean_up(self):

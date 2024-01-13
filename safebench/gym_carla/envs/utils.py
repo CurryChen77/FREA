@@ -249,23 +249,54 @@ def normalize_angle(x):
     return x
 
 
-def get_relative_info(global_info, ego_info):
+def get_forward_speed(transform, velocity):
     """
-        Transform vehicle to ego coordinate
-        :param global_info: surrounding vehicle's global info
-        :param ego_info: ego vehicle info
-        :return: tuple of the pose of the surrounding vehicle in ego coordinate
+        Convert the vehicle transform directly to forward speed
     """
-    x, y, yaw, vx, vy = global_info
-    ego_x, ego_y, ego_yaw, ego_vx, ego_vy = ego_info
-    # the rotation matrix of the left hand side
-    R = np.array([[np.cos(ego_yaw), np.sin(ego_yaw)],
-                                [-np.sin(ego_yaw), np.cos(ego_yaw)]])
-    location_local = R.dot(np.array([x - ego_x, y - ego_y]))
-    velocity_local = R.dot(np.array([vx - ego_vx, vy - ego_vy]))
-    yaw_local = normalize_angle(yaw - ego_yaw)
-    local_info = [location_local[0], location_local[1], yaw_local, velocity_local[0], velocity_local[1]]
-    return local_info
+
+    vel_np = np.array([velocity.x, velocity.y, velocity.z])
+    pitch = np.deg2rad(transform.rotation.pitch)
+    yaw = np.deg2rad(transform.rotation.yaw)
+    orientation = np.array([np.cos(pitch) * np.cos(yaw), np.cos(pitch) * np.sin(yaw), np.sin(pitch)])
+    speed = np.dot(vel_np, orientation)
+    return speed
+
+
+def get_relative_transform(ego_matrix, vehicle_matrix):
+    """
+    return the relative transform from ego_pose to vehicle pose
+    """
+    relative_pos = vehicle_matrix[:3, 3] - ego_matrix[:3, 3]
+    rot = ego_matrix[:3, :3].T
+    relative_pos = rot @ relative_pos
+
+    # transform to right-handed system
+    relative_pos[1] = - relative_pos[1]
+
+    return relative_pos
+
+
+def get_relative_info(actor, center_yaw, center_matrix):
+    """
+        get the relative actor info from the view of center vehicle
+        info [x, y, bbox_x, bbox_y, yaw, forward speed]
+    """
+    actor_transform = CarlaDataProvider.get_transform(actor)
+    actor_rotation = actor_transform.rotation
+    actor_matrix = np.array(actor_transform.get_matrix())
+    # actor bbox
+    actor_extent = actor.bounding_box.extent
+    dx = np.array([actor_extent.x, actor_extent.y]) * 2.
+    # relative yaw angle
+    yaw = actor_rotation.yaw / 180 * np.pi
+    relative_yaw = normalize_angle(yaw - center_yaw)
+    # relative pos
+    relative_pos = get_relative_transform(ego_matrix=center_matrix, vehicle_matrix=actor_matrix)
+    actor_velocity = CarlaDataProvider.get_velocity(actor)
+    actor_speed = get_forward_speed(transform=actor_transform, velocity=actor_velocity)  # In m/s
+    actor_info = [relative_pos[0], relative_pos[1], dx[0], dx[1], relative_yaw, actor_speed]
+
+    return actor_info
 
 
 def get_CBV_candidates(center_vehicle, target_waypoint, search_radius, ego_fov=90):
