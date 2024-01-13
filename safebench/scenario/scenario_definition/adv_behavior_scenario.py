@@ -95,8 +95,7 @@ class AdvBehaviorSingle(BasicScenario):
 
     def update_behavior(self, CBVs, scenario_actions):
         # apply scenario action for each CBV
-        for CBV_id in CBVs.keys():
-            CBV = CBVs[CBV_id]
+        for CBV_id, CBV in CBVs.items():
             scenario_action = scenario_actions[CBV_id]
             act = self.convert_actions(scenario_action)
             CBV.apply_control(act)  # apply the control of the CBV on the next tick

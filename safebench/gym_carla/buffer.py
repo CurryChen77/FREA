@@ -368,12 +368,14 @@ class RolloutBuffer:
         all_scenario_actions, all_scenario_log_probs = data_list[1]  # scenario actions are in the datalist[1]
 
         assert len(all_scenario_actions) == len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
+        # Traverse all the step data in all scenarios
         for actions, log_probs, infos, next_infos in zip(all_scenario_actions, all_scenario_log_probs, additional_dict[0], additional_dict[1]):
             assert len(actions) == len(next_infos['CBVs_obs']) == len(infos['CBVs_obs']) \
                 == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "length of the trajectory should be the same"
+            # Traverse all the CBVs in one scenario
             for CBV_id in actions.keys():
                 # if the first CBV in the history, create an empty list for all the trajectory
-                if CBV_id not in self.temp_buffer['log_probs'].keys():
+                if CBV_id not in self.temp_buffer['actions'].keys():
                     self.temp_buffer['actions'][CBV_id] = []
                     self.temp_buffer['log_probs'][CBV_id] = []
                     self.temp_buffer['obs'][CBV_id] = []
@@ -428,6 +430,7 @@ class RolloutBuffer:
                 self.buffer_dones[self.scenario_pos:self.scenario_pos+length] = np.array(dones)
                 self.buffer_terminated[self.scenario_pos:self.scenario_pos+length] = np.array(terminated)
                 self.scenario_pos += length
+
             # get the buffer length
             self.buffer_len = self.buffer_capacity if self.scenario_full else self.scenario_pos
 

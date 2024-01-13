@@ -270,6 +270,7 @@ class CarlaRunner:
                 # get action from agent policy and scenario policy (assume using one batch)
                 ego_actions = self.agent_policy.get_action(obs, infos, deterministic=False)
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=False)
+
                 # apply action to env and get obs
                 next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy=onpolicy)
                 # store to the replay buffer

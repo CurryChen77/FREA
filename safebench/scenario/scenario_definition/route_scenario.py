@@ -282,7 +282,6 @@ class RouteScenario():
             'CBVs_obs': CBVs_obs  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
-
     def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=3):
         '''
             safety network input state:

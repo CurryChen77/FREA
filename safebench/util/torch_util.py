@@ -15,6 +15,7 @@ import numpy as np
 import random
 import scipy.signal
 import torch
+from torch import nn
 
 
 def combined_shape(length, shape=None):

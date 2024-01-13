@@ -12,74 +12,15 @@ import os
 
 import numpy as np
 import torch
+from torch import Tensor
 import torch.nn as nn
 from fnmatch import fnmatch
 from torch.distributions import Normal
 import torch.nn.functional as F
 
-from safebench.util.torch_util import CUDA, CPU, hidden_init
+from safebench.util.torch_util import CUDA, CPU, hidden_init, layer_init_with_orthogonal
 from safebench.scenario.scenario_policy.base_policy import BasePolicy
-
-
-class PolicyNetwork(nn.Module):
-    def __init__(self, state_dim, action_dim):
-        super(PolicyNetwork, self).__init__()
-        hidden_dim = 64
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc_mu = nn.Linear(hidden_dim, action_dim)
-        self.fc_std = nn.Linear(hidden_dim, action_dim)
-
-        self.relu = nn.ReLU()
-        self.tanh = nn.Tanh()
-        self.softplus = nn.Softplus()
-        self.min_val = 1e-8
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
-        self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
-        self.fc_mu.weight.data.uniform_(*hidden_init(self.fc_mu))
-        self.fc_std.weight.data.uniform_(*hidden_init(self.fc_std))
-
-    def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
-        mu = self.tanh(self.fc_mu(x))
-        std = self.softplus(self.fc_std(x)) + self.min_val
-        return mu, std
-
-    def select_action(self, state, deterministic):
-        with torch.no_grad():
-            mu, std = self.forward(state)
-            if deterministic:
-                action = mu
-            else:
-                n = Normal(mu, std)
-                action = n.sample()
-        return action
-
-
-class ValueNetwork(nn.Module):
-    def __init__(self, state_dim):
-        super(ValueNetwork, self).__init__()
-        hidden_dim = 64
-        self.relu = nn.ReLU()
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, 1)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
-        self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
-        self.fc3.weight.data.uniform_(*hidden_init(self.fc3))
-
-    def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+from safebench.scenario.scenario_policy.rl.net import ActorPPO, CriticPPO
 
 
 class PPO(BasePolicy):
@@ -102,7 +43,9 @@ class PPO(BasePolicy):
         self.batch_size = config['batch_size']
         self.lambda_gae_adv = config['lambda_gae_adv']
         self.lambda_entropy = config['lambda_entropy']
+        self.lambda_entropy = CUDA(torch.tensor(self.lambda_entropy, dtype=torch.float32))
         self.max_train_episode = config['train_episode']
+        self.dims = config['dims']
 
         self.model_type = config['model_type']
         self.CBV_selection = config['CBV_selection']
@@ -111,9 +54,9 @@ class PPO(BasePolicy):
         self.agent_info = 'EgoPolicy_' + config['agent_policy'] + "-" + config['agent_obs_type']
         self.safety_network = config['safety_network']
 
-        self.policy = CUDA(PolicyNetwork(state_dim=self.state_dim, action_dim=self.action_dim))
+        self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
-        self.value = CUDA(ValueNetwork(state_dim=self.state_dim))
+        self.value = CUDA(CriticPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr)
         self.value_criterion = nn.SmoothL1Loss()
 
@@ -161,10 +104,7 @@ class PPO(BasePolicy):
         scenario_log_prob = [{} for _ in range(len(infos))]
         if state is not None:
             state_tensor = CUDA(torch.FloatTensor(state))
-            action = self.policy.select_action(state_tensor, deterministic)
-            mu, std = self.policy(state_tensor)
-            dist = Normal(mu, std)
-            log_prob = dist.log_prob(action).sum(dim=1)
+            action, log_prob = self.policy.get_action(state_tensor)
 
             for i, (CBV_id, env_id) in enumerate(zip(CBVs_id, env_index)):
                 scenario_action[env_id][CBV_id] = CPU(action[i])
@@ -239,10 +179,7 @@ class PPO(BasePolicy):
             self.value_optim.step()
 
             # update policy
-            mu, std = self.policy(state)
-            dist = Normal(mu, std)
-            new_log_prob = dist.log_prob(action).sum(dim=1)
-            entropy = dist.entropy().sum(dim=1)
+            new_log_prob, entropy = self.policy.get_logprob_entropy(state, action)
 
             ratio = torch.exp(new_log_prob - log_prob.detach())
             L1 = ratio * advantage
