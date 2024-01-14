@@ -417,7 +417,7 @@ class RolloutBuffer:
             scenario_actions, scenario_log_probs, obs, next_obs, rewards, dones, terminated = self.process_CBV_data(data_list, additional_dict)
 
             length = len(dones)
-            if length > 0:
+            if length > 5:  # remove the too short CBV trajectory
                 if self.scenario_pos + length >= self.buffer_capacity:
                     # the buffer can just hold part of the trajectory dta
                     for i in range(length):
