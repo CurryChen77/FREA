@@ -14,12 +14,12 @@ train_episode: 500
 dims: [64, 64]
 
 save_freq: 20
-buffer_capacity: 2500
+buffer_capacity: 800
 
 clip_epsilon: 0.2
 gamma: 0.99
 train_repeat_times: 4
-train_interval: 4
+
 policy_lr: 2.0e-4
 value_lr: 2.0e-4
 batch_size: 256

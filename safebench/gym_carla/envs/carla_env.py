@@ -326,10 +326,10 @@ class CarlaEnv(gym.Env):
         if self.CBVs and self.spectator:
             for CBV in self.CBVs.values():
                 CBV_location = CarlaDataProvider.get_location(CBV)
-                self.world.debug.draw_point(CBV_location + carla.Location(z=3), size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11)
+                self.world.debug.draw_point(CBV_location + carla.Location(z=4), size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11)
 
         # if the ego agent is learnable and need to viz the route, then draw the target waypoints
-        if self.ego_agent_learnable and self.viz_route:
+        if self.viz_route:
             waypoint_route = np.array([[node[0], node[1]] for node in self.waypoints])
             draw_route(self.world, self.ego_vehicle, waypoint_route)
 
@@ -621,9 +621,9 @@ class CarlaEnv(gym.Env):
         r_lat = -abs(self.ego_vehicle.get_control().steer) * lspeed_lon ** 2
 
         # combine all rewards
-        r = 1 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat
+        # r = 1 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat
         # reward from "Interpretable End-to-End Urban Autonomous Driving With Latent Deep Reinforcement Learning"
-        # r = 10 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat - 0.1
+        r = 10 * r_collision + 1 * lspeed_lon + 10 * r_fast + 1 * r_out + r_steer * 5 + 0.2 * r_lat - 0.1
         return r
 
     def _get_scenario_reward(self):

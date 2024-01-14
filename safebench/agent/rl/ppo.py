@@ -36,7 +36,7 @@ class PPO(BasePolicy):
         self.policy_lr = config['policy_lr']
         self.value_lr = config['value_lr']
         self.train_repeat_times = config['train_repeat_times']
-        self.train_interval = config['train_interval']
+
         self.state_dim = config['ego_state_dim']
         self.action_dim = config['ego_action_dim']
         self.clip_epsilon = config['clip_epsilon']

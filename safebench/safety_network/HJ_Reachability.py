@@ -45,7 +45,7 @@ class Q(nn.Module):
 
 class HJR:
     name = 'HJR'
-    type = 'onpolicy'
+    type = 'offpolicy'
 
     def __init__(self, config, logger):
         self.logger = logger

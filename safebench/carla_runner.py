@@ -307,11 +307,11 @@ class CarlaRunner:
 
             # train on-policy agent or scenario
             if self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
-                self.agent_policy.train(buffer, writer, e_i) if e_i != start_episode and e_i % self.agent_policy.train_interval == 0 else None
+                self.agent_policy.train(buffer, writer, e_i) if e_i != start_episode and all(buffer.agent_full) else None
             elif self.mode == 'train_scenario' and self.scenario_policy.type == 'onpolicy':
-                self.scenario_policy.train(buffer, writer, e_i) if e_i != start_episode and e_i % self.scenario_policy.train_interval == 0 else None
+                self.scenario_policy.train(buffer, writer, e_i) if e_i != start_episode and buffer.scenario_full else None
             elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'onpolicy':
-                self.safety_network_policy.train(buffer, writer, e_i) if e_i != start_episode and e_i % self.safety_network_policy.train_interval == 0 else None
+                self.safety_network_policy.train(buffer, writer, e_i) if e_i != start_episode and buffer.safety_network_full else None
 
             # save checkpoints
             if e_i != start_episode and e_i % self.save_freq == 0:

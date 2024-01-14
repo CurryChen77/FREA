@@ -419,17 +419,30 @@ class RolloutBuffer:
             length = len(dones)
             if length > 0:
                 if self.scenario_pos + length >= self.buffer_capacity:
+                    # the buffer can just hold part of the trajectory dta
+                    for i in range(length):
+                        if self.scenario_pos < self.buffer_capacity:
+                            self.buffer_actions[self.scenario_pos, :] = np.array(scenario_actions[i])
+                            self.buffer_log_probs[self.scenario_pos] = np.array(scenario_log_probs[i])
+                            self.buffer_obs[self.scenario_pos, :] = np.array(obs[i])  # CBV_obs
+                            self.buffer_next_obs[self.scenario_pos, :] = np.array(next_obs[i])  # CBV next obs from next info
+                            self.buffer_rewards[self.scenario_pos] = np.array(rewards[i])  # CBV reward
+                            self.buffer_dones[self.scenario_pos] = np.array(dones[i])
+                            self.buffer_terminated[self.scenario_pos] = np.array(terminated[i])
+                            self.scenario_pos += 1
+                        else:
+                            break
                     self.scenario_full = True
-                    self.scenario_pos = 0
-
-                self.buffer_actions[self.scenario_pos:self.scenario_pos+length, :] = np.array(scenario_actions)
-                self.buffer_log_probs[self.scenario_pos:self.scenario_pos+length] = np.array(scenario_log_probs)
-                self.buffer_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(obs)  # CBV_obs
-                self.buffer_next_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(next_obs)  # CBV next obs from next info
-                self.buffer_rewards[self.scenario_pos:self.scenario_pos+length] = np.array(rewards)  # CBV reward
-                self.buffer_dones[self.scenario_pos:self.scenario_pos+length] = np.array(dones)
-                self.buffer_terminated[self.scenario_pos:self.scenario_pos+length] = np.array(terminated)
-                self.scenario_pos += length
+                else:
+                    # the buffer still can hold  the whole trajectory
+                    self.buffer_actions[self.scenario_pos:self.scenario_pos+length, :] = np.array(scenario_actions)
+                    self.buffer_log_probs[self.scenario_pos:self.scenario_pos+length] = np.array(scenario_log_probs)
+                    self.buffer_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(obs)  # CBV_obs
+                    self.buffer_next_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(next_obs)  # CBV next obs from next info
+                    self.buffer_rewards[self.scenario_pos:self.scenario_pos+length] = np.array(rewards)  # CBV reward
+                    self.buffer_dones[self.scenario_pos:self.scenario_pos+length] = np.array(dones)
+                    self.buffer_terminated[self.scenario_pos:self.scenario_pos+length] = np.array(terminated)
+                    self.scenario_pos += length
 
             # get the buffer length
             self.buffer_len = self.buffer_capacity if self.scenario_full else self.scenario_pos
@@ -446,22 +459,21 @@ class RolloutBuffer:
             assert len(all_agent_actions) == len(all_obs) == len(all_next_obs) == len(all_rewards) == len(all_dones), "the length of trajectory should be the same"
             for ego_actions, ego_log_probs, obs, next_obs, rewards, dones, next_infos in zip(all_agent_actions, all_agent_log_probs, all_obs, all_next_obs, all_rewards, all_dones, all_next_infos):
                 scenario_id = next_infos['scenario_id']
-
-                self.buffer_actions[self.agent_pos[scenario_id], scenario_id, :] = np.array(ego_actions)
-                self.buffer_log_probs[self.agent_pos[scenario_id], scenario_id] = np.array(ego_log_probs)
-                self.buffer_obs[self.agent_pos[scenario_id], scenario_id, :] = np.array(obs)  # CBV_obs
-                self.buffer_next_obs[self.agent_pos[scenario_id], scenario_id, :] = np.array(next_obs)  # CBV next obs from next info
-                self.buffer_rewards[self.agent_pos[scenario_id], scenario_id] = np.array(rewards)  # CBV reward
-                self.buffer_dones[self.agent_pos[scenario_id], scenario_id] = np.array(dones)
-                self.agent_pos[scenario_id] += 1
-                if self.agent_pos[scenario_id] >= self.buffer_capacity:
-                    self.agent_full[scenario_id] = True
-                    self.agent_pos[scenario_id] = 0
+                if not self.agent_full[scenario_id]:
+                    self.buffer_actions[self.agent_pos[scenario_id], scenario_id, :] = np.array(ego_actions)
+                    self.buffer_log_probs[self.agent_pos[scenario_id], scenario_id] = np.array(ego_log_probs)
+                    self.buffer_obs[self.agent_pos[scenario_id], scenario_id, :] = np.array(obs)  # CBV_obs
+                    self.buffer_next_obs[self.agent_pos[scenario_id], scenario_id, :] = np.array(next_obs)  # CBV next obs from next info
+                    self.buffer_rewards[self.agent_pos[scenario_id], scenario_id] = np.array(rewards)  # CBV reward
+                    self.buffer_dones[self.agent_pos[scenario_id], scenario_id] = np.array(dones)
+                    self.agent_pos[scenario_id] += 1
+                    if self.agent_pos[scenario_id] > self.buffer_capacity // 2:
+                        self.agent_full[scenario_id] = True
 
             buffer_len = 0
             # get the buffer length
             for pos, full in zip(self.agent_pos, self.agent_full):
-                buffer_len += self.buffer_capacity if full else pos
+                buffer_len += self.buffer_capacity // 2 if full else pos
             self.buffer_len = buffer_len
 
         # TODO store for agent training
@@ -506,7 +518,7 @@ class RolloutBuffer:
             rewards = np.zeros(self.buffer_len, dtype=np.float32)
             dones = np.zeros(self.buffer_len, dtype=np.float32)
             for scenario_id in range(self.num_scenario):
-                upper_bound = self.buffer_capacity if self.agent_full[scenario_id] else self.agent_pos[scenario_id]
+                upper_bound = self.buffer_capacity // 2 if self.agent_full[scenario_id] else self.agent_pos[scenario_id]
                 actions[index:index+upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
                 log_probs[index:index+upper_bound] = self.buffer_log_probs[:upper_bound, scenario_id]
                 obs[index:index+upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
