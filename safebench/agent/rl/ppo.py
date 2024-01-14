@@ -20,67 +20,7 @@ import torch.nn.functional as F
 
 from safebench.util.torch_util import CUDA, CPU, hidden_init
 from safebench.agent.base_policy import BasePolicy
-
-
-class PolicyNetwork(nn.Module):
-    def __init__(self, state_dim, action_dim):
-        super(PolicyNetwork, self).__init__()
-        hidden_dim = 64
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc_mu = nn.Linear(hidden_dim, action_dim)
-        self.fc_std = nn.Linear(hidden_dim, action_dim)
-
-        self.relu = nn.ReLU()
-        self.tanh = nn.Tanh()
-        self.softplus = nn.Softplus()
-        self.min_val = 1e-8
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
-        self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
-        self.fc_mu.weight.data.uniform_(*hidden_init(self.fc_mu))
-        self.fc_std.weight.data.uniform_(*hidden_init(self.fc_std))
-
-    def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
-        mu = self.tanh(self.fc_mu(x))
-        std = self.softplus(self.fc_std(x)) + self.min_val
-        return mu, std
-
-    def select_action(self, state, deterministic):
-        with torch.no_grad():
-            mu, std = self.forward(state)
-            if deterministic:
-                action = mu
-            else:
-                n = Normal(mu, std)
-                action = n.sample()
-        return action
-
-
-class ValueNetwork(nn.Module):
-    def __init__(self, state_dim):
-        super(ValueNetwork, self).__init__()
-        hidden_dim = 64
-        self.relu = nn.ReLU()
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, 1)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
-        self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
-        self.fc3.weight.data.uniform_(*hidden_init(self.fc3))
-
-    def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+from safebench.agent.rl.net import ActorPPO, CriticPPO
 
 
 class PPO(BasePolicy):
@@ -104,6 +44,7 @@ class PPO(BasePolicy):
         self.lambda_gae_adv = config['lambda_gae_adv']
         self.lambda_entropy = config['lambda_entropy']
         self.max_train_episode = config['train_episode']
+        self.dims = config['dims']
 
         self.model_type = config['model_type']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
@@ -111,9 +52,9 @@ class PPO(BasePolicy):
         self.obs_type = config['obs_type']
         self.scenario_policy_type = config['scenario_policy_type']
 
-        self.policy = CUDA(PolicyNetwork(state_dim=self.state_dim, action_dim=self.action_dim))
+        self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
-        self.value = CUDA(ValueNetwork(state_dim=self.state_dim))
+        self.value = CUDA(CriticPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr)
         self.value_criterion = nn.SmoothL1Loss()
 
@@ -140,26 +81,24 @@ class PPO(BasePolicy):
 
     def get_action(self, state, infos, deterministic=False):
         state_tensor = CUDA(torch.FloatTensor(state))
-        action = self.policy.select_action(state_tensor, deterministic)
-        mu, std = self.policy(state_tensor)
-        dist = Normal(mu, std)
-        log_prob = dist.log_prob(action).sum(dim=1)
+        action, log_prob = self.policy.get_action(state_tensor)
         return CPU(action), CPU(log_prob)
 
-    def get_advantages_vtrace(self, rewards, undones, values, next_values):
+    def get_advantages_vtrace(self, rewards, undones, values, next_values, unterminated):
         """
+            unterminated: if the CBV collide with object, then it is terminated
+            undone: if the CBV is stuck or collide or max step will done
             https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
         """
         advantages = torch.empty_like(values)  # advantage value
 
-        masks = undones * self.gamma
         horizon_len = rewards.shape[0]
 
         advantage = torch.zeros_like(values[0])  # last advantage value by GAE (Generalized Advantage Estimate)
 
         for t in range(horizon_len - 1, -1, -1):
-            delta = rewards[t] + masks[t] * next_values[t] - values[t]
-            advantages[t] = advantage = delta + masks[t] * self.lambda_gae_adv * advantage
+            delta = rewards[t] + unterminated[t] * self.gamma * next_values[t] - values[t]
+            advantages[t] = advantage = delta + undones[t] * self.gamma * self.lambda_gae_adv * advantage
         return advantages
 
     def train(self, buffer, writer, e_i):
@@ -178,16 +117,18 @@ class PPO(BasePolicy):
             log_probs = CUDA(torch.FloatTensor(batch['log_probs']))
             rewards = CUDA(torch.FloatTensor(batch['rewards']))
             undones = CUDA(torch.FloatTensor(1-batch['dones']))
+            unterminated = CUDA(torch.FloatTensor(1-batch['dones']))  # TODO for now, the terminal and done are the same for ego agent training
+
             buffer_size = states.shape[0]
 
             values = self.value(states)
             next_values = self.value(next_states)
 
-            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values)
+            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
             reward_sums = advantages + values
             del rewards, undones, values
 
-            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-4)
+            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
 
         # start to train, use gradient descent without batch size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
@@ -203,25 +144,22 @@ class PPO(BasePolicy):
 
             # update value function
             value = self.value(state)
-            value_loss = self.value_criterion(reward_sum, value)  # the value criterion is SmoothL1Loss() instead of MSE
-            writer.add_scalar("value loss", value_loss, e_i)
+            value_loss = self.value_criterion(value, reward_sum)  # the value criterion is SmoothL1Loss() instead of MSE
+            writer.add_scalar("value loss", value_loss.item(), e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
             nn.utils.clip_grad_norm_(self.value.parameters(), 0.5)
             self.value_optim.step()
 
             # update policy
-            mu, std = self.policy(state)
-            dist = Normal(mu, std)
-            new_log_prob = dist.log_prob(action).sum(dim=1)
-            entropy = dist.entropy().sum(dim=1)
+            new_log_prob, entropy = self.policy.get_logprob_entropy(state, action)
 
-            ratio = torch.exp(new_log_prob - log_prob.detach())
-            L1 = ratio * advantage
-            L2 = torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon) * advantage
+            ratio = (new_log_prob - log_prob.detach()).exp()
+            L1 = advantage * ratio
+            L2 = advantage * torch.clamp(ratio, 1.0 - self.clip_epsilon, 1.0 + self.clip_epsilon)
             surrogate = torch.min(L1, L2).mean()
-            actor_loss = -1 * (surrogate + entropy.mean() * self.lambda_entropy)
-            writer.add_scalar("policy loss", actor_loss, e_i)
+            actor_loss = -(surrogate + entropy.mean() * self.lambda_entropy)
+            writer.add_scalar("actor loss", actor_loss.item(), e_i)
             self.policy_optim.zero_grad()
             actor_loss.backward()
             nn.utils.clip_grad_norm_(self.policy.parameters(), 0.5)

@@ -18,7 +18,7 @@ from fnmatch import fnmatch
 from torch.distributions import Normal
 import torch.nn.functional as F
 
-from safebench.util.torch_util import CUDA, CPU, hidden_init, layer_init_with_orthogonal
+from safebench.util.torch_util import CUDA, CPU, hidden_init
 from safebench.scenario.scenario_policy.base_policy import BasePolicy
 from safebench.scenario.scenario_policy.rl.net import ActorPPO, CriticPPO
 
@@ -155,7 +155,7 @@ class PPO(BasePolicy):
             reward_sums = advantages + values
             del rewards, undones, values, next_values
 
-            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-4)
+            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
 
         # start to train, use gradient descent without batch size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
@@ -171,8 +171,8 @@ class PPO(BasePolicy):
 
             # update value function
             value = self.value(state)
-            value_loss = self.value_criterion(reward_sum, value)  # the value criterion is SmoothL1Loss() instead of MSE
-            writer.add_scalar("value loss", value_loss, e_i)
+            value_loss = self.value_criterion(value, reward_sum)  # the value criterion is SmoothL1Loss() instead of MSE
+            writer.add_scalar("value loss", value_loss.item(), e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
             nn.utils.clip_grad_norm_(self.value.parameters(), 0.5)
@@ -181,12 +181,12 @@ class PPO(BasePolicy):
             # update policy
             new_log_prob, entropy = self.policy.get_logprob_entropy(state, action)
 
-            ratio = torch.exp(new_log_prob - log_prob.detach())
-            L1 = ratio * advantage
-            L2 = torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon) * advantage
+            ratio = (new_log_prob - log_prob.detach()).exp()
+            L1 = advantage * ratio
+            L2 = advantage * torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon)
             surrogate = torch.min(L1, L2).mean()
-            actor_loss = -1 * (surrogate + entropy.mean() * self.lambda_entropy)
-            writer.add_scalar("actor loss", actor_loss, e_i)
+            actor_loss = -(surrogate + entropy.mean() * self.lambda_entropy)
+            writer.add_scalar("actor loss", actor_loss.item(), e_i)
             self.policy_optim.zero_grad()
             actor_loss.backward()
             nn.utils.clip_grad_norm_(self.policy.parameters(), 0.5)
