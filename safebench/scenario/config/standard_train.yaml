@@ -14,3 +14,4 @@ buffer_capacity: 100
 
 save_freq: 5
 train_episode: 100
+gamma: 0.99

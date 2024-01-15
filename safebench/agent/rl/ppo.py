@@ -53,9 +53,9 @@ class PPO(BasePolicy):
         self.scenario_policy_type = config['scenario_policy_type']
 
         self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
-        self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
+        self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr, eps=1e-5)  # trick about eps
         self.value = CUDA(CriticPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
-        self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr)
+        self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr, eps=1e-5)  # trick about eps
         self.value_criterion = nn.SmoothL1Loss()
 
         self.mode = 'train'

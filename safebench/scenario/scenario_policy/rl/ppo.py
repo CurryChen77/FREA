@@ -55,9 +55,9 @@ class PPO(BasePolicy):
         self.safety_network = config['safety_network']
 
         self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
-        self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr)
+        self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr, eps=1e-5)  # trick about eps
         self.value = CUDA(CriticPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
-        self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr)
+        self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr, eps=1e-5)  # trick about eps
         self.value_criterion = nn.SmoothL1Loss()
 
         self.mode = 'train'
@@ -186,6 +186,7 @@ class PPO(BasePolicy):
             L2 = advantage * torch.clamp(ratio, 1.0-self.clip_epsilon, 1.0+self.clip_epsilon)
             surrogate = torch.min(L1, L2).mean()
             actor_loss = -(surrogate + entropy.mean() * self.lambda_entropy)
+            writer.add_scalar("actor entropy", entropy.mean(), e_i)
             writer.add_scalar("actor loss", actor_loss.item(), e_i)
             self.policy_optim.zero_grad()
             actor_loss.backward()
