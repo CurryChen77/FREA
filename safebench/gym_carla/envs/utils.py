@@ -130,7 +130,6 @@ def get_CBV_ego_reward(ego, CBV):
     '''
         distance ratio and delta distance calculation
     '''
-    delta_dis = 0.0
 
     dis = get_distance_across_centers(ego, CBV)
     # delta_dis > 0 means ego and CBV are getting closer, otherwise punish CBV drive away from ego
