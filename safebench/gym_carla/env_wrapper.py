@@ -16,7 +16,6 @@ import pygame
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
-
 class VectorWrapper():
     """ 
         The interface to control a list of environments.

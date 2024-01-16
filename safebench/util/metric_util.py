@@ -54,8 +54,10 @@ def get_route_scores(record_dict, time_out=30):
     num_collision = 0
     sum_out_of_road_length = 0
     for data_id, sequence in record_dict.items():  # for each data id (small scenario)
-        if sequence[-1]['collision'][0] == Status.FAILURE:  # [-1] means the finial step
-            num_collision += 1
+        for step in sequence:  # count all the collision event along the trajectory
+            if step['collision'][0] == Status.FAILURE:
+                num_collision += 1
+
         sum_out_of_road_length += cal_out_of_road_length(sequence)
 
     collision_rate = num_collision / len(record_dict)
