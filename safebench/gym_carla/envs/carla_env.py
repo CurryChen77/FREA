@@ -647,12 +647,12 @@ class CarlaEnv(gym.Env):
                 if self.CBVs_collision[CBV_id].id == self.ego_vehicle.id:
                     collision_reward = 1
                 else:
-                    collision_reward = 0
+                    collision_reward = -1
             else:
                 collision_reward = 0
 
                 # final scenario agent rewards
-            CBVs_reward[CBV_id] = delta_dis + collision_reward
+            CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward
 
         return CBVs_reward
 
