@@ -10,7 +10,7 @@ ego_action_dim: 2
 ego_state_dim: 4
 ego_action_limit: 1.0
 
-train_episode: 500
+train_episode: 800
 dims: [64, 64]
 
 save_freq: 20
