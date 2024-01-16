@@ -9,7 +9,6 @@
 """
 
 import copy
-import time
 
 import numpy as np
 import carla
@@ -401,7 +400,7 @@ class CarlaRunner:
 
             # create scenarios within the vectorized wrapper
             self.env = VectorWrapper(
-                self.env_params, 
+                self.env_params,
                 self.scenario_config, 
                 self.world, 
                 self.birdeye_render, 

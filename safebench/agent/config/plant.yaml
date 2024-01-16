@@ -7,11 +7,13 @@ obs_type: 'ego_state'
 ego_state_dim: 3
 ego_action_dim: 2
 
+
 train_episode: 200
 
 save_freq: 10
 buffer_capacity: 10000
 buffer_start_training: 100
+
 
 # model_ckpt_load_path needs to be adapted depending on the experiment
 model_ckpt_load_path: "safebench/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt"

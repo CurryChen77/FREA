@@ -14,7 +14,7 @@ import copy
 import numpy as np
 import pygame
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
-from safebench.scenario.scenario_policy.rl.net import RewardScaling
+
 
 
 class VectorWrapper():
@@ -33,9 +33,6 @@ class VectorWrapper():
         self.agent_state_encoder = agent_state_encoder
         self.birdeye_render = birdeye_render
         self.mode = env_params['mode']
-        if self.mode == 'train_scenario':
-            self.scenario_reward_scaling = {}
-            self.scenario_gamma = scenario_config['gamma']
 
         self.env_list = []
         for i in range(self.num_scenario):
@@ -64,18 +61,6 @@ class VectorWrapper():
                 # raise Exception()
                 ego_vehicles.append(env.ego_vehicle)
         return ego_vehicles
-
-    def reward_scaling(self, info, e_i):
-        CBVs_rewards = copy.deepcopy(info['CBVs_reward'])
-        for CBV_id, reward in CBVs_rewards.items():
-            if CBV_id not in self.scenario_reward_scaling[e_i].keys():
-                self.scenario_reward_scaling[e_i][CBV_id] = RewardScaling(shape=1, gamma=self.scenario_gamma)
-
-            info['CBVs_reward'][CBV_id] = self.scenario_reward_scaling[e_i][CBV_id](reward)
-            if info['CBVs_terminated'][CBV_id] or info['CBVs_truncated'][CBV_id]:
-                del self.scenario_reward_scaling[e_i][CBV_id]
-
-        return info
 
     def reset(self, scenario_configs):
         # create scenarios and ego vehicles
@@ -108,15 +93,9 @@ class VectorWrapper():
         for s_i in range(len(scenario_configs), self.num_scenario):
             self.finished_env[s_i] = True
 
-        # init the reward scaling for scenario training
-        if self.mode == 'train_scenario':
-            self.scenario_reward_scaling = {}
-
         # store scenario id
         for s_i in range(len(scenario_configs)):
             info_list[s_i].update({'scenario_id': s_i})
-            if self.mode == 'train_scenario':
-                self.scenario_reward_scaling[s_i] = {}
 
         # return obs
         return self.obs_postprocess(obs_list), info_list
@@ -168,10 +147,6 @@ class VectorWrapper():
                 # store scenario id to help agent decide which policy should be used
                 info[0]['scenario_id'] = e_i
                 info[1]['scenario_id'] = e_i
-
-                # process the reward scaling
-                if self.mode == 'train_scenario':
-                    info[0] = self.reward_scaling(info[0], e_i)
 
                 # check if env is done
                 if done:
