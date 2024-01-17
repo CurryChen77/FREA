@@ -94,11 +94,12 @@ class AdvBehaviorSingle(BasicScenario):
         self.last_ego_waypoint = ego_waypoint
 
     def update_behavior(self, CBVs, scenario_actions):
-        # apply scenario action for each CBV
-        for CBV_id, CBV in CBVs.items():
-            scenario_action = scenario_actions[CBV_id]
-            act = self.convert_actions(scenario_action)
-            CBV.apply_control(act)  # apply the control of the CBV on the next tick
+        if scenario_actions is not None:
+            # apply scenario action for each CBV
+            for CBV_id, CBV in CBVs.items():
+                scenario_action = scenario_actions[CBV_id]
+                act = self.convert_actions(scenario_action)
+                CBV.apply_control(act)  # apply the control of the CBV on the next tick
 
         if self.signalized_junction:  # if the junction is controlled by the signal, the traffic need to be updated
             self.update_traffic_light()
