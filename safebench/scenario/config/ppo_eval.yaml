@@ -16,7 +16,7 @@ scenario_action_dim: 2
 model_path: 'safebench/scenario/scenario_data/model_ckpt/ppo'
 model_type: 'bv'
 dims: [64, 64]
-train_episode: 1000
+train_episode: 1500
 
 save_freq: 20
 buffer_capacity: 2048
