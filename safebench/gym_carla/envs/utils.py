@@ -298,7 +298,7 @@ def get_relative_info(actor, center_yaw, center_matrix):
     return actor_info
 
 
-def get_CBV_candidates(center_vehicle, target_waypoint, search_radius, ego_fov=90):
+def get_CBV_candidates(center_vehicle, target_waypoint, search_radius, ego_fov=60):
     '''
         the foundation for the CBV selection, selecting the candidates nearby vehicles based on specific traffic rules
     '''
