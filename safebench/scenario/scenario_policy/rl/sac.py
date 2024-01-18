@@ -104,7 +104,7 @@ class SAC(BasePolicy):
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.CBV_selection)
         self.scenario_id = config['scenario_id']
         self.agent_info = 'EgoPolicy_' + config['agent_policy'] + "-" + config['agent_obs_type']
-        self.safety_network = config['safety_network']
+        self.feasibility = config['feasibility']
 
         # create models
         self.policy_net = CUDA(Actor(self.state_dim, self.action_dim))
@@ -265,7 +265,7 @@ class SAC(BasePolicy):
             'Q_optimizer': self.Q_optimizer.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
+        save_dir = os.path.join(self.model_path, self.agent_info, self.feasibility, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}', 'yellow')
@@ -277,7 +277,7 @@ class SAC(BasePolicy):
     # the loading method corresponds to the episode saving method
     def load_model(self, map_name, episode=None):
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, self.agent_info, self.safety_network, scenario_name+"_"+map_name)
+        load_dir = os.path.join(self.model_path, self.agent_info, self.feasibility, scenario_name+"_"+map_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):

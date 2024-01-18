@@ -1,9 +1,9 @@
 min_dis_threshold: 0.0
 type: "HJR"
-model_path: 'safebench/safety_network/model_ckpt'
+model_path: 'safebench/feasibility/model_ckpt'
 
 obs_type: "ego_obs"  # "ego_infos" contains ego and the meaningful surrounding vehicle information
-safety_network_state_dim: 18  # 3*6 actor_number * dim
+feasibility_state_dim: 18  # 3*6 actor_number * dim
 state_shape: [3, 6]
 dims: [64, 64]
 

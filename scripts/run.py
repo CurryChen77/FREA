@@ -28,12 +28,13 @@ if __name__ == '__main__':
     parser.add_argument('--CBV_selection', '-CBV', type=str, default='rule-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--viz_route', '-vr', action='store_true')
+    parser.add_argument('--viz_feasible', '-vf', action='store_true')
     parser.add_argument('--enable_sem', action='store_true')
-    parser.add_argument('--safety_eval', action='store_true', help='whether to activate safety evaluation')
-    parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_safety_network'])
-    parser.add_argument('--agent_cfg', nargs='*', type=str, default='behavior.yaml')
+    parser.add_argument('--use_feasibility', action='store_true', help='whether to activate feasibility')
+    parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_feasibility'])
+    parser.add_argument('--agent_cfg', nargs='*', type=str, default='expert.yaml')
     parser.add_argument('--scenario_cfg', nargs='*', type=str, default='standard_eval.yaml')
-    parser.add_argument('--safety_network_cfg', nargs='*', type=str, default='HJR.yaml')
+    parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
 
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--threads', type=int, default=4)
@@ -66,15 +67,10 @@ if __name__ == '__main__':
             scenario_config_path = osp.join(args.ROOT_DIR, 'safebench/scenario/config', scenario_cfg)
             scenario_config = load_config(scenario_config_path)
 
-            # if "train safety network mode" then must start safety eval
-            safety_eval = True if args.mode == 'train_safety_network' else args.safety_eval
-            if safety_eval:
-                # load safety network config
-                safety_network_config_path = osp.join(args.ROOT_DIR, 'safebench/safety_network/config', args.safety_network_cfg)
-                safety_network_config = load_config(safety_network_config_path)
-                safety_network_config.update(args_dict)
-            else:
-                safety_network_config = None
+            # load feasibility config
+            feasibility_config_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/config', args.feasibility_cfg)
+            feasibility_config = load_config(feasibility_config_path)
+            feasibility_config.update(args_dict)
 
             # only render when evaluation
             if args.mode != 'eval':
@@ -85,7 +81,7 @@ if __name__ == '__main__':
             agent_config.update(args_dict)
             scenario_config.update(args_dict)
 
-            runner = CarlaRunner(agent_config, scenario_config, safety_network_config)  # create the main runner
+            runner = CarlaRunner(agent_config, scenario_config, feasibility_config)  # create the main runner
 
             # start running
             try:

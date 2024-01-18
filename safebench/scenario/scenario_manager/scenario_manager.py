@@ -19,10 +19,9 @@ class ScenarioManager(object):
         required to initialize, trigger, update and stop a scenario.
     """
 
-    def __init__(self, env_params, logger, use_scenic=False):
+    def __init__(self, env_params, logger):
         self.env_params = env_params
         self.logger = logger
-        self.scenic = use_scenic
         self.ego_collision = False
         self.ego_truncated = False
         self.running = False

@@ -21,7 +21,7 @@ class VectorWrapper():
         The interface to control a list of environments.
     """
 
-    def __init__(self, env_params, scenario_config, world, birdeye_render, display, safety_network_config, agent_state_encoder, logger):
+    def __init__(self, env_params, scenario_config, world, birdeye_render, display, use_feasibility, agent_state_encoder, logger):
         self.logger = logger
         self.world = world
         self.num_scenario = scenario_config['num_scenario']  # default 2
@@ -38,7 +38,7 @@ class VectorWrapper():
             # each small scenario corresponds to a carla_env create the ObservationWrapper()
             env = carla_env(
                 env_params, birdeye_render=birdeye_render, display=display,
-                world=world, safety_network_config=safety_network_config,
+                world=world, use_feasibility=use_feasibility,
                 agent_state_encoder=agent_state_encoder, logger=logger
             )
             self.env_list.append(env)
@@ -244,7 +244,7 @@ class ObservationWrapper(gym.Wrapper):
         self._env.clean_up()
 
 
-def carla_env(env_params, birdeye_render=None, display=None, world=None, safety_network_config=None, agent_state_encoder=None, logger=None):
+def carla_env(env_params, birdeye_render=None, display=None, world=None, use_feasibility=None, agent_state_encoder=None, logger=None):
     return ObservationWrapper(
         gym.make(
             'carla-v0', 
@@ -252,7 +252,7 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, safety_
             birdeye_render=birdeye_render,
             display=display, 
             world=world,
-            safety_network_config=safety_network_config,
+            use_feasibility=use_feasibility,
             agent_state_encoder=agent_state_encoder,
             logger=logger,
         ), 

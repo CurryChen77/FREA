@@ -43,7 +43,7 @@ class CarlaEnv(gym.Env):
     """
 
     def __init__(self, env_params, birdeye_render=None, display=None, world=None,
-                 safety_network_config=None, agent_state_encoder=None, logger=None):
+                 use_feasibility=None, agent_state_encoder=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
         self.config = None
@@ -82,17 +82,13 @@ class CarlaEnv(gym.Env):
         self.agent_state_encoder = agent_state_encoder
 
         # set the safety network's obs type
-        if safety_network_config:
-            self.safety_network_obs_type = safety_network_config['obs_type']
-        else:
-            self.safety_network_obs_type = None
+        self.use_feasibility = use_feasibility
 
         # for CBV
         self.CBVs_select_method = env_params['CBV_selection']
 
         # scenario manager
-        use_scenic = True if env_params['scenario_category'] == 'scenic' else False
-        self.scenario_manager = ScenarioManager(env_params, self.logger, use_scenic=use_scenic)
+        self.scenario_manager = ScenarioManager(env_params, self.logger)
 
         # for birdeye view and front view visualization
         self.ego_agent_learnable = env_params['ego_agent_learnable']
@@ -114,13 +110,9 @@ class CarlaEnv(gym.Env):
 
         # for scenario
         self.ROOT_DIR = env_params['ROOT_DIR']
-        self.scenario_category = env_params['scenario_category']
         self.warm_up_steps = env_params['warm_up_steps']
 
-        if self.scenario_category in ['planning', 'scenic']:
-            self.obs_size = int(self.obs_range / self.lidar_bin)
-        else:
-            raise ValueError(f'Unknown scenario category: {self.scenario_category}')
+        self.obs_size = int(self.obs_range / self.lidar_bin)
 
         # action and observation spaces
         self.discrete = env_params['discrete']
@@ -165,18 +157,15 @@ class CarlaEnv(gym.Env):
         self.logger.log(f">> Loading scenario data id: {config.data_id}")
 
         # create scenario according to different types
-        if self.scenario_category == 'planning':
-            scenario = RouteScenario(
-                world=self.world,
-                config=config,
-                ego_id=env_id,
-                max_running_step=self.max_episode_step,
-                env_params=self.env_params,
-                mode=self.mode,
-                logger=self.logger
-            )
-        else:
-            raise ValueError(f'Unknown scenario category: {self.scenario_category}')
+        scenario = RouteScenario(
+            world=self.world,
+            config=config,
+            ego_id=env_id,
+            max_running_step=self.max_episode_step,
+            env_params=self.env_params,
+            mode=self.mode,
+            logger=self.logger
+        )
 
         # init scenario
         self.ego_vehicle = scenario.ego_vehicle
@@ -267,7 +256,7 @@ class CarlaEnv(gym.Env):
         self.reset_step += 1
 
         # find ego nearby vehicles
-        if self.safety_network_obs_type:
+        if self.use_feasibility:
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # set controlled bv
@@ -406,7 +395,7 @@ class CarlaEnv(gym.Env):
         self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
-        if self.safety_network_obs_type:
+        if self.use_feasibility:
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # update the running status and check whether terminate or not
@@ -437,7 +426,7 @@ class CarlaEnv(gym.Env):
         info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
 
         # the safety network only need the ego info at (t+1) step
-        if self.safety_network_obs_type:
+        if self.use_feasibility:
             info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles))
 
         # when resetting
@@ -448,7 +437,7 @@ class CarlaEnv(gym.Env):
                 'route': self.route,  # the global route
             })
             # the safety network only need constraint_h at (t) step
-            if self.safety_network_obs_type:
+            if self.use_feasibility:
                 info['constraint_h'] = get_constraint_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
 
         # when after the tick before selecting a new CBV
@@ -465,7 +454,7 @@ class CarlaEnv(gym.Env):
         # when after selecting a new CBV
         elif not next_info:
             # the safety network only need constraint_h at (t) step
-            if self.safety_network_obs_type:
+            if self.use_feasibility:
                 info['constraint_h'] = get_constraint_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
 
         return info

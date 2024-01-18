@@ -19,7 +19,7 @@
 
 # Launch in another terminal
 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam --mode eval --safety_eval --render # use the trained safety network to help evaluation
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam --mode eval --use_feasibility --render # use the trained safety network to help evaluation
 ```
 
 ### Remote Users
@@ -166,7 +166,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --safety_network_cfg HJR.yaml --mode train_safety_network
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --feasibility_cfg HJR.yaml --mode train_feasibility
 ```
 
 ### Policy
@@ -175,7 +175,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.ya
 
 ### Input state
 
-[yaml file](safebench/safety_network/config/HJR.yaml)  ```obs_type: "ego_info" (default)```
+[yaml file](safebench/feasibility/config/HJR.yaml)  ```obs_type: "ego_info" (default)```
 
 * **PlanT:** (encoded state) 
 

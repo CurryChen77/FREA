@@ -24,7 +24,7 @@ from safebench.gym_carla.buffer import ReplayBuffer, RolloutBuffer
 
 from safebench.agent import AGENT_POLICY_LIST
 from safebench.scenario import SCENARIO_POLICY_LIST
-from safebench.safety_network import SAFETY_NETWORK_LIST
+from safebench.feasibility import FEASIBILITY_LIST
 from safebench.agent.agent_utils.agent_state_encoder import AgentStateEncoder
 
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -36,11 +36,10 @@ from safebench.util.metric_util import get_route_scores
 
 
 class CarlaRunner:
-    def __init__(self, agent_config, scenario_config, safety_network_config=None):
+    def __init__(self, agent_config, scenario_config, feasibility_config):
         self.scenario_config = scenario_config
         self.agent_config = agent_config
-        self.safety_network_config = safety_network_config
-        self.safety_network_name = safety_network_config['type'] if safety_network_config else None
+        self.feasibility_config = feasibility_config
         self.current_map = None
         self.birdeye_render = None
         self.display = None
@@ -54,9 +53,10 @@ class CarlaRunner:
         self.render = scenario_config['render']
         self.num_scenario = scenario_config['num_scenario']                              # default 2
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
-        self.scenario_category = scenario_config['scenario_category']                    # default planning
         self.CBV_selection = scenario_config['CBV_selection']
         self.scenario_id = scenario_config['scenario_id']
+        # if train feasibility then definitely need feasibility, else, depending on whether need feasibility for evaluation
+        self.use_feasibility = True if self.mode == 'train_feasibility' else feasibility_config['use_feasibility']
 
         # apply settings to carla
         self.client = carla.Client('localhost', scenario_config['port'])
@@ -73,7 +73,6 @@ class CarlaRunner:
             'viz_route': agent_config['viz_route'],                         # whether to visualize the route
             'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
             'agent_obs_type': agent_config['obs_type'],                     # default 0 (only 4 dimensions states )
-            'scenario_category': self.scenario_category,
             'CBV_selection': self.CBV_selection,                            # the method using for selection controlled bv
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'signalized_junction': False,                                   # whether the junction is controlled by signal
@@ -106,18 +105,15 @@ class CarlaRunner:
         # pass config from agent to scenario
         scenario_config['agent_policy'] = agent_config['policy_type']
         scenario_config['agent_obs_type'] = agent_config['obs_type']
-        if self.safety_network_config and self.mode != "train_safety_network":  # using safety network instead of training
-            scenario_config['safety_network'] = "with_safety_network"
-        else:
-            scenario_config['safety_network'] = "without_safety_network"
+        scenario_config['feasibility'] = 'With_Feasibility' if self.use_feasibility else 'Without_Feasibility'
 
-        # pass config from agent, scenario to safety_network
-        if self.safety_network_config:
-            self.safety_network_config['agent_policy_type'] = agent_config['policy_type']
-            self.safety_network_config['scenario_policy_type'] = scenario_config['policy_type']
-            self.safety_network_config['scenario_id'] = self.scenario_id
-            self.safety_network_config['agent_obs_type'] = agent_config['obs_type']
-            self.safety_network_config['agent_action_dim'] = agent_config['ego_action_dim']
+        # pass config from agent, scenario to feasibility
+
+        feasibility_config['agent_policy_type'] = agent_config['policy_type']
+        feasibility_config['scenario_policy_type'] = scenario_config['policy_type']
+        feasibility_config['scenario_id'] = self.scenario_id
+        feasibility_config['agent_obs_type'] = agent_config['obs_type']
+        feasibility_config['agent_action_dim'] = agent_config['ego_action_dim']
 
         CarlaDataProvider.set_ego_desired_speed(self.env_params['desired_speed'])
 
@@ -130,10 +126,9 @@ class CarlaRunner:
             agent=agent_config['policy_type'],
             agent_obs_type=agent_config['obs_type'],
             scenario=scenario_config['policy_type'],
-            safety_network=self.safety_network_name,
+            feasibility=feasibility_config['type'],
             scenario_id=self.scenario_id,
             CBV_selection=self.CBV_selection,
-            scenario_category=self.scenario_category
         )
         self.logger = Logger(**logger_kwargs)
         
@@ -148,11 +143,11 @@ class CarlaRunner:
             self.save_freq = scenario_config['save_freq']
             self.train_episode = scenario_config['train_episode']
             self.logger.save_config(scenario_config)
-        elif self.mode == 'train_safety_network':
-            self.buffer_capacity = safety_network_config['buffer_capacity']
-            self.save_freq = safety_network_config['save_freq']
-            self.train_episode = safety_network_config['train_episode']
-            self.logger.save_config(safety_network_config)
+        elif self.mode == 'train_feasibility':
+            self.buffer_capacity = feasibility_config['buffer_capacity']
+            self.save_freq = feasibility_config['save_freq']
+            self.train_episode = feasibility_config['train_episode']
+            self.logger.save_config(feasibility_config)
         elif self.mode == 'eval':
             self.save_freq = scenario_config['save_freq']
             self.logger.log('>> Evaluation Mode, skip config saving', 'yellow')
@@ -176,8 +171,7 @@ class CarlaRunner:
         self.logger.log('>> Mode: ' + self.mode, color="yellow")
         self.logger.log('>> Agent Policy: ' + agent_config['policy_type'], color="yellow")
         self.logger.log('>> Scenario Policy: ' + scenario_config['policy_type'], color="yellow")
-        if self.safety_network_config:
-            self.logger.log('>> Safety network Policy: ' + safety_network_config['type'], color="yellow")
+        self.logger.log('>> Safety network Policy: ' + feasibility_config['type'], color="yellow")
         if self.agent_state_encoder:
             self.logger.log('>> Using state encoder: ' + state_encoder_config['obs_type'], color="yellow")
 
@@ -189,8 +183,7 @@ class CarlaRunner:
         # define agent, scenario and safety network policy
         self.agent_policy = AGENT_POLICY_LIST[agent_config['policy_type']](agent_config, logger=self.logger)
         self.scenario_policy = SCENARIO_POLICY_LIST[scenario_config['policy_type']](scenario_config, logger=self.logger)
-        if self.safety_network_config:
-            self.safety_network_policy = SAFETY_NETWORK_LIST[safety_network_config['type']](safety_network_config, logger=self.logger)
+        self.feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=self.logger)
 
         if self.save_video:
             assert self.mode == 'eval', "only allow video saving in eval mode"
@@ -214,20 +207,19 @@ class CarlaRunner:
         flag = pygame.HWSURFACE | pygame.DOUBLEBUF
         if not self.render:
             flag = flag | pygame.HIDDEN
-        if self.scenario_category == 'planning': 
-            # [bird-eye view, Lidar, front view] or [bird-eye view, front view]
-            if self.env_params['disable_lidar']:
-                if self.env_params['enable_sem']:
-                    window_size = (self.env_params['display_size'] * 3, self.env_params['display_size'] * self.num_scenario)
-                else:
-                    window_size = (self.env_params['display_size'] * 2, self.env_params['display_size'] * self.num_scenario)
+
+        # [bird-eye view, Lidar, front view] or [bird-eye view, front view]
+        if self.env_params['disable_lidar']:
+            if self.env_params['enable_sem']:
+                window_size = (self.env_params['display_size'] * 3, self.env_params['display_size'] * self.num_scenario)
             else:
-                if self.env_params['enable_sem']:
-                    window_size = (self.env_params['display_size'] * 4, self.env_params['display_size'] * self.num_scenario)
-                else:
-                    window_size = (self.env_params['display_size'] * 3, self.env_params['display_size'] * self.num_scenario)
+                window_size = (self.env_params['display_size'] * 2, self.env_params['display_size'] * self.num_scenario)
         else:
-            window_size = (self.env_params['display_size'], self.env_params['display_size'] * self.num_scenario)
+            if self.env_params['enable_sem']:
+                window_size = (self.env_params['display_size'] * 4, self.env_params['display_size'] * self.num_scenario)
+            else:
+                window_size = (self.env_params['display_size'] * 3, self.env_params['display_size'] * self.num_scenario)
+
         self.display = pygame.display.set_mode(window_size, flag)
 
         # initialize the render for generating observation and visualization
@@ -291,8 +283,8 @@ class CarlaRunner:
                     self.agent_policy.train(buffer, writer, e_i)
                 elif self.mode == 'train_scenario' and self.scenario_policy.type == 'offpolicy':
                     self.scenario_policy.train(buffer, writer, e_i)
-                elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'offpolicy':
-                    self.safety_network_policy.train(buffer, writer, e_i)
+                elif self.mode == 'train_feasibility' and self.feasibility_policy.type == 'offpolicy':
+                    self.feasibility_policy.train(buffer, writer, e_i)
 
             self.logger.log('>> Start Cleaning', 'yellow')
             # end up environment
@@ -310,8 +302,8 @@ class CarlaRunner:
                 self.agent_policy.train(buffer, writer, e_i) if e_i != start_episode and all(buffer.agent_full) else None
             elif self.mode == 'train_scenario' and self.scenario_policy.type == 'onpolicy':
                 self.scenario_policy.train(buffer, writer, e_i) if e_i != start_episode and buffer.scenario_full else None
-            elif self.mode == 'train_safety_network' and self.safety_network_policy.type == 'onpolicy':
-                self.safety_network_policy.train(buffer, writer, e_i) if e_i != start_episode and buffer.safety_network_full else None
+            elif self.mode == 'train_feasibility' and self.feasibility_policy.type == 'onpolicy':
+                self.feasibility_policy.train(buffer, writer, e_i) if e_i != start_episode and buffer.feasibility_full else None
 
             # save checkpoints
             if e_i != start_episode and e_i % self.save_freq == 0:
@@ -319,8 +311,8 @@ class CarlaRunner:
                     self.agent_policy.save_model(e_i, map_name=self.current_map, buffer=buffer)
                 if self.mode == 'train_scenario':
                     self.scenario_policy.save_model(e_i, map_name=self.current_map, buffer=buffer)
-                if self.mode == 'train_safety_network':
-                    self.safety_network_policy.save_model(e_i, map_name=self.current_map)
+                if self.mode == 'train_feasibility':
+                    self.feasibility_policy.save_model(e_i, map_name=self.current_map)
 
         # close the tensorboard writer
         writer.close()
@@ -406,7 +398,7 @@ class CarlaRunner:
                 self.world, 
                 self.birdeye_render, 
                 self.display,
-                self.safety_network_config,
+                self.use_feasibility,
                 self.agent_state_encoder,
                 self.logger,
             )
@@ -422,9 +414,9 @@ class CarlaRunner:
                 # self.scenario_policy.load_model()
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('eval')
-                if self.safety_network_config:
-                    self.safety_network_policy.load_model(map_name=self.current_map)
-                    self.safety_network_policy.set_mode('eval')
+                if self.use_feasibility:
+                    self.feasibility_policy.load_model(map_name=self.current_map)
+                    self.feasibility_policy.set_mode('eval')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.eval(data_loader)
@@ -433,9 +425,9 @@ class CarlaRunner:
                 self.scenario_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('train')
                 self.scenario_policy.set_mode('eval')
-                if self.safety_network_config:
-                    self.safety_network_policy.load_model(map_name=self.current_map)
-                    self.safety_network_policy.set_mode('eval')
+                if self.use_feasibility:
+                    self.feasibility_policy.load_model(map_name=self.current_map)
+                    self.feasibility_policy.set_mode('eval')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
@@ -444,19 +436,19 @@ class CarlaRunner:
                 self.agent_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('train')
-                if self.safety_network_config:
-                    self.safety_network_policy.load_model(map_name=self.current_map)
-                    self.safety_network_policy.set_mode('eval')
+                if self.use_feasibility:
+                    self.feasibility_policy.load_model(map_name=self.current_map)
+                    self.feasibility_policy.set_mode('eval')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
-            elif self.mode == 'train_safety_network':
-                start_episode = self.check_continue_training(self.safety_network_policy)
+            elif self.mode == 'train_feasibility':
+                start_episode = self.check_continue_training(self.feasibility_policy)
                 self.agent_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.load_model(map_name=self.current_map)
                 self.scenario_policy.set_mode('eval')
-                self.safety_network_policy.set_mode('train')
+                self.feasibility_policy.set_mode('train')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
@@ -464,51 +456,51 @@ class CarlaRunner:
                 raise NotImplementedError(f"Unsupported mode: {self.mode}.")
 
     def check_onpolicy(self, start_episode=None):
-        onpolicy = {'agent': False, 'scenario': False, 'safety_network': False}
+        onpolicy = {'agent': False, 'scenario': False, 'feasibility': False}
         buffer = None
         if self.mode == 'train_agent':
             if self.agent_policy.type == 'onpolicy':
                 buffer = RolloutBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
                 onpolicy['agent'] = True
             else:
                 buffer = ReplayBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
         elif self.mode == 'train_scenario':
             if self.scenario_policy.type == 'onpolicy':
                 buffer = RolloutBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
                 onpolicy['scenario'] = True
             else:
                 buffer = ReplayBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
-        elif self.mode == 'train_safety_network':
-            if self.safety_network_policy.type == 'onpolicy':
+        elif self.mode == 'train_feasibility':
+            if self.feasibility_policy.type == 'onpolicy':
                 buffer = RolloutBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
-                onpolicy['safety_network'] = True
+                onpolicy['feasibility'] = True
             else:
                 buffer = ReplayBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.safety_network_config, self.buffer_capacity, self.logger
+                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
         elif self.mode == 'eval':
             if self.agent_policy.type == 'onpolicy':
                 onpolicy['agent'] = True
             if self.scenario_policy.type == 'onpolicy':
                 onpolicy['scenario'] = True
-            if self.safety_network_config and self.safety_network_policy.type == 'onpolicy':
-                onpolicy['safety_network'] = True
+            if self.feasibility_policy.type == 'onpolicy':
+                onpolicy['feasibility'] = True
         else:
             raise NotImplementedError(f"no this mode")
 

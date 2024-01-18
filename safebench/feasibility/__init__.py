@@ -9,9 +9,9 @@
 """
 
 # collect policy models from scenarios
-from safebench.safety_network.HJ_Reachability import HJR
+from safebench.feasibility.HJ_Reachability import HJR
 
 
-SAFETY_NETWORK_LIST = {
+FEASIBILITY_LIST = {
     'HJR': HJR
 }

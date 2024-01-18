@@ -47,7 +47,7 @@ def update_plant_pretrain_model(model_path, updated_pretrain_model_path):
 def main(args):
     strict = True
     ROOT_DIR = osp.abspath(osp.dirname(osp.dirname(osp.realpath(__file__))))
-    config_path = osp.join(ROOT_DIR, 'safebench/safety_network/config/HJR.yaml')
+    config_path = osp.join(ROOT_DIR, 'safebench/feasibility/config/HJR.yaml')
     config = load_config(config_path)
     model_path = osp.join(ROOT_DIR, 'safebench/agent/model_ckpt/PlanT_state_encoder/checkpoints/epoch=047.ckpt')
     updated_model_path = osp.join(ROOT_DIR, config['pretrained_model_path'])  # for the state encoder

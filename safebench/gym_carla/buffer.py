@@ -29,7 +29,7 @@ class ReplayBuffer:
             current_map=None,
             agent_config=None,
             scenario_config=None,
-            safety_network_config=None,
+            feasibility_config=None,
             buffer_capacity=10000,
             logger=None):
         self.mode = mode
@@ -42,17 +42,17 @@ class ReplayBuffer:
             self.obs_shape = agent_config['ego_state_dim']
             self.action_dim = agent_config['ego_action_dim']
             self.state_dim = agent_config['ego_state_dim']
-        elif self.mode == 'train_safety_network':
-            self.obs_shape = tuple(safety_network_config['state_shape'])
-            self.action_dim = safety_network_config['action_dim']
-            self.state_dim = safety_network_config['state_dim']
+        elif self.mode == 'train_feasibility':
+            self.obs_shape = tuple(feasibility_config['state_shape'])
+            self.action_dim = feasibility_config['action_dim']
+            self.state_dim = feasibility_config['state_dim']
         else:
             raise ValueError
 
         self.buffer_capacity = buffer_capacity
         self.num_scenario = num_scenario
         self.agent_need_obs = True if (agent_config['obs_type'] == 'simple_state' or agent_config['obs_type'] == 'plant') else False
-        self.safety_network_obs_type = safety_network_config['obs_type'] if safety_network_config else None
+        self.feasibility_obs_type = feasibility_config['obs_type'] if feasibility_config else None
         self.pos = 0
         self.buffer_len = 0
         self.full = False
@@ -61,9 +61,9 @@ class ReplayBuffer:
         if scenario_policy_type == 'offpolicy' and start_episode != 0:
             model_path = os.path.join(scenario_config['ROOT_DIR'], scenario_config['model_path'], scenario_config['CBV_selection'])
             agent_info = 'EgoPolicy_' + scenario_config['agent_policy'] + "-" + scenario_config['agent_obs_type']
-            safety_network = scenario_config['safety_network']
+            feasibility = scenario_config['feasibility']
             scenario_name = "all" if scenario_config['scenario_id'] is None else 'scenario' + str(scenario_config['scenario_id'])
-            load_dir = os.path.join(model_path, agent_info, safety_network, scenario_name + "_" + current_map)
+            load_dir = os.path.join(model_path, agent_info, feasibility, scenario_name + "_" + current_map)
             self.load_buffer(dir_path=load_dir, filename=f'buffer.{start_episode:04}.pkl')
         else:
             self.reset_buffer()
@@ -84,7 +84,7 @@ class ReplayBuffer:
             self.buffer_next_obs = np.zeros((self.buffer_capacity, self.obs_shape), dtype=np.float32)
             self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
-        elif self.mode == 'train_safety_network':
+        elif self.mode == 'train_feasibility':
             self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
             self.buffer_constraint_h = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
@@ -153,9 +153,9 @@ class ReplayBuffer:
                     self.pos = 0
 
         # store for agent training
-        elif self.mode == 'train_safety_network':
+        elif self.mode == 'train_feasibility':
             dones = data_list[5]
-            next_obs = [info[self.safety_network_obs_type] for info in additional_dict[1]]  # additional_dict[1] means the next info
+            next_obs = [info[self.feasibility_obs_type] for info in additional_dict[1]]  # additional_dict[1] means the next info
             constraint_h = [info['constraint_h'] for info in additional_dict[0]]  # the constraint h should from infos
 
             for s_i in range(len(dones)):
@@ -191,7 +191,7 @@ class ReplayBuffer:
                 'reward': np.stack(self.buffer_rewards)[batch_indices],  # reward
                 'done': np.stack(self.buffer_dones)[batch_indices],  # done
             }
-        elif self.mode == 'train_safety_network':
+        elif self.mode == 'train_feasibility':
             batch = {
                 'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
                 'constraint_h': np.stack(self.buffer_constraint_h)[batch_indices],  # constrain
@@ -221,7 +221,7 @@ class ReplayBuffer:
                 'buffer_dones': self.buffer_dones,
                 'buffer_infos': [self.pos, self.buffer_len, self.full]
             }
-        elif self.mode == 'train_safety_network':
+        elif self.mode == 'train_feasibility':
             buffer = {
                 'buffer_next_obs': self.buffer_next_obs,
                 'buffer_constraint_h': self.buffer_constraint_h,
@@ -265,7 +265,7 @@ class ReplayBuffer:
             self.pos = buffer['buffer_infos'][0]
             self.buffer_len = buffer['buffer_infos'][1]
             self.full = buffer['buffer_infos'][2]
-        elif self.mode == 'train_safety_network':
+        elif self.mode == 'train_feasibility':
             self.buffer_next_obs = buffer['buffer_next_obs']
             self.buffer_constraint_h = buffer['buffer_constraint_h']
             self.buffer_dones = buffer['buffer_dones']
@@ -290,7 +290,7 @@ class RolloutBuffer:
             current_map=None,
             agent_config=None,
             scenario_config=None,
-            safety_network_config=None,
+            feasibility_config=None,
             buffer_capacity=10000,
             logger=None):
         self.mode = mode
@@ -311,18 +311,18 @@ class RolloutBuffer:
             self.state_dim = agent_config['ego_state_dim']
             self.agent_pos = [0] * self.num_scenario
             self.agent_full = [False] * self.num_scenario
-        elif self.mode == 'train_safety_network':
-            self.obs_shape = tuple(safety_network_config['state_shape'])
-            self.action_dim = safety_network_config['agent_action_dim']  # the action dim of the safety network is the ego action
-            self.state_dim = safety_network_config['safety_network_state_dim']
-            self.safety_network_pos = [0] * self.num_scenario
-            self.safety_network_full = [False] * self.num_scenario
-            self.safety_network_ego_onpolicy = True if agent_config['learnable'] and agent_config['onpolicy'] else False
+        elif self.mode == 'train_feasibility':
+            self.obs_shape = tuple(feasibility_config['state_shape'])
+            self.action_dim = feasibility_config['agent_action_dim']  # the action dim of the safety network is the ego action
+            self.state_dim = feasibility_config['feasibility_state_dim']
+            self.feasibility_pos = [0] * self.num_scenario
+            self.feasibility_full = [False] * self.num_scenario
+            self.feasibility_ego_onpolicy = True if agent_config['learnable'] and agent_config['onpolicy'] else False
         else:
             raise ValueError
 
         self.agent_need_obs = True if (agent_config['obs_type'] == 'simple_state' or agent_config['obs_type'] == 'plant') else False
-        self.safety_network_obs_type = safety_network_config['obs_type'] if safety_network_config else None
+        self.feasibility_obs_type = feasibility_config['obs_type'] if feasibility_config else None
 
         self.logger = logger
 
@@ -350,9 +350,9 @@ class RolloutBuffer:
             self.buffer_next_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
             self.buffer_rewards = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
             self.buffer_dones = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
-        elif self.mode == 'train_safety_network':
-            self.safety_network_pos = [0] * self.num_scenario
-            self.safety_network_full = [False] * self.num_scenario
+        elif self.mode == 'train_feasibility':
+            self.feasibility_pos = [0] * self.num_scenario
+            self.feasibility_full = [False] * self.num_scenario
             self.buffer_actions = np.zeros((self.buffer_capacity, self.num_scenario, self.action_dim), dtype=np.float32)
             self.buffer_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
             self.buffer_next_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
@@ -477,8 +477,8 @@ class RolloutBuffer:
             self.buffer_len = buffer_len
 
         # TODO store for agent training
-        elif self.mode == 'train_safety_network':
-            if self.safety_network_ego_onpolicy:
+        elif self.mode == 'train_feasibility':
+            if self.feasibility_ego_onpolicy:
                 # onpolicy ego agent got log prob
                 all_actions, _ = data_list[0]
             else:
@@ -490,22 +490,22 @@ class RolloutBuffer:
             for action, done, infos, next_infos in zip(all_actions, all_dones, all_infos, all_next_infos):
                 scenario_id = next_infos['scenario_id']
                 h = infos['constraint_h']  # the constraint_h come from the current state
-                obs = infos[self.safety_network_obs_type]
-                next_obs = next_infos[self.safety_network_obs_type]
+                obs = infos[self.feasibility_obs_type]
+                next_obs = next_infos[self.feasibility_obs_type]
 
-                if not self.safety_network_full[scenario_id]:
-                    self.buffer_actions[self.safety_network_pos[scenario_id], scenario_id, :] = np.array(action)
-                    self.buffer_obs[self.safety_network_pos[scenario_id], scenario_id, :] = np.array(obs)  # ego obs
-                    self.buffer_next_obs[self.safety_network_pos[scenario_id], scenario_id, :] = np.array(next_obs)  # ego next obs from next info
-                    self.buffer_dones[self.safety_network_pos[scenario_id], scenario_id] = np.array(done)
-                    self.buffer_constraint_h[self.safety_network_pos[scenario_id], scenario_id] = np.array(h)
-                    self.safety_network_pos[scenario_id] += 1
-                    if self.safety_network_pos[scenario_id] > self.buffer_capacity // 2:
-                        self.safety_network_full[scenario_id] = True
+                if not self.feasibility_full[scenario_id]:
+                    self.buffer_actions[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(action)
+                    self.buffer_obs[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(obs)  # ego obs
+                    self.buffer_next_obs[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(next_obs)  # ego next obs from next info
+                    self.buffer_dones[self.feasibility_pos[scenario_id], scenario_id] = np.array(done)
+                    self.buffer_constraint_h[self.feasibility_pos[scenario_id], scenario_id] = np.array(h)
+                    self.feasibility_pos[scenario_id] += 1
+                    if self.feasibility_pos[scenario_id] > self.buffer_capacity // 2:
+                        self.feasibility_full[scenario_id] = True
 
             buffer_len = 0
             # get the buffer length
-            for pos, full in zip(self.safety_network_pos, self.safety_network_full):
+            for pos, full in zip(self.feasibility_pos, self.feasibility_full):
                 buffer_len += self.buffer_capacity // 2 if full else pos
             self.buffer_len = buffer_len
 
@@ -547,7 +547,7 @@ class RolloutBuffer:
                 'rewards': rewards,  # reward
                 'dones': dones,  # done
             }
-        elif self.mode == 'train_safety_network':
+        elif self.mode == 'train_feasibility':
             index = 0
             actions = np.zeros((self.buffer_len, self.action_dim), dtype=np.float32)
             obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
@@ -556,7 +556,7 @@ class RolloutBuffer:
             dones = np.zeros(self.buffer_len, dtype=np.float32)
 
             for scenario_id in range(self.num_scenario):
-                upper_bound = self.buffer_capacity // 2 if self.safety_network_full[scenario_id] else self.safety_network_pos[scenario_id]
+                upper_bound = self.buffer_capacity // 2 if self.feasibility_full[scenario_id] else self.feasibility_pos[scenario_id]
                 actions[index:index+upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
                 obs[index:index+upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
                 next_obs[index:index+upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]

@@ -30,7 +30,7 @@ FORCE_DATESTAMP = False
 
 
 def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent=None, agent_obs_type=None,
-                        scenario=None, safety_network=None, scenario_id=None, CBV_selection=None, scenario_category='planning'):
+                        scenario=None, feasibility=None, scenario_id=None, CBV_selection=None):
     # Datestamp forcing
     datestamp = datestamp or FORCE_DATESTAMP
 
@@ -45,8 +45,8 @@ def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent
         agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + agent + '(' + agent_obs_type + ')'
     if scenario is not None:
         agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + scenario + '(' + CBV_selection + ')'
-    if safety_network is not None:
-        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + safety_network
+    if feasibility is not None:
+        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + feasibility
 
     # Make a seed-specific subfolder in the experiment directory.
     if datestamp:
@@ -59,8 +59,7 @@ def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent
     data_dir = os.path.join(DEFAULT_DATA_DIR, output_dir)
     logger_kwargs = dict(
         output_dir=osp.join(data_dir, relpath),
-        exp_name=exp_name, 
-        scenario_category=scenario_category,
+        exp_name=exp_name,
     )
     return logger_kwargs
 
@@ -142,7 +141,7 @@ class Logger:
         A general-purpose logger.
         Makes it easy to save diagnostics, hyperparameter configurations, the state of a training run, and the trained model.
     """
-    def __init__(self, output_dir=None, output_fname='log.txt', exp_name=None, scenario_category='planning'):
+    def __init__(self, output_dir=None, output_fname='log.txt', exp_name=None):
         """
             Initialize a Logger.
 
@@ -164,7 +163,6 @@ class Logger:
         self.exp_name = exp_name
         self.log_print_history = []
         self.video_recorder = None
-        self.scenario_category = scenario_category
 
         self.output_dir = output_dir or "/tmp/experiments/%i" % int(time.time())
         os.makedirs(self.output_dir, exist_ok=True)
@@ -322,8 +320,7 @@ class Logger:
     #     return data_dict
     
     def init_video_recorder(self):
-        if self.scenario_category == 'planning':
-            self.video_recorder = VideoRecorder(self.output_dir, logger=self)
+        self.video_recorder = VideoRecorder(self.output_dir, logger=self)
 
     def add_frame(self, frame):
         self.video_recorder.add_frame(frame)

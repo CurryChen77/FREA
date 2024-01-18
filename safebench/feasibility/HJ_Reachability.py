@@ -34,7 +34,7 @@ class HJR:
         self.lr = config['lr']
         self.obs_type = config['obs_type']
         self.continue_episode = 0
-        self.state_dim = config['safety_network_state_dim']
+        self.state_dim = config['feasibility_state_dim']
         self.action_dim = config['agent_action_dim']
         self.acc_range = config['acc_range']
         self.steer_range = config['steer_range']
@@ -221,8 +221,8 @@ class HJR:
         states = {
             'Qh_net': self.Qh_net.state_dict(),
             'Vh_net': self.Vh_net.state_dict(),
-            'Qh_optim': self.Qh_optimizer,
-            'Vh_optim': self.Vh_optimizer
+            'Qh_optim': self.Qh_optimizer.state_dict(),
+            'Vh_optim': self.Vh_optimizer.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, scenario_name+"_"+map_name)
