@@ -86,7 +86,7 @@ class ReplayBuffer:
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
         elif self.mode == 'train_safety_network':
             self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
-            self.buffer_constrain_h = np.zeros(self.buffer_capacity, dtype=np.float32)
+            self.buffer_constraint_h = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
 
     def process_CBV_data(self, data_list, additional_dict):
@@ -155,15 +155,12 @@ class ReplayBuffer:
         # store for agent training
         elif self.mode == 'train_safety_network':
             dones = data_list[5]
-            if self.safety_network_obs_type == 'ego_info':
-                next_obs = [info['ego_info'] for info in additional_dict[1]]  # additional_dict[1] means the next info
-            else:
-                raise ValueError(f'Unknown safety_network obs_type')
-            constrain_h = [info['constrain_h'] for info in additional_dict[0]]  # the constraint h should from infos
+            next_obs = [info[self.safety_network_obs_type] for info in additional_dict[1]]  # additional_dict[1] means the next info
+            constraint_h = [info['constraint_h'] for info in additional_dict[0]]  # the constraint h should from infos
 
             for s_i in range(len(dones)):
                 self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])
-                self.buffer_constrain_h[self.pos] = np.array(constrain_h[s_i])
+                self.buffer_constraint_h[self.pos] = np.array(constraint_h[s_i])
                 self.buffer_dones[self.pos] = np.array(dones[s_i])
                 self.pos += 1
                 self.buffer_len += 1
@@ -197,7 +194,7 @@ class ReplayBuffer:
         elif self.mode == 'train_safety_network':
             batch = {
                 'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
-                'constrain_h': np.stack(self.buffer_constrain_h)[batch_indices],  # constrain
+                'constraint_h': np.stack(self.buffer_constraint_h)[batch_indices],  # constrain
                 'done': np.stack(self.buffer_dones)[batch_indices],  # done
             }
         else:
@@ -227,7 +224,7 @@ class ReplayBuffer:
         elif self.mode == 'train_safety_network':
             buffer = {
                 'buffer_next_obs': self.buffer_next_obs,
-                'buffer_constrain_h': self.buffer_constrain_h,
+                'buffer_constraint_h': self.buffer_constraint_h,
                 'buffer_dones': self.buffer_dones,
                 'buffer_infos': [self.pos, self.buffer_len, self.full]
             }
@@ -270,7 +267,7 @@ class ReplayBuffer:
             self.full = buffer['buffer_infos'][2]
         elif self.mode == 'train_safety_network':
             self.buffer_next_obs = buffer['buffer_next_obs']
-            self.buffer_constrain_h = buffer['buffer_constrain_h']
+            self.buffer_constraint_h = buffer['buffer_constraint_h']
             self.buffer_dones = buffer['buffer_dones']
             self.pos = buffer['buffer_infos'][0]
             self.buffer_len = buffer['buffer_infos'][1]
@@ -316,10 +313,11 @@ class RolloutBuffer:
             self.agent_full = [False] * self.num_scenario
         elif self.mode == 'train_safety_network':
             self.obs_shape = tuple(safety_network_config['state_shape'])
-            self.action_dim = safety_network_config['action_dim']
-            self.state_dim = safety_network_config['state_dim']
-            self.safety_network_pos = 0
-            self.safety_network_full = False
+            self.action_dim = safety_network_config['agent_action_dim']  # the action dim of the safety network is the ego action
+            self.state_dim = safety_network_config['safety_network_state_dim']
+            self.safety_network_pos = [0] * self.num_scenario
+            self.safety_network_full = [False] * self.num_scenario
+            self.safety_network_ego_onpolicy = True if agent_config['learnable'] and agent_config['onpolicy'] else False
         else:
             raise ValueError
 
@@ -353,11 +351,13 @@ class RolloutBuffer:
             self.buffer_rewards = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
             self.buffer_dones = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
         elif self.mode == 'train_safety_network':
-            self.safety_network_pos = 0
-            self.safety_network_full = False
-            self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
-            self.buffer_constrain_h = np.zeros(self.buffer_capacity, dtype=np.float32)
-            self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
+            self.safety_network_pos = [0] * self.num_scenario
+            self.safety_network_full = [False] * self.num_scenario
+            self.buffer_actions = np.zeros((self.buffer_capacity, self.num_scenario, self.action_dim), dtype=np.float32)
+            self.buffer_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
+            self.buffer_next_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
+            self.buffer_constraint_h = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
+            self.buffer_dones = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
 
     def process_CBV_data(self, data_list, additional_dict):
         """
@@ -478,24 +478,36 @@ class RolloutBuffer:
 
         # TODO store for agent training
         elif self.mode == 'train_safety_network':
-            dones = data_list[5]
-            if self.safety_network_obs_type == 'ego_info':
-                next_obs = [info['ego_info'] for info in additional_dict[1]]  # additional_dict[1] means the next info
+            if self.safety_network_ego_onpolicy:
+                # onpolicy ego agent got log prob
+                all_actions, _ = data_list[0]
             else:
-                raise ValueError(f'Unknown safety_network obs_type')
-            constrain_h = [info['constrain_h'] for info in additional_dict[0]]  # the constraint h should from infos
+                all_actions = data_list[0]
+            all_dones = data_list[5]
+            all_infos = additional_dict[0]
+            all_next_infos = additional_dict[1]
 
-            for s_i in range(len(dones)):
-                self.buffer_next_obs[self.safety_network_pos] = np.array(next_obs[s_i])
-                self.buffer_constrain_h[self.safety_network_pos] = np.array(constrain_h[s_i])
-                self.buffer_dones[self.safety_network_pos] = np.array(dones[s_i])
-                self.safety_network_pos += 1
-                if self.safety_network_pos == self.buffer_capacity:
-                    self.safety_network_full = True
-                    self.safety_network_pos = 0
+            for action, done, infos, next_infos in zip(all_actions, all_dones, all_infos, all_next_infos):
+                scenario_id = next_infos['scenario_id']
+                h = infos['constraint_h']  # the constraint_h come from the current state
+                obs = infos[self.safety_network_obs_type]
+                next_obs = next_infos[self.safety_network_obs_type]
 
+                if not self.safety_network_full[scenario_id]:
+                    self.buffer_actions[self.safety_network_pos[scenario_id], scenario_id, :] = np.array(action)
+                    self.buffer_obs[self.safety_network_pos[scenario_id], scenario_id, :] = np.array(obs)  # ego obs
+                    self.buffer_next_obs[self.safety_network_pos[scenario_id], scenario_id, :] = np.array(next_obs)  # ego next obs from next info
+                    self.buffer_dones[self.safety_network_pos[scenario_id], scenario_id] = np.array(done)
+                    self.buffer_constraint_h[self.safety_network_pos[scenario_id], scenario_id] = np.array(h)
+                    self.safety_network_pos[scenario_id] += 1
+                    if self.safety_network_pos[scenario_id] > self.buffer_capacity // 2:
+                        self.safety_network_full[scenario_id] = True
+
+            buffer_len = 0
             # get the buffer length
-            self.buffer_len = self.buffer_capacity if self.safety_network_full else self.safety_network_pos
+            for pos, full in zip(self.safety_network_pos, self.safety_network_full):
+                buffer_len += self.buffer_capacity // 2 if full else pos
+            self.buffer_len = buffer_len
 
     def get(self):
         if self.mode == 'train_scenario':
@@ -536,11 +548,28 @@ class RolloutBuffer:
                 'dones': dones,  # done
             }
         elif self.mode == 'train_safety_network':
-            upper_bound = self.buffer_capacity if self.safety_network_full else self.safety_network_pos
+            index = 0
+            actions = np.zeros((self.buffer_len, self.action_dim), dtype=np.float32)
+            obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
+            next_obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
+            constraint_h = np.zeros(self.buffer_len, dtype=np.float32)
+            dones = np.zeros(self.buffer_len, dtype=np.float32)
+
+            for scenario_id in range(self.num_scenario):
+                upper_bound = self.buffer_capacity // 2 if self.safety_network_full[scenario_id] else self.safety_network_pos[scenario_id]
+                actions[index:index+upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
+                obs[index:index+upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
+                next_obs[index:index+upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]
+                constraint_h[index:index+upper_bound] = self.buffer_constraint_h[:upper_bound, scenario_id]
+                dones[index:index+upper_bound] = self.buffer_dones[:upper_bound, scenario_id]
+                index += upper_bound
+
             batch = {
-                'next_obs': self.buffer_next_obs[:upper_bound, :],  # next obs
-                'constrain_h': self.buffer_constrain_h[:upper_bound],  # constrain
-                'done': self.buffer_dones[:upper_bound],  # done
+                'actions': actions,  # action
+                'obs': obs.reshape((-1, self.state_dim)),  # obs
+                'next_obs': next_obs.reshape((-1, self.state_dim)),  # next obs
+                'constraint_h': constraint_h,  # reward
+                'dones': dones,  # done
             }
         else:
             raise ValueError(f'Unknown mode {self.mode}')

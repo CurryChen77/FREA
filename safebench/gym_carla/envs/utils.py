@@ -34,7 +34,7 @@ def get_actor_off_road(actor):
     return off_road
 
 
-def get_constrain_h(ego_vehicle, search_radius, nearby_vehicles, ego_agent_learnable=False):
+def get_constraint_h(ego_vehicle, search_radius, nearby_vehicles, ego_agent_learnable=False):
     # min distance between vehicle bboxes
     ego_min_dis = search_radius
 
@@ -67,8 +67,8 @@ def get_constrain_h(ego_vehicle, search_radius, nearby_vehicles, ego_agent_learn
             print("ego outside the drivable area, ego min distance set to 0")
             ego_min_dis = 0.
 
-    constrain_h = ego_min_dis
-    return constrain_h
+    constraint_h = ego_min_dis
+    return constraint_h
 
 
 def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40):

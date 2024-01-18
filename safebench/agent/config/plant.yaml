@@ -1,11 +1,12 @@
 policy_type: 'plant'
 learnable: False
+onpolicy: False
 model_path: ''
 model_type: 'agent'
 results_folder_path: ''
 obs_type: 'ego_state'
 ego_state_dim: 3
-ego_action_dim: 2
+ego_action_dim: 3
 
 
 train_episode: 200

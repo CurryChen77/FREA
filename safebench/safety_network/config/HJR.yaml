@@ -1,23 +1,23 @@
-min_dis_threshold: 0.5
+min_dis_threshold: 0.0
 type: "HJR"
 model_path: 'safebench/safety_network/model_ckpt'
 
-obs_type: "ego_info"  # "ego_infos" contains ego and the meaningful surrounding vehicle information
-state_dim: 15  # 3*5 actor_number * dim
-state_shape: [3, 5]
-action_dim: 2
+obs_type: "ego_obs"  # "ego_infos" contains ego and the meaningful surrounding vehicle information
+safety_network_state_dim: 18  # 3*6 actor_number * dim
+state_shape: [3, 6]
+dims: [64, 64]
 
 results_folder_path: ''
 acc_range: [-3.0, 3.0]
 steer_range: [-0.3, 0.3]
 
 
-train_episode: 300
-save_freq: 20
-buffer_capacity: 10000
-buffer_start_training: 100
+train_episode: 500
+save_freq: 5
+buffer_capacity: 2048
+train_repeat_times: 4
+gamma: 0.98
+tau: 5.0e-3
 
-lr: 5.0e-4
-train_iteration: 10
-train_interval: 5
-batch_size: 64
+lr: 3.0e-4
+batch_size: 256

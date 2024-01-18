@@ -1,5 +1,6 @@
 policy_type: 'sac'
 learnable: True
+onpolicy: False
 model_path: 'safebench/agent/model_ckpt/sac'
 model_type: 'agent'
 results_folder_path: ''

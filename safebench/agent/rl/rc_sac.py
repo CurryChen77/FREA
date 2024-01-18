@@ -179,7 +179,7 @@ class RCSAC(BasePolicy):
             bn_r = CUDA(torch.FloatTensor(batch['reward'])).unsqueeze(-1)  # [B, 1]
             bn_s_ = CUDA(torch.FloatTensor(batch['next_obs']))  # next state
             bn_d = CUDA(torch.FloatTensor(1-batch['done'])).unsqueeze(-1)  # [B, 1]
-            bn_min_dis = CUDA(torch.FloatTensor(batch['constrain_h'])).unsqueeze(-1)  # [B, 1]
+            bn_min_dis = CUDA(torch.FloatTensor(batch['constraint_h'])).unsqueeze(-1)  # [B, 1]
             # h = threshold - min_dis, if h > 0 unsafe, else safe
             bn_h = torch.zeros_like(bn_min_dis).fill_(self.constrain_threshold) - bn_min_dis
 

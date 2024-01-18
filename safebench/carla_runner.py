@@ -117,6 +117,7 @@ class CarlaRunner:
             self.safety_network_config['scenario_policy_type'] = scenario_config['policy_type']
             self.safety_network_config['scenario_id'] = self.scenario_id
             self.safety_network_config['agent_obs_type'] = agent_config['obs_type']
+            self.safety_network_config['agent_action_dim'] = agent_config['ego_action_dim']
 
         CarlaDataProvider.set_ego_desired_speed(self.env_params['desired_speed'])
 
@@ -319,7 +320,7 @@ class CarlaRunner:
                 if self.mode == 'train_scenario':
                     self.scenario_policy.save_model(e_i, map_name=self.current_map, buffer=buffer)
                 if self.mode == 'train_safety_network':
-                    self.safety_network_policy.save_model(e_i, map_name=self.current_map, buffer=buffer)
+                    self.safety_network_policy.save_model(e_i, map_name=self.current_map)
 
         # close the tensorboard writer
         writer.close()

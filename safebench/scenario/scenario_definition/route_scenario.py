@@ -308,7 +308,7 @@ class RouteScenario():
         infos = np.array(infos, dtype=np.float32)
 
         return {
-            'ego_info': infos
+            'ego_obs': infos
         }
 
     def clean_up(self):

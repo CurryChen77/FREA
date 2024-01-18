@@ -20,7 +20,7 @@ import torch.nn.functional as F
 
 from safebench.util.torch_util import CUDA, CPU, hidden_init
 from safebench.scenario.scenario_policy.base_policy import BasePolicy
-from safebench.scenario.scenario_policy.rl.net import ActorPPO, CriticPPO
+from safebench.gym_carla.net import ActorPPO, CriticPPO
 
 
 class PPO(BasePolicy):

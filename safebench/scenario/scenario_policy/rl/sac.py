@@ -294,6 +294,7 @@ class SAC(BasePolicy):
                 checkpoint = torch.load(f)
             self.policy_net.load_state_dict(checkpoint['policy_net'])
             self.value_net.load_state_dict(checkpoint['value_net'])
+            self.Target_value_net.load_state_dict(checkpoint['value_net'])
             self.Q_net.load_state_dict(checkpoint['Q_net'])
             self.policy_optimizer.load_state_dict(checkpoint['policy_optimizer'])
             self.value_optimizer.load_state_dict(checkpoint['value_optimizer'])

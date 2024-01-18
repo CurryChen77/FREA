@@ -29,7 +29,7 @@ from safebench.gym_carla.envs.misc import (
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    get_actor_off_road, get_CBV_bv_reward, get_constrain_h, linear_map, \
+    get_actor_off_road, get_CBV_bv_reward, get_constraint_h, linear_map, \
     update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
@@ -267,7 +267,7 @@ class CarlaEnv(gym.Env):
         self.reset_step += 1
 
         # find ego nearby vehicles
-        if self.safety_network_obs_type == 'ego_info':
+        if self.safety_network_obs_type:
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # set controlled bv
@@ -406,7 +406,7 @@ class CarlaEnv(gym.Env):
         self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
-        if self.safety_network_obs_type == 'ego_info':
+        if self.safety_network_obs_type:
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # update the running status and check whether terminate or not
@@ -436,6 +436,10 @@ class CarlaEnv(gym.Env):
         # info for scenario agents to take action (scenario obs)
         info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
 
+        # the safety network only need the ego info at (t+1) step
+        if self.safety_network_obs_type:
+            info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles))
+
         # when resetting
         if reset:
             info.update({
@@ -443,9 +447,9 @@ class CarlaEnv(gym.Env):
                 'gps_route': self.gps_route,  # the global gps route
                 'route': self.route,  # the global route
             })
-            # the safety network only need constrain_h at (t) step
-            if self.safety_network_obs_type == 'ego_info':
-                info['constrain_h'] = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
+            # the safety network only need constraint_h at (t) step
+            if self.safety_network_obs_type:
+                info['constraint_h'] = get_constraint_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
 
         # when after the tick before selecting a new CBV
         elif next_info:
@@ -458,15 +462,11 @@ class CarlaEnv(gym.Env):
 
             info['CBVs_truncated'] = self._get_CBVs_truncated()
 
-            # the safety network only need the ego info at (t+1) step
-            if self.safety_network_obs_type == 'ego_info':
-                info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles))
-
         # when after selecting a new CBV
         elif not next_info:
-            # the safety network only need constrain_h at (t) step
-            if self.safety_network_obs_type == 'ego_info':
-                info['constrain_h'] = get_constrain_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
+            # the safety network only need constraint_h at (t) step
+            if self.safety_network_obs_type:
+                info['constraint_h'] = get_constraint_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
 
         return info
 
