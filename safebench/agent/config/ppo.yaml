@@ -4,17 +4,17 @@ onpolicy: True
 model_path: 'safebench/agent/model_ckpt/ppo'
 model_type: 'agent'
 results_folder_path: ''
-obs_type: 'simple_state'
+obs_type: 'ego_obs'
 
 # parameters for agent policy
 ego_action_dim: 3
-ego_state_dim: 4
+ego_state_dim: 18  # 3 vehicle * 6 dimensions state
 ego_action_limit: 1.0
 
 train_episode: 800
 dims: [64, 64]
 
-save_freq: 20
+save_freq: 5
 buffer_capacity: 2048
 
 clip_epsilon: 0.2

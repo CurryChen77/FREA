@@ -240,6 +240,8 @@ class ObservationWrapper(gym.Wrapper):
         # include the pos, speed, compass(yaw angle)
         elif self.agent_obs_type == 'ego_state':
             process_obs = obs['ego_state']
+        elif self.agent_obs_type == 'ego_obs':
+            process_obs = obs['ego_obs'].flatten()
         elif self.agent_obs_type == 'no_obs':
             process_obs = obs
         else:

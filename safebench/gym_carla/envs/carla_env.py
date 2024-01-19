@@ -250,7 +250,7 @@ class CarlaEnv(gym.Env):
         self.reset_step += 1
 
         # find ego nearby vehicles
-        if self.use_feasibility:
+        if self.use_feasibility or self.agent_obs_type == 'ego_obs':
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # set controlled bv
@@ -354,8 +354,8 @@ class CarlaEnv(gym.Env):
                         brake = np.clip(brake, -1., 1.)
                         brake = linear_map(brake, [-1., 1.], [0., 1.])
 
-                        if brake < 0.05: brake = 0.0
-                        if throttle > brake: brake = 0.0
+                        if brake < 0.05:  brake = 0.0
+                        if throttle > brake:  brake = 0.0
 
                         # apply ego control
                         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
@@ -387,7 +387,7 @@ class CarlaEnv(gym.Env):
         self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
-        if self.use_feasibility:
+        if self.use_feasibility or self.agent_obs_type == 'ego_obs':
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # update the running status and check whether terminate or not
@@ -574,6 +574,8 @@ class CarlaEnv(gym.Env):
             obs = {
                 'simple_state': simple_state.astype(np.float32),
             }
+        elif self.agent_obs_type == 'ego_obs':
+            obs = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles)
         elif self.agent_obs_type == 'no_obs':
             obs = None
         return obs
