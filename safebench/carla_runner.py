@@ -459,7 +459,10 @@ class CarlaRunner:
                 raise NotImplementedError(f"Unsupported mode: {self.mode}.")
 
     def check_onpolicy(self, start_episode=None):
-        onpolicy = {'agent': False, 'scenario': False, 'feasibility': False}
+        onpolicy_agent = True if self.agent_policy.type == 'onpolicy' else False
+        onpolicy_scenario = True if self.scenario_policy.type == 'onpolicy' else False
+        onpolicy_feasibility = True if self.feasibility_policy.type == 'onpolicy' else False
+        onpolicy = {'agent': onpolicy_agent, 'scenario': onpolicy_scenario, 'feasibility': onpolicy_feasibility}
         buffer = None
         if self.mode == 'train_agent':
             if self.agent_policy.type == 'onpolicy':
@@ -467,7 +470,6 @@ class CarlaRunner:
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
                     self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
-                onpolicy['agent'] = True
             else:
                 buffer = ReplayBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
@@ -479,7 +481,6 @@ class CarlaRunner:
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
                     self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
-                onpolicy['scenario'] = True
             else:
                 buffer = ReplayBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
@@ -491,21 +492,11 @@ class CarlaRunner:
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
                     self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
-                onpolicy['feasibility'] = True
             else:
                 buffer = ReplayBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
                     self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
-        elif self.mode == 'eval':
-            if self.agent_policy.type == 'onpolicy':
-                onpolicy['agent'] = True
-            if self.scenario_policy.type == 'onpolicy':
-                onpolicy['scenario'] = True
-            if self.feasibility_policy.type == 'onpolicy':
-                onpolicy['feasibility'] = True
-        else:
-            raise NotImplementedError(f"no this mode")
 
         return buffer, onpolicy
 

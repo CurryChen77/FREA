@@ -14,7 +14,7 @@ ego_action_limit: 1.0
 train_episode: 800
 dims: [64, 64]
 
-save_freq: 5
+save_freq: 20
 buffer_capacity: 2048
 
 clip_epsilon: 0.2

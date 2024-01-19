@@ -236,12 +236,11 @@ class ObservationWrapper(gym.Wrapper):
     def _preprocess_obs(self, obs):
         # only use the 4-dimensional state space
         if self.agent_obs_type == 'simple_state':
-            process_obs = obs['simple_state'][:4].astype(np.float32)
-        # include the pos, speed, compass(yaw angle)
+            process_obs = obs['simple_state'][:4].astype(np.float32)  # include lateral_dis, -delta_yaw, speed, vehicle_front
         elif self.agent_obs_type == 'ego_state':
-            process_obs = obs['ego_state']
+            process_obs = obs['ego_state']  # include the pos, speed, compass(yaw angle)
         elif self.agent_obs_type == 'ego_obs':
-            process_obs = obs['ego_obs'].flatten()
+            process_obs = obs['ego_obs'].flatten()  # flatten the 2D state space
         elif self.agent_obs_type == 'no_obs':
             process_obs = obs
         else:

@@ -49,7 +49,7 @@ class HJR:
 
         self.agent_policy_type = config['agent_policy_type']
         self.scenario_policy_type = config['scenario_policy_type']
-        model_name = "EgoPolicy_" + self.agent_policy_type+"_" + config['agent_obs_type'] + "_CBVPolicy_" + self.scenario_policy_type + "_" + "HJR"
+        model_name = self.agent_policy_type + "_" + self.scenario_policy_type + "_" + "HJR"
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], model_name)
         self.scenario_id = config['scenario_id']
 
