@@ -114,12 +114,6 @@ class CarlaEnv(gym.Env):
 
         self.obs_size = int(self.obs_range / self.lidar_bin)
 
-        # action and observation spaces
-        self.discrete = env_params['discrete']
-        self.discrete_act = [env_params['discrete_acc'], env_params['discrete_steer']]  # acc, steer
-        self.n_acc = len(self.discrete_act[0])
-        self.n_steer = len(self.discrete_act[1])
-
     def _create_sensors(self):
         if self.mode == 'eval':
             # lidar sensor
@@ -344,27 +338,25 @@ class CarlaEnv(gym.Env):
                         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
                     else:
                         # the learnable agent action
-                        if self.discrete:
-                            acc = self.discrete_act[0][ego_action // self.n_steer]  # 'discrete_acc': [-3.0, 0.0, 3.0]
-                            steer = self.discrete_act[1][
-                                ego_action % self.n_steer]  # 'discrete_steer': [-0.2, 0.0, 0.2]
-                        else:
-                            acc = ego_action[0]  # continuous action: acc
-                            steer = ego_action[1]  # continuous action: steering
+                        throttle = ego_action[0]    # continuous action: throttle
+                        steer = ego_action[1]  # continuous action: steering
+                        brake = ego_action[2]  # continuous action: brake
 
                         # normalize and clip the action
-                        acc = acc * self.acc_max
-                        steer = steer * self.steering_max
-                        acc = max(min(self.acc_max, acc), -self.acc_max)
-                        steer = max(min(self.steering_max, steer), -self.steering_max)
 
-                        # Convert acceleration to throttle and brake
-                        if acc > 0:
-                            throttle = np.clip(acc / 3, 0, 1)
-                            brake = 0
-                        else:
-                            throttle = 0
-                            brake = np.clip(-acc / 8, 0, 1)
+                        throttle_max = self.acc_max / 3.
+                        throttle = np.clip(throttle, -throttle_max, throttle_max)
+                        throttle = linear_map(throttle, [-throttle_max, throttle_max], [0., 1.])
+
+                        steer = steer * self.steering_max
+                        steer = np.clip(steer, -self.steering_max, self.steering_max)
+
+                        brake = np.clip(brake, -1., 1.)
+                        brake = linear_map(brake, [-1., 1.], [0., 1.])
+
+                        if brake < 0.05: brake = 0.0
+                        if throttle > brake: brake = 0.0
+
                         # apply ego control
                         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
                     self.ego_vehicle.apply_control(act)  # apply action of the ego vehicle on the next tick

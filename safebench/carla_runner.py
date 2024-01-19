@@ -83,9 +83,7 @@ class CarlaRunner:
             'obs_range': 32,                                                # observation range (meter)
             'd_behind': 12,                                                 # distance behind the ego vehicle (meter)
             'max_past_step': 1,                                             # the number of past steps to draw
-            'discrete': False,                                              # whether to use discrete control space
-            'discrete_acc': [-3.0, 0.0, 3.0],                               # discrete value of accelerations
-            'discrete_steer': [-0.2, 0.0, 0.2],                             # discrete value of steering angles
+
             'continuous_accel_range': [-3.0, 3.0],                          # continuous acceleration range
             'continuous_steer_range': [-0.3, 0.3],                          # continuous steering angle range
             'max_episode_step': 300,                                        # maximum timesteps per episode

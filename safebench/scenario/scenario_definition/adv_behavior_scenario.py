@@ -44,20 +44,12 @@ class AdvBehaviorSingle(BasicScenario):
             # set all the traffic light to green
             CarlaDataProvider.set_all_traffic_light(traffic_light_state=carla.TrafficLightState.Green, timeout=self.timeout)
 
-        self.discrete = env_params['discrete']
-        self.discrete_act = [env_params['discrete_acc'], env_params['discrete_steer']]  # acc, steer
-        self.n_acc = len(self.discrete_act[0])
-        self.n_steer = len(self.discrete_act[1])
         self.acc_max = env_params['continuous_accel_range'][1]
         self.steering_max = env_params['continuous_steer_range'][1]
 
     def convert_actions(self, scenario_actions):
-        if self.discrete:
-            acc = self.discrete_act[0][scenario_actions // self.n_steer]  # 'discrete_acc': [-3.0, 0.0, 3.0]
-            steer = self.discrete_act[1][scenario_actions % self.n_steer]  # 'discrete_steer': [-0.2, 0.0, 0.2]
-        else:
-            acc = scenario_actions[0]  # continuous action: acc
-            steer = scenario_actions[1]  # continuous action: steering
+        acc = scenario_actions[0]  # continuous action: acc
+        steer = scenario_actions[1]  # continuous action: steering
 
         # normalize and clip the action
         acc = acc * self.acc_max
