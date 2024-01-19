@@ -28,7 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--CBV_selection', '-CBV', type=str, default='rule-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--viz_route', '-vr', action='store_true')
-    parser.add_argument('--viz_feasible', '-vf', action='store_true')
+    parser.add_argument('--viz_feasibility', '-vf', action='store_true')
     parser.add_argument('--enable_sem', action='store_true')
     parser.add_argument('--use_feasibility', action='store_true', help='whether to activate feasibility')
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_feasibility'])

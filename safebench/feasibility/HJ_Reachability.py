@@ -17,7 +17,7 @@ from fnmatch import fnmatch
 from torch.distributions import Normal
 import nevergrad as ng
 from safebench.gym_carla.net import CriticPPO, Critic
-from safebench.util.torch_util import CUDA
+from safebench.util.torch_util import CUDA, CPU
 import warnings
 
 
@@ -112,7 +112,20 @@ class HJR:
         min_Qs = self.Qh_net(n_state, best_action)
         return min_Qs
 
-    def soft_update(self, target_net, current_net, tau=5e-3):
+    @staticmethod
+    def process_infos(infos):
+        ego_obs = [info['ego_obs'] for info in infos]
+        ego_obs = np.stack(ego_obs, axis=0)
+        return ego_obs.reshape(ego_obs.shape[0], -1)
+
+    def get_feasibility_value(self, infos):
+        state = self.process_infos(infos)
+        state = CUDA(torch.FloatTensor(state))
+        feasibility_value = self.Vh_net(state)
+        return CPU(feasibility_value)
+
+    @staticmethod
+    def soft_update(target_net, current_net, tau=5e-3):
         """soft update target network via current network
 
         target_net: update target network via current network to make training more stable.
@@ -122,7 +135,8 @@ class HJR:
         for tar, cur in zip(target_net.parameters(), current_net.parameters()):
             tar.data.copy_(cur.data * tau + tar.data * (1.0 - tau))
 
-    def safe_expectile_loss(self, diff, expectile=0.8):
+    @staticmethod
+    def safe_expectile_loss(diff, expectile=0.8):
         weight = torch.where(diff < 0, expectile, (1 - expectile))
         return weight * (diff ** 2)
 
@@ -201,22 +215,6 @@ class HJR:
         # reset buffer
         buffer.reset_buffer()
 
-        # # the Qh calculation from RCRL
-        # excepted_Qh = self.find_min_Qh(next_states)  # find the min Qh of the next state
-        # Qh_target_terminal = h
-        # Qh_target_non_terminal = torch.maximum(h, excepted_Qh)  # from RCRL
-        # Qh_target = torch.where(undones.bool(), Qh_target_terminal, Qh_target_non_terminal)
-
-        # # the Qh loss
-        # Qh_loss = self.Qh_criterion(excepted_Qh, Qh_target.detach())  # J_Qh
-        # Qh_loss = Qh_loss.mean()
-        # writer.add_scalar("HJR_Qh_loss", Qh_loss, e_i)
-        #
-        # self.Qh_optimizer.zero_grad()
-        # Qh_loss.backward()
-        # nn.utils.clip_grad_norm_(self.Qh_net.parameters(), 0.5)
-        # self.Qh_optimizer.step()
-
     def save_model(self, episode, map_name):
         states = {
             'Qh_net': self.Qh_net.state_dict(),
@@ -245,7 +243,7 @@ class HJR:
                             episode = cur_episode
         filepath = os.path.join(load_dir, f'model.HJR.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading Safety network {self.name} from {os.path.basename(filepath)}')
+            self.logger.log(f'>> Loading Safety network {self.name} from {os.path.basename(filepath)}', color="yellow")
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.Qh_net.load_state_dict(checkpoint['Qh_net'])

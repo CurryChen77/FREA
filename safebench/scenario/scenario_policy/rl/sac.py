@@ -140,7 +140,8 @@ class SAC(BasePolicy):
         else:
             raise ValueError(f'Unknown mode {mode}')
 
-    def info_process(self, infos):
+    @staticmethod
+    def info_process(infos):
         CBVs_obs = []
         CBVs_id = []
         env_index = []

@@ -81,7 +81,8 @@ class PPO(BasePolicy):
         for p in self.value_optim.param_groups:
             p['lr'] = lr_value_now
 
-    def info_process(self, infos):
+    @staticmethod
+    def info_process(infos):
         CBVs_obs = []
         CBVs_id = []
         env_index = []

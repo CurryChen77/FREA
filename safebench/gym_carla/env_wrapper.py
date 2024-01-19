@@ -13,6 +13,8 @@ import carla
 import copy
 import numpy as np
 import pygame
+
+from safebench.agent.agent_utils.explainability_utils import get_color
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
@@ -29,6 +31,7 @@ class VectorWrapper():
         self.frame_skip = scenario_config['frame_skip']  
         self.render = scenario_config['render']
         self.spectator = scenario_config['spectator']
+        self.viz_feasibility = scenario_config['viz_feasibility']
         self.agent_state_encoder = agent_state_encoder
         self.birdeye_render = birdeye_render
         self.mode = env_params['mode']
@@ -46,7 +49,13 @@ class VectorWrapper():
         # flags for env list 
         self.finished_env = [False] * self.num_scenario
         self.running_results = {}
-    
+
+    def draw_feasibility_value(self, ego_loc, feasibility_value):
+        value = np.clip(feasibility_value, None, 1.5) - 0.5
+        c = get_color(value)
+        color = carla.Color(r=int(c[0]), g=int(c[1]), b=int(c[2]))
+        self.world.debug.draw_point(ego_loc + carla.Location(z=4), size=0.1, color=color, life_time=0.11)
+
     def obs_postprocess(self, obs_list):
         # assume all variables are array
         obs_list = np.array(obs_list)
@@ -99,7 +108,7 @@ class VectorWrapper():
         # return obs
         return self.obs_postprocess(obs_list), info_list
 
-    def step(self, ego_actions, scenario_actions, onpolicy):
+    def step(self, ego_actions, scenario_actions, onpolicy, feasibility_value=None):
         """
             ego_actions: [num_alive_scenario]
             scenario_actions: [num_alive_scenario]
@@ -115,8 +124,12 @@ class VectorWrapper():
         for e_i in range(self.num_scenario):
             if not self.finished_env[e_i]:
                 processed_action = self.env_list[e_i]._postprocess_action(ego_actions[action_idx])
-                # TODO: pre-process scenario action
                 self.env_list[e_i].step_before_tick(processed_action, scenario_actions[action_idx])
+                # viz the feasibility value if necessary
+                if self.viz_feasibility and self.spectator:
+                    ego_loc = CarlaDataProvider.get_location(self.env_list[e_i].ego_vehicle)
+                    self.draw_feasibility_value(ego_loc, feasibility_value[action_idx])
+
                 action_idx += 1
 
         if self.spectator:

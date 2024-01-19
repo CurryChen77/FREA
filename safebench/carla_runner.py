@@ -263,8 +263,11 @@ class CarlaRunner:
                 ego_actions = self.agent_policy.get_action(obs, infos, deterministic=False)
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=False)
 
+                # the feasibility value
+                feasibility_value = self.feasibility_policy.get_feasibility_value(infos) if self.use_feasibility else None
+
                 # apply action to env and get obs
-                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy=onpolicy)
+                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy, feasibility_value)
                 # store to the replay buffer
                 buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=[infos, next_infos])
                 # for transition
@@ -321,7 +324,6 @@ class CarlaRunner:
         num_finished_scenario = 0
         data_loader.set_mode("eval")
         data_loader.reset_idx_counter()
-        self.scenario_policy.load_model(map_name=self.current_map)  # using overall model, the loading process only needs to be executed once
 
         _, onpolicy = self.check_onpolicy()
 
@@ -341,8 +343,11 @@ class CarlaRunner:
                 ego_actions = self.agent_policy.get_action(obs, infos, deterministic=True)
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=True)
 
+                # the feasibility value
+                feasibility_value = self.feasibility_policy.get_feasibility_value(infos) if self.use_feasibility else None
+
                 # apply action to env and get obs
-                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy=onpolicy)
+                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy, feasibility_value)
 
                 infos = next_transition_infos
                 obs = next_transition_obs
@@ -411,7 +416,7 @@ class CarlaRunner:
             # run with different modes
             if self.mode == 'eval':
                 self.agent_policy.load_model(map_name=self.current_map)
-                # self.scenario_policy.load_model()
+                self.scenario_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('eval')
                 if self.use_feasibility:
