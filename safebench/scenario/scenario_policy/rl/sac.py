@@ -103,7 +103,7 @@ class SAC(BasePolicy):
         self.CBV_selection = config['CBV_selection']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.CBV_selection)
         self.scenario_id = config['scenario_id']
-        self.agent_info = 'EgoPolicy_' + config['agent_policy'] + "-" + config['agent_obs_type']
+        self.agent_info = 'Ego_' + config['agent_policy']
         self.feasibility = config['feasibility']
 
         # create models

@@ -185,7 +185,7 @@ class PPO(BasePolicy):
 
     def load_model(self, map_name, episode=None):
         scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, 'Ego_'+self.obs_type+'_CBV_'+self.scenario_policy_type, scenario_name+'_'+map_name)
+        load_dir = os.path.join(self.model_path, self.scenario_policy_type, scenario_name+'_'+map_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):
