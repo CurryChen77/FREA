@@ -9,6 +9,7 @@
 """
 import os
 import pickle
+import h5py
 import time
 
 import numpy as np
@@ -42,17 +43,12 @@ class ReplayBuffer:
             self.obs_shape = agent_config['ego_state_dim']
             self.action_dim = agent_config['ego_action_dim']
             self.state_dim = agent_config['ego_state_dim']
-        elif self.mode == 'train_feasibility':
-            self.obs_shape = tuple(feasibility_config['state_shape'])
-            self.action_dim = feasibility_config['action_dim']
-            self.state_dim = feasibility_config['state_dim']
         else:
             raise ValueError
 
         self.buffer_capacity = buffer_capacity
         self.num_scenario = num_scenario
         self.agent_need_obs = True if (agent_config['obs_type'] == 'simple_state' or agent_config['obs_type'] == 'plant') else False
-        self.feasibility_obs_type = feasibility_config['obs_type'] if feasibility_config else None
         self.pos = 0
         self.buffer_len = 0
         self.full = False
@@ -83,10 +79,6 @@ class ReplayBuffer:
             self.buffer_obs = np.zeros((self.buffer_capacity, self.obs_shape), dtype=np.float32)
             self.buffer_next_obs = np.zeros((self.buffer_capacity, self.obs_shape), dtype=np.float32)
             self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
-            self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
-        elif self.mode == 'train_feasibility':
-            self.buffer_next_obs = np.zeros((self.buffer_capacity, *self.obs_shape), dtype=np.float32)
-            self.buffer_constraint_h = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
 
     def process_CBV_data(self, data_list, additional_dict):
@@ -152,24 +144,12 @@ class ReplayBuffer:
                     self.full = True
                     self.pos = 0
 
-        # store for agent training
-        elif self.mode == 'train_feasibility':
-            dones = data_list[5]
-            next_obs = [info[self.feasibility_obs_type] for info in additional_dict[1]]  # additional_dict[1] means the next info
-            constraint_h = [info['constraint_h'] for info in additional_dict[0]]  # the constraint h should from infos
-
-            for s_i in range(len(dones)):
-                self.buffer_next_obs[self.pos] = np.array(next_obs[s_i])
-                self.buffer_constraint_h[self.pos] = np.array(constraint_h[s_i])
-                self.buffer_dones[self.pos] = np.array(dones[s_i])
-                self.pos += 1
-                self.buffer_len += 1
-                if self.pos == self.buffer_capacity:
-                    self.full = True
-                    self.pos = 0
 
         # get the buffer length
         self.buffer_len = self.buffer_capacity if self.full else self.pos
+
+    def change_scenario_id_for_saving(self, config_len):
+        pass
 
     def sample(self, batch_size):
         upper_bound = self.buffer_capacity if self.full else self.pos
@@ -189,12 +169,6 @@ class ReplayBuffer:
                 'obs': np.stack(self.buffer_obs)[batch_indices, :],  # obs
                 'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
                 'reward': np.stack(self.buffer_rewards)[batch_indices],  # reward
-                'done': np.stack(self.buffer_dones)[batch_indices],  # done
-            }
-        elif self.mode == 'train_feasibility':
-            batch = {
-                'next_obs': np.stack(self.buffer_next_obs)[batch_indices, :],  # next obs
-                'constraint_h': np.stack(self.buffer_constraint_h)[batch_indices],  # constrain
                 'done': np.stack(self.buffer_dones)[batch_indices],  # done
             }
         else:
@@ -218,13 +192,6 @@ class ReplayBuffer:
                 'buffer_obs': self.buffer_obs,
                 'buffer_next_obs': self.buffer_next_obs,
                 'buffer_rewards': self.buffer_rewards,
-                'buffer_dones': self.buffer_dones,
-                'buffer_infos': [self.pos, self.buffer_len, self.full]
-            }
-        elif self.mode == 'train_feasibility':
-            buffer = {
-                'buffer_next_obs': self.buffer_next_obs,
-                'buffer_constraint_h': self.buffer_constraint_h,
                 'buffer_dones': self.buffer_dones,
                 'buffer_infos': [self.pos, self.buffer_len, self.full]
             }
@@ -265,13 +232,6 @@ class ReplayBuffer:
             self.pos = buffer['buffer_infos'][0]
             self.buffer_len = buffer['buffer_infos'][1]
             self.full = buffer['buffer_infos'][2]
-        elif self.mode == 'train_feasibility':
-            self.buffer_next_obs = buffer['buffer_next_obs']
-            self.buffer_constraint_h = buffer['buffer_constraint_h']
-            self.buffer_dones = buffer['buffer_dones']
-            self.pos = buffer['buffer_infos'][0]
-            self.buffer_len = buffer['buffer_infos'][1]
-            self.full = buffer['buffer_infos'][2]
         else:
             raise ValueError(f'Unknown mode {self.mode}')
 
@@ -285,9 +245,6 @@ class RolloutBuffer:
             self,
             num_scenario,
             mode,
-            start_episode,
-            scenario_policy_type=None,
-            current_map=None,
             agent_config=None,
             scenario_config=None,
             feasibility_config=None,
@@ -297,6 +254,7 @@ class RolloutBuffer:
         self.buffer_capacity = buffer_capacity
         self.num_scenario = num_scenario
         self.buffer_len = 0
+        self.store_scenario_id = None  # if scenario config length < self.num_scenario happens, this value will no longer be None
         # define obs shape and action shape for different modes
         if self.mode == 'train_scenario':
             self.temp_buffer = {'actions': {}, 'obs': {}, 'next_obs': {}, 'rewards': {}, 'dones': {}}
@@ -311,7 +269,7 @@ class RolloutBuffer:
             self.state_dim = agent_config['ego_state_dim']
             self.agent_pos = [0] * self.num_scenario
             self.agent_full = [False] * self.num_scenario
-        elif self.mode == 'train_feasibility':
+        elif self.mode == 'collect_feasibility_data':
             self.obs_shape = tuple(feasibility_config['state_shape'])
             self.action_dim = feasibility_config['agent_action_dim']  # the action dim of the safety network is the ego action
             self.state_dim = feasibility_config['feasibility_state_dim']
@@ -321,7 +279,6 @@ class RolloutBuffer:
         else:
             raise ValueError
 
-        self.agent_need_obs = True if (agent_config['obs_type'] == 'simple_state' or agent_config['obs_type'] == 'plant') else False
         self.feasibility_obs_type = feasibility_config['obs_type'] if feasibility_config else None
 
         self.logger = logger
@@ -350,7 +307,7 @@ class RolloutBuffer:
             self.buffer_next_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
             self.buffer_rewards = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
             self.buffer_dones = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
-        elif self.mode == 'train_feasibility':
+        elif self.mode == 'collect_feasibility_data':
             self.feasibility_pos = [0] * self.num_scenario
             self.feasibility_full = [False] * self.num_scenario
             self.buffer_actions = np.zeros((self.buffer_capacity, self.num_scenario, self.action_dim), dtype=np.float32)
@@ -458,7 +415,7 @@ class RolloutBuffer:
 
             assert len(all_agent_actions) == len(all_obs) == len(all_next_obs) == len(all_rewards) == len(all_dones), "the length of trajectory should be the same"
             for ego_actions, ego_log_probs, obs, next_obs, rewards, dones, next_infos in zip(all_agent_actions, all_agent_log_probs, all_obs, all_next_obs, all_rewards, all_dones, all_next_infos):
-                scenario_id = next_infos['scenario_id']
+                scenario_id = next_infos['scenario_id'] if self.store_scenario_id is None else self.store_scenario_id
                 if not self.agent_full[scenario_id]:
                     self.buffer_actions[self.agent_pos[scenario_id], scenario_id, :] = np.array(ego_actions)
                     self.buffer_log_probs[self.agent_pos[scenario_id], scenario_id] = np.array(ego_log_probs)
@@ -476,8 +433,7 @@ class RolloutBuffer:
                 buffer_len += self.buffer_capacity // 2 if full else pos
             self.buffer_len = buffer_len
 
-        # TODO store for agent training
-        elif self.mode == 'train_feasibility':
+        elif self.mode == 'collect_feasibility_data':
             if self.feasibility_ego_onpolicy:
                 # onpolicy ego agent got log prob
                 all_actions, _ = data_list[0]
@@ -488,7 +444,8 @@ class RolloutBuffer:
             all_next_infos = additional_dict[1]
 
             for action, done, infos, next_infos in zip(all_actions, all_dones, all_infos, all_next_infos):
-                scenario_id = next_infos['scenario_id']
+                # if scenario config length < number_scenarios, need to store data on "self.store_scenario_id" index
+                scenario_id = next_infos['scenario_id'] if self.store_scenario_id is None else self.store_scenario_id
                 h = infos['constraint_h']  # the constraint_h come from the current state
                 obs = infos[self.feasibility_obs_type]
                 next_obs = next_infos[self.feasibility_obs_type]
@@ -547,31 +504,39 @@ class RolloutBuffer:
                 'rewards': rewards,  # reward
                 'dones': dones,  # done
             }
-        elif self.mode == 'train_feasibility':
-            index = 0
-            actions = np.zeros((self.buffer_len, self.action_dim), dtype=np.float32)
-            obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
-            next_obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
-            constraint_h = np.zeros(self.buffer_len, dtype=np.float32)
-            dones = np.zeros(self.buffer_len, dtype=np.float32)
-
-            for scenario_id in range(self.num_scenario):
-                upper_bound = self.buffer_capacity // 2 if self.feasibility_full[scenario_id] else self.feasibility_pos[scenario_id]
-                actions[index:index+upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
-                obs[index:index+upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
-                next_obs[index:index+upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]
-                constraint_h[index:index+upper_bound] = self.buffer_constraint_h[:upper_bound, scenario_id]
-                dones[index:index+upper_bound] = self.buffer_dones[:upper_bound, scenario_id]
-                index += upper_bound
-
-            batch = {
-                'actions': actions,  # action
-                'obs': obs.reshape((-1, self.state_dim)),  # obs
-                'next_obs': next_obs.reshape((-1, self.state_dim)),  # next obs
-                'constraint_h': constraint_h,  # reward
-                'dones': dones,  # done
-            }
         else:
-            raise ValueError(f'Unknown mode {self.mode}')
+            raise ValueError(f'{self.mode} mode do not need to get buffer data')
 
         return batch
+
+    def change_scenario_id_for_saving(self):
+        if self.store_scenario_id is None:
+            self.store_scenario_id = 0
+        self.store_scenario_id = (self.store_scenario_id + 1) % self.num_scenario  # change the scenario id to store data
+
+    def save_feasibility_data(self, file_path):
+        assert self.mode == 'collect_feasibility_data'
+        index = 0
+        actions = np.zeros((self.buffer_len, self.action_dim), dtype=np.float32)
+        obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
+        next_obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
+        constraint_h = np.zeros(self.buffer_len, dtype=np.float32)
+        dones = np.zeros(self.buffer_len, dtype=np.float32)
+
+        for scenario_id in range(self.num_scenario):
+            upper_bound = self.buffer_capacity // 2 if self.feasibility_full[scenario_id] else self.feasibility_pos[scenario_id]
+            actions[index:index+upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
+            obs[index:index+upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
+            next_obs[index:index+upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]
+            constraint_h[index:index+upper_bound] = self.buffer_constraint_h[:upper_bound, scenario_id]
+            dones[index:index+upper_bound] = self.buffer_dones[:upper_bound, scenario_id]
+            index += upper_bound
+
+        with h5py.File(file_path, 'w') as file:
+            file.create_dataset('actions', shape=(self.buffer_len, self.action_dim), dtype=np.float32, data=actions)
+            file.create_dataset('obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=obs.reshape((-1, self.state_dim)))
+            file.create_dataset('next_obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=next_obs.reshape((-1, self.state_dim)))
+            file.create_dataset('constraint_h', shape=self.buffer_len, dtype=np.float32, data=constraint_h)
+            file.create_dataset('dones', shape=self.buffer_len, dtype=np.float32, data=dones)
+
+

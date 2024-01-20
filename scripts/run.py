@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument('--viz_feasibility', '-vf', action='store_true')
     parser.add_argument('--enable_sem', action='store_true')
     parser.add_argument('--use_feasibility', action='store_true', help='whether to activate feasibility')
-    parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'train_feasibility'])
+    parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'collect_feasibility_data'])
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='expert.yaml')
     parser.add_argument('--scenario_cfg', nargs='*', type=str, default='standard_eval.yaml')
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')

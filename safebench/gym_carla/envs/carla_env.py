@@ -250,7 +250,7 @@ class CarlaEnv(gym.Env):
         self.reset_step += 1
 
         # find ego nearby vehicles
-        if self.use_feasibility or self.agent_obs_type == 'ego_obs':
+        if self.mode == 'collect_feasibility_data' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # set controlled bv
@@ -387,7 +387,7 @@ class CarlaEnv(gym.Env):
         self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
-        if self.use_feasibility or self.agent_obs_type == 'ego_obs':
+        if self.mode == 'collect_feasibility_data' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # update the running status and check whether terminate or not
@@ -418,7 +418,7 @@ class CarlaEnv(gym.Env):
         info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
 
         # the safety network only need the ego info at (t+1) step
-        if self.use_feasibility:
+        if self.mode == 'collect_feasibility_data' or self.use_feasibility:
             info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles))
 
         # when resetting
@@ -429,7 +429,7 @@ class CarlaEnv(gym.Env):
                 'route': self.route,  # the global route
             })
             # the safety network only need constraint_h at (t) step
-            if self.use_feasibility:
+            if self.mode == 'collect_feasibility_data' or self.use_feasibility:
                 info['constraint_h'] = get_constraint_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
 
         # when after the tick before selecting a new CBV
@@ -446,7 +446,7 @@ class CarlaEnv(gym.Env):
         # when after selecting a new CBV
         elif not next_info:
             # the safety network only need constraint_h at (t) step
-            if self.use_feasibility:
+            if self.mode == 'collect_feasibility_data' or self.use_feasibility:
                 info['constraint_h'] = get_constraint_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
 
         return info

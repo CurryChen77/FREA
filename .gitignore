@@ -5,6 +5,7 @@
 *.lprof
 *.profile
 *.dat
+*.h5
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -152,3 +153,4 @@ docs/
 /safebench/scenario/scenario_definition/ordinary/
 /safebench/scenario/scenario_definition/scenic/
 /safebench/scenario/scenario_definition/standard/
+/safebench/feasibility/data/

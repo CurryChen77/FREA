@@ -166,7 +166,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --feasibility_cfg HJR.yaml --mode train_feasibility
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --feasibility_cfg HJR.yaml --mode collect_feasibility_data
 ```
 
 ### Policy

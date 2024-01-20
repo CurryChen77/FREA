@@ -9,6 +9,7 @@
 """
 
 import copy
+import os
 
 import numpy as np
 import carla
@@ -51,12 +52,14 @@ class CarlaRunner:
         self.save_video = scenario_config['save_video']
 
         self.render = scenario_config['render']
-        self.num_scenario = scenario_config['num_scenario']                              # default 2
+        self.num_scenario = scenario_config['num_scenario']  # default 2
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.CBV_selection = scenario_config['CBV_selection']
         self.scenario_id = scenario_config['scenario_id']
         # if train feasibility then definitely need feasibility, else, depending on whether need feasibility for evaluation
-        self.use_feasibility = True if self.mode == 'train_feasibility' else feasibility_config['use_feasibility']
+        self.use_feasibility = feasibility_config['use_feasibility']
+        self.scenario_policy_type = scenario_config['policy_type']
+        self.agent_policy_type = agent_config['policy_type']
 
         # apply settings to carla
         self.client = carla.Client('localhost', scenario_config['port'])
@@ -65,32 +68,32 @@ class CarlaRunner:
         self.env = None
 
         self.env_params = {
-            'mode': self.mode,                                              # the mode of the script
-            'search_radius': 25,                                            # the default search radius
-            'traffic_intensity': 0.7,                                       # the default traffic intensity
+            'mode': self.mode,  # the mode of the script
+            'search_radius': 25,  # the default search radius
+            'traffic_intensity': 0.7,  # the default traffic intensity
             'auto_ego': scenario_config['auto_ego'],
-            'spectator': agent_config['spectator'],                         # whether to put spectator on the world
-            'viz_route': agent_config['viz_route'],                         # whether to visualize the route
-            'ego_agent_learnable': agent_config['learnable'],               # whether the ego agent is learnable method
-            'agent_obs_type': agent_config['obs_type'],                     # default 0 (only 4 dimensions states )
-            'CBV_selection': self.CBV_selection,                            # the method using for selection controlled bv
+            'spectator': agent_config['spectator'],  # whether to put spectator on the world
+            'viz_route': agent_config['viz_route'],  # whether to visualize the route
+            'ego_agent_learnable': agent_config['learnable'],  # whether the ego agent is learnable method
+            'agent_obs_type': agent_config['obs_type'],  # default 0 (only 4 dimensions states )
+            'CBV_selection': self.CBV_selection,  # the method using for selection controlled bv
             'ROOT_DIR': scenario_config['ROOT_DIR'],
-            'signalized_junction': False,                                   # whether the junction is controlled by signal
-            'warm_up_steps': 4,                                             # number of ticks after spawning the vehicles
-            'disable_lidar': True,                                          # show bird-eye view lidar or not
-            'enable_sem': agent_config['enable_sem'],                       # whether to enable the sem visualization
-            'display_size': 192,                                            # screen size of one bird-eye view window
-            'obs_range': 32,                                                # observation range (meter)
-            'd_behind': 12,                                                 # distance behind the ego vehicle (meter)
-            'max_past_step': 1,                                             # the number of past steps to draw
+            'signalized_junction': False,  # whether the junction is controlled by signal
+            'warm_up_steps': 4,  # number of ticks after spawning the vehicles
+            'disable_lidar': True,  # show bird-eye view lidar or not
+            'enable_sem': agent_config['enable_sem'],  # whether to enable the sem visualization
+            'display_size': 192,  # screen size of one bird-eye view window
+            'obs_range': 32,  # observation range (meter)
+            'd_behind': 12,  # distance behind the ego vehicle (meter)
+            'max_past_step': 1,  # the number of past steps to draw
 
-            'continuous_accel_range': [-3.0, 3.0],                          # continuous acceleration range
-            'continuous_steer_range': [-0.3, 0.3],                          # continuous steering angle range
-            'max_episode_step': 300,                                        # maximum timesteps per episode
-            'max_waypt': 12,                                                # maximum number of waypoints
-            'lidar_bin': 0.125,                                             # bin size of lidar sensor (meter)
-            'out_lane_thres': 4,                                            # threshold for out of lane (meter)
-            'desired_speed': 6,                                             # desired speed (m/s)
+            'continuous_accel_range': [-3.0, 3.0],  # continuous acceleration range
+            'continuous_steer_range': [-0.3, 0.3],  # continuous steering angle range
+            'max_episode_step': 300,  # maximum timesteps per episode
+            'max_waypt': 12,  # maximum number of waypoints
+            'lidar_bin': 0.125,  # bin size of lidar sensor (meter)
+            'out_lane_thres': 4,  # threshold for out of lane (meter)
+            'desired_speed': 6,  # desired speed (m/s)
         }
 
         # pass config from scenario to agent
@@ -106,7 +109,6 @@ class CarlaRunner:
         scenario_config['feasibility'] = 'With_Feasibility' if self.use_feasibility else 'Without_Feasibility'
 
         # pass config from agent, scenario to feasibility
-
         feasibility_config['agent_policy_type'] = agent_config['policy_type']
         feasibility_config['scenario_policy_type'] = scenario_config['policy_type']
         feasibility_config['scenario_id'] = self.scenario_id
@@ -118,7 +120,7 @@ class CarlaRunner:
         # define logger
         logger_kwargs = setup_logger_kwargs(
             self.exp_name,
-            self.output_dir, 
+            self.output_dir,
             self.seed,
             self.mode,
             agent=agent_config['policy_type'],
@@ -129,7 +131,7 @@ class CarlaRunner:
             CBV_selection=self.CBV_selection,
         )
         self.logger = Logger(**logger_kwargs)
-        
+
         # prepare parameters
         if self.mode == 'train_agent':
             self.buffer_capacity = agent_config['buffer_capacity']
@@ -141,10 +143,9 @@ class CarlaRunner:
             self.save_freq = scenario_config['save_freq']
             self.train_episode = scenario_config['train_episode']
             self.logger.save_config(scenario_config)
-        elif self.mode == 'train_feasibility':
+        elif self.mode == 'collect_feasibility_data':
             self.buffer_capacity = feasibility_config['buffer_capacity']
-            self.save_freq = feasibility_config['save_freq']
-            self.train_episode = feasibility_config['train_episode']
+            self.feasibility_data_path = feasibility_config['data_path']
             self.logger.save_config(feasibility_config)
         elif self.mode == 'eval':
             self.save_freq = scenario_config['save_freq']
@@ -169,7 +170,8 @@ class CarlaRunner:
         self.logger.log('>> Mode: ' + self.mode, color="yellow")
         self.logger.log('>> Agent Policy: ' + agent_config['policy_type'], color="yellow")
         self.logger.log('>> Scenario Policy: ' + scenario_config['policy_type'], color="yellow")
-        self.logger.log('>> Safety network Policy: ' + feasibility_config['type'], color="yellow")
+        if self.use_feasibility:
+            self.logger.log('>> Feasibility Policy: ' + feasibility_config['type'], color="yellow")
         if self.agent_state_encoder:
             self.logger.log('>> Using state encoder: ' + state_encoder_config['obs_type'], color="yellow")
 
@@ -181,7 +183,8 @@ class CarlaRunner:
         # define agent, scenario and safety network policy
         self.agent_policy = AGENT_POLICY_LIST[agent_config['policy_type']](agent_config, logger=self.logger)
         self.scenario_policy = SCENARIO_POLICY_LIST[scenario_config['policy_type']](scenario_config, logger=self.logger)
-        self.feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=self.logger)
+        if self.use_feasibility:
+            self.feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=self.logger)
 
         if self.save_video:
             assert self.mode == 'eval', "only allow video saving in eval mode"
@@ -233,7 +236,7 @@ class CarlaRunner:
     def train(self, data_loader, start_episode=0):
         # create the tensorboard writer
         log_dir = self.logger.output_dir
-        writer_dir = osp.join(log_dir, "Scenario"+str(self.scenario_id)+'_'+self.current_map)
+        writer_dir = osp.join(log_dir, "Scenario" + str(self.scenario_id) + '_' + self.current_map)
         writer = SummaryWriter(log_dir=writer_dir)
 
         # general buffer for both agent and scenario
@@ -241,10 +244,13 @@ class CarlaRunner:
 
         data_loader.set_mode("train")
 
-        for e_i in tqdm(range(start_episode, self.train_episode+1)):
+        for e_i in tqdm(range(start_episode, self.train_episode + 1)):
             # sample scenarios in this town (one town could contain multiple scenarios)
             # simulate multiple scenarios in parallel (usually 2 scenarios)
-            sampled_scenario_configs, _ = data_loader.sampler()
+            sampled_scenario_configs, config_lengths = data_loader.sampler()
+            # if config length < num_scenarios, means need to balance to storing placement within buffer
+            if config_lengths < self.num_scenario and self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
+                buffer.change_scenario_id_for_saving()
             # reset the index counter to create endless loader
             data_loader.reset_idx_counter()
 
@@ -284,8 +290,6 @@ class CarlaRunner:
                     self.agent_policy.train(buffer, writer, e_i)
                 elif self.mode == 'train_scenario' and self.scenario_policy.type == 'offpolicy':
                     self.scenario_policy.train(buffer, writer, e_i)
-                elif self.mode == 'train_feasibility' and self.feasibility_policy.type == 'offpolicy':
-                    self.feasibility_policy.train(buffer, writer, e_i)
 
             self.logger.log('>> Start Cleaning', 'yellow')
             # end up environment
@@ -303,8 +307,6 @@ class CarlaRunner:
                 self.agent_policy.train(buffer, writer, e_i) if e_i != start_episode and all(buffer.agent_full) else None
             elif self.mode == 'train_scenario' and self.scenario_policy.type == 'onpolicy':
                 self.scenario_policy.train(buffer, writer, e_i) if e_i != start_episode and buffer.scenario_full else None
-            elif self.mode == 'train_feasibility' and self.feasibility_policy.type == 'onpolicy':
-                self.feasibility_policy.train(buffer, writer, e_i) if e_i != start_episode and buffer.feasibility_full else None
 
             # save checkpoints
             if e_i != start_episode and e_i % self.save_freq == 0:
@@ -312,8 +314,6 @@ class CarlaRunner:
                     self.agent_policy.save_model(e_i, map_name=self.current_map, buffer=buffer)
                 if self.mode == 'train_scenario':
                     self.scenario_policy.save_model(e_i, map_name=self.current_map, buffer=buffer)
-                if self.mode == 'train_feasibility':
-                    self.feasibility_policy.save_model(e_i, map_name=self.current_map)
 
         # close the tensorboard writer
         writer.close()
@@ -385,6 +385,54 @@ class CarlaRunner:
                 self.logger.save_eval_results()
         self.logger.save_eval_results()
 
+    def collect_feasibility_data(self, data_loader, file_name):
+        # general buffer for both agent and scenario
+        buffer, onpolicy = self.check_onpolicy()
+
+        data_loader.set_mode("train")
+
+        while not all(buffer.feasibility_full):
+            # sample scenarios in this town (one town could contain multiple scenarios)
+            # simulate multiple scenarios in parallel (usually 2 scenarios)
+            sampled_scenario_configs, config_lengths = data_loader.sampler()
+            # if sampled scenario config length < num_scenarios, means need to balance to storing placement within buffer
+            if config_lengths < self.num_scenario:
+                buffer.change_scenario_id_for_saving()
+            # reset the index counter to create endless loader
+            data_loader.reset_idx_counter()
+
+            obs, infos = self.env.reset(sampled_scenario_configs)
+
+            # get ego vehicle from scenario
+            self.agent_policy.set_ego_and_route(self.env.get_ego_vehicles(), infos)
+
+            # start loop
+            while not self.env.all_scenario_done():
+                # get action from agent policy and scenario policy (assume using one batch)
+                ego_actions = self.agent_policy.get_action(obs, infos, deterministic=False)
+                scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=False)
+
+                # the feasibility value
+                feasibility_value = self.feasibility_policy.get_feasibility_value(infos) if self.use_feasibility else None
+
+                # apply action to env and get obs
+                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy, feasibility_value)
+                # store to the replay buffer
+                buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=[infos, next_infos])
+                # for transition
+                infos = next_transition_infos
+                obs = copy.deepcopy(next_transition_obs)
+
+            self.logger.log(f'>> dataset length: {buffer.buffer_len}')
+
+            self.logger.log('>> Start Cleaning', 'yellow')
+            # end up environment
+            self.env.clean_up()
+
+        # save the feasibility data
+        buffer.save_feasibility_data(file_name)
+        self.logger.log(">> Successfully saved the offline data", 'yellow')
+
     def run(self):
         # get scenario data of different maps, and cluster config according to the town
         config_by_map = scenario_parse(self.scenario_config, self.logger)
@@ -397,9 +445,9 @@ class CarlaRunner:
             # create scenarios within the vectorized wrapper
             self.env = VectorWrapper(
                 self.env_params,
-                self.scenario_config, 
-                self.world, 
-                self.birdeye_render, 
+                self.scenario_config,
+                self.world,
+                self.birdeye_render,
                 self.display,
                 self.use_feasibility,
                 self.agent_state_encoder,
@@ -445,30 +493,29 @@ class CarlaRunner:
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
-            elif self.mode == 'train_feasibility':
-                start_episode = self.check_continue_training(self.feasibility_policy)
+            elif self.mode == 'collect_feasibility_data':
                 self.agent_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.load_model(map_name=self.current_map)
                 self.scenario_policy.set_mode('eval')
-                self.feasibility_policy.set_mode('train')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
-                self.train(data_loader, start_episode)
+                exist, file_name = self.check_feasibility_data_exists()
+                if not exist:
+                    self.collect_feasibility_data(data_loader, file_name)
             else:
                 raise NotImplementedError(f"Unsupported mode: {self.mode}.")
 
     def check_onpolicy(self, start_episode=None):
         onpolicy_agent = True if self.agent_policy.type == 'onpolicy' else False
         onpolicy_scenario = True if self.scenario_policy.type == 'onpolicy' else False
-        onpolicy_feasibility = True if self.feasibility_policy.type == 'onpolicy' else False
-        onpolicy = {'agent': onpolicy_agent, 'scenario': onpolicy_scenario, 'feasibility': onpolicy_feasibility}
+        onpolicy = {'agent': onpolicy_agent, 'scenario': onpolicy_scenario}
         buffer = None
         if self.mode == 'train_agent':
             if self.agent_policy.type == 'onpolicy':
                 buffer = RolloutBuffer(
-                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
+                    self.num_scenario, self.mode, self.agent_config, self.scenario_config,
+                    self.feasibility_config, self.buffer_capacity, self.logger
                 )
             else:
                 buffer = ReplayBuffer(
@@ -478,25 +525,19 @@ class CarlaRunner:
         elif self.mode == 'train_scenario':
             if self.scenario_policy.type == 'onpolicy':
                 buffer = RolloutBuffer(
-                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
+                    self.num_scenario, self.mode, self.agent_config, self.scenario_config,
+                    self.feasibility_config, self.buffer_capacity, self.logger
                 )
             else:
                 buffer = ReplayBuffer(
                     self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
                     self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
                 )
-        elif self.mode == 'train_feasibility':
-            if self.feasibility_policy.type == 'onpolicy':
-                buffer = RolloutBuffer(
-                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
-                )
-            else:
-                buffer = ReplayBuffer(
-                    self.num_scenario, self.mode, start_episode, self.scenario_policy.type, self.current_map,
-                    self.agent_config, self.scenario_config, self.feasibility_config, self.buffer_capacity, self.logger
-                )
+        elif self.mode == 'collect_feasibility_data':
+            buffer = RolloutBuffer(
+                self.num_scenario, self.mode, self.agent_config, self.scenario_config,
+                self.feasibility_config, self.buffer_capacity, self.logger
+            )
 
         return buffer, onpolicy
 
@@ -511,7 +552,19 @@ class CarlaRunner:
             self.logger.log('>> Continue training from previous checkpoint.')
         return start_episode
 
+    def check_feasibility_data_exists(self):
+        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
+        file_path = os.path.join(self.feasibility_data_path, scenario_name + "_" + self.current_map)
+        file_name = os.path.join(file_path, f"{self.agent_policy_type}_{self.scenario_policy_type}_data.h5")
+        if os.path.isfile(file_name):
+            self.logger.log(f'>> exist data on {file_path}', color='red')
+            exist = True
+        else:
+            os.makedirs(file_path, exist_ok=True)
+            exist = False
+        return exist, file_name
+
     def close(self):
-        pygame.quit() 
+        pygame.quit()
         if self.env:
             self.env.clean_up()
