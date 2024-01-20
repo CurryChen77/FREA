@@ -249,8 +249,8 @@ class CarlaRunner:
             # simulate multiple scenarios in parallel (usually 2 scenarios)
             sampled_scenario_configs, config_lengths = data_loader.sampler()
             # if config length < num_scenarios, means need to balance to storing placement within buffer
-            if config_lengths < self.num_scenario and self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
-                buffer.change_scenario_id_for_saving()
+            if self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
+                buffer.check_scenario_id_for_saving(config_lengths)
             # reset the index counter to create endless loader
             data_loader.reset_idx_counter()
 
@@ -396,8 +396,7 @@ class CarlaRunner:
             # simulate multiple scenarios in parallel (usually 2 scenarios)
             sampled_scenario_configs, config_lengths = data_loader.sampler()
             # if sampled scenario config length < num_scenarios, means need to balance to storing placement within buffer
-            if config_lengths < self.num_scenario:
-                buffer.change_scenario_id_for_saving()
+            buffer.check_scenario_id_for_saving(config_lengths)
             # reset the index counter to create endless loader
             data_loader.reset_idx_counter()
 
@@ -432,6 +431,7 @@ class CarlaRunner:
         # save the feasibility data
         buffer.save_feasibility_data(file_name)
         self.logger.log(">> Successfully saved the offline data", 'yellow')
+        self.logger.log('>> ' + '-' * 40)
 
     def run(self):
         # get scenario data of different maps, and cluster config according to the town

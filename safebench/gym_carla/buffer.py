@@ -144,11 +144,10 @@ class ReplayBuffer:
                     self.full = True
                     self.pos = 0
 
-
         # get the buffer length
         self.buffer_len = self.buffer_capacity if self.full else self.pos
 
-    def change_scenario_id_for_saving(self, config_len):
+    def check_scenario_id_for_saving(self, config_len):
         pass
 
     def sample(self, batch_size):
@@ -509,10 +508,15 @@ class RolloutBuffer:
 
         return batch
 
-    def change_scenario_id_for_saving(self):
-        if self.store_scenario_id is None:
-            self.store_scenario_id = 0
-        self.store_scenario_id = (self.store_scenario_id + 1) % self.num_scenario  # change the scenario id to store data
+    def check_scenario_id_for_saving(self, config_len):
+        if config_len == self.num_scenario:
+            self.store_scenario_id = None
+        else:
+            if self.store_scenario_id is None:
+                self.store_scenario_id = 0
+            else:
+                self.store_scenario_id = (self.store_scenario_id + 1) % self.num_scenario  # change the scenario id to store data
+            print("need balance storing on:", self.store_scenario_id)
 
     def save_feasibility_data(self, file_path):
         assert self.mode == 'collect_feasibility_data'
