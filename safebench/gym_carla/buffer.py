@@ -516,7 +516,6 @@ class RolloutBuffer:
                 self.store_scenario_id = 0
             else:
                 self.store_scenario_id = (self.store_scenario_id + 1) % self.num_scenario  # change the scenario id to store data
-            print("need balance storing on:", self.store_scenario_id)
 
     def save_feasibility_data(self, file_path):
         assert self.mode == 'collect_feasibility_data'

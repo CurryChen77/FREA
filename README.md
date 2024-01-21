@@ -157,7 +157,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
   steer ~ [-0.3, 0.3]
 
-## Train Safety network
+## collect feasibility data
 
 ### Usage
 
@@ -166,7 +166,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_train.yaml --feasibility_cfg HJR.yaml --mode collect_feasibility_data
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode collect_feasibility_data
 ```
 
 ### Policy
