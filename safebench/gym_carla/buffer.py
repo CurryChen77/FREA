@@ -536,6 +536,7 @@ class RolloutBuffer:
             index += upper_bound
 
         with h5py.File(file_path, 'w') as file:
+            file.attrs['length'] = self.buffer_len
             file.create_dataset('actions', shape=(self.buffer_len, self.action_dim), dtype=np.float32, data=actions)
             file.create_dataset('obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=obs.reshape((-1, self.state_dim)))
             file.create_dataset('next_obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=next_obs.reshape((-1, self.state_dim)))
