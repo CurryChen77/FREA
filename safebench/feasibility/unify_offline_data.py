@@ -11,48 +11,53 @@ import os
 
 import numpy as np
 from tqdm import tqdm
+from typing import Dict
 
 
 def merge_hdf5_files(output_filepath, input_filepaths):
     if not os.path.exists(output_filepath):
         with h5py.File(output_filepath, 'a') as output_file:
-            buffer_len = 0
+            total_len = 0
+            action_dim = None
+            obs_shape = None
             for input_filepath in tqdm(input_filepaths, desc="Merging Files"):
                 file_name = os.path.splitext(os.path.basename(input_filepath))[0]
                 grp = output_file.create_group(file_name)
                 with h5py.File(input_filepath, 'r') as input_file:
-                    buffer_len += input_file.attrs['length']
+                    total_len += input_file.attrs['length']
+                    if action_dim is None:
+                        action_dim = input_file.attrs['action_dim']
+                    if obs_shape is None:
+                        obs_shape = input_file.attrs['obs_shape']
                     for name, data in input_file.items():
+                        # create the group data structure
                         grp.create_dataset(name, data=data)
-                grp.attrs['length'] = buffer_len
+                    grp.attrs['length'] = input_file.attrs['length']
+            output_file.attrs['length'] = total_len
+            output_file.attrs['action_dim'] = action_dim
+            output_file.attrs['obs_shape'] = obs_shape
     else:
         print("already exists merged data")
 
 
 def find_h5_files(directory):
-    h5_file_paths = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.h5')]
+    h5_file_paths = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.hdf5')]
     return h5_file_paths
 
 
 if __name__ == '__main__':
 
-    # 指定输出文件名和输入文件列表
-    output_filename = 'merged_data.h5'
+    output_filename = 'merged_data.hdf5'
 
-    # 指定路径
     base_directory = './data'
 
-    # 遍历每个文件夹
     for folder in os.listdir(base_directory):
         folder_path = os.path.join(base_directory, folder)
         output_path = os.path.join(folder_path, output_filename)
 
-        # 检查是否是文件夹
         if os.path.isdir(folder_path):
             print(f"\nProcessing files in folder: {folder}")
 
-            # 获取文件夹中的所有 .h5 文件
             h5_files_paths = find_h5_files(folder_path)
 
-            # 调用函数合并多个 HDF5 文件
             merge_hdf5_files(output_path, h5_files_paths)

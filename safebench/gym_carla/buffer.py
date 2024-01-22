@@ -537,10 +537,11 @@ class RolloutBuffer:
 
         with h5py.File(file_path, 'w') as file:
             file.attrs['length'] = self.buffer_len
-            file.create_dataset('actions', shape=(self.buffer_len, self.action_dim), dtype=np.float32, data=actions)
-            file.create_dataset('obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=obs.reshape((-1, self.state_dim)))
-            file.create_dataset('next_obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=next_obs.reshape((-1, self.state_dim)))
-            file.create_dataset('constraint_h', shape=self.buffer_len, dtype=np.float32, data=constraint_h)
-            file.create_dataset('dones', shape=self.buffer_len, dtype=np.float32, data=dones)
+            file.attrs.update({'action_dim': self.action_dim, 'obs_shape': self.obs_shape})
+            file.create_dataset('actions', shape=(self.buffer_len, self.action_dim), dtype=np.float32, data=actions, compression='gzip')
+            file.create_dataset('obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=obs.reshape((-1, self.state_dim)), compression='gzip')
+            file.create_dataset('next_obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=next_obs.reshape((-1, self.state_dim)), compression='gzip')
+            file.create_dataset('constraint_h', shape=self.buffer_len, dtype=np.float32, data=constraint_h, compression='gzip')
+            file.create_dataset('dones', shape=self.buffer_len, dtype=np.float32, data=dones, compression='gzip')
 
 
