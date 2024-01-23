@@ -36,6 +36,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 log/
+**/train_log/
 **/model_ckpt/
 
 # PyInstaller

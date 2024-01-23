@@ -9,11 +9,26 @@
 import numpy as np
 import os
 import h5py
+import torch
+from safebench.util.torch_util import CUDA
 
 
 class OffRLDataset(object):
     def __init__(self, data_location=None):
-        self.dataset_dict, self.dataset_len = self.get_dataset(h5path=data_location)
+
+        dataset_dict, self.dataset_len = self.get_dataset(h5path=data_location)
+        self.dataset_dict = self.put_dataset_on_device(dataset_dict)
+
+    @staticmethod
+    def put_dataset_on_device(dataset_dict):
+        # use all the keys in the self.dataset_dict
+        keys = list(dataset_dict.keys())
+
+        # transfer the dataset input torch tensor, and put them on the GPU or CPU devices
+        torch_dataset_dict = {k: torch.tensor(dataset_dict[k]) for k in keys}
+        torch_dataset_dict = {k: CUDA(v) for k, v in torch_dataset_dict.items()}
+
+        return torch_dataset_dict
 
     @staticmethod
     def get_dataset(h5path):
@@ -33,14 +48,22 @@ class OffRLDataset(object):
             }
             # for all the group files
             for group_name, group in file.items():
-                print(f"processing group {group_name}")
                 group_data_len = group.attrs['length']
                 for name, data in group.items():
                     data_dict[name][index:index+group_data_len] = data
                 index += group_data_len
-                print(f"finish loading group {group_name}")
 
         return data_dict, dataset_len
+
+    def sample(self, batch_size):
+
+        # generate the random sampling index
+        index = CUDA(torch.randint(0, self.dataset_len, (batch_size,)))
+
+        # use teh index select function to get the data at the specified dim and index
+        sample = {k: v.index_select(dim=0, index=index) for k, v in self.dataset_dict.items()}
+
+        return sample
 
 
 if __name__ == '__main__':
@@ -56,5 +79,7 @@ if __name__ == '__main__':
         if os.path.isdir(folder_path):
             print(f"\nProcessing files in folder: {folder}")
 
-            offRLdataset = OffRLDataset(output_path)
+            dataset = OffRLDataset(output_path)
+            samples = dataset.sample(batch_size=4)
+            print("sample shape:", samples)
 

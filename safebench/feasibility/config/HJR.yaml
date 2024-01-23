@@ -1,9 +1,12 @@
 min_dis_threshold: 0.0
 type: "HJR"
 data_path: 'safebench/feasibility/data'
+model_path: 'model_ckpt'
+scenario_id: 9
 
 obs_type: "ego_obs"  # "ego_infos" contains ego and the meaningful surrounding vehicle information
 feasibility_state_dim: 18  # 3*6 actor_number * dim
+agent_action_dim: 3
 state_shape: [3, 6]
 dims: [64, 64]
 
@@ -12,12 +15,12 @@ acc_range: [-3.0, 3.0]
 steer_range: [-0.3, 0.3]
 
 
-train_episode: 500
-save_freq: 20
-buffer_capacity: 500
-train_repeat_times: 4
+train_episode: 10000
+save_freq: 2000
+buffer_capacity: 5000
+
 gamma: 0.98
 tau: 5.0e-3
 
 lr: 3.0e-4
-batch_size: 256
+batch_size: 1024

@@ -39,18 +39,13 @@ class HJR:
         self.acc_range = config['acc_range']
         self.steer_range = config['steer_range']
         self.dims = config['dims']
-        self.train_repeat_times = config['train_repeat_times']
         self.max_train_episode = config['train_episode']
         self.gamma = config['gamma']
         self.tau = config['tau']
 
         self.batch_size = config['batch_size']
-        self.agent_info = 'ego_' + config['agent_policy_type'] + "_" + config['agent_obs_type']
 
-        self.agent_policy_type = config['agent_policy_type']
-        self.scenario_policy_type = config['scenario_policy_type']
-        model_name = self.agent_policy_type + "_" + self.scenario_policy_type + "_" + "HJR"
-        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], model_name)
+        self.model_path = config['model_path']
         self.scenario_id = config['scenario_id']
 
         self.Qh_net = CUDA(Critic(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
@@ -83,34 +78,34 @@ class HJR:
         for p in self.Vh_optimizer.param_groups:
             p['lr'] = lr_now
 
-    def find_min_Qh(self, n_state):
-        """
-            Utilize gradient-free optimization methods to traverse the action space and find the minimum Qh value
-        """
-        def Qh(acceleration, steering, next_state):
-            acceleration = torch.from_numpy(acceleration)
-            steering = torch.from_numpy(steering)
-            safest_action = CUDA(torch.cat((acceleration, steering), dim=1).type(next_state.dtype))
-            Qh_value = self.Qh_net(next_state, safest_action)
-            # the object is to min the Qh value of each state (equal to min sum of overall Qh)
-            return Qh_value.sum().item()
-
-        parametrization = ng.p.Instrumentation(
-            acceleration=ng.p.Array(shape=(self.batch_size, 1)).set_bounds(-3.0, 3.0),
-            steering=ng.p.Array(shape=(self.batch_size, 1)).set_bounds(-0.3, 0.3),
-            next_state=n_state
-        )
-
-        optimizer = ng.optimizers.NGOpt(parametrization=parametrization, budget=100)
-        recommendation = optimizer.minimize(Qh)
-
-        acc = recommendation.kwargs['acceleration']
-        steer = recommendation.kwargs['steering']
-        acc = torch.from_numpy(acc)
-        steer = torch.from_numpy(steer)
-        best_action = CUDA(torch.cat((acc, steer), dim=1).type(n_state.dtype))
-        min_Qs = self.Qh_net(n_state, best_action)
-        return min_Qs
+    # def find_min_Qh(self, n_state):
+    #     """
+    #         Utilize gradient-free optimization methods to traverse the action space and find the minimum Qh value
+    #     """
+    #     def Qh(acceleration, steering, next_state):
+    #         acceleration = torch.from_numpy(acceleration)
+    #         steering = torch.from_numpy(steering)
+    #         safest_action = CUDA(torch.cat((acceleration, steering), dim=1).type(next_state.dtype))
+    #         Qh_value = self.Qh_net(next_state, safest_action)
+    #         # the object is to min the Qh value of each state (equal to min sum of overall Qh)
+    #         return Qh_value.sum().item()
+    #
+    #     parametrization = ng.p.Instrumentation(
+    #         acceleration=ng.p.Array(shape=(self.batch_size, 1)).set_bounds(-3.0, 3.0),
+    #         steering=ng.p.Array(shape=(self.batch_size, 1)).set_bounds(-0.3, 0.3),
+    #         next_state=n_state
+    #     )
+    #
+    #     optimizer = ng.optimizers.NGOpt(parametrization=parametrization, budget=100)
+    #     recommendation = optimizer.minimize(Qh)
+    #
+    #     acc = recommendation.kwargs['acceleration']
+    #     steer = recommendation.kwargs['steering']
+    #     acc = torch.from_numpy(acc)
+    #     steer = torch.from_numpy(steer)
+    #     best_action = CUDA(torch.cat((acc, steer), dim=1).type(n_state.dtype))
+    #     min_Qs = self.Qh_net(n_state, best_action)
+    #     return min_Qs
 
     @staticmethod
     def process_infos(infos):
@@ -163,76 +158,57 @@ class HJR:
             # learning rate decay
             self.lr_decay(e_i)  # add the learning rate decay
 
-            batch = buffer.get()
+            batch = buffer.sample(self.batch_size)
 
-            states = CUDA(torch.FloatTensor(batch['obs']))
-            next_states = CUDA(torch.FloatTensor(batch['next_obs']))
-            actions = CUDA(torch.FloatTensor(batch['actions']))
-            undones = CUDA(torch.FloatTensor(1-batch['dones']))
+            state = batch['obs'].reshape((-1, self.state_dim))
+            next_state = batch['next_obs'].reshape((-1, self.state_dim))
+            action = batch['actions']
+            undone = 1-batch['dones']
             # the ego min distance from the infos
-            min_dis = CUDA(torch.FloatTensor(batch['constraint_h']))
+            min_dis = batch['constraint_h']
             # h = threshold - min_dis, if h > 0 unsafe, else safe
-            hs = torch.zeros_like(min_dis).fill_(self.min_dis_threshold) - min_dis
-            buffer_size = states.shape[0]
+            h = torch.zeros_like(min_dis).fill_(self.min_dis_threshold) - min_dis
 
             del min_dis
 
-        # start to train, use gradient descent without batch size
-        update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
-        assert update_times >= 1
+        # get the Vh loss
+        Vh_loss = self.compute_Vh_loss(state=state, action=action)
+        writer.add_scalar("HJR_Vh_loss", Vh_loss, e_i)
+        # update the Vh net
+        self.Vh_optimizer.zero_grad()
+        Vh_loss.backward()
+        nn.utils.clip_grad_norm_(self.Vh_net.parameters(), 0.5)
+        self.Vh_optimizer.step()
 
-        for _ in range(update_times):
-            indices = torch.randint(buffer_size, size=(self.batch_size,), requires_grad=False)
-            state = states[indices]
-            next_state = next_states[indices]
-            action = actions[indices]
-            h = hs[indices]
-            undone = undones[indices]
+        # get the Qh loss
+        Qh_loss = self.compute_Qh_loss(h=h, state=state, action=action, next_state=next_state, undone=undone)
+        writer.add_scalar("HJR_Qh_loss", Qh_loss, e_i)
 
-            # get the Vh loss
-            Vh_loss = self.compute_Vh_loss(state=state, action=action)
-            writer.add_scalar("HJR_Vh_loss", Vh_loss, e_i)
-            # update the Vh net
-            self.Vh_optimizer.zero_grad()
-            Vh_loss.backward()
-            nn.utils.clip_grad_norm_(self.Vh_net.parameters(), 0.5)
-            self.Vh_optimizer.step()
+        # update the Qh net
+        self.Qh_optimizer.zero_grad()
+        Qh_loss.backward()
+        nn.utils.clip_grad_norm_(self.Qh_net.parameters(), 0.5)
+        self.Qh_optimizer.step()
 
-            # get the Qh loss
-            Qh_loss = self.compute_Qh_loss(h=h, state=state, action=action, next_state=next_state, undone=undone)
-            writer.add_scalar("HJR_Qh_loss", Qh_loss, e_i)
+        # soft update the Qh net
+        for target_param, param in zip(self.Qh_target_net.parameters(), self.Qh_net.parameters()):
+            target_param.data.copy_(target_param.data * (1 - self.tau) + param.data * self.tau)
 
-            # update the Qh net
-            self.Qh_optimizer.zero_grad()
-            Qh_loss.backward()
-            nn.utils.clip_grad_norm_(self.Qh_net.parameters(), 0.5)
-            self.Qh_optimizer.step()
-
-            # soft update the Qh net
-            for target_param, param in zip(self.Qh_target_net.parameters(), self.Qh_net.parameters()):
-                target_param.data.copy_(target_param.data * (1 - self.tau) + param.data * self.tau)
-
-        # reset buffer
-        buffer.reset_buffer()
-
-    def save_model(self, episode, map_name):
+    def save_model(self, episode, scenario_name):
         states = {
             'Qh_net': self.Qh_net.state_dict(),
             'Vh_net': self.Vh_net.state_dict(),
             'Qh_optim': self.Qh_optimizer.state_dict(),
             'Vh_optim': self.Vh_optimizer.state_dict()
         }
-        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, scenario_name+"_"+map_name)
+        save_dir = os.path.join(self.model_path, scenario_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.HJR.{episode:04}.torch')
-        self.logger.log(f'>> Saving {self.name} model to {filepath}')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
-    def load_model(self, map_name, episode=None):
-        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, scenario_name+"_"+map_name)
+    def load_model(self, scenario_name, episode=None):
+        load_dir = os.path.join(self.model_path, scenario_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):
