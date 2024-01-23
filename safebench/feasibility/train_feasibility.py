@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--threads', type=int, default=4)
+    parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
     args = parser.parse_args()
     args_dict = vars(args)
     # set global parameters

@@ -16,12 +16,8 @@ import torch.optim as optim
 from fnmatch import fnmatch
 from torch.distributions import Normal
 import nevergrad as ng
-from safebench.gym_carla.net import CriticPPO, Critic
+from safebench.gym_carla.net import CriticPPO, CriticTwin
 from safebench.util.torch_util import CUDA, CPU
-import warnings
-
-
-warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
 class HJR:
@@ -42,14 +38,15 @@ class HJR:
         self.max_train_episode = config['train_episode']
         self.gamma = config['gamma']
         self.tau = config['tau']
+        self.expectile = config['expectile']
 
         self.batch_size = config['batch_size']
 
         self.model_path = config['model_path']
         self.scenario_id = config['scenario_id']
 
-        self.Qh_net = CUDA(Critic(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
-        self.Qh_target_net = CUDA(Critic(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
+        self.Qh_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
+        self.Qh_target_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
         self.Qh_optimizer = optim.Adam(self.Qh_net.parameters(), lr=self.lr, eps=1e-5)  # the corresponding optimizer of Qh
         self.Qh_criterion = nn.SmoothL1Loss()
 
@@ -120,27 +117,16 @@ class HJR:
         return CPU(feasibility_value)
 
     @staticmethod
-    def soft_update(target_net, current_net, tau=5e-3):
-        """soft update target network via current network
-
-        target_net: update target network via current network to make training more stable.
-        current_net: current network update via an optimizer
-        tau: tau of soft target update: `target_net = target_net * (1-tau) + current_net * tau`
-        """
-        for tar, cur in zip(target_net.parameters(), current_net.parameters()):
-            tar.data.copy_(cur.data * tau + tar.data * (1.0 - tau))
-
-    @staticmethod
     def safe_expectile_loss(diff, expectile=0.8):
         weight = torch.where(diff < 0, expectile, (1 - expectile))
         return weight * (diff ** 2)
 
     def compute_Vh_loss(self, state, action):
-        Qh = self.Qh_target_net(state, action)
-        Qh_max = torch.max(Qh)  # the Qh is about the constraint h, so lower means better, this is different from the reward, higher the better
+        # the Qh is about the constraint h, so lower means better, this is different from the reward, higher the better
+        Qh_max = self.Qh_target_net.get_q_max(state, action)
         Vh = self.Vh_net(state)
 
-        Vh_loss = self.safe_expectile_loss(Qh_max - Vh).mean()
+        Vh_loss = self.safe_expectile_loss(diff=Qh_max - Vh, expectile=self.expectile).mean()
         return Vh_loss
 
     def compute_Qh_loss(self, h, state, action, next_state, undone):

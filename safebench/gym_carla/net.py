@@ -412,6 +412,12 @@ class CriticTwin(CriticBase):  # shared parameter
         values = self.value_re_norm(values)
         return values[:, 0], values[:, 1]  # two Q values
 
+    def get_q_max(self, state, action):
+        state = self.state_norm(state)
+        values = self.net(torch.cat((state, action), dim=1))
+        values = self.value_re_norm(values)
+        return torch.max(values, dim=1)[0]  # max Q value
+
 
 class CriticPPO(CriticBase):
     def __init__(self, dims: [int], state_dim: int, action_dim: int):
