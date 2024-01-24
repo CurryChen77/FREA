@@ -42,7 +42,7 @@ class CarlaBehaviorAgent(BasePolicy):
             controller.set_destination(location)  # set route for each controller
             self.controller_list.append(controller)
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         pass
 
     def set_mode(self, mode):

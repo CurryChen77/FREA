@@ -16,7 +16,7 @@ steer_range: [-0.3, 0.3]
 
 
 train_episode: 100000
-save_freq: 10000
+save_freq: 20000
 buffer_capacity: 5000
 
 gamma: 0.98
