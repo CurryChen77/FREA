@@ -14,7 +14,7 @@ import numpy as np
 import carla
 
 from safebench.gym_carla.envs.misc import compute_magnitude_angle
-from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity, get_relative_info, get_forward_speed
+from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity, get_relative_info, get_forward_speed, get_relative_route_info
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
@@ -231,18 +231,6 @@ class RouteScenario():
 
         return criteria
 
-    @staticmethod
-    def _get_actor_state(actor):
-        actor_trans = CarlaDataProvider.get_transform(actor)
-        actor_x = actor_trans.location.x
-        actor_y = actor_trans.location.y
-        actor_yaw = round(actor_trans.rotation.yaw / 180 * np.pi, 3)
-        # yaw = np.array([np.cos(actor_yaw), np.sin(actor_yaw)])
-        velocity = CarlaDataProvider.get_velocity(actor)
-        # acc = actor.get_acceleration()
-        # [actor_x, actor_y, actor_yaw, yaw[0], yaw[1], velocity.x, velocity.y, acc.x, acc.y]
-        return actor_x, actor_y, actor_yaw, velocity.x, velocity.y
-
     def update_info(self, vehicle_count=3):
         '''
             scenario agent state:
@@ -282,7 +270,7 @@ class RouteScenario():
             'CBVs_obs': CBVs_obs  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
-    def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=3):
+    def update_ego_info(self, ego_nearby_vehicles, waypoints, desired_nearby_vehicle=3):
         '''
             safety network input state:
             all the rows are other bv's relative state
@@ -292,6 +280,7 @@ class RouteScenario():
         ego_transform = CarlaDataProvider.get_transform(self.ego_vehicle)
         ego_matrix = np.array(ego_transform.get_matrix())
         ego_yaw = ego_transform.rotation.yaw / 180 * np.pi
+        ego_extent = self.ego_vehicle.bounding_box.extent
         # the relative CBV info
         ego_info = get_relative_info(actor=self.ego_vehicle, center_yaw=ego_yaw, center_matrix=ego_matrix)
         infos.append(ego_info)
@@ -303,6 +292,10 @@ class RouteScenario():
                 break
         while len(infos) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
             infos.append([0] * len(ego_info))
+
+        # route information
+        route_info = get_relative_route_info(waypoints, center_yaw=ego_yaw, center_matrix=ego_matrix, center_extent=ego_extent)
+        infos.append(route_info)
 
         # get the info of the ego vehicle and the other actors
         infos = np.array(infos, dtype=np.float32)

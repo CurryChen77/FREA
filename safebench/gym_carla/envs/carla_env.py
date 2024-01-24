@@ -576,7 +576,7 @@ class CarlaEnv(gym.Env):
                 'simple_state': simple_state.astype(np.float32),
             }
         elif self.agent_obs_type == 'ego_obs':
-            obs = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles)
+            obs = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, self.waypoints)
         elif self.agent_obs_type == 'no_obs':
             obs = None
         return obs

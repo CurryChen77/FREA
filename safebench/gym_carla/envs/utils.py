@@ -9,6 +9,7 @@
 
 import carla
 import math
+from rdp import rdp
 
 import numpy as np
 from distance3d import gjk, colliders
@@ -273,6 +274,47 @@ def get_relative_transform(ego_matrix, vehicle_matrix):
     relative_pos[1] = - relative_pos[1]
 
     return relative_pos
+
+
+def get_relative_route_info(waypoints, center_yaw, center_matrix, center_extent):
+    """
+        get the relative route info from the view of center vehicle
+        info [x, y, bbox_x, bbox_y, yaw, distance]
+    """
+    waypoint_route = np.array([[node[0], node[1]] for node in waypoints])
+    max_len = 12
+    if len(waypoint_route) < max_len:
+        max_len = len(waypoint_route)
+    shortened_route = rdp(waypoint_route[:max_len], epsilon=0.5)
+
+    # convert points to vectors
+    vectors = shortened_route[1:] - shortened_route[:-1]
+    midpoints = shortened_route[:-1] + vectors / 2.
+    norms = np.linalg.norm(vectors, axis=1)
+    angles = np.arctan2(vectors[:, 1], vectors[:, 0])
+
+    i = 0  # only use the first midpoint
+    midpoint = midpoints[i]
+    # find distance to center of waypoint
+    center_bounding_box = carla.Location(midpoint[0], midpoint[1], 0.0)
+    transform = carla.Transform(center_bounding_box)
+    route_matrix = np.array(transform.get_matrix())
+    relative_pos = get_relative_transform(center_matrix, route_matrix)
+    distance = np.linalg.norm(relative_pos)
+
+    length_bounding_box = carla.Vector3D(norms[i] / 2., center_extent.y, center_extent.z)
+    bounding_box = carla.BoundingBox(transform.location, length_bounding_box)
+    bounding_box.rotation = carla.Rotation(pitch=0.0,
+                                           yaw=angles[i] * 180 / np.pi,
+                                           roll=0.0)
+
+    route_extent = bounding_box.extent
+    dx = np.array([route_extent.x, route_extent.y, route_extent.z]) * 2.
+    relative_yaw = normalize_angle(angles[i] - center_yaw)
+
+    route_info = [relative_pos[0], relative_pos[1], dx[0], dx[1], relative_yaw, distance]
+
+    return route_info
 
 
 def get_relative_info(actor, center_yaw, center_matrix):
