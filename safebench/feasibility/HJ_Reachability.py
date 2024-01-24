@@ -48,7 +48,7 @@ class HJR:
         self.Qh_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
         self.Qh_target_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
         self.Qh_optimizer = optim.Adam(self.Qh_net.parameters(), lr=self.lr, eps=1e-5)  # the corresponding optimizer of Qh
-        self.Qh_criterion = nn.SmoothL1Loss()
+        self.Qh_criterion = nn.MSELoss()
 
         self.Vh_net = CUDA(CriticPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the V network of constrain
         self.Vh_optimizer = torch.optim.Adam(self.Vh_net.parameters(), lr=self.lr, eps=1e-5)  # the corresponding optimizer of Vh
@@ -123,19 +123,21 @@ class HJR:
 
     def compute_Vh_loss(self, state, action):
         # the Qh is about the constraint h, so lower means better, this is different from the reward, higher the better
-        Qh_max = self.Qh_target_net.get_q_max(state, action)
-        Vh = self.Vh_net(state)
+        with torch.no_grad():
+            Qh_max = self.Qh_target_net.get_q_max(state, action)
 
+        Vh = self.Vh_net(state)
         Vh_loss = self.safe_expectile_loss(diff=Qh_max - Vh, expectile=self.expectile).mean()
         return Vh_loss
 
     def compute_Qh_loss(self, h, state, action, next_state, undone):
-        next_Vh = self.Vh_net(next_state)
-        Qh = self.Qh_net(state, action)
+        with torch.no_grad():
+            next_Vh = self.Vh_net(next_state)
+            Qh_nonterminal = (1. - self.gamma) * h + self.gamma * torch.maximum(h, next_Vh)
+            target_Qh = Qh_nonterminal * undone + h * (1. - undone)
 
-        Qh_nonterminal = (1. - self.gamma) * h + self.gamma * torch.maximum(h, next_Vh)
-        target_Qh = Qh_nonterminal * undone + h * (1. - undone)
-        Qh_loss = self.Qh_criterion(Qh, target_Qh)
+        Qh1, Qh2 = self.Qh_net.get_q1_q2(state, action)
+        Qh_loss = self.Qh_criterion(Qh1, target_Qh) + self.Qh_criterion(Qh2, target_Qh)
         return Qh_loss
 
     def train(self, buffer, writer, e_i):
