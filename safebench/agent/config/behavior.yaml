@@ -6,6 +6,7 @@ model_type: 'agent'
 results_folder_path: ''
 obs_type: 'no_obs'
 ego_action_dim: 3
+behavior: 'aggressive'  # ["cautious", "normal", "aggressive"]
 
 train_episode: 2000
 

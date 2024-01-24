@@ -75,6 +75,7 @@ class CarlaRunner:
             'spectator': agent_config['spectator'],  # whether to put spectator on the world
             'viz_route': agent_config['viz_route'],  # whether to visualize the route
             'ego_agent_learnable': agent_config['learnable'],  # whether the ego agent is learnable method
+            'scenario_agent_learnable': scenario_config['learnable'],  # whether the scenario agent is learnable method
             'agent_obs_type': agent_config['obs_type'],  # default 0 (only 4 dimensions states )
             'CBV_selection': self.CBV_selection,  # the method using for selection controlled bv
             'ROOT_DIR': scenario_config['ROOT_DIR'],

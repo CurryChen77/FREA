@@ -29,8 +29,7 @@ class CarlaBehaviorAgent(BasePolicy):
         self.continue_episode = 0
         self.route = None
         self.controller_list = []
-        behavior_list = ["cautious", "normal", "aggressive"]
-        self.behavior = behavior_list[1]
+        self.behavior = config['behavior']
 
     def set_ego_and_route(self, ego_vehicles, info):
         self.ego_vehicles = ego_vehicles

@@ -22,8 +22,7 @@ class RandomAgent(BasePolicy):
     def __init__(self, config, logger):
         self.logger = logger
         self.num_scenario = config['num_scenario']
-        self.throttle_range = config['throttle_range']
-        self.brake_range = config['brake_range']
+        self.acc_range = config['acc_range']
         self.steer_range = config['steer_range']
 
     def set_ego_and_route(self, ego_vehicles, info):
@@ -37,17 +36,24 @@ class RandomAgent(BasePolicy):
 
     def get_action(self, obs, infos, deterministic=False):
         actions = []
-        for e_i in infos:
+        for _ in infos:
 
-            throttle = np.random.uniform(self.throttle_range[0], self.throttle_range[1])
+            acc = np.random.uniform(self.acc_range[0], self.acc_range[1])
             steer = np.random.uniform(self.steer_range[0], self.steer_range[1])
-            brake = np.random.uniform(self.brake_range[0], self.brake_range[1])
 
-            if brake < 0.05:
-                brake = 0.0
-            if throttle > brake:
-                brake = 0.0
+            # normalize and clip the action
+            acc = acc * self.acc_range[1]
+            steer = steer * self.steer_range[1]
+            acc = max(min(self.acc_range[1], acc), self.acc_range[0])
+            steer = max(min(self.steer_range[1], steer), self.steer_range[0])
 
+            # Convert acceleration to throttle and brake
+            if acc > 0:
+                throttle = np.clip(acc / 3, 0, 1)
+                brake = 0
+            else:
+                throttle = 0
+                brake = np.clip(-acc / 8, 0, 1)
             actions.append([throttle, steer, brake])
         actions = np.array(actions, dtype=np.float32)
         return actions

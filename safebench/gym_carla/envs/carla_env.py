@@ -61,6 +61,7 @@ class CarlaEnv(gym.Env):
         self.auto_ego = env_params['auto_ego']
         self.enable_sem = env_params['enable_sem']
         self.ego_agent_learnable = env_params['ego_agent_learnable']
+        self.scenario_agent_learnable = env_params['scenario_agent_learnable']
         self.spectator = env_params['spectator']
         self.mode = env_params['mode']
 
@@ -192,7 +193,7 @@ class CarlaEnv(gym.Env):
 
     def CBVs_selection(self):
         # when training the ego agent, don't need to calculate the CBV
-        if self.mode != 'train_agent' and len(self.CBVs) < 2 and self.time_step % 2 == 0:
+        if self.scenario_agent_learnable and len(self.CBVs) < 2 and self.time_step % 2 == 0:
             # select the candidates of CBVs
             CBV_candidates, _ = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, ego_fov=90)
             if CBV_candidates:
