@@ -33,22 +33,28 @@ if __name__ == '__main__':
     action = dataset.dataset_dict['actions']
     constraint_h = dataset.dataset_dict['constraint_h']
 
-    # x, y position
-    x_coords = obs[:, 0:-1, 0].flatten()
-    y_coords = obs[:, 0:-1, 1].flatten()
+    # x, y position of the closest point
+    x_coords = obs[:, 1, 0].flatten()
+    y_coords = obs[:, 1, 1].flatten()
+    both_zero_positions = np.logical_and(abs(x_coords) < 0.001, abs(y_coords) < 0.001)
+    non_zero_x = x_coords[~both_zero_positions]
+    non_zero_y = y_coords[~both_zero_positions]
 
-    # relative yaw, speed
-    yaw = obs[:, 0:-1, 4].flatten()
-    speed = obs[:, 0:-1, 5].flatten()
+    # relative yaw, speed of the closest point
+    yaw = obs[:, 1, 4].flatten()
+    speed = obs[:, 1, 5].flatten()
+    both_zero_positions = abs(yaw) < 0.001
+    non_zero_yaw = yaw[~both_zero_positions]
+    non_zero_speed = speed[~both_zero_positions]
 
     # throttle and speed
     throttle = action[:, 0]
     steering_angle = action[:, 1]
 
-    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
+    fig, axs = plt.subplots(2, 2, figsize=(12, 12))
 
-    axs[0, 0].scatter(x_coords, y_coords, alpha=0.7)
-    axs[0, 0].set_title('Scatter Plot of Position Coordinates (x, y)')
+    axs[0, 0].scatter(non_zero_x, non_zero_y, alpha=0.7)
+    axs[0, 0].set_title('Scatter Plot of the Closest Vehicle Position Coordinates (x, y)')
     axs[0, 0].set_xlabel('X Coordinate')
     axs[0, 0].set_ylabel('Y Coordinate')
 
@@ -57,18 +63,16 @@ if __name__ == '__main__':
     axs[0, 1].set_xlabel('Constraint h')
     axs[0, 1].set_ylabel('Frequency')
 
-    axs[1, 0].scatter(yaw, speed, alpha=0.7)
-    axs[1, 0].set_title('Scatter Plot of Relative yaw and speed')
+    axs[1, 0].scatter(non_zero_yaw, non_zero_speed, alpha=0.7)
+    axs[1, 0].set_title('Scatter Plot of the Closest Vehicle Relative yaw and speed')
     axs[1, 0].set_xlabel('Relative yaw')
     axs[1, 0].set_ylabel('Speed')
 
     axs[1, 1].scatter(throttle, steering_angle, alpha=0.7)
-    axs[1, 1].set_title('Scatter Plot of Throttle and Speed')
+    axs[1, 1].set_title('Scatter Plot of Ego Vehicle Throttle and Speed')
     axs[1, 1].set_xlabel('Throttle')
     axs[1, 1].set_ylabel('Steering angle')
 
-    # 调整子图之间的间距
     plt.tight_layout()
 
-    # 显示图形
     plt.show()

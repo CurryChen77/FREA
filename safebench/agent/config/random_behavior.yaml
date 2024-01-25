@@ -8,7 +8,7 @@ obs_type: 'no_obs'
 ego_action_dim: 3
 
 acc_range: [-3.0, 3.0]
-steer_range: [-0.3, 0.3]
+steer_range: [-0.8, 0.8]
 
 train_episode: 2000
 
