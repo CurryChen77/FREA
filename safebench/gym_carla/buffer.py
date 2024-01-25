@@ -275,6 +275,7 @@ class RolloutBuffer:
             self.feasibility_pos = [0] * self.num_scenario
             self.feasibility_full = [False] * self.num_scenario
             self.feasibility_ego_onpolicy = True if agent_config['learnable'] and agent_config['onpolicy'] else False
+            self.feasibility_search_radius = feasibility_config['search_radius']
         else:
             raise ValueError
 
@@ -449,7 +450,7 @@ class RolloutBuffer:
                 obs = infos[self.feasibility_obs_type]
                 next_obs = next_infos[self.feasibility_obs_type]
 
-                if not self.feasibility_full[scenario_id]:
+                if not self.feasibility_full[scenario_id] and h < self.feasibility_search_radius:
                     self.buffer_actions[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(action)
                     self.buffer_obs[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(obs)  # ego obs
                     self.buffer_next_obs[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(next_obs)  # ego next obs from next info

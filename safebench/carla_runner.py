@@ -115,6 +115,7 @@ class CarlaRunner:
         feasibility_config['scenario_id'] = self.scenario_id
         feasibility_config['agent_obs_type'] = agent_config['obs_type']
         feasibility_config['agent_action_dim'] = agent_config['ego_action_dim']
+        feasibility_config['search_radius'] = self.env_params['search_radius']
 
         CarlaDataProvider.set_ego_desired_speed(self.env_params['desired_speed'])
 
