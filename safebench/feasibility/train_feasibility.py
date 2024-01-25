@@ -72,7 +72,7 @@ if __name__ == '__main__':
     logger.log('>> Scenario and Map: ' + scenario_map, color="yellow")
 
     # init the offline RL dataset
-    dataset = OffRLDataset(data_file_path)
+    dataset = OffRLDataset(data_file_path, device=args.device)
 
     for e_i in tqdm(range(start_episode, train_episode + 1)):
         feasibility_policy.train(dataset, writer, e_i)

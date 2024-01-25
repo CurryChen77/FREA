@@ -14,13 +14,13 @@ from safebench.util.torch_util import CUDA
 
 
 class OffRLDataset(object):
-    def __init__(self, data_location=None):
+    def __init__(self, data_location=None, device=None):
 
         dataset_dict, self.dataset_len = self.get_dataset(h5path=data_location)
-        self.dataset_dict = self.put_dataset_on_device(dataset_dict)
+        self.dataset_dict = self.put_dataset_on_cuda(dataset_dict) if device == 'cuda:0' else dataset_dict
 
     @staticmethod
-    def put_dataset_on_device(dataset_dict):
+    def put_dataset_on_cuda(dataset_dict):
         # use all the keys in the self.dataset_dict
         keys = list(dataset_dict.keys())
 
