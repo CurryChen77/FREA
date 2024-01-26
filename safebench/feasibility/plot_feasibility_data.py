@@ -8,6 +8,8 @@
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
+from matplotlib.ticker import ScalarFormatter, FormatStrFormatter
 import h5py
 import os.path as osp
 import torch
@@ -53,25 +55,28 @@ if __name__ == '__main__':
 
     fig, axs = plt.subplots(2, 2, figsize=(12, 12))
 
-    axs[0, 0].scatter(non_zero_x, non_zero_y, alpha=0.7)
-    axs[0, 0].set_title('Scatter Plot of the Closest Vehicle Position Coordinates (x, y)')
+    _, _, _, x_y_img = axs[0, 0].hist2d(non_zero_x, non_zero_y, bins=60, cmap='Blues', norm=LogNorm(vmin=1, vmax=25))
+    axs[0, 0].set_title('Distribution of the Closest Vehicle Position Coordinates (x, y)')
     axs[0, 0].set_xlabel('X Coordinate')
     axs[0, 0].set_ylabel('Y Coordinate')
+    x_y_bar = fig.colorbar(x_y_img, ax=axs[0, 0], label="Density")
 
-    axs[0, 1].hist(constraint_h, bins=30, color='orange', alpha=0.7)
+    axs[0, 1].hist(constraint_h, bins=50, color='darkblue', alpha=0.9)
     axs[0, 1].set_title('Distribution of Constraint h')
     axs[0, 1].set_xlabel('Constraint h')
     axs[0, 1].set_ylabel('Frequency')
 
-    axs[1, 0].scatter(non_zero_yaw, non_zero_speed, alpha=0.7)
-    axs[1, 0].set_title('Scatter Plot of the Closest Vehicle Relative yaw and speed')
+    _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap='Blues', norm=LogNorm(vmin=1, vmax=10))
+    axs[1, 0].set_title('Distribution of the Closest Vehicle Relative yaw and speed')
     axs[1, 0].set_xlabel('Relative yaw')
     axs[1, 0].set_ylabel('Speed')
+    yaw_speed_bar = fig.colorbar(yaw_speed_img, ax=axs[1, 0], label="Density")
 
-    axs[1, 1].scatter(throttle, steering_angle, alpha=0.7)
-    axs[1, 1].set_title('Scatter Plot of Ego Vehicle Throttle and Speed')
+    _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap='Blues', norm=LogNorm(vmin=1, vmax=10))
+    axs[1, 1].set_title('Distribution of Ego Vehicle Throttle and Speed')
     axs[1, 1].set_xlabel('Throttle')
     axs[1, 1].set_ylabel('Steering angle')
+    throttle_steering_angle_bar = fig.colorbar(throttle_steering_angle_img, ax=axs[1, 1], label="Density")
 
     plt.tight_layout()
 
