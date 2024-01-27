@@ -81,8 +81,16 @@ class PPO(BasePolicy):
 
     def get_action(self, state, infos, deterministic=False):
         state_tensor = CUDA(torch.FloatTensor(state))
-        action, log_prob = self.policy.get_action(state_tensor)
-        return CPU(action), CPU(log_prob)
+        if deterministic:
+            action = self.policy(state_tensor)
+            agent_action = CPU(action)
+            agent_log_prob = None
+        else:
+            action, log_prob = self.policy.get_action(state_tensor)
+            agent_action = CPU(action)
+            agent_log_prob = CPU(log_prob)
+
+        return agent_action, agent_log_prob
 
     def get_advantages_vtrace(self, rewards, undones, values, next_values, unterminated):
         """
@@ -179,7 +187,7 @@ class PPO(BasePolicy):
         save_dir = os.path.join(self.model_path, self.scenario_policy_type, scenario_name+'_'+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
-        self.logger.log(f'>> Saving {self.name} model to {filepath}')
+        self.logger.log(f'>> Saving {self.name} model to {filepath}', 'yellow')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
@@ -196,7 +204,7 @@ class PPO(BasePolicy):
                             episode = cur_episode
         filepath = os.path.join(load_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading {self.name} model from {os.path.basename(filepath)}')
+            self.logger.log(f'>> Loading {self.name} model from {os.path.basename(filepath)}', 'yellow')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy.load_state_dict(checkpoint['policy'])

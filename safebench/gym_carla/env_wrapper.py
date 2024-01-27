@@ -114,9 +114,10 @@ class VectorWrapper():
             scenario_actions: [num_alive_scenario]
         """
         if onpolicy['scenario']:
-            # onpolicy scenario actions [actions, log_probs]
+            # the onpolicy scenario actions [actions, log_probs]
             scenario_actions = scenario_actions[0]
         if onpolicy['agent']:
+            # the onpolicy agent scenario actions [actions, log_probs]
             ego_actions = ego_actions[0]
 
         # apply action

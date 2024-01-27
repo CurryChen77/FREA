@@ -105,11 +105,15 @@ class PPO(BasePolicy):
         scenario_log_prob = [{} for _ in range(len(infos))]
         if state is not None:
             state_tensor = CUDA(torch.FloatTensor(state))
-            action, log_prob = self.policy.get_action(state_tensor)
-
-            for i, (CBV_id, env_id) in enumerate(zip(CBVs_id, env_index)):
-                scenario_action[env_id][CBV_id] = CPU(action[i])
-                scenario_log_prob[env_id][CBV_id] = CPU(log_prob[i])
+            if deterministic:
+                action = self.policy(state_tensor)
+                for i, (CBV_id, env_id) in enumerate(zip(CBVs_id, env_index)):
+                    scenario_action[env_id][CBV_id] = CPU(action[i])
+            else:
+                action, log_prob = self.policy.get_action(state_tensor)
+                for i, (CBV_id, env_id) in enumerate(zip(CBVs_id, env_index)):
+                    scenario_action[env_id][CBV_id] = CPU(action[i])
+                    scenario_log_prob[env_id][CBV_id] = CPU(log_prob[i])
         return scenario_action, scenario_log_prob
 
     def get_advantages_vtrace(self, rewards, undones, values, next_values, unterminated):
