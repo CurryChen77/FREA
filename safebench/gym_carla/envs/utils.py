@@ -35,6 +35,39 @@ def get_actor_off_road(actor):
     return off_road
 
 
+def process_ego_action(ego_action, acc_range, steering_range):
+    # the learnable agent action
+    throttle = ego_action[0]  # continuous action: throttle
+    steer = ego_action[1]  # continuous action: steering
+    brake = ego_action[2]  # continuous action: brake
+
+    # action range
+    acc_max = acc_range[1]
+    acc_min = acc_range[0]
+    steering_max = steering_range[1]
+    steering_min = steering_range[0]
+
+    # normalize and clip the action
+
+    throttle_max = acc_max / 3.
+    throttle_min = acc_min / 3.
+    throttle = np.clip(throttle, throttle_min, throttle_max)
+    throttle = linear_map(throttle, [throttle_min, throttle_max], [0., 1.])
+
+    steer = steer * steering_max
+    steer = np.clip(steer, steering_min, steering_max)
+
+    brake = np.clip(brake, -1., 1.)
+    brake = linear_map(brake, [-1., 1.], [0., 1.])
+
+    if brake < 0.05:
+        brake = 0.0
+    if throttle > brake:
+        brake = 0.0
+
+    return [throttle, steer, brake]
+
+
 def get_constraint_h(ego_vehicle, search_radius, nearby_vehicles, ego_agent_learnable=False):
     # min distance between vehicle bboxes
     ego_min_dis = search_radius
@@ -134,23 +167,6 @@ def get_CBV_bv_reward(CBV, search_radius, CBV_nearby_vehicles, tou=1):
     else:
         min_dis_reward = 0
     return min_dis, min_dis_reward
-
-#
-# def get_CBV_ego_reward(ego, CBV):
-#     """
-#         reward ~ [-1， 1]: the ratio of (init_ego_CBV_dis-current_ego_CBV_dis)/init_ego_CBV_dis
-#     """
-#     reward = 0
-#     if CBV:
-#         ego_id = ego.id
-#         CBV_id = CBV.id
-#         ego_CBV_dis_dict = CarlaDataProvider.ego_CBV_dis[ego_id]
-#         if CBV_id in ego_CBV_dis_dict.keys():
-#             # got initial ego CBV distance
-#             init_CBV_ego_dis = ego_CBV_dis_dict[CBV_id]
-#             current_ego_CBV_dis = get_distance_across_centers(ego, CBV)
-#             reward = np.clip((init_CBV_ego_dis-current_ego_CBV_dis)/init_CBV_ego_dis, -1.0, 1.0)
-#     return reward
 
 
 def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=0, intensity=0.6, upper_limit=15):

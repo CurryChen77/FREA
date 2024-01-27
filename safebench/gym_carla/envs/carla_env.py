@@ -30,7 +30,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
     get_actor_off_road, get_CBV_bv_reward, get_constraint_h, linear_map, \
-    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis
+    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis, process_ego_action
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -106,8 +106,8 @@ class CarlaEnv(gym.Env):
         self.lidar_bin = env_params['lidar_bin']
         self.out_lane_thres = env_params['out_lane_thres']
         self.desired_speed = env_params['desired_speed']
-        self.acc_max = env_params['continuous_accel_range'][1]
-        self.steering_max = env_params['continuous_steer_range'][1]
+        self.acc_range = env_params['continuous_accel_range']
+        self.steering_range = env_params['continuous_steer_range']
 
         # for scenario
         self.ROOT_DIR = env_params['ROOT_DIR']
@@ -339,24 +339,7 @@ class CarlaEnv(gym.Env):
                         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
                     else:
                         # the learnable agent action
-                        throttle = ego_action[0]    # continuous action: throttle
-                        steer = ego_action[1]  # continuous action: steering
-                        brake = ego_action[2]  # continuous action: brake
-
-                        # normalize and clip the action
-
-                        throttle_max = self.acc_max / 3.
-                        throttle = np.clip(throttle, -throttle_max, throttle_max)
-                        throttle = linear_map(throttle, [-throttle_max, throttle_max], [0., 1.])
-
-                        steer = steer * self.steering_max
-                        steer = np.clip(steer, -self.steering_max, self.steering_max)
-
-                        brake = np.clip(brake, -1., 1.)
-                        brake = linear_map(brake, [-1., 1.], [0., 1.])
-
-                        if brake < 0.05:  brake = 0.0
-                        if throttle > brake:  brake = 0.0
+                        throttle, steer, brake = process_ego_action(ego_action, acc_range=self.acc_range, steering_range=self.steering_range)
 
                         # apply ego control
                         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))

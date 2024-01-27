@@ -15,6 +15,8 @@ import time
 import numpy as np
 import torch
 
+from safebench.gym_carla.envs.utils import process_ego_action
+
 
 class ReplayBuffer:
     """
@@ -276,6 +278,9 @@ class RolloutBuffer:
             self.feasibility_full = [False] * self.num_scenario
             self.feasibility_ego_onpolicy = True if agent_config['learnable'] and agent_config['onpolicy'] else False
             self.feasibility_search_radius = feasibility_config['search_radius']
+            self.feasibility_acc_range = feasibility_config['acc_range']
+            self.feasibility_steer_range = feasibility_config['steer_range']
+            self.feasibility_ego_agent_learnable = feasibility_config['ego_agent_learnable']
         else:
             raise ValueError
 
@@ -449,6 +454,10 @@ class RolloutBuffer:
                 h = infos['constraint_h']  # the constraint_h come from the current state
                 obs = infos[self.feasibility_obs_type]
                 next_obs = next_infos[self.feasibility_obs_type]
+
+                if self.feasibility_ego_agent_learnable:
+                    # if the ego agent is learnable method, need further process to convert the original action to throttle, steer, brake of ego
+                    action = process_ego_action(action, self.feasibility_acc_range, self.feasibility_steer_range)
 
                 if not self.feasibility_full[scenario_id] and h < self.feasibility_search_radius:
                     self.buffer_actions[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(action)
