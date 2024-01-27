@@ -270,7 +270,7 @@ class RouteScenario():
             'CBVs_obs': CBVs_obs  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
-    def update_ego_info(self, ego_nearby_vehicles, waypoints, desired_nearby_vehicle=3):
+    def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=3, waypoints=None, need_route_info=False):
         '''
             safety network input state:
             all the rows are other bv's relative state
@@ -294,8 +294,9 @@ class RouteScenario():
             infos.append([0] * len(ego_info))
 
         # route information
-        route_info = get_relative_route_info(waypoints, center_yaw=ego_yaw, center_matrix=ego_matrix, center_extent=ego_extent)
-        infos.append(route_info)
+        if need_route_info:
+            route_info = get_relative_route_info(waypoints, center_yaw=ego_yaw, center_matrix=ego_matrix, center_extent=ego_extent)
+            infos.append(route_info)
 
         # get the info of the ego vehicle and the other actors
         infos = np.array(infos, dtype=np.float32)

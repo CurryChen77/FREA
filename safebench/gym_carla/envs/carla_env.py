@@ -418,9 +418,9 @@ class CarlaEnv(gym.Env):
         # info for scenario agents to take action (scenario obs)
         info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
 
-        # the safety network only need the ego info at (t+1) step
+        # the feasibility need the ego info (without route info) at t step
         if self.mode == 'collect_feasibility_data' or self.use_feasibility:
-            info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, self.waypoints))
+            info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
 
         # when resetting
         if reset:
@@ -576,7 +576,8 @@ class CarlaEnv(gym.Env):
                 'simple_state': simple_state.astype(np.float32),
             }
         elif self.agent_obs_type == 'ego_obs':
-            obs = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, self.waypoints)
+            # the ego obs for RL training need the route_info
+            obs = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, waypoints=self.waypoints, need_route_info=True)
         elif self.agent_obs_type == 'no_obs':
             obs = None
         return obs

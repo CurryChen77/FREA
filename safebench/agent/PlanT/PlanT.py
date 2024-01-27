@@ -41,7 +41,7 @@ class PlanT(BasePolicy):
             route = info[i]['route']  # the world coord route
             self.controller_list[i].set_planner(ego, gps_route, route)  # set route for each controller
 
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, writer, e_i):
         pass
 
     def set_mode(self, mode):
@@ -62,5 +62,5 @@ class PlanT(BasePolicy):
     def load_model(self, map_name):
         pass
 
-    def save_model(self, episode, map_name):
+    def save_model(self, episode, map_name, buffer):
         pass

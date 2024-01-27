@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     fig, axs = plt.subplots(2, 2, figsize=(12, 12))
 
-    _, _, _, x_y_img = axs[0, 0].hist2d(non_zero_x, non_zero_y, bins=60, cmap='Blues', norm=LogNorm(vmin=1, vmax=25))
+    _, _, _, x_y_img = axs[0, 0].hist2d(non_zero_x, non_zero_y, bins=60, cmap='Blues', norm=LogNorm())
     axs[0, 0].set_title('Distribution of the Closest Vehicle Position Coordinates (x, y)')
     axs[0, 0].set_xlabel('X Coordinate')
     axs[0, 0].set_ylabel('Y Coordinate')
@@ -66,13 +66,13 @@ if __name__ == '__main__':
     axs[0, 1].set_xlabel('Constraint h')
     axs[0, 1].set_ylabel('Frequency')
 
-    _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap='Blues', norm=LogNorm(vmin=1, vmax=10))
+    _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap='Blues', norm=LogNorm())
     axs[1, 0].set_title('Distribution of the Closest Vehicle Relative yaw and speed')
     axs[1, 0].set_xlabel('Relative yaw')
     axs[1, 0].set_ylabel('Speed')
     yaw_speed_bar = fig.colorbar(yaw_speed_img, ax=axs[1, 0], label="Density")
 
-    _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap='Blues', norm=LogNorm(vmin=1, vmax=10))
+    _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap='Blues', norm=LogNorm())
     axs[1, 1].set_title('Distribution of Ego Vehicle Throttle and Speed')
     axs[1, 1].set_xlabel('Throttle')
     axs[1, 1].set_ylabel('Steering angle')
