@@ -20,7 +20,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_route', type=str, default='feasibility/data')
-    parser.add_argument('--scenario_map', type=str, default='scenario9_Town05')
+    parser.add_argument('--scenario_map', type=str, default='Scenario9_Town05')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
     parser.add_argument('--device', type=str, default='cpu')
 

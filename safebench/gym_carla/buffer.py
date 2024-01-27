@@ -60,7 +60,7 @@ class ReplayBuffer:
             model_path = os.path.join(scenario_config['ROOT_DIR'], scenario_config['model_path'], scenario_config['CBV_selection'])
             agent_info = 'EgoPolicy_' + scenario_config['agent_policy'] + "-" + scenario_config['agent_obs_type']
             feasibility = scenario_config['feasibility']
-            scenario_name = "all" if scenario_config['scenario_id'] is None else 'scenario' + str(scenario_config['scenario_id'])
+            scenario_name = "all" if scenario_config['scenario_id'] is None else 'Scenario' + str(scenario_config['scenario_id'])
             load_dir = os.path.join(model_path, agent_info, feasibility, scenario_name + "_" + current_map)
             self.load_buffer(dir_path=load_dir, filename=f'buffer.{start_episode:04}.pkl')
         else:

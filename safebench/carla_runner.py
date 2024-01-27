@@ -556,7 +556,7 @@ class CarlaRunner:
         return start_episode
 
     def check_feasibility_data_exists(self):
-        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
+        scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         file_path = os.path.join(self.feasibility_data_path, scenario_name + "_" + self.current_map)
         file_name = os.path.join(file_path, f"{self.agent_policy_type}_{self.scenario_policy_type}_data.hdf5")
         if os.path.isfile(file_name):

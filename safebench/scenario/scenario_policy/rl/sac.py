@@ -265,7 +265,7 @@ class SAC(BasePolicy):
             'value_optimizer': self.value_optimizer.state_dict(),
             'Q_optimizer': self.Q_optimizer.state_dict()
         }
-        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
+        scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, self.agent_info, self.feasibility, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.sac.{self.model_type}.{episode:04}.torch')
@@ -277,7 +277,7 @@ class SAC(BasePolicy):
 
     # the loading method corresponds to the episode saving method
     def load_model(self, map_name, episode=None):
-        scenario_name = "all" if self.scenario_id is None else 'scenario' + str(self.scenario_id)
+        scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         load_dir = os.path.join(self.model_path, self.agent_info, self.feasibility, scenario_name+"_"+map_name)
         if episode is None:
             episode = -1
