@@ -24,6 +24,7 @@ from einops import rearrange
 import torch
 from torch.utils.data import Dataset
 from safebench.agent.agent_utils.viz_tokens_bev import create_BEV
+from safebench.util.torch_util import CUDA
 
 
 class PlanTDataset(Dataset):
@@ -496,15 +497,15 @@ def generate_batch(data_batch):
         input_indices = torch.tensor([element_id] * len(input_item)).unsqueeze(1)
         output_indices = torch.tensor([element_id] * len(output_item)).unsqueeze(1)
 
-        input_batch.append(torch.cat([input_indices, input_item], dim=1))
-        output_batch.append(torch.cat([output_indices, output_item], dim=1))
+        input_batch.append(CUDA(torch.cat([input_indices, input_item], dim=1)))
+        output_batch.append(CUDA(torch.cat([output_indices, output_item], dim=1)))
 
-    waypoints_batch = torch.tensor([sample["waypoints"] for sample in data_batch])
-    tp_batch = torch.tensor(
+    waypoints_batch = CUDA(torch.tensor([sample["waypoints"] for sample in data_batch]))
+    tp_batch = CUDA(torch.tensor(
         np.array([sample["target_point"] for sample in data_batch]), dtype=torch.float32
-    )
+    ))
     light_batch = rearrange(
-        torch.tensor(np.array([sample["light"] for sample in data_batch])), "b -> b 1"
+        CUDA(torch.tensor(np.array([sample["light"] for sample in data_batch]))), "b -> b 1"
     )
 
     return input_batch, output_batch, waypoints_batch, tp_batch, light_batch

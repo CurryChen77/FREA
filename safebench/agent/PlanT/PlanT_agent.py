@@ -17,6 +17,7 @@ import math
 
 from safebench.agent.agent_utils.coordinate_utils import inverse_conversion_2d
 from safebench.agent.agent_utils.explainability_utils import *
+from safebench.util.torch_util import CUDA
 
 from safebench.agent.PlanT.data_agent_boxes import DataAgent
 from safebench.agent.PlanT.dataset import generate_batch, split_large_BB
@@ -95,7 +96,7 @@ class PlanTAgent(DataAgent):
             LOAD_CKPT_PATH = self.config['model_ckpt_load_path']
 
         if Path(LOAD_CKPT_PATH).suffix == '.ckpt':
-            self.net = LitHFLM.load_from_checkpoint(LOAD_CKPT_PATH, strict=True,  cfg=self.config)
+            self.net = CUDA(LitHFLM.load_from_checkpoint(LOAD_CKPT_PATH, strict=True,  cfg=self.config))
         else:
             raise Exception(f'Unknown model type: {Path(LOAD_CKPT_PATH).suffix}')
         self.net.eval()
@@ -153,7 +154,7 @@ class PlanTAgent(DataAgent):
 
     def _get_control(self, label_raw, input_data):
         
-        gt_velocity = torch.FloatTensor([input_data['speed']])
+        gt_velocity = CUDA(torch.FloatTensor([input_data['speed']]))
 
         # input_data contains [speed, imu(yaw angle), gps(x, y location)]
         input_batch = self.get_input_batch(label_raw, input_data)

@@ -1,7 +1,7 @@
 min_dis_threshold: 0.0
 type: "HJR"
 data_path: 'safebench/feasibility/data'
-model_path: 'model_ckpt'
+model_path: 'safebench/feasibility/model_ckpt'
 scenario_id: 9
 
 obs_type: "ego_obs"  # "ego_infos" contains ego and the meaningful surrounding vehicle information

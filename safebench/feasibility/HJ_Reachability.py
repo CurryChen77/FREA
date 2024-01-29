@@ -41,8 +41,7 @@ class HJR:
         self.expectile = config['expectile']
 
         self.batch_size = config['batch_size']
-
-        self.model_path = config['model_path']
+        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         self.scenario_id = config['scenario_id']
 
         self.Qh_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
@@ -116,6 +115,12 @@ class HJR:
         feasibility_value = self.Vh_net(state)
         return CPU(feasibility_value)
 
+    def get_feasibility_value_from_state(self, state):
+        state = state.reshape(state.shape[0], -1)
+        state = CUDA(torch.FloatTensor(state))
+        feasibility_value = self.Vh_net(state)
+        return CPU(feasibility_value)
+
     @staticmethod
     def safe_expectile_loss(diff, expectile=0.8):
         weight = torch.where(diff < 0, expectile, (1 - expectile))
@@ -178,21 +183,23 @@ class HJR:
         for target_param, param in zip(self.Qh_target_net.parameters(), self.Qh_net.parameters()):
             target_param.data.copy_(target_param.data * (1 - self.tau) + param.data * self.tau)
 
-    def save_model(self, episode, scenario_name):
+    def save_model(self, episode, map_name):
         states = {
             'Qh_net': self.Qh_net.state_dict(),
             'Vh_net': self.Vh_net.state_dict(),
             'Qh_optim': self.Qh_optimizer.state_dict(),
             'Vh_optim': self.Vh_optimizer.state_dict()
         }
-        save_dir = os.path.join(self.model_path, scenario_name)
+        scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
+        save_dir = os.path.join(self.model_path, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.HJR.{episode:04}.torch')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
 
-    def load_model(self, scenario_name, episode=None):
-        load_dir = os.path.join(self.model_path, scenario_name)
+    def load_model(self, map_name, episode=None):
+        scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
+        load_dir = os.path.join(self.model_path, scenario_name+"_"+map_name)
         if episode is None:
             episode = -1
             for _, _, files in os.walk(load_dir):

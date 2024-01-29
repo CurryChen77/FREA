@@ -310,7 +310,7 @@ class CarlaEnv(gym.Env):
         if self.CBVs and self.spectator:
             for CBV in self.CBVs.values():
                 CBV_location = CarlaDataProvider.get_location(CBV)
-                self.world.debug.draw_point(CBV_location + carla.Location(z=4), size=0.2, color=carla.Color(0, 0, 255, 0), life_time=0.11)
+                self.world.debug.draw_point(CBV_location + carla.Location(z=4), size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11)
 
         # if the ego agent is learnable and need to viz the route, then draw the target waypoints
         if self.viz_route:

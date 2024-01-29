@@ -14,7 +14,6 @@ import copy
 import numpy as np
 import pygame
 
-from safebench.agent.agent_utils.explainability_utils import get_color
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
@@ -49,12 +48,6 @@ class VectorWrapper():
         # flags for env list 
         self.finished_env = [False] * self.num_scenario
         self.running_results = {}
-
-    def draw_feasibility_value(self, ego_loc, feasibility_value):
-        value = np.clip(feasibility_value, None, 1.5) - 0.5
-        c = get_color(value)
-        color = carla.Color(r=int(c[0]), g=int(c[1]), b=int(c[2]))
-        self.world.debug.draw_point(ego_loc + carla.Location(z=4), size=0.1, color=color, life_time=0.11)
 
     def obs_postprocess(self, obs_list):
         # assume all variables are array
@@ -126,10 +119,6 @@ class VectorWrapper():
             if not self.finished_env[e_i]:
                 processed_action = self.env_list[e_i]._postprocess_action(ego_actions[action_idx])
                 self.env_list[e_i].step_before_tick(processed_action, scenario_actions[action_idx])
-                # viz the feasibility value if necessary
-                if self.viz_feasibility and self.spectator:
-                    ego_loc = CarlaDataProvider.get_location(self.env_list[e_i].ego_vehicle)
-                    self.draw_feasibility_value(ego_loc, feasibility_value[action_idx])
 
                 action_idx += 1
 

@@ -87,7 +87,6 @@ class CarlaRunner:
             'obs_range': 32,  # observation range (meter)
             'd_behind': 12,  # distance behind the ego vehicle (meter)
             'max_past_step': 1,  # the number of past steps to draw
-
             'continuous_accel_range': [-3.0, 3.0],  # continuous acceleration range
             'continuous_steer_range': [-0.3, 0.3],  # continuous steering angle range
             'max_episode_step': 300,  # maximum timesteps per episode
@@ -414,11 +413,8 @@ class CarlaRunner:
                 ego_actions = self.agent_policy.get_action(obs, infos, deterministic=False)
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=False)
 
-                # the feasibility value
-                feasibility_value = self.feasibility_policy.get_feasibility_value(infos) if self.use_feasibility else None
-
                 # apply action to env and get obs
-                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy, feasibility_value)
+                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy)
                 # store to the replay buffer
                 buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=[infos, next_infos])
                 # for transition

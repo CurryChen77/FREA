@@ -20,10 +20,10 @@ from safebench.util.logger import Logger
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_route', type=str, default='feasibility/data')
-    parser.add_argument('--scenario_map', '-map', type=str, default='Scenario9_Town05')
+    parser.add_argument('--data_route', type=str, default='safebench/feasibility/data')
+    parser.add_argument('--map_name', '-map', type=str, default='Town05')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
-    parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.realpath(__file__)))))
+    parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--seed', '-s', type=int, default=0)
     parser.add_argument('--threads', type=int, default=4)
@@ -35,18 +35,21 @@ if __name__ == '__main__':
     torch.set_num_threads(args.threads)
     seed = args.seed
     set_seed(seed)
-    scenario_map = args.scenario_map
-
-    # the route of the data need to be processed
-    data_file_path = osp.join(args.ROOT_DIR, args.data_route, scenario_map, args.data_filename)
+    map_name = args.map_name
 
     # load feasibility config
-    feasibility_config_path = osp.join(args.ROOT_DIR, 'feasibility/config', args.feasibility_cfg)
+    feasibility_config_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/config', args.feasibility_cfg)
     feasibility_config = load_config(feasibility_config_path)
+    feasibility_config.update(args_dict)
+    scenario_name = "all" if feasibility_config['scenario_id'] is None else 'Scenario' + str(feasibility_config['scenario_id'])
+    scenario_map_name = scenario_name + '_' + map_name
+
+    # the route of the data need to be processed
+    data_file_path = osp.join(args.ROOT_DIR, args.data_route, scenario_map_name, args.data_filename)
 
     # set the logger
-    log_path = osp.join(args.ROOT_DIR, 'feasibility/train_log', scenario_map)
-    log_exp_name = scenario_map
+    log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', scenario_map_name)
+    log_exp_name = scenario_map_name
     logger = Logger(log_path, log_exp_name)
 
     # read config parameters
@@ -59,7 +62,7 @@ if __name__ == '__main__':
 
     # init the feasibility policy
     feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=logger)
-    feasibility_policy.load_model(scenario_map)
+    feasibility_policy.load_model(map_name)
     if feasibility_policy.continue_episode == 0:
         start_episode = 0
         logger.log('>> Previous checkpoint not found. Training from scratch.')
@@ -69,7 +72,7 @@ if __name__ == '__main__':
 
     logger.log('>> ' + '-' * 40)
     logger.log('>> Feasibility Policy: ' + feasibility_config['type'], color="yellow")
-    logger.log('>> Scenario and Map: ' + scenario_map, color="yellow")
+    logger.log('>> Scenario and map: ' + scenario_map_name, color="yellow")
 
     # init the offline RL dataset
     dataset = OffRLDataset(data_file_path, device=args.device)
@@ -79,7 +82,7 @@ if __name__ == '__main__':
 
         # save the model
         if e_i != start_episode and e_i % save_freq == 0:
-            feasibility_policy.save_model(e_i, scenario_map)
+            feasibility_policy.save_model(e_i, map_name)
 
     # close the tensorboard writer
     writer.close()
