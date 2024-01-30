@@ -252,7 +252,6 @@ class RouteScenario():
             ego_info = get_relative_info(actor=self.ego_vehicle, center_yaw=CBV_yaw, center_matrix=CBV_matrix)
             actors_info.append(ego_info)
 
-            # the first info belongs to the ego vehicle
             for actor in self.CBVs_nearby_vehicles[CBV_id]:
                 if actor.id == self.ego_vehicle.id:
                     continue  # except the ego actor

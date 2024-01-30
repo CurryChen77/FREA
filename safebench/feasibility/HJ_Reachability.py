@@ -131,7 +131,7 @@ class HJR:
         Qh_max = self.Qh_target_net.get_q_max(state, action)
         Vh = self.Vh_net(state)
         Vh_loss = self.safe_expectile_loss(diff=Qh_max - Vh, expectile=self.expectile).mean()
-        return Vh_loss
+        return Vh_loss, Vh.mean()
 
     def compute_Qh_loss(self, h, state, action, next_state, undone):
         next_Vh = self.Vh_net(next_state)
@@ -155,14 +155,17 @@ class HJR:
             undone = 1-batch['dones']
             # the ego min distance from the infos
             min_dis = batch['constraint_h']
-            # h = threshold - min_dis, if h > 0 unsafe, else safe
-            h = torch.zeros_like(min_dis).fill_(self.min_dis_threshold) - min_dis
+            # h equals to threshold - min_dis, if h > 0 unsafe, else safe
+            # h = torch.zeros_like(min_dis).fill_(self.min_dis_threshold) - min_dis
+            # h is -1.0 when Ego is safe, else, h is 20
+            h = torch.where(min_dis < 0.5, 10.0, -1)
 
             del min_dis
 
         # get the Vh loss
-        Vh_loss = self.compute_Vh_loss(state=state, action=action)
+        Vh_loss, Vh_mean = self.compute_Vh_loss(state=state, action=action)
         writer.add_scalar("HJR_Vh_loss", Vh_loss, e_i)
+        writer.add_scalar("HJR_Vh_mean", Vh_mean, e_i)
         # update the Vh net
         self.Vh_optimizer.zero_grad()
         Vh_loss.backward()
