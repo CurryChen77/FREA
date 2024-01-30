@@ -15,7 +15,7 @@ acc_range: [-3.0, 3.0]
 steer_range: [-0.3, 0.3]
 
 
-train_episode: 500000
+train_episode: 1000000
 save_freq: 100000
 buffer_capacity: 15000
 

@@ -20,6 +20,7 @@ from safebench.feasibility.dataset import OffRLDataset
 from safebench.gym_carla.envs.utils import linear_map
 from safebench.util.logger import Logger
 from safebench.util.run_util import load_config
+from safebench.util.torch_util import set_torch_variable, set_seed
 
 
 def plot_feasibility_data_distribution(args):
@@ -141,10 +142,10 @@ def generate_ego_obs(ego_speed, yaw_range=(-3.14, 3.14), actor_num=3, x_range=(-
 
 
 def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=128, ego_speed=6, actor_num=3, x_range=(-25, 25), y_range=(-10, 10), width=4.9, height=2.12):
-    from matplotlib.patches import Rectangle
+    from matplotlib.patches import Rectangle, Arrow
 
-    x = np.linspace(x_range[0] - width/2, x_range[1] + width/2, spatial_interval)
-    y = np.linspace(y_range[0] - height/2, y_range[1] + height / 2, spatial_interval)
+    x = np.linspace(x_range[0] - width/2, x_range[1] - width/2, spatial_interval)
+    y = np.linspace(y_range[0] - height/2, y_range[1] - height / 2, spatial_interval)
     x_grid, y_grid = np.meshgrid(x, y)
     flatten_x = x_grid.ravel()
     flatten_y = y_grid.ravel()
@@ -164,7 +165,7 @@ def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=128, ego_speed=
         norm=norm,
         levels=15,
         cmap='rainbow',
-        alpha=0.6
+        alpha=0.5
     )
 
     ct_line = ax.contour(
@@ -172,20 +173,25 @@ def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=128, ego_speed=
         levels=[0], colors='#32ABD6',
         linewidths=2.0, linestyles='solid'
     )
-    ax.clabel(ct_line, inline=True, fontsize=15, fmt=r'0', )
+    ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0', )
 
-    cb = plt.colorbar(ct, ax=ax, shrink=0.6, pad=0.02)
-    cb.ax.tick_params(labelsize=5)
+    cb = plt.colorbar(ct, ax=ax, shrink=0.8, pad=0)
+    cb.ax.tick_params(labelsize=7)
 
     # plot all the vehicles
     for i, Vehicle in enumerate(ego_obs):
         # the x,y in Rectangle in the bottom left corner
         color = 'r' if i == 0 else (0.30, 0.52, 0.74)
         rectangle = Rectangle((Vehicle[0]-Vehicle[2] / 2, Vehicle[1]-Vehicle[3] / 2), width=Vehicle[2], height=Vehicle[3], angle=np.degrees(Vehicle[4]), rotation_point='center', fill=True, alpha=0.5, color=color)
+        angle_rad = Vehicle[4]
+        speed = ego_speed if i == 0 else Vehicle[5]
+        direction = [np.cos(angle_rad) * speed, np.sin(angle_rad) * speed]
+        arrow = Arrow(x=Vehicle[0], y=Vehicle[1], dx=direction[0], dy=direction[1], width=1.5)
         ax.add_patch(rectangle)
+        ax.add_patch(arrow)
 
-    ax.set_xlim([-30, 30])
-    ax.set_ylim([-15, 15])
+    ax.set_xlim([-26, 24])
+    ax.set_ylim([-12, 10])
     ax.set_aspect('equal', adjustable='box')
 
     return ax
@@ -217,13 +223,13 @@ def plot_multi_feasibility_region(args_dict):
     # create figure
     fig, axs = plt.subplots(
         nrows=2, ncols=2,
-        figsize=(10, 6),
+        figsize=(10, 4.2),
         constrained_layout=True,
     )
     ax1, ax2, ax3, ax4 = axs.flatten()
 
-    my_x_ticks = np.arange(-30, 30.01, 5)
-    my_y_ticks = np.arange(-15, 15.01, 5)
+    my_x_ticks = np.arange(-26, 24.01, 5)
+    my_y_ticks = np.arange(-12, 10.01, 5)
 
     labels = ax1.get_xticklabels() + ax1.get_yticklabels() + ax2.get_xticklabels() + ax2.get_yticklabels() \
              + ax3.get_xticklabels() + ax3.get_yticklabels() + ax4.get_xticklabels() + ax4.get_yticklabels()
@@ -247,11 +253,11 @@ def plot_multi_feasibility_region(args_dict):
     for ax in [ax1, ax2, ax3, ax4]:
         ax.set_xticks(my_x_ticks)
         ax.set_yticks(my_y_ticks)
-        ax.set_xlim((-30, 30))
-        ax.set_ylim((-15, 15))
+        ax.set_xlim((-26, 24))
+        ax.set_ylim((-12, 10))
         ax.tick_params(labelsize=18)
-        ax.set_xlim([-30, 30])
-        ax.set_ylim([-15, 15])
+        ax.set_xlim([-26, 24])
+        ax.set_ylim([-12, 10])
         ax.tick_params(axis='both', which='both', bottom=False, left=False, labelbottom=False, labelleft=False)
         ax.spines['bottom'].set_linewidth(0.5)
         ax.spines['left'].set_linewidth(0.5)
@@ -280,10 +286,16 @@ if __name__ == '__main__':
     parser.add_argument('--y_range', type=tuple, default=(-10, 10))
     parser.add_argument('--width', type=float, default=4.9)
     parser.add_argument('--height', type=float, default=2.12)
-    parser.add_argument('--device', type=str, default='cpu')
+    parser.add_argument('--seed', '-s', type=int, default=7)
+    parser.add_argument('--threads', type=int, default=4)
+    parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
     args = parser.parse_args()
     args_dict = vars(args)
+    set_torch_variable(args.device)
+    torch.set_num_threads(args.threads)
+    seed = args.seed
+    set_seed(seed)
 
     # 1. plot the feasibility data distribution
     # plot_feasibility_data_distribution(args)
