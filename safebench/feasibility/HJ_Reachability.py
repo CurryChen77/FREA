@@ -157,7 +157,7 @@ class HJR:
             min_dis = batch['constraint_h']
             # h equals to threshold - min_dis, if h > 0 unsafe, else safe
             # h = torch.zeros_like(min_dis).fill_(self.min_dis_threshold) - min_dis
-            # h is -1.0 when Ego is safe, else, h is 20
+            # h is -1.0 when Ego is safe, else, h is 10
             h = torch.where(min_dis < 0.5, 10.0, -1)
 
             del min_dis

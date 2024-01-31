@@ -130,7 +130,7 @@ def generate_non_overlapping_rectangles(num_rectangles, x_range, y_range, width=
     return rectangles
 
 
-def generate_ego_obs(ego_speed, yaw_range=(-3.14, 3.14), actor_num=3, x_range=(-25, 25), y_range=(-10, 10), width=4.9, height=2.12, speed_range=(0, 8)):
+def generate_ego_obs(ego_speed, yaw_range=(-3.14, 3.14), actor_num=3, x_range=(-25, 25), y_range=(-10, 10), width=4.9, height=2.12, speed_range=(1, 5)):
     BV_list = np.zeros((actor_num, 6), dtype=np.float32)
     rectangles = generate_non_overlapping_rectangles(actor_num, x_range, y_range, width, height, yaw_range)
     BV_list[:, 0:5] = rectangles
@@ -139,7 +139,7 @@ def generate_ego_obs(ego_speed, yaw_range=(-3.14, 3.14), actor_num=3, x_range=(-
     return BV_list
 
 
-def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6, actor_num=3, x_range=(-12, 12), y_range=(-8, 8), width=4.9, height=2.12):
+def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6, actor_num=3, x_range=(-27, 27), y_range=(-12, 12), width=4.9, height=2.12):
     from matplotlib.patches import Rectangle, Arrow
 
     x = np.linspace(x_range[0] + width/2, x_range[1] - width/2, spatial_interval)
@@ -166,14 +166,14 @@ def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6
         alpha=0.5
     )
 
-    # ct_line = ax.contour(
-    #     x_grid, y_grid, array_value,
-    #     levels=[0], colors='#32ABD6',
-    #     linewidths=2.0, linestyles='solid'
-    # )
-    # ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0', )
+    ct_line = ax.contour(
+        x_grid, y_grid, array_value,
+        levels=[0], colors='#32ABD6',
+        linewidths=2.0, linestyles='solid'
+    )
+    ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0', )
 
-    cb = plt.colorbar(ct, ax=ax, shrink=0.8, pad=0)
+    cb = plt.colorbar(ct, ax=ax, shrink=0.8, pad=0.01)
     cb.ax.tick_params(labelsize=7)
 
     # plot all the vehicles
@@ -188,7 +188,7 @@ def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6
         ax.add_patch(rectangle)
         ax.add_patch(arrow)
 
-    ax.set_xlim([-26, 24])
+    ax.set_xlim([-27, 25])
     ax.set_ylim([-12, 10])
     ax.set_aspect('equal', adjustable='box')
 
@@ -233,7 +233,7 @@ def plot_multi_feasibility_region(args):
     )
     ax1, ax2, ax3, ax4 = axs.flatten()
 
-    my_x_ticks = np.arange(-26, 24.01, 5)
+    my_x_ticks = np.arange(-27, 25.01, 5)
     my_y_ticks = np.arange(-12, 10.01, 5)
 
     labels = ax1.get_xticklabels() + ax1.get_yticklabels() + ax2.get_xticklabels() + ax2.get_yticklabels() \
@@ -258,10 +258,10 @@ def plot_multi_feasibility_region(args):
     for ax in [ax1, ax2, ax3, ax4]:
         ax.set_xticks(my_x_ticks)
         ax.set_yticks(my_y_ticks)
-        ax.set_xlim((-26, 24))
+        ax.set_xlim((-27, 25))
         ax.set_ylim((-12, 10))
         ax.tick_params(labelsize=18)
-        ax.set_xlim([-26, 24])
+        ax.set_xlim([-27, 25])
         ax.set_ylim([-12, 10])
         ax.tick_params(axis='both', which='both', bottom=False, left=False, labelbottom=False, labelleft=False)
         ax.spines['bottom'].set_linewidth(0.5)
@@ -291,7 +291,7 @@ if __name__ == '__main__':
     parser.add_argument('--y_range', type=tuple, default=(-10, 10))
     parser.add_argument('--width', type=float, default=4.9)
     parser.add_argument('--height', type=float, default=2.12)
-    parser.add_argument('--seed', '-s', type=int, default=7)
+    parser.add_argument('--seed', '-s', type=int, default=6)
     parser.add_argument('--threads', type=int, default=4)
     parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
