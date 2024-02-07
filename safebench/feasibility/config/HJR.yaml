@@ -15,9 +15,9 @@ acc_range: [-3.0, 3.0]
 steer_range: [-0.3, 0.3]
 
 
-train_episode: 1500000
+train_episode: 2000000
 save_freq: 100000
-buffer_capacity: 15000
+buffer_capacity: 100000
 
 gamma: 0.98
 tau: 5.0e-3

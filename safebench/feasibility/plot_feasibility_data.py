@@ -298,7 +298,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # 1. plot the feasibility data distribution
-    # plot_feasibility_data_distribution(args)
+    plot_feasibility_data_distribution(args)
 
     # 2. plot the well-trained feasibility region
     plot_multi_feasibility_region(args)
