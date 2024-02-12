@@ -114,32 +114,34 @@ def rotated_rectangles_overlap(rect1, rect2):
     return True  # Overlapping on both axes, rectangles overlap
 
 
-def generate_random_rectangle(x_range, y_range, width=4.9, height=2.12, yaw_range=(-3.14, 3.14)):
+def generate_random_rectangle(x_range, y_range, width=4.9, height=2.12, angle=0.0):
     x = np.random.uniform(x_range[0], x_range[1] - width)  # Adjust the range based on your plot size
     y = np.random.uniform(y_range[0], y_range[1] - height)  # Adjust the range based on your plot size
-    angle = np.random.uniform(*yaw_range)
     return x, y, width, height, angle
 
 
-def generate_non_overlapping_rectangles(num_rectangles, x_range, y_range, width=4.9, height=2.12, yaw_range=(-3.14, 3.14)):
+def generate_non_overlapping_rectangles(num_rectangles, x_range, y_range, width=4.9, height=2.12, yaw_angle=(-3.14, 3.14)):
     rectangles = [[0, 0, width, height, 0]]
+    index = 0
     while len(rectangles) < num_rectangles:
-        rectangle = generate_random_rectangle(x_range, y_range, width, height, yaw_range)
+        rectangle = generate_random_rectangle(x_range, y_range, width, height, yaw_angle[index])
         if all(not rotated_rectangles_overlap(rectangle, existing) for existing in rectangles):
             rectangles.append(rectangle)
+            index += 1
     return rectangles
 
 
-def generate_ego_obs(ego_speed, yaw_range=(-3.14, 3.14), actor_num=3, x_range=(-25, 25), y_range=(-10, 10), width=4.9, height=2.12, speed_range=(1, 5)):
+def generate_ego_obs(ego_speed, yaw_angle=(-0.0, 0.0), actor_num=3, x_range=(-25, 25), y_range=(-10, 10), width=4.9, height=2.12, speed_range=(1, 5)):
+    assert len(yaw_angle) == actor_num - 1  # the yaw angle for the BVs should == actor number -1
     BV_list = np.zeros((actor_num, 6), dtype=np.float32)
-    rectangles = generate_non_overlapping_rectangles(actor_num, x_range, y_range, width, height, yaw_range)
+    rectangles = generate_non_overlapping_rectangles(actor_num, x_range, y_range, width, height, yaw_angle)
     BV_list[:, 0:5] = rectangles
     BV_list[0:, 5] = linear_map(np.random.rand(actor_num), original_range=(0, 1), desired_range=speed_range)
     BV_list[0, 5] = ego_speed
     return BV_list
 
 
-def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6, actor_num=3, x_range=(-27, 27), y_range=(-12, 12), width=4.9, height=2.12):
+def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6, actor_num=3, x_range=(-25, 25), y_range=(-10, 10), width=4.9, height=2.12):
     from matplotlib.patches import Rectangle, Arrow
 
     x = np.linspace(x_range[0] + width/2, x_range[1] - width/2, spatial_interval)
@@ -166,12 +168,12 @@ def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6
         alpha=0.5
     )
 
-    ct_line = ax.contour(
-        x_grid, y_grid, array_value,
-        levels=[0], colors='#32ABD6',
-        linewidths=2.0, linestyles='solid'
-    )
-    ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0', )
+    # ct_line = ax.contour(
+    #     x_grid, y_grid, array_value,
+    #     levels=[0], colors='#32ABD6',
+    #     linewidths=2.0, linestyles='solid'
+    # )
+    # ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0', )
 
     cb = plt.colorbar(ct, ax=ax, shrink=0.8, pad=0.01)
     cb.ax.tick_params(labelsize=7)
@@ -243,16 +245,16 @@ def plot_multi_feasibility_region(args):
     '''
     subplot 1,2,3,4 : plot the feasible region and the learned feasible region for different v and theta
     '''
-    ego_obs1 = generate_ego_obs(ego_speed=4, yaw_range=(-0.5, 0.5), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
+    ego_obs1 = generate_ego_obs(ego_speed=4, yaw_angle=(0.0, 0.0), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
     ax1 = plot_feasibility_region(ax1, feasibility_policy, ego_obs1, spatial_interval=spatial_interval, ego_speed=4, actor_num=actor_num)
 
-    ego_obs2 = generate_ego_obs(ego_speed=6, yaw_range=(-0.5, 0.5), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
+    ego_obs2 = generate_ego_obs(ego_speed=6, yaw_angle=(0.0, 0.0), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
     ax2 = plot_feasibility_region(ax2, feasibility_policy, ego_obs2, spatial_interval=spatial_interval, ego_speed=6, actor_num=actor_num)
 
-    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_range=(2.9, 3.14), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
+    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, -3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
     ax3 = plot_feasibility_region(ax3, feasibility_policy, ego_obs3, spatial_interval=spatial_interval, ego_speed=4, actor_num=actor_num)
 
-    ego_obs4 = generate_ego_obs(ego_speed=4, yaw_range=(-3.14, -2.9), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
+    ego_obs4 = generate_ego_obs(ego_speed=4, yaw_angle=(3.14/2, 3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
     ax4 = plot_feasibility_region(ax4, feasibility_policy, ego_obs4, spatial_interval=spatial_interval, ego_speed=4, actor_num=actor_num)
 
     for ax in [ax1, ax2, ax3, ax4]:
@@ -285,6 +287,8 @@ if __name__ == '__main__':
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--map_name', '-map', type=str, default='Town05')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
+    parser.add_argument('--plot_data', '-data', action='store_true', help='plot offline data distribution')
+    parser.add_argument('--plot_feasibility_region', '-region', action='store_true', help='plot feasibility region')
     parser.add_argument('--actor_num', type=int, default=3)
     parser.add_argument('--spatial_interval', type=int, default=64)
     parser.add_argument('--x_range', type=tuple, default=(-25, 25))
@@ -298,10 +302,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # 1. plot the feasibility data distribution
-    plot_feasibility_data_distribution(args)
+    if args.plot_data:
+        plot_feasibility_data_distribution(args)
 
     # 2. plot the well-trained feasibility region
-    plot_multi_feasibility_region(args)
+    if args.plot_feasibility_region:
+        plot_multi_feasibility_region(args)
 
 
 
