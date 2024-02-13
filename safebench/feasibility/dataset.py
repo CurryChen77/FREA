@@ -44,6 +44,7 @@ class OffRLDataset(object):
                 'obs': np.zeros((dataset_len, *obs_shape), dtype=np.float32),
                 'next_obs': np.zeros((dataset_len, *obs_shape), dtype=np.float32),
                 'ego_min_dis': np.zeros(dataset_len, dtype=np.float32),
+                'ego_collide': np.zeros(dataset_len, dtype=np.float32),
                 'dones': np.zeros(dataset_len, dtype=np.float32)
             }
             # for all the group files
