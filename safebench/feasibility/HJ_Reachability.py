@@ -154,7 +154,7 @@ class HJR:
             action = batch['actions']
             undone = 1-batch['dones']
             # the ego min distance from the infos
-            min_dis = batch['constraint_h']
+            min_dis = batch['ego_min_dis']
             # h equals to threshold - min_dis, if h > 0 unsafe, else safe
             # h = torch.zeros_like(min_dis).fill_(self.min_dis_threshold) - min_dis
             # h is -1.0 when Ego is safe, else, h is 10

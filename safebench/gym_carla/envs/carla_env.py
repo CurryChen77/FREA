@@ -29,8 +29,9 @@ from safebench.gym_carla.envs.misc import (
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    get_actor_off_road, get_CBV_bv_reward, get_constraint_h, linear_map, \
-    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis, process_ego_action
+    get_actor_off_road, get_CBV_bv_reward, linear_map, \
+    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, \
+    set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis, process_ego_action, get_ego_min_dis
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -412,26 +413,22 @@ class CarlaEnv(gym.Env):
                 'gps_route': self.gps_route,  # the global gps route
                 'route': self.route,  # the global route
             })
-            # the safety network only need constraint_h at (t) step
-            if self.mode == 'collect_feasibility_data' or self.use_feasibility:
-                info['constraint_h'] = get_constraint_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
 
         # when after the tick before selecting a new CBV
         elif next_info:
             # the total reward for the CBV training
             info['CBVs_reward'] = self._get_scenario_reward()
-            # if CBV collide with other vehicles, then terminate
 
-            info['CBVs_terminated'] = self._get_CBVs_terminated()
-            # if Ego stuck, timeout or max step, then truncated
-
-            info['CBVs_truncated'] = self._get_CBVs_truncated()
-
-        # when after selecting a new CBV
-        elif not next_info:
-            # the safety network only need constraint_h at (t) step
+            # the cost or the constraint h should be calculated at state (t+1)
             if self.mode == 'collect_feasibility_data' or self.use_feasibility:
-                info['constraint_h'] = get_constraint_h(self.ego_vehicle, self.search_radius, self.ego_nearby_vehicles, self.ego_agent_learnable)
+                info['ego_min_dis'] = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicles, self.search_radius)
+                info['ego_collide'] = float(self.ego_collide)
+
+            # if CBV collide with other vehicles, then terminate
+            info['CBVs_terminated'] = self._get_CBVs_terminated()
+
+            # if Ego stuck, timeout or max step, then truncated
+            info['CBVs_truncated'] = self._get_CBVs_truncated()
 
         return info
 

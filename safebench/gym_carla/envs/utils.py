@@ -68,29 +68,12 @@ def process_ego_action(ego_action, acc_range, steering_range):
     return [throttle, steer, brake]
 
 
-def get_constraint_h(ego_vehicle, search_radius, nearby_vehicles, ego_agent_learnable=False):
-    # min distance between vehicle bboxes
-    ego_min_dis = search_radius
-
-    # the closest vehicle using center points distance may change when using bboxes distance
-    if nearby_vehicles:
-        for i, vehicle in enumerate(nearby_vehicles):
-            # the closest vehicle using center point may not be the closest vehicle using bboxs
-            if i < 3:
-                dis = get_min_distance_across_bboxes(ego_vehicle, vehicle)
-                if dis < ego_min_dis:
-                    ego_min_dis = dis
-
-    constraint_h = ego_min_dis
-    return constraint_h
-
-
-def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40):
+def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40, bbox=True):
     ego_min_dis = search_redius
     if ego_nearby_vehicles:
         for i, vehicle in enumerate(ego_nearby_vehicles):
             if i < 3:  # calculate only the closest three vehicles
-                dis = get_min_distance_across_bboxes(ego, vehicle)
+                dis = get_min_distance_across_bboxes(ego, vehicle) if bbox else get_distance_across_centers(ego, vehicle)
                 if dis < ego_min_dis:
                     ego_min_dis = dis
     return ego_min_dis

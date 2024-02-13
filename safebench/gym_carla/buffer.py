@@ -318,7 +318,8 @@ class RolloutBuffer:
             self.buffer_actions = np.zeros((self.buffer_capacity, self.num_scenario, self.action_dim), dtype=np.float32)
             self.buffer_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
             self.buffer_next_obs = np.zeros((self.buffer_capacity, self.num_scenario, *self.obs_shape), dtype=np.float32)
-            self.buffer_constraint_h = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
+            self.buffer_ego_min_dis = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
+            self.buffer_ego_collide = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
             self.buffer_dones = np.zeros((self.buffer_capacity, self.num_scenario), dtype=np.float32)
 
     def process_CBV_data(self, data_list, additional_dict):
@@ -451,7 +452,8 @@ class RolloutBuffer:
             for action, done, infos, next_infos in zip(all_actions, all_dones, all_infos, all_next_infos):
                 # if scenario config length < number_scenarios, need to store data on "self.store_scenario_id" index
                 scenario_id = next_infos['scenario_id'] if self.store_scenario_id is None else self.store_scenario_id
-                h = infos['constraint_h']  # the constraint_h come from the current state
+                ego_min_dis = next_infos['ego_min_dis']  # the ego_min_dis come from the next state
+                ego_collide = next_infos['ego_collide']
                 obs = infos[self.feasibility_obs_type]
                 next_obs = next_infos[self.feasibility_obs_type]
 
@@ -459,12 +461,13 @@ class RolloutBuffer:
                     # if the ego agent is learnable method, need further process to convert the original action to throttle, steer, brake of ego
                     action = process_ego_action(action, self.feasibility_acc_range, self.feasibility_steer_range)
 
-                if not self.feasibility_full[scenario_id] and h < self.feasibility_search_radius:
+                if not self.feasibility_full[scenario_id] and ego_min_dis < self.feasibility_search_radius:
                     self.buffer_actions[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(action)
-                    self.buffer_obs[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(obs)  # ego obs
-                    self.buffer_next_obs[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(next_obs)  # ego next obs from next info
+                    self.buffer_obs[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(obs)
+                    self.buffer_next_obs[self.feasibility_pos[scenario_id], scenario_id, :] = np.array(next_obs)
                     self.buffer_dones[self.feasibility_pos[scenario_id], scenario_id] = np.array(done)
-                    self.buffer_constraint_h[self.feasibility_pos[scenario_id], scenario_id] = np.array(h)
+                    self.buffer_ego_min_dis[self.feasibility_pos[scenario_id], scenario_id] = np.array(ego_min_dis)
+                    self.buffer_ego_collide[self.feasibility_pos[scenario_id], scenario_id] = np.array(ego_collide)
                     self.feasibility_pos[scenario_id] += 1
                     if self.feasibility_pos[scenario_id] > self.buffer_capacity // 2:
                         self.feasibility_full[scenario_id] = True
@@ -533,7 +536,8 @@ class RolloutBuffer:
         actions = np.zeros((self.buffer_len, self.action_dim), dtype=np.float32)
         obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
         next_obs = np.zeros((self.buffer_len, *self.obs_shape), dtype=np.float32)
-        constraint_h = np.zeros(self.buffer_len, dtype=np.float32)
+        ego_min_dis = np.zeros(self.buffer_len, dtype=np.float32)
+        ego_collide = np.zeros(self.buffer_len, dtype=np.float32)
         dones = np.zeros(self.buffer_len, dtype=np.float32)
 
         for scenario_id in range(self.num_scenario):
@@ -541,7 +545,8 @@ class RolloutBuffer:
             actions[index:index+upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
             obs[index:index+upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
             next_obs[index:index+upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]
-            constraint_h[index:index+upper_bound] = self.buffer_constraint_h[:upper_bound, scenario_id]
+            ego_min_dis[index:index+upper_bound] = self.buffer_ego_min_dis[:upper_bound, scenario_id]
+            ego_collide[index:index+upper_bound] = self.buffer_ego_collide[:upper_bound, scenario_id]
             dones[index:index+upper_bound] = self.buffer_dones[:upper_bound, scenario_id]
             index += upper_bound
 
@@ -551,7 +556,8 @@ class RolloutBuffer:
             file.create_dataset('actions', shape=(self.buffer_len, self.action_dim), dtype=np.float32, data=actions, compression='gzip')
             file.create_dataset('obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=obs.reshape((-1, self.state_dim)), compression='gzip')
             file.create_dataset('next_obs', shape=(self.buffer_len, *self.obs_shape), dtype=np.float32, data=next_obs.reshape((-1, self.state_dim)), compression='gzip')
-            file.create_dataset('constraint_h', shape=self.buffer_len, dtype=np.float32, data=constraint_h, compression='gzip')
+            file.create_dataset('ego_min_dis', shape=self.buffer_len, dtype=np.float32, data=ego_min_dis, compression='gzip')
+            file.create_dataset('ego_collide', shape=self.buffer_len, dtype=np.float32, data=ego_collide, compression='gzip')
             file.create_dataset('dones', shape=self.buffer_len, dtype=np.float32, data=dones, compression='gzip')
 
 

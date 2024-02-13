@@ -28,7 +28,7 @@ def plot_feasibility_data_distribution(args):
 
     obs = dataset.dataset_dict['obs']
     action = dataset.dataset_dict['actions']
-    constraint_h = dataset.dataset_dict['constraint_h']
+    ego_min_dis = dataset.dataset_dict['ego_min_dis']
 
     # x, y position of the closest point
     x_coords = obs[:, 1, 0].flatten()
@@ -56,7 +56,7 @@ def plot_feasibility_data_distribution(args):
     axs[0, 0].set_ylabel('Y Coordinate')
     x_y_bar = fig.colorbar(x_y_img, ax=axs[0, 0], label="Density")
 
-    axs[0, 1].hist(constraint_h, bins=50, color='darkblue', alpha=0.9)
+    axs[0, 1].hist(ego_min_dis, bins=50, color='darkblue', alpha=0.9)
     axs[0, 1].set_title('Constraint h (closest dis between Ego and BVs)', fontsize=12)
     axs[0, 1].set_xlabel('Constraint h')
     axs[0, 1].set_ylabel('Frequency')
