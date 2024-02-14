@@ -29,6 +29,8 @@ def plot_feasibility_data_distribution(args):
     obs = dataset.dataset_dict['obs']
     action = dataset.dataset_dict['actions']
     ego_min_dis = dataset.dataset_dict['ego_min_dis']
+    ego_collision = dataset.dataset_dict['ego_collide']
+    ego_collision_percentage = np.mean(ego_collision == 1.0) * 100
 
     # x, y position of the closest point
     x_coords = obs[:, 1, 0].flatten()
@@ -57,8 +59,10 @@ def plot_feasibility_data_distribution(args):
     x_y_bar = fig.colorbar(x_y_img, ax=axs[0, 0], label="Density")
 
     axs[0, 1].hist(ego_min_dis, bins=50, color='darkblue', alpha=0.9)
-    axs[0, 1].set_title('Constraint h (closest dis between Ego and BVs)', fontsize=12)
-    axs[0, 1].set_xlabel('Constraint h')
+    axs[0, 1].set_title('Closest dis between Ego and BVs', fontsize=12)
+    axs[0, 1].set_xlabel('Closest distance')
+    text = 'Ego Collision: {:.2f}%'.format(ego_collision_percentage)
+    fig.text(0.5, 0.5, text, ha='center', va='center', fontsize=10, color='red', weight='bold')
     axs[0, 1].set_ylabel('Frequency')
 
     _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap='Blues', norm=LogNorm())
