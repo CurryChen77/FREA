@@ -156,7 +156,7 @@ class HJR:
             # the ego min distance from the infos
             min_dis = batch['ego_min_dis']
             ego_collide = batch['ego_collide']  # if 1.0 means ego collide elif 0.0 means ego not collide
-            h = torch.where(torch.isclose(ego_collide, 1.0, atol=0.01), torch.tensor(20.0), torch.tensor(-1.0))
+            h = torch.where(torch.isclose(ego_collide, torch.tensor(1.0), atol=0.01), 20.0, -1.0)
             # h equals to threshold - min_dis, if h > 0 unsafe, else safe
             # h = torch.zeros_like(min_dis).fill_(self.min_dis_threshold) - min_dis
             # h is -1.0 when Ego is safe, else, h is 10
