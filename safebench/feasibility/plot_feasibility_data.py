@@ -62,7 +62,7 @@ def plot_feasibility_data_distribution(args):
     axs[0, 1].set_title('Closest dis between Ego and BVs', fontsize=12)
     axs[0, 1].set_xlabel('Closest distance')
     text = 'Ego Collision: {:.2f}%'.format(ego_collision_percentage)
-    fig.text(0.5, 0.5, text, ha='center', va='center', fontsize=10, color='red', weight='bold')
+    axs[0, 1].text(0.5, 0.8, text, ha='center', va='center', fontsize=10, color='red', weight='bold')
     axs[0, 1].set_ylabel('Frequency')
 
     _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap='Blues', norm=LogNorm())
