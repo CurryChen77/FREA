@@ -6,6 +6,7 @@
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2024/1/25
 """
+import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
@@ -18,7 +19,7 @@ from safebench.feasibility.dataset import OffRLDataset
 from safebench.gym_carla.envs.utils import linear_map
 from safebench.util.logger import Logger
 from safebench.util.run_util import load_config
-from safebench.util.torch_util import set_torch_variable, set_seed, CUDA, CPU
+from safebench.util.torch_util import set_torch_variable, set_seed
 
 
 def plot_feasibility_data_distribution(args):
@@ -50,6 +51,8 @@ def plot_feasibility_data_distribution(args):
     throttle = action[:, 0]
     steering_angle = action[:, 1]
 
+    matplotlib.rcParams['font.family'] = 'Times New Roman'
+
     fig, axs = plt.subplots(2, 2, figsize=(10, 8))
 
     _, _, _, x_y_img = axs[0, 0].hist2d(non_zero_x, non_zero_y, bins=60, cmap='Blues', norm=LogNorm())
@@ -58,11 +61,15 @@ def plot_feasibility_data_distribution(args):
     axs[0, 0].set_ylabel('Y Coordinate')
     x_y_bar = fig.colorbar(x_y_img, ax=axs[0, 0], label="Density")
 
-    axs[0, 1].hist(ego_min_dis, bins=50, color='darkblue', alpha=0.9)
+    axs[0, 1].hist(ego_min_dis, bins=50, color='darkblue', alpha=0.8)
     axs[0, 1].set_title('Closest dis between Ego and BVs', fontsize=12)
     axs[0, 1].set_xlabel('Closest distance')
+    x_lim = axs[0, 1].get_xlim()
+    y_lim = axs[0, 1].get_ylim()
+    x_center = (x_lim[1] - x_lim[0]) / 2 + x_lim[0]
+    y_two_thirds = (y_lim[1] - y_lim[0]) * 2 / 3 + y_lim[0]
     text = 'Ego Collision: {:.2f}%'.format(ego_collision_percentage)
-    axs[0, 1].text(0.5, 0.5, text, ha='center', va='center', fontsize=10, color='red', weight='bold')
+    axs[0, 1].text(x_center, y_two_thirds, text, ha='center', va='center', fontsize=10, alpha=0.8, color='red', weight='bold')
     axs[0, 1].set_ylabel('Frequency')
 
     _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap='Blues', norm=LogNorm())
@@ -245,6 +252,8 @@ def plot_multi_feasibility_region(args):
     # init the feasibility policy
     feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=logger)
     feasibility_policy.load_model(map_name)
+
+    matplotlib.rcParams['font.family'] = 'Times New Roman'
 
     # create figure
     fig, axs = plt.subplots(
