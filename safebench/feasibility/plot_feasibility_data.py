@@ -119,8 +119,8 @@ def rotated_rectangles_overlap(rect1, rect2):
 
 
 def generate_random_rectangle(x_range, y_range, width=4.9, height=2.12, angle=0.0):
-    x = np.random.uniform(x_range[0], x_range[1] - width)  # Adjust the range based on your plot size
-    y = np.random.uniform(y_range[0], y_range[1] - height)  # Adjust the range based on your plot size
+    x = np.random.uniform(x_range[0] + width/2, x_range[1] - width/2)  # Adjust the range based on your plot size
+    y = np.random.uniform(y_range[0] + height/2, y_range[1] - height/2)  # Adjust the range based on your plot size
     return x, y, width, height, angle
 
 
@@ -135,7 +135,7 @@ def generate_non_overlapping_rectangles(num_rectangles, x_range, y_range, width=
     return rectangles
 
 
-def generate_ego_obs(ego_speed, yaw_angle=(-0.0, 0.0), actor_num=3, x_range=(-25, 25), y_range=(-10, 10), width=4.9, height=2.12, speed_range=(1, 5)):
+def generate_ego_obs(ego_speed, yaw_angle=(-0.0, 0.0), actor_num=3, x_range=(-23, 23), y_range=(-9, 9), width=4.9, height=2.12, speed_range=(1, 5)):
     assert len(yaw_angle) == actor_num - 1  # the yaw angle for the BVs should == actor number -1
     BV_list = np.zeros((actor_num, 6), dtype=np.float32)
     rectangles = generate_non_overlapping_rectangles(actor_num, x_range, y_range, width, height, yaw_angle)
@@ -145,17 +145,30 @@ def generate_ego_obs(ego_speed, yaw_angle=(-0.0, 0.0), actor_num=3, x_range=(-25
     return BV_list
 
 
+def rearrange_the_actor_order(batch_ego_obs):
+    for i in range(batch_ego_obs.shape[0]):
+        # if the third row's distance is closer than the second row's distance, then switch row 2 and row 3
+        if np.linalg.norm(batch_ego_obs[i, 2, :]) < np.linalg.norm(batch_ego_obs[i, 1, :]):
+            batch_ego_obs[i, [1, 2]] = batch_ego_obs[i, [2, 1]]
+    return batch_ego_obs
+
+
 def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6, actor_num=3, x_range=(-25, 25), y_range=(-10, 10), width=4.9, height=2.12):
     from matplotlib.patches import Rectangle, Arrow
 
+    # the fake ego x, y coordinates
     x = np.linspace(x_range[0] + width/2, x_range[1] - width/2, spatial_interval)
     y = np.linspace(y_range[0] + height/2, y_range[1] - height / 2, spatial_interval)
     x_grid, y_grid = np.meshgrid(x, y)
     flatten_x = x_grid.ravel()
     flatten_y = y_grid.ravel()
     batch_ego_obs = np.tile(ego_obs.reshape(1, actor_num, 6), (spatial_interval**2, 1, 1))
-    batch_ego_obs[:, 0, 0] = flatten_x
-    batch_ego_obs[:, 0, 1] = flatten_y
+    # transform the fake ego x, y coordinates into the relative coordinates of the surrounding vehicles
+    ego_x = np.tile(flatten_x[:, np.newaxis], (1, actor_num-1))
+    ego_y = np.tile(flatten_y[:, np.newaxis], (1, actor_num-1))
+    batch_ego_obs[:, 1:, 0] -= ego_x
+    batch_ego_obs[:, 1:, 1] -= ego_y
+    batch_ego_obs = rearrange_the_actor_order(batch_ego_obs)
     batch_ego_obs[:, 0, 5] = np.ones_like(flatten_x) * ego_speed
 
     # get the corresponding feasibility values
@@ -171,13 +184,15 @@ def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6
         cmap='rainbow',
         alpha=0.5
     )
-
-    # ct_line = ax.contour(
-    #     x_grid, y_grid, array_value,
-    #     levels=[0], colors='#32ABD6',
-    #     linewidths=2.0, linestyles='solid'
-    # )
-    # ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0', )
+    try:
+        ct_line = ax.contour(
+            x_grid, y_grid, array_value,
+            levels=[0], colors='#32ABD6',
+            linewidths=2.0, linestyles='solid'
+        )
+        ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0', )
+    except ValueError:
+        pass
 
     cb = plt.colorbar(ct, ax=ax, shrink=0.8, pad=0.01)
     cb.ax.tick_params(labelsize=7)
@@ -194,8 +209,8 @@ def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6
         ax.add_patch(rectangle)
         ax.add_patch(arrow)
 
-    ax.set_xlim([-27, 25])
-    ax.set_ylim([-12, 10])
+    ax.set_xlim([-24, 24])
+    ax.set_ylim([-9.5, 9.5])
     ax.set_aspect('equal', adjustable='box')
 
     return ax
@@ -239,8 +254,8 @@ def plot_multi_feasibility_region(args):
     )
     ax1, ax2, ax3, ax4 = axs.flatten()
 
-    my_x_ticks = np.arange(-27, 25.01, 5)
-    my_y_ticks = np.arange(-12, 10.01, 5)
+    my_x_ticks = np.arange(-24, 24.01, 5)
+    my_y_ticks = np.arange(-9.5, 9.51, 5)
 
     labels = ax1.get_xticklabels() + ax1.get_yticklabels() + ax2.get_xticklabels() + ax2.get_yticklabels() \
              + ax3.get_xticklabels() + ax3.get_yticklabels() + ax4.get_xticklabels() + ax4.get_yticklabels()
@@ -264,11 +279,11 @@ def plot_multi_feasibility_region(args):
     for ax in [ax1, ax2, ax3, ax4]:
         ax.set_xticks(my_x_ticks)
         ax.set_yticks(my_y_ticks)
-        ax.set_xlim((-27, 25))
-        ax.set_ylim((-12, 10))
+        ax.set_xlim((-24, 24))
+        ax.set_ylim((-9.5, 9.5))
         ax.tick_params(labelsize=18)
-        ax.set_xlim([-27, 25])
-        ax.set_ylim([-12, 10])
+        ax.set_xlim([-24, 24])
+        ax.set_ylim([-9.5, 9.5])
         ax.tick_params(axis='both', which='both', bottom=False, left=False, labelbottom=False, labelleft=False)
         ax.spines['bottom'].set_linewidth(0.5)
         ax.spines['left'].set_linewidth(0.5)
@@ -294,9 +309,9 @@ if __name__ == '__main__':
     parser.add_argument('--plot_data', '-data', action='store_true', help='plot offline data distribution')
     parser.add_argument('--plot_feasibility_region', '-region', action='store_true', help='plot feasibility region')
     parser.add_argument('--actor_num', type=int, default=3)
-    parser.add_argument('--spatial_interval', type=int, default=64)
-    parser.add_argument('--x_range', type=tuple, default=(-25, 25))
-    parser.add_argument('--y_range', type=tuple, default=(-10, 10))
+    parser.add_argument('--spatial_interval', type=int, default=32)
+    parser.add_argument('--x_range', type=tuple, default=(-22, 22))
+    parser.add_argument('--y_range', type=tuple, default=(-7, 7))
     parser.add_argument('--width', type=float, default=4.9)
     parser.add_argument('--height', type=float, default=2.12)
     parser.add_argument('--seed', '-s', type=int, default=6)
