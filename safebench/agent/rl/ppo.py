@@ -195,7 +195,7 @@ class PPO(BasePolicy):
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         load_dir = os.path.join(self.model_path, self.scenario_policy_type, scenario_name+'_'+map_name)
         if episode is None:
-            episode = -1
+            episode = 0
             for _, _, files in os.walk(load_dir):
                 for name in files:
                     if fnmatch(name, "*torch"):

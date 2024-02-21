@@ -544,10 +544,10 @@ class CarlaRunner:
         # load previous checkpoint
         policy.load_model(map_name=self.current_map)
         if policy.continue_episode == 0:
-            start_episode = 0
+            start_episode = 1
             self.logger.log('>> Previous checkpoint not found. Training from scratch.')
         else:
-            start_episode = policy.continue_episode
+            start_episode = policy.continue_episode + 1
             self.logger.log('>> Continue training from previous checkpoint.')
         return start_episode
 
