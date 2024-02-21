@@ -12,6 +12,7 @@
 from safebench.scenario.scenario_policy.dummy_policy import DummyPolicy
 from safebench.scenario.scenario_policy.rl.sac import SAC
 from safebench.scenario.scenario_policy.rl.ppo import PPO
+from safebench.scenario.scenario_policy.rl.fppo import FPPO
 
 
 SCENARIO_POLICY_LIST = {
@@ -19,4 +20,5 @@ SCENARIO_POLICY_LIST = {
     'scenic': DummyPolicy,
     'sac': SAC,
     'ppo': PPO,
+    'fppo': FPPO,
 }

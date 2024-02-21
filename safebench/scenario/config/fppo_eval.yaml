@@ -1,6 +1,6 @@
 scenario_type_dir: 'safebench/scenario/config/scenario_type'
 scenario_type: 'carla_scenario_9_1x.json'
-policy_type: 'ppo'
+policy_type: 'fppo'
 learnable: True
 
 route_dir: 'safebench/scenario/scenario_data/route'
@@ -13,7 +13,7 @@ scenario_state_shape: [3, 6]
 scenario_action_dim: 2
 
 # for PPO policy model
-model_path: 'safebench/scenario/scenario_data/model_ckpt/ppo'
+model_path: 'safebench/scenario/scenario_data/model_ckpt/fppo'
 model_type: 'cbv'
 dims: [256, 256]
 train_episode: 2000

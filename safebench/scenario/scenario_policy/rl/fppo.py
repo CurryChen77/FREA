@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：ppo.py
+@File    ：fppo.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
-@Date    ：2023/10/4
+@Date    ：2024/2/21
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
 
@@ -23,12 +23,12 @@ from safebench.scenario.scenario_policy.base_policy import BasePolicy
 from safebench.gym_carla.net import ActorPPO, CriticPPO
 
 
-class PPO(BasePolicy):
-    name = 'PPO'
+class FPPO(BasePolicy):
+    name = 'FPPO'
     type = 'onpolicy'
 
     def __init__(self, config, logger):
-        super(PPO, self).__init__(config, logger)
+        super(FPPO, self).__init__(config, logger)
 
         self.continue_episode = 0
         self.logger = logger
@@ -211,7 +211,7 @@ class PPO(BasePolicy):
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, self.agent_info, self.feasibility, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
-        filepath = os.path.join(save_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
+        filepath = os.path.join(save_dir, f'model.fppo.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}', 'yellow')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
@@ -227,7 +227,7 @@ class PPO(BasePolicy):
                         cur_episode = int(name.split(".")[-2])
                         if cur_episode > episode:
                             episode = cur_episode
-        filepath = os.path.join(load_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
+        filepath = os.path.join(load_dir, f'model.fppo.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
             self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}', 'yellow')
             with open(filepath, 'rb') as f:
