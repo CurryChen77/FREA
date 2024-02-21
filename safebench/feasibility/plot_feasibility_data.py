@@ -142,7 +142,7 @@ def generate_non_overlapping_rectangles(num_rectangles, x_range, y_range, width=
     return rectangles
 
 
-def generate_ego_obs(ego_speed, yaw_angle=(-0.0, 0.0), actor_num=3, x_range=(-23, 23), y_range=(-9, 9), width=4.9, height=2.12, speed_range=(1, 5)):
+def generate_ego_obs(ego_speed, yaw_angle=(-0.0, 0.0), actor_num=3, x_range=(-23, 23), y_range=(-9, 9), width=4.9, height=2.12, speed_range=(1, 6)):
     assert len(yaw_angle) == actor_num - 1  # the yaw angle for the BVs should == actor number -1
     BV_list = np.zeros((actor_num, 6), dtype=np.float32)
     rectangles = generate_non_overlapping_rectangles(actor_num, x_range, y_range, width, height, yaw_angle)
@@ -160,12 +160,12 @@ def rearrange_the_actor_order(batch_ego_obs):
     return batch_ego_obs
 
 
-def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6, actor_num=3, x_range=(-25, 25), y_range=(-10, 10), width=4.9, height=2.12):
+def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, actor_num=3, x_range=(-25, 25), y_range=(-10, 10)):
     from matplotlib.patches import Rectangle, Arrow
 
     # the fake ego x, y coordinates
-    x = np.linspace(x_range[0] + width/2, x_range[1] - width/2, spatial_interval)
-    y = np.linspace(y_range[0] + height/2, y_range[1] - height / 2, spatial_interval)
+    x = np.linspace(x_range[0], x_range[1], spatial_interval)
+    y = np.linspace(y_range[0], y_range[1], spatial_interval)
     x_grid, y_grid = np.meshgrid(x, y)
     flatten_x = x_grid.ravel()
     flatten_y = y_grid.ravel()
@@ -215,6 +215,15 @@ def plot_feasibility_region(ax, agent, ego_obs, spatial_interval=10, ego_speed=6
         arrow = Arrow(x=Vehicle[0], y=Vehicle[1], dx=direction[0], dy=direction[1], width=1.5)
         ax.add_patch(rectangle)
         ax.add_patch(arrow)
+    # plot all the arrows
+    arrow_xs = np.linspace(x_range[0] + 8, x_range[1] - 8, 3)
+    arrow_ys = np.linspace(y_range[0] + 4, y_range[1] - 4, 2)
+    ego_angle_rad = ego_obs[0, 4]
+    arrow_dir = [np.cos(ego_angle_rad) * ego_speed, np.sin(ego_angle_rad) * ego_speed]
+    for arrow_x in arrow_xs:
+        for arrow_y in arrow_ys:
+            arrow = Arrow(x=arrow_x, y=arrow_y, dx=arrow_dir[0], dy=arrow_dir[1], width=1, color='k', alpha=0.2)
+            ax.add_patch(arrow)
 
     ax.set_xlim([-24, 24])
     ax.set_ylim([-9.5, 9.5])
@@ -241,8 +250,8 @@ def plot_multi_feasibility_region(args):
     height = args_dict['height']
     width = args_dict['width']
     spatial_interval = args_dict['spatial_interval']
-    map_name = args_dict['map_name']
     scenario_map = args_dict['scenario_map']
+    map_name = scenario_map.split('_')[-1]
 
     # set the logger
     log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', scenario_map)
@@ -273,17 +282,16 @@ def plot_multi_feasibility_region(args):
     '''
     subplot 1,2,3,4 : plot the feasible region and the learned feasible region for different v and theta
     '''
-    ego_obs1 = generate_ego_obs(ego_speed=4, yaw_angle=(0.0, 0.0), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
-    ax1 = plot_feasibility_region(ax1, feasibility_policy, ego_obs1, spatial_interval=spatial_interval, ego_speed=4, actor_num=actor_num)
+    ego_obs1 = generate_ego_obs(ego_speed=4, yaw_angle=(0.0, 0.0), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(3, 3))
+    ax1 = plot_feasibility_region(ax1, feasibility_policy, ego_obs1, ego_speed=2, spatial_interval=spatial_interval, actor_num=actor_num)
 
-    ego_obs2 = generate_ego_obs(ego_speed=6, yaw_angle=(0.0, 0.0), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
-    ax2 = plot_feasibility_region(ax2, feasibility_policy, ego_obs2, spatial_interval=spatial_interval, ego_speed=6, actor_num=actor_num)
+    ax2 = plot_feasibility_region(ax2, feasibility_policy, ego_obs1, ego_speed=6, spatial_interval=spatial_interval, actor_num=actor_num)
 
-    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, -3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
-    ax3 = plot_feasibility_region(ax3, feasibility_policy, ego_obs3, spatial_interval=spatial_interval, ego_speed=4, actor_num=actor_num)
+    ego_obs2 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, -3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
+    ax3 = plot_feasibility_region(ax3, feasibility_policy, ego_obs2, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
 
-    ego_obs4 = generate_ego_obs(ego_speed=4, yaw_angle=(3.14/2, 3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height)
-    ax4 = plot_feasibility_region(ax4, feasibility_policy, ego_obs4, spatial_interval=spatial_interval, ego_speed=4, actor_num=actor_num)
+    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(3.14/2, 3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
+    ax4 = plot_feasibility_region(ax4, feasibility_policy, ego_obs3, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
 
     for ax in [ax1, ax2, ax3, ax4]:
         ax.set_xticks(my_x_ticks)
@@ -313,7 +321,6 @@ if __name__ == '__main__':
     parser.add_argument('--data_route', type=str, default='safebench/feasibility/data')
     parser.add_argument('--scenario_map', type=str, default='Scenario9_Town05')
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
-    parser.add_argument('--map_name', '-map', type=str, default='Town05')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
     parser.add_argument('--plot_data', '-data', action='store_true', help='plot offline data distribution')
     parser.add_argument('--plot_feasibility_region', '-region', action='store_true', help='plot feasibility region')
