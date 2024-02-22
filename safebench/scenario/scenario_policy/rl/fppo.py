@@ -120,10 +120,6 @@ class FPPO(BasePolicy):
                     scenario_log_prob[env_id][CBV_id] = CPU(log_prob[i])
         return scenario_action, scenario_log_prob
 
-    def get_feasibility_advantage(self, feasibility_obs, feasibility_action):
-        feasibility_advantage = self.feasibility_policy.get_feasibility_advantage(feasibility_obs, feasibility_action)
-        return feasibility_advantage
-
     def get_advantages_vtrace(self, rewards, undones, values, next_values, unterminated):
         """
             unterminated: if the CBV collide with object, then it is terminated
@@ -167,15 +163,24 @@ class FPPO(BasePolicy):
             values = self.value(states)
             next_values = self.value(next_states)
             # the advantage of the reward
-            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
-            reward_sums = advantages + values
-
-            # the advantage of the feasibility
-            feasibility_advantages = self.get_feasibility_advantage(feasibility_obs, feasibility_actions)
+            reward_advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
+            reward_sums = reward_advantages + values
             del rewards, undones, values, next_values
 
-            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
+            # the advantage of the feasibility
+            feasibility_Vs = self.feasibility_policy.get_feasibility_V(feasibility_obs)
+            feasibility_Qs = self.feasibility_policy.get_feasibility_Q(feasibility_obs, feasibility_actions)
+            feasibility_advantages = feasibility_Qs - feasibility_Vs
+            # condition
+            unsafe_condition = torch.where(feasibility_Vs > 0.0, 1.0, 0.0)
+            safe_condition = torch.where(feasibility_Vs <= 0.0, 1.0, 0.0) * torch.where(feasibility_Qs <= 0.0, 1.0, 0.0)
+            # multi-advantages
+            reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
             feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
+            # final advantage
+            advantages = unsafe_condition * feasibility_advantages + safe_condition * reward_advantages
+
+            del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, unsafe_condition, safe_condition
 
         # start to train, use gradient descent without batch_size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
