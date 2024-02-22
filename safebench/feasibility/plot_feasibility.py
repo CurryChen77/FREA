@@ -191,15 +191,14 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
         cmap='rainbow',
         alpha=0.5
     )
-    try:
+    # draw the '0' contour line
+    if np.any(array_value <= 0):
         ct_line = ax.contour(
             x_grid, y_grid, array_value,
             levels=[0], colors='#32ABD6',
             linewidths=2.0, linestyles='solid'
         )
-        ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0', )
-    except TypeError:
-        pass
+        ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0')
 
     cb = plt.colorbar(ct, ax=ax, shrink=0.8, pad=0.01)
     cb.ax.tick_params(labelsize=7)
