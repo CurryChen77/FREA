@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：plot_feasibility_data.py
+@File    ：plot_feasibility.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2024/1/25
@@ -19,7 +19,7 @@ from safebench.feasibility.dataset import OffRLDataset
 from safebench.gym_carla.envs.utils import linear_map
 from safebench.util.logger import Logger
 from safebench.util.run_util import load_config
-from safebench.util.torch_util import set_torch_variable, set_seed
+from safebench.util.torch_util import set_torch_variable, set_seed, CUDA, CPU
 
 
 def plot_feasibility_data_distribution(args):
@@ -179,7 +179,7 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     batch_ego_obs[:, 0, 5] = np.ones_like(flatten_x) * ego_speed
 
     # get the corresponding feasibility values
-    feasibility_value = agent.get_feasibility_value_from_state(batch_ego_obs)
+    feasibility_value = CPU(agent.get_feasibility_V(batch_ego_obs))
     array_value = np.asarray(feasibility_value).reshape(x_grid.shape)
 
     norm = colors.Normalize(vmin=-8.5, vmax=4)
@@ -198,7 +198,7 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
             linewidths=2.0, linestyles='solid'
         )
         ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0', )
-    except ValueError:
+    except TypeError:
         pass
 
     cb = plt.colorbar(ct, ax=ax, shrink=0.8, pad=0.01)
@@ -322,7 +322,7 @@ if __name__ == '__main__':
     parser.add_argument('--scenario_map', '-sm', type=str, default='Scenario9_Town05')
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
-    parser.add_argument('--mode', '-m', type=str, default='plot_feasibility_region', choices=['plot_feasibility_region', 'plot_data'])
+    parser.add_argument('--mode', '-m', type=str, default='region', choices=['region', 'data'])
     parser.add_argument('--actor_num', type=int, default=3)
     parser.add_argument('--spatial_interval', type=int, default=32)
     parser.add_argument('--x_range', type=tuple, default=(-22, 22))
@@ -336,11 +336,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # 1. plot the feasibility data distribution
-    if args.mode == 'plot_data':
+    if args.mode == 'data':
         plot_feasibility_data_distribution(args)
 
     # 2. plot the well-trained feasibility region
-    if args.mode == 'plot_feasibility_region':
+    if args.mode == 'region':
         plot_multi_feasibility_region(args)
 
 

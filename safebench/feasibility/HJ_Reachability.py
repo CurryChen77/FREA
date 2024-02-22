@@ -44,12 +44,12 @@ class HJR:
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], 'min_dis_threshold_' + str(self.min_dis_threshold))
         self.scenario_id = config['scenario_id']
 
-        self.Qh_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
-        self.Qh_target_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain
+        self.Qh_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constraint
+        self.Qh_target_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constraint
         self.Qh_optimizer = optim.Adam(self.Qh_net.parameters(), lr=self.lr, eps=1e-5)  # the corresponding optimizer of Qh
         self.Qh_criterion = nn.MSELoss()
 
-        self.Vh_net = CUDA(CriticPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the V network of constrain
+        self.Vh_net = CUDA(CriticPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the V network of constraint
         self.Vh_optimizer = torch.optim.Adam(self.Vh_net.parameters(), lr=self.lr, eps=1e-5)  # the corresponding optimizer of Vh
 
         # copy parameters of the Qh network to Qh target network
@@ -103,23 +103,38 @@ class HJR:
     #     min_Qs = self.Qh_net(n_state, best_action)
     #     return min_Qs
 
-    @staticmethod
-    def process_infos(infos):
-        ego_obs = [info['ego_obs'] for info in infos]
-        ego_obs = np.stack(ego_obs, axis=0)
-        return ego_obs.reshape(ego_obs.shape[0], -1)
+    # @staticmethod
+    # def process_infos(infos):
+    #     ego_obs = [info['ego_obs'] for info in infos]
+    #     ego_obs = np.stack(ego_obs, axis=0)
+    #     return ego_obs.reshape(ego_obs.shape[0], -1)
+    #
+    # def get_feasibility_value(self, infos):
+    #     state = self.process_infos(infos)
+    #     state = CUDA(torch.FloatTensor(state))
+    #     feasibility_value = self.Vh_net(state)
+    #     return feasibility_value
 
-    def get_feasibility_value(self, infos):
-        state = self.process_infos(infos)
-        state = CUDA(torch.FloatTensor(state))
-        feasibility_value = self.Vh_net(state)
-        return CPU(feasibility_value)
-
-    def get_feasibility_value_from_state(self, state):
+    def get_feasibility_V(self, state):
         state = state.reshape(state.shape[0], -1)
         state = CUDA(torch.FloatTensor(state))
         feasibility_value = self.Vh_net(state)
-        return CPU(feasibility_value)
+        return feasibility_value
+
+    def get_feasibility_Q(self, state, action):
+        state = state.reshape(state.shape[0], -1)
+        state = CUDA(torch.FloatTensor(state))
+        feasibility_Q = self.Qh_target_net(state, action)
+        return feasibility_Q
+
+    def get_feasibility_advantage(self, state, action):
+        state = state.reshape(state.shape[0], -1)
+        state = CUDA(torch.FloatTensor(state))
+        action = CUDA(torch.FloatTensor(action))
+        feasibility_value = self.Vh_net(state)
+        feasibility_Q = self.Qh_target_net(state, action)
+        feasibility_advantage = feasibility_Q - feasibility_value
+        return feasibility_advantage
 
     @staticmethod
     def safe_expectile_loss(diff, expectile=0.8):

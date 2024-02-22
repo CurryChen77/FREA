@@ -1,4 +1,4 @@
-min_dis_threshold: 0.5
+min_dis_threshold: 0.1
 type: "HJR"
 data_path: 'safebench/feasibility/data'
 model_path: 'safebench/feasibility/model_ckpt'

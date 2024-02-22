@@ -120,6 +120,10 @@ class FPPO(BasePolicy):
                     scenario_log_prob[env_id][CBV_id] = CPU(log_prob[i])
         return scenario_action, scenario_log_prob
 
+    def get_feasibility_advantage(self, feasibility_obs, feasibility_action):
+        feasibility_advantage = self.feasibility_policy.get_feasibility_advantage(feasibility_obs, feasibility_action)
+        return feasibility_advantage
+
     def get_advantages_vtrace(self, rewards, undones, values, next_values, unterminated):
         """
             unterminated: if the CBV collide with object, then it is terminated
@@ -155,16 +159,23 @@ class FPPO(BasePolicy):
             rewards = CUDA(torch.FloatTensor(batch['rewards']))
             undones = CUDA(torch.FloatTensor(1-batch['dones']))
             unterminated = CUDA(torch.FloatTensor(1-batch['terminated']))
+            feasibility_actions = CUDA(torch.FloatTensor(batch['feasibility_actions']))
+            feasibility_obs = CUDA(torch.FloatTensor(batch['feasibility_obs']))
             buffer_size = states.shape[0]
 
+            # the values of the reward
             values = self.value(states)
             next_values = self.value(next_states)
-
+            # the advantage of the reward
             advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
             reward_sums = advantages + values
+
+            # the advantage of the feasibility
+            feasibility_advantages = self.get_feasibility_advantage(feasibility_obs, feasibility_actions)
             del rewards, undones, values, next_values
 
             advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
+            feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
 
         # start to train, use gradient descent without batch_size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)

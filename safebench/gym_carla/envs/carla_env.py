@@ -152,7 +152,7 @@ class CarlaEnv(gym.Env):
     def _create_scenario(self, config, env_id):
         self.logger.log(f">> Loading scenario data id: {config.data_id}")
 
-        # create scenario according to different types
+        # create scenarios according to different types
         scenario = RouteScenario(
             world=self.world,
             config=config,
@@ -258,7 +258,7 @@ class CarlaEnv(gym.Env):
         # set controlled bv
         self.CBVs_selection()
 
-        # Get actors polygon list (for visualization)
+        # Get actors' polygon list (for visualization)
         if self.birdeye_render:
             self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]
             self.walker_polygons = [self._get_actor_polygons('walker.*')]
@@ -333,7 +333,7 @@ class CarlaEnv(gym.Env):
                 # Calculate acceleration and steering
                 if not self.auto_ego:
                     if not self.ego_agent_learnable:
-                        # the rule based action
+                        # the rule-based action
                         throttle = ego_action[0]
                         steer = ego_action[1]
                         brake = ego_action[2]
@@ -368,7 +368,7 @@ class CarlaEnv(gym.Env):
         CarlaDataProvider.on_carla_tick()
 
         # route planner
-        # self.waypoints: the waypoints from the waypoints buffer, needed to be followed
+        # self.waypoints: the waypoints from the waypoint buffer, needed to be followed
         self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
