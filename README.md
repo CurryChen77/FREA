@@ -19,7 +19,7 @@
 
 # Launch in another terminal
 python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam --mode eval --use_feasibility --render # use the trained safety network to help evaluation
+network to help evaluation
 ```
 
 ### Remote Users

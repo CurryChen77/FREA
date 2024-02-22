@@ -25,7 +25,6 @@ from safebench.gym_carla.buffer import ReplayBuffer, RolloutBuffer
 
 from safebench.agent import AGENT_POLICY_LIST
 from safebench.scenario import SCENARIO_POLICY_LIST
-from safebench.feasibility import FEASIBILITY_LIST
 from safebench.agent.agent_utils.agent_state_encoder import AgentStateEncoder
 
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -56,8 +55,8 @@ class CarlaRunner:
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.CBV_selection = scenario_config['CBV_selection']
         self.scenario_id = scenario_config['scenario_id']
-        # if train feasibility then definitely need feasibility, else, depending on whether need feasibility for evaluation
-        self.use_feasibility = feasibility_config['use_feasibility']
+        # if train feasibility then definitely need feasibility, else, depending on whether scenario agent need feasibility
+        self.use_feasibility = scenario_config['feasibility']
         self.scenario_policy_type = scenario_config['policy_type']
         self.agent_policy_type = agent_config['policy_type']
 
@@ -74,10 +73,10 @@ class CarlaRunner:
             'auto_ego': scenario_config['auto_ego'],
             'spectator': agent_config['spectator'],  # whether to put spectator on the world
             'viz_route': agent_config['viz_route'],  # whether to visualize the route
-            'ego_agent_learnable': agent_config['learnable'],  # whether the ego agent is learnable method
-            'scenario_agent_learnable': scenario_config['learnable'],  # whether the scenario agent is learnable method
+            'ego_agent_learnable': agent_config['learnable'],  # whether the ego agent is a learnable method
+            'scenario_agent_learnable': scenario_config['learnable'],  # whether the scenario agent is a learnable method
             'agent_obs_type': agent_config['obs_type'],  # default 0 (only 4 dimensions states )
-            'CBV_selection': self.CBV_selection,  # the method using for selection controlled bv
+            'CBV_selection': self.CBV_selection,  # the method using for selection the controlled bv
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'signalized_junction': False,  # whether the junction is controlled by signal
             'warm_up_steps': 4,  # number of ticks after spawning the vehicles
@@ -103,11 +102,6 @@ class CarlaRunner:
         agent_config['scenario_id'] = self.scenario_id
         agent_config['scenario_policy_type'] = scenario_config['policy_type']
 
-        # pass config from agent to scenario
-        scenario_config['agent_policy'] = agent_config['policy_type']
-        scenario_config['agent_obs_type'] = agent_config['obs_type']
-        scenario_config['feasibility'] = 'With_Feasibility' if self.use_feasibility else 'Without_Feasibility'
-
         # pass config from agent, scenario to feasibility
         feasibility_config['agent_policy_type'] = agent_config['policy_type']
         feasibility_config['scenario_policy_type'] = scenario_config['policy_type']
@@ -116,6 +110,13 @@ class CarlaRunner:
         feasibility_config['agent_action_dim'] = agent_config['ego_action_dim']
         feasibility_config['search_radius'] = self.env_params['search_radius']
         feasibility_config['ego_agent_learnable'] = agent_config['learnable']
+
+        # pass config from agent to scenario
+        scenario_config['agent_policy'] = agent_config['policy_type']
+        scenario_config['agent_obs_type'] = agent_config['obs_type']
+        if self.use_feasibility:
+            # if the scenario agent needs feasibility, then pass the config in
+            scenario_config['feasibility_config'] = feasibility_config
 
         CarlaDataProvider.set_ego_desired_speed(self.env_params['desired_speed'])
 
@@ -182,11 +183,9 @@ class CarlaRunner:
 
         self.logger.log('>> ' + '-' * 40)
 
-        # define agent, scenario and safety network policy
+        # define agent policy, scenario policy
         self.agent_policy = AGENT_POLICY_LIST[agent_config['policy_type']](agent_config, logger=self.logger)
         self.scenario_policy = SCENARIO_POLICY_LIST[scenario_config['policy_type']](scenario_config, logger=self.logger)
-        if self.use_feasibility:
-            self.feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=self.logger)
 
         if self.save_video:
             assert self.mode == 'eval', "only allow video saving in eval mode"
@@ -269,11 +268,8 @@ class CarlaRunner:
                 ego_actions = self.agent_policy.get_action(obs, infos, deterministic=False)
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=False)
 
-                # the feasibility value
-                feasibility_value = self.feasibility_policy.get_feasibility_value(infos) if self.use_feasibility else None
-
                 # apply action to env and get obs
-                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy, feasibility_value)
+                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy)
                 # store to the replay buffer
                 buffer.store([ego_actions, scenario_actions, obs, next_obs, rewards, dones], additional_dict=[infos, next_infos])
                 # for transition
@@ -343,11 +339,8 @@ class CarlaRunner:
                 ego_actions = self.agent_policy.get_action(obs, infos, deterministic=True)
                 scenario_actions = self.scenario_policy.get_action(obs, infos, deterministic=True)
 
-                # the feasibility value
-                feasibility_value = self.feasibility_policy.get_feasibility_value(infos) if self.use_feasibility else None
-
                 # apply action to env and get obs
-                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy, feasibility_value)
+                next_obs, next_transition_obs, rewards, dones, next_infos, next_transition_infos = self.env.step(ego_actions, scenario_actions, onpolicy)
 
                 infos = next_transition_infos
                 obs = next_transition_obs
@@ -464,9 +457,6 @@ class CarlaRunner:
                 self.scenario_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('eval')
-                if self.use_feasibility:
-                    self.feasibility_policy.load_model(map_name=self.current_map)
-                    self.feasibility_policy.set_mode('eval')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.eval(data_loader)
@@ -475,9 +465,6 @@ class CarlaRunner:
                 self.scenario_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('train')
                 self.scenario_policy.set_mode('eval')
-                if self.use_feasibility:
-                    self.feasibility_policy.load_model(map_name=self.current_map)
-                    self.feasibility_policy.set_mode('eval')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)
@@ -486,9 +473,6 @@ class CarlaRunner:
                 self.agent_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('train')
-                if self.use_feasibility:
-                    self.feasibility_policy.load_model(map_name=self.current_map)
-                    self.feasibility_policy.set_mode('eval')
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)

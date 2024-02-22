@@ -30,7 +30,6 @@ class VectorWrapper():
         self.frame_skip = scenario_config['frame_skip']  
         self.render = scenario_config['render']
         self.spectator = scenario_config['spectator']
-        self.viz_feasibility = scenario_config['viz_feasibility']
         self.agent_state_encoder = agent_state_encoder
         self.birdeye_render = birdeye_render
         self.mode = env_params['mode']

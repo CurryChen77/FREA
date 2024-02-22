@@ -319,11 +319,10 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_route', type=str, default='safebench/feasibility/data')
-    parser.add_argument('--scenario_map', type=str, default='Scenario9_Town05')
+    parser.add_argument('--scenario_map', '-sm', type=str, default='Scenario9_Town05')
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
-    parser.add_argument('--plot_data', '-data', action='store_true', help='plot offline data distribution')
-    parser.add_argument('--plot_feasibility_region', '-region', action='store_true', help='plot feasibility region')
+    parser.add_argument('--mode', '-m', type=str, default='plot_feasibility_region', choices=['plot_feasibility_region', 'plot_data'])
     parser.add_argument('--actor_num', type=int, default=3)
     parser.add_argument('--spatial_interval', type=int, default=32)
     parser.add_argument('--x_range', type=tuple, default=(-22, 22))
@@ -337,11 +336,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # 1. plot the feasibility data distribution
-    if args.plot_data:
+    if args.mode == 'plot_data':
         plot_feasibility_data_distribution(args)
 
     # 2. plot the well-trained feasibility region
-    if args.plot_feasibility_region:
+    if args.mode == 'plot_feasibility_region':
         plot_multi_feasibility_region(args)
 
 

@@ -41,7 +41,7 @@ class HJR:
         self.expectile = config['expectile']
 
         self.batch_size = config['batch_size']
-        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
+        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], 'min_dis_threshold_' + str(self.min_dis_threshold))
         self.scenario_id = config['scenario_id']
 
         self.Qh_net = CUDA(CriticTwin(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))  # the Q network of constrain

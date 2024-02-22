@@ -354,7 +354,7 @@ class CarlaEnv(gym.Env):
 
     def step_after_tick(self):
         if self.birdeye_render:
-            # Append actors polygon list
+            # Append actors' polygon lists
             vehicle_poly_dict = self._get_actor_polygons('vehicle.*')
             self.vehicle_polygons.append(vehicle_poly_dict)
             while len(self.vehicle_polygons) > self.max_past_step:
@@ -402,7 +402,7 @@ class CarlaEnv(gym.Env):
         # info for scenario agents to take action (scenario obs)
         info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
 
-        # the feasibility need the ego info (without route info) at t step
+        # the feasibility needs the ego info (without route info) at the step "t"
         if self.mode == 'collect_feasibility_data' or self.use_feasibility:
             info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
 

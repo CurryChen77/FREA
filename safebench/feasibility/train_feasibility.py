@@ -43,12 +43,13 @@ if __name__ == '__main__':
     feasibility_config.update(args_dict)
     scenario_name = "all" if feasibility_config['scenario_id'] is None else 'Scenario' + str(feasibility_config['scenario_id'])
     scenario_map_name = scenario_name + '_' + map_name
+    min_dis_threshold = feasibility_config['min_dis_threshold']
 
     # the route of the data need to be processed
     data_file_path = osp.join(args.ROOT_DIR, args.data_route, scenario_map_name, args.data_filename)
 
     # set the logger
-    log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', scenario_map_name)
+    log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + str(min_dis_threshold), scenario_map_name)
     log_exp_name = scenario_map_name
     logger = Logger(log_path, log_exp_name)
 

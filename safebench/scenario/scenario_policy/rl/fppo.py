@@ -20,6 +20,7 @@ import torch.nn.functional as F
 
 from safebench.util.torch_util import CUDA, CPU, hidden_init
 from safebench.scenario.scenario_policy.base_policy import BasePolicy
+from safebench.feasibility import FEASIBILITY_LIST
 from safebench.gym_carla.net import ActorPPO, CriticPPO
 
 
@@ -52,7 +53,10 @@ class FPPO(BasePolicy):
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.CBV_selection)
         self.scenario_id = config['scenario_id']
         self.agent_info = 'Ego_' + config['agent_policy']
-        self.feasibility = config['feasibility']
+
+        # init the feasibility policy
+        feasibility_config = config['feasibility_config']
+        self.feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=logger)
 
         self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr, eps=1e-5)  # trick about eps
@@ -162,7 +166,7 @@ class FPPO(BasePolicy):
 
             advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
 
-        # start to train, use gradient descent without batch size
+        # start to train, use gradient descent without batch_size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
         assert update_times >= 1
 
@@ -209,7 +213,7 @@ class FPPO(BasePolicy):
             'value_optim': self.value_optim.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, self.agent_info, self.feasibility, scenario_name+"_"+map_name)
+        save_dir = os.path.join(self.model_path, self.agent_info, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.fppo.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}', 'yellow')
@@ -218,7 +222,7 @@ class FPPO(BasePolicy):
 
     def load_model(self, map_name, episode=None):
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, self.agent_info, self.feasibility, scenario_name+"_"+map_name)
+        load_dir = os.path.join(self.model_path, self.agent_info, scenario_name+"_"+map_name)
         if episode is None:
             episode = 0
             for _, _, files in os.walk(load_dir):
@@ -240,3 +244,8 @@ class FPPO(BasePolicy):
         else:
             self.logger.log(f'>> No scenario policy {self.name} model found at {filepath}', 'red')
             self.continue_episode = 0
+
+        # loading the feasibility policy model
+        self.feasibility_policy.load_model(map_name=map_name)
+        self.feasibility_policy.set_mode('eval')
+        assert self.feasibility_policy.continue_episode != 0, 'The scenario policy need well-trained feasibility network'

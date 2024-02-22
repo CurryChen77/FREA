@@ -2,6 +2,7 @@ scenario_type_dir: 'safebench/scenario/config/scenario_type'
 scenario_type: 'carla_scenario_9_1x.json'
 policy_type: 'fppo'
 learnable: True
+feasibility: True
 
 route_dir: 'safebench/scenario/scenario_data/route'
 scenario_id: 9  # default null -> save and load an "all" model for all scenarios, 9 -> save and load one model for the "9" scenario

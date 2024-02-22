@@ -59,9 +59,8 @@ class ReplayBuffer:
         if scenario_policy_type == 'offpolicy' and start_episode != 0:
             model_path = os.path.join(scenario_config['ROOT_DIR'], scenario_config['model_path'], scenario_config['CBV_selection'])
             agent_info = 'EgoPolicy_' + scenario_config['agent_policy'] + "-" + scenario_config['agent_obs_type']
-            feasibility = scenario_config['feasibility']
             scenario_name = "all" if scenario_config['scenario_id'] is None else 'Scenario' + str(scenario_config['scenario_id'])
-            load_dir = os.path.join(model_path, agent_info, feasibility, scenario_name + "_" + current_map)
+            load_dir = os.path.join(model_path, agent_info, scenario_name + "_" + current_map)
             self.load_buffer(dir_path=load_dir, filename=f'buffer.{start_episode:04}.pkl')
         else:
             self.reset_buffer()
@@ -262,6 +261,13 @@ class RolloutBuffer:
             self.obs_shape = tuple(scenario_config['scenario_state_shape'])
             self.action_dim = scenario_config['scenario_action_dim']
             self.state_dim = scenario_config['scenario_state_dim']
+            # if the scenario agent needs the feasibility
+            self.use_feasibility = scenario_config['feasibility']
+            if self.use_feasibility:
+                self.feasibility_obs_shape = tuple(feasibility_config['state_shape'])
+                self.feasibility_action_dim = feasibility_config['agent_action_dim']
+                self.feasibility_state_dim = feasibility_config['feasibility_state_dim']
+                self.feasibility_policy_type = feasibility_config['obs_type']
             self.scenario_pos = 0
             self.scenario_full = False
         elif self.mode == 'train_agent':
@@ -303,6 +309,11 @@ class RolloutBuffer:
             self.buffer_rewards = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_terminated = np.zeros((self.buffer_capacity), dtype=np.float32)
+            if self.use_feasibility:
+                self.buffer_feasibility_action = np.zeros((self.buffer_capacity, self.feasibility_action_dim), dtype=np.float32)
+                self.buffer_feasibility_obs = np.zeros((self.buffer_capacity, *self.feasibility_obs_shape), dtype=np.float32)
+                self.buffer_feasibility_next_obs = np.zeros((self.buffer_capacity, *self.feasibility_obs_shape), dtype=np.float32)
+                self.temp_buffer.update({'feasibility_actions': {}, 'feasibility_obs': {}, 'feasibility_next_obs': {}})
         elif self.mode == 'train_agent':
             self.agent_pos = [0] * self.num_scenario
             self.agent_full = [False] * self.num_scenario
@@ -327,12 +338,16 @@ class RolloutBuffer:
             1. remove the meaningless data when CBV is None (scenario obs, next scenario obs, scenario action are all None)
             key: the done came from the CBV view instead of ego view
         """
+        # the processed data for normal scenario training
         processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones, processed_terminated = [], [], [], [], [], [], []
+        # the processed data for feasibility
+        processed_feasibility_actions, processed_feasibility_obs, processed_feasibility_next_obs = [], [], []
+        all_agent_actions = data_list[0]  # agent actions
         all_scenario_actions, all_scenario_log_probs = data_list[1]  # scenario actions are in the datalist[1]
 
         assert len(all_scenario_actions) == len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
         # Traverse all the step data in all scenarios
-        for actions, log_probs, infos, next_infos in zip(all_scenario_actions, all_scenario_log_probs, additional_dict[0], additional_dict[1]):
+        for agent_action, actions, log_probs, infos, next_infos in zip(all_agent_actions, all_scenario_actions, all_scenario_log_probs, additional_dict[0], additional_dict[1]):
             assert len(actions) == len(next_infos['CBVs_obs']) == len(infos['CBVs_obs']) \
                 == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "length of the trajectory should be the same"
             # Traverse all the CBVs in one scenario
@@ -346,6 +361,10 @@ class RolloutBuffer:
                     self.temp_buffer['rewards'][CBV_id] = []
                     self.temp_buffer['dones'][CBV_id] = []
                     self.temp_buffer['terminated'][CBV_id] = []
+                    if self.use_feasibility:
+                        self.temp_buffer['feasibility_actions'][CBV_id] = []
+                        self.temp_buffer['feasibility_obs'][CBV_id] = []
+                        self.temp_buffer['feasibility_next_obs'][CBV_id] = []
 
                 # add one-step trajectory in to the corresponding CBV dict
                 self.temp_buffer['actions'][CBV_id].append(actions[CBV_id])
@@ -353,6 +372,12 @@ class RolloutBuffer:
                 self.temp_buffer['obs'][CBV_id].append(infos['CBVs_obs'][CBV_id])
                 self.temp_buffer['next_obs'][CBV_id].append(next_infos['CBVs_obs'][CBV_id])
                 self.temp_buffer['rewards'][CBV_id].append(next_infos['CBVs_reward'][CBV_id])
+                if self.use_feasibility:
+                    # for all the CBV in the scenario, all the feasibility action, feasibility obs, feasibility next obs should be the same
+                    self.temp_buffer['feasibility_actions'][CBV_id].append(agent_action)
+                    self.temp_buffer['feasibility_obs'][CBV_id].append(infos[self.feasibility_policy_type])
+                    self.temp_buffer['feasibility_next_obs'][CBV_id].append(next_infos[self.feasibility_policy_type])
+
                 if next_infos['CBVs_terminated'][CBV_id] or next_infos['CBVs_truncated'][CBV_id]:
                     self.temp_buffer['dones'][CBV_id].append(True)
                     self.temp_buffer['terminated'][CBV_id].append(next_infos['CBVs_terminated'][CBV_id])
@@ -364,11 +389,16 @@ class RolloutBuffer:
                     processed_rewards.extend(self.temp_buffer['rewards'].pop(CBV_id))
                     processed_dones.extend(self.temp_buffer['dones'].pop(CBV_id))
                     processed_terminated.extend(self.temp_buffer['terminated'].pop(CBV_id))
+                    if self.use_feasibility:
+                        processed_feasibility_actions.extend(self.temp_buffer['feasibility_actions'].pop(CBV_id))
+                        processed_feasibility_obs.extend(self.temp_buffer['feasibility_obs'].pop(CBV_id))
+                        processed_feasibility_next_obs.extend(self.temp_buffer['feasibility_next_obs'].pop(CBV_id))
                 else:
                     self.temp_buffer['dones'][CBV_id].append(False)
                     self.temp_buffer['terminated'][CBV_id].append(False)
 
-        return processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones, processed_terminated
+        return processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones, processed_terminated, \
+            processed_feasibility_actions, processed_feasibility_obs, processed_feasibility_next_obs
 
     def store(self, data_list, additional_dict):
         """
@@ -377,7 +407,8 @@ class RolloutBuffer:
         """
         # store for scenario training
         if self.mode == 'train_scenario':
-            scenario_actions, scenario_log_probs, obs, next_obs, rewards, dones, terminated = self.process_CBV_data(data_list, additional_dict)
+            scenario_actions, scenario_log_probs, obs, next_obs, rewards, dones, terminated,\
+                feasibility_actions, feasibility_obs, feasibility_next_obs = self.process_CBV_data(data_list, additional_dict)
 
             length = len(dones)
             if length > 5:  # remove the too short CBV trajectory
@@ -392,12 +423,16 @@ class RolloutBuffer:
                             self.buffer_rewards[self.scenario_pos] = np.array(rewards[i])  # CBV reward
                             self.buffer_dones[self.scenario_pos] = np.array(dones[i])
                             self.buffer_terminated[self.scenario_pos] = np.array(terminated[i])
+                            if self.use_feasibility:
+                                self.buffer_feasibility_action[self.scenario_pos, :] = np.array(feasibility_actions[i])
+                                self.buffer_feasibility_obs[self.scenario_pos, :] = np.array(feasibility_obs[i])
+                                self.buffer_feasibility_next_obs[self.scenario_pos, :] = np.array(feasibility_next_obs[i])
                             self.scenario_pos += 1
                         else:
                             break
                     self.scenario_full = True
                 else:
-                    # the buffer still can hold  the whole trajectory
+                    # the buffer still can hold the whole trajectory
                     self.buffer_actions[self.scenario_pos:self.scenario_pos+length, :] = np.array(scenario_actions)
                     self.buffer_log_probs[self.scenario_pos:self.scenario_pos+length] = np.array(scenario_log_probs)
                     self.buffer_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(obs)  # CBV_obs
@@ -405,6 +440,10 @@ class RolloutBuffer:
                     self.buffer_rewards[self.scenario_pos:self.scenario_pos+length] = np.array(rewards)  # CBV reward
                     self.buffer_dones[self.scenario_pos:self.scenario_pos+length] = np.array(dones)
                     self.buffer_terminated[self.scenario_pos:self.scenario_pos+length] = np.array(terminated)
+                    if self.use_feasibility:
+                        self.buffer_feasibility_action[self.scenario_pos:self.scenario_pos + length, :] = np.array(feasibility_actions)
+                        self.buffer_feasibility_obs[self.scenario_pos:self.scenario_pos + length, :] = np.array(feasibility_obs)
+                        self.buffer_feasibility_next_obs[self.scenario_pos:self.scenario_pos + length, :] = np.array(feasibility_next_obs)
                     self.scenario_pos += length
 
             # get the buffer length
@@ -458,7 +497,7 @@ class RolloutBuffer:
                 next_obs = next_infos[self.feasibility_obs_type]
 
                 if self.feasibility_ego_agent_learnable:
-                    # if the ego agent is learnable method, need further process to convert the original action to throttle, steer, brake of ego
+                    # if the ego agent is a learnable method, need a further process to convert the original action to throttle, steer, brake of ego
                     action = process_ego_action(action, self.feasibility_acc_range, self.feasibility_steer_range)
 
                 if not self.feasibility_full[scenario_id] and ego_min_dis < self.feasibility_search_radius:
@@ -490,6 +529,12 @@ class RolloutBuffer:
                 'dones': self.buffer_dones[:upper_bound],  # done
                 'terminated': self.buffer_terminated[:upper_bound]  # terminated
             }
+            if self.use_feasibility:
+                batch.update({
+                    'feasibility_actions': self.buffer_feasibility_action[:upper_bound, ...],
+                    'feasibility_obs': self.buffer_feasibility_obs[:upper_bound, ...].reshape((-1, self.feasibility_state_dim)),  # obs
+                    'feasibility_next_obs': self.buffer_feasibility_next_obs[:upper_bound, ...].reshape((-1, self.feasibility_state_dim)),  # next obs
+                })
         elif self.mode == 'train_agent':
             index = 0
             actions = np.zeros((self.buffer_len, self.action_dim), dtype=np.float32)
