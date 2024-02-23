@@ -179,7 +179,7 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     batch_ego_obs[:, 0, 5] = np.ones_like(flatten_x) * ego_speed
 
     # get the corresponding feasibility values
-    feasibility_value = CPU(agent.get_feasibility_V(batch_ego_obs))
+    feasibility_value = CPU(agent.get_feasibility_V(CUDA(torch.FloatTensor(batch_ego_obs))))
     array_value = np.asarray(feasibility_value).reshape(x_grid.shape)
 
     norm = colors.Normalize(vmin=-8, vmax=4)
