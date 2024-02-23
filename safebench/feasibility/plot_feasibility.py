@@ -182,7 +182,7 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     feasibility_value = CPU(agent.get_feasibility_V(batch_ego_obs))
     array_value = np.asarray(feasibility_value).reshape(x_grid.shape)
 
-    norm = colors.Normalize(vmin=-8.5, vmax=4)
+    norm = colors.Normalize(vmin=-8, vmax=4)
 
     ct = ax.contourf(
         x_grid, y_grid, array_value,
@@ -207,9 +207,11 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     for i, Vehicle in enumerate(ego_obs):
         # the x,y in Rectangle in the bottom left corner
         color = 'r' if i == 0 else (0.30, 0.52, 0.74)
+        # the angle of the Rectangle is under right-handed coordinate system, but the yaw angle in carla is left-handed coordinate system
         rectangle = Rectangle((Vehicle[0]-Vehicle[2] / 2, Vehicle[1]-Vehicle[3] / 2), width=Vehicle[2], height=Vehicle[3], angle=-np.degrees(Vehicle[4]), rotation_point='center', fill=True, alpha=0.5, color=color)
         angle_rad = Vehicle[4]
         speed = ego_speed if i == 0 else Vehicle[5]
+        # the angle of the Rectangle is under right-handed coordinate system, but the yaw angle in carla is left-handed coordinate system
         direction = [np.cos(angle_rad) * speed, - np.sin(angle_rad) * speed]
         arrow = Arrow(x=Vehicle[0], y=Vehicle[1], dx=direction[0], dy=direction[1], width=1.5)
         ax.add_patch(rectangle)
@@ -218,7 +220,8 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     arrow_xs = np.linspace(x_range[0] + 8, x_range[1] - 8, 3)
     arrow_ys = np.linspace(y_range[0] + 4, y_range[1] - 4, 2)
     ego_angle_rad = ego_obs[0, 4]
-    arrow_dir = [np.cos(ego_angle_rad) * ego_speed, np.sin(ego_angle_rad) * ego_speed]
+    # the angle of the Rectangle is under right-handed coordinate system, but the yaw angle in carla is left-handed coordinate system
+    arrow_dir = [np.cos(ego_angle_rad) * ego_speed, - np.sin(ego_angle_rad) * ego_speed]
     for arrow_x in arrow_xs:
         for arrow_y in arrow_ys:
             arrow = Arrow(x=arrow_x, y=arrow_y, dx=arrow_dir[0], dy=arrow_dir[1], width=1, color='k', alpha=0.2)
@@ -251,10 +254,10 @@ def plot_multi_feasibility_region(args):
     spatial_interval = args_dict['spatial_interval']
     scenario_map = args_dict['scenario_map']
     map_name = scenario_map.split('_')[-1]
-    min_dis_threshold = feasibility_config['min_dis_threshold']
+    min_dis_threshold = args_dict['min_dis_threshold']
 
     # set the logger
-    log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + str(min_dis_threshold), scenario_map)
+    log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + min_dis_threshold, scenario_map)
     log_exp_name = scenario_map
     logger = Logger(log_path, log_exp_name)
 
@@ -282,15 +285,16 @@ def plot_multi_feasibility_region(args):
     '''
     subplot 1,2,3,4 : plot the feasible region and the learned feasible region for different v and theta
     '''
+    # figure 1, ego at low speed (2m/s), BVs driving straight
     ego_obs1 = generate_ego_obs(ego_speed=4, yaw_angle=(0.0, 0.0), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(3, 3))
     ax1 = plot_feasibility_region(ax1, feasibility_policy, ego_obs1, ego_speed=2, spatial_interval=spatial_interval, actor_num=actor_num)
-
+    # figure 2, ego at high speed (6m/s), BVs driving straight
     ax2 = plot_feasibility_region(ax2, feasibility_policy, ego_obs1, ego_speed=6, spatial_interval=spatial_interval, actor_num=actor_num)
-
+    # figure 3, ego at normal speed (4m/s), BVs driving across
     ego_obs2 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, -3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
     ax3 = plot_feasibility_region(ax3, feasibility_policy, ego_obs2, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
-
-    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, 3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
+    # figure 4, ego at normal speed (4m/s), BVs driving across under different directions
+    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/6, 3.14/6), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
     ax4 = plot_feasibility_region(ax4, feasibility_policy, ego_obs3, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
 
     for ax in [ax1, ax2, ax3, ax4]:
@@ -322,6 +326,7 @@ if __name__ == '__main__':
     parser.add_argument('--scenario_map', '-sm', type=str, default='Scenario9_Town05')
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
+    parser.add_argument('--min_dis_threshold', '-dis', type=str, default='0.1')
     parser.add_argument('--mode', '-m', type=str, default='region', choices=['region', 'data'])
     parser.add_argument('--actor_num', type=int, default=3)
     parser.add_argument('--spatial_interval', type=int, default=64)
@@ -329,7 +334,7 @@ if __name__ == '__main__':
     parser.add_argument('--y_range', type=tuple, default=(-7, 7))
     parser.add_argument('--width', type=float, default=4.9)
     parser.add_argument('--height', type=float, default=2.12)
-    parser.add_argument('--seed', '-s', type=int, default=6)
+    parser.add_argument('--seed', '-s', type=int, default=66)
     parser.add_argument('--threads', type=int, default=4)
     parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
