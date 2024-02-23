@@ -556,7 +556,7 @@ class CarlaEnv(gym.Env):
                 'simple_state': simple_state.astype(np.float32),
             }
         elif self.agent_obs_type == 'ego_obs':
-            # the ego obs for RL training need the route_info
+            # the ego obs for RL training needs the route_info
             obs = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, waypoints=self.waypoints, need_route_info=True)
         elif self.agent_obs_type == 'no_obs':
             obs = None
@@ -633,7 +633,7 @@ class CarlaEnv(gym.Env):
         # _, candidates_id = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, ego_fov=100)
         for CBV_id, CBV in self.CBVs.items():
             if not self.scenario_manager.running:
-                # if the Ego stop or the CBV no longer exists in the CBV candidates, then the CBV is truncated
+                # if the Ego stops or the CBV no longer exists in the CBV candidates, then the CBV is truncated
                 CBVs_truncated[CBV_id] = True
             elif get_distance_across_centers(CBV, self.ego_vehicle) >= self.search_radius:
                 # if the CBV is too far away from the ego vehicle, then no long need the CBV
@@ -660,7 +660,7 @@ class CarlaEnv(gym.Env):
             self.sem_sensor.destroy()
             self.sem_sensor = None
         if self.CBVs_collision_sensor:
-            # remove the collision sensor that have not been destroyed
+            # remove the collision sensor that has not been destroyed
             for sensor in self.CBVs_collision_sensor.values():
                 sensor.stop()
                 sensor.destroy()

@@ -39,6 +39,7 @@ class HJR:
         self.gamma = config['gamma']
         self.tau = config['tau']
         self.expectile = config['expectile']
+        self.M = config['M']
 
         self.batch_size = config['batch_size']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], 'min_dis_threshold_' + str(self.min_dis_threshold))
@@ -173,8 +174,8 @@ class HJR:
             # ego_collide = batch['ego_collide']  # if 1.0 means ego collide elif 0.0 means ego not collide
             # h = torch.where(torch.isclose(ego_collide, torch.tensor(1.0), atol=0.01), 20.0, -1.0)
 
-            # h is -1.0 when Ego is safe, else, h is 10
-            h = torch.where(min_dis < float(self.min_dis_threshold), 10.0, -1)
+            # h is -1.0 when Ego is safe, else, h is M
+            h = torch.where(min_dis < float(self.min_dis_threshold), self.M, -1)
 
             del min_dis
 

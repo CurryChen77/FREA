@@ -207,10 +207,10 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     for i, Vehicle in enumerate(ego_obs):
         # the x,y in Rectangle in the bottom left corner
         color = 'r' if i == 0 else (0.30, 0.52, 0.74)
-        rectangle = Rectangle((Vehicle[0]-Vehicle[2] / 2, Vehicle[1]-Vehicle[3] / 2), width=Vehicle[2], height=Vehicle[3], angle=np.degrees(Vehicle[4]), rotation_point='center', fill=True, alpha=0.5, color=color)
+        rectangle = Rectangle((Vehicle[0]-Vehicle[2] / 2, Vehicle[1]-Vehicle[3] / 2), width=Vehicle[2], height=Vehicle[3], angle=-np.degrees(Vehicle[4]), rotation_point='center', fill=True, alpha=0.5, color=color)
         angle_rad = Vehicle[4]
         speed = ego_speed if i == 0 else Vehicle[5]
-        direction = [np.cos(angle_rad) * speed, np.sin(angle_rad) * speed]
+        direction = [np.cos(angle_rad) * speed, - np.sin(angle_rad) * speed]
         arrow = Arrow(x=Vehicle[0], y=Vehicle[1], dx=direction[0], dy=direction[1], width=1.5)
         ax.add_patch(rectangle)
         ax.add_patch(arrow)
@@ -290,7 +290,7 @@ def plot_multi_feasibility_region(args):
     ego_obs2 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, -3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
     ax3 = plot_feasibility_region(ax3, feasibility_policy, ego_obs2, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
 
-    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(3.14/2, 3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
+    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, 3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
     ax4 = plot_feasibility_region(ax4, feasibility_policy, ego_obs3, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
 
     for ax in [ax1, ax2, ax3, ax4]:
@@ -324,7 +324,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
     parser.add_argument('--mode', '-m', type=str, default='region', choices=['region', 'data'])
     parser.add_argument('--actor_num', type=int, default=3)
-    parser.add_argument('--spatial_interval', type=int, default=32)
+    parser.add_argument('--spatial_interval', type=int, default=64)
     parser.add_argument('--x_range', type=tuple, default=(-22, 22))
     parser.add_argument('--y_range', type=tuple, default=(-7, 7))
     parser.add_argument('--width', type=float, default=4.9)
