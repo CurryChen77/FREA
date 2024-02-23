@@ -327,7 +327,7 @@ if __name__ == '__main__':
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
     parser.add_argument('--min_dis_threshold', '-dis', type=str, default='0.1')
-    parser.add_argument('--mode', '-m', type=str, default='region', choices=['region', 'data'])
+    parser.add_argument('--mode', type=str, default='region', choices=['region', 'data'])
     parser.add_argument('--actor_num', type=int, default=3)
     parser.add_argument('--spatial_interval', type=int, default=64)
     parser.add_argument('--x_range', type=tuple, default=(-22, 22))

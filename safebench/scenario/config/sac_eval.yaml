@@ -1,5 +1,5 @@
 scenario_type_dir: 'safebench/scenario/config/scenario_type'
-scenario_type: 'carla_scenario_9_1x.json'
+scenario_type: 'carla_scenario_9_Town5-2-1_1x.json'
 policy_type: 'sac'
 learnable: True
 feasibility: False
