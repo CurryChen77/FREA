@@ -170,7 +170,7 @@ class FPPO(BasePolicy):
             # the advantage of the feasibility
             feasibility_Vs = self.feasibility_policy.get_feasibility_V(feasibility_obs)
             feasibility_Qs = self.feasibility_policy.get_feasibility_Q(feasibility_obs, feasibility_actions)
-            feasibility_advantages = feasibility_Qs - feasibility_Vs
+            feasibility_advantages = - (feasibility_Qs - feasibility_Vs)
             # condition
             unsafe_condition = torch.where(feasibility_Vs > 0.0, 1.0, 0.0)
             safe_condition = torch.where(feasibility_Vs <= 0.0, 1.0, 0.0) * torch.where(feasibility_Qs <= 0.0, 1.0, 0.0)
