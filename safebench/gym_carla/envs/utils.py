@@ -71,14 +71,14 @@ def process_ego_action(ego_action, acc_range, steering_range):
     return [throttle, steer, brake]
 
 
-def get_feasibility_Qs_Vs(feasibility_policy, ego_action_obs_pair):
-    ego_obs = CUDA(torch.FloatTensor(ego_action_obs_pair['ego_obs'])).unsqueeze(0)
-    ego_action = CUDA(torch.FloatTensor(ego_action_obs_pair['ego_action'])).unsqueeze(0)
+def get_feasibility_Qs_Vs(feasibility_policy, ego_obs, ego_action):
+    ego_obs = CUDA(torch.FloatTensor(ego_obs)).unsqueeze(0)
+    ego_action = CUDA(torch.FloatTensor(ego_action)).unsqueeze(0)
     Q = feasibility_policy.get_feasibility_Qs(ego_obs, ego_action).squeeze(0)
     V = feasibility_policy.get_feasibility_Vs(ego_obs).squeeze(0)
     return {
-        'feasibility_Q': CPU(Q),
-        'feasibility_V': CPU(V)
+        'feasibility_Q': CPU(Q).item(),
+        'feasibility_V': CPU(V).item()
     }
 
 

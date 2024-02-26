@@ -85,7 +85,7 @@ class CarlaEnv(gym.Env):
 
         # for feasibility
         self.use_feasibility = True if feasibility_policy is not None else False
-        self.ego_action_obs_pair = {} if feasibility_policy is not None else None
+        self.feasibility_dict = {} if feasibility_policy is not None else None
         self.feasibility_policy = feasibility_policy
 
         # for CBV
@@ -347,7 +347,7 @@ class CarlaEnv(gym.Env):
                         act = carla.VehicleControl(throttle=float(ego_action[0]), steer=float(ego_action[1]), brake=float(ego_action[2]))
                     self.ego_vehicle.apply_control(act)  # apply action of the ego vehicle on the next tick
                     if self.use_feasibility:
-                        self.ego_action_obs_pair['ego_action'] = ego_action
+                        self.feasibility_dict['ego_action'] = ego_action
             else:
                 self.logger.log('>> Can not get snapshot!', color='red')
                 raise Exception()
@@ -378,8 +378,14 @@ class CarlaEnv(gym.Env):
         if self.mode == 'collect_feasibility_data' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
+        if self.use_feasibility:
+            extra_status = get_feasibility_Qs_Vs(self.feasibility_policy, self.feasibility_dict['ego_obs'], self.feasibility_dict['ego_action'])
+            self.feasibility_dict.update(extra_status)
+        else:
+            extra_status = {}
+
         # update the running status and check whether terminate or not
-        self.scenario_manager.update_running_status()
+        self.scenario_manager.update_running_status(extra_status)
         self.ego_collide = self.scenario_manager.ego_collision
 
         origin_info = self._get_info(next_info=True)  # info of old CBV
@@ -417,7 +423,7 @@ class CarlaEnv(gym.Env):
                 'route': self.route,  # the global route
             })
             if self.use_feasibility:
-                self.ego_action_obs_pair.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
+                self.feasibility_dict.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
         # when after the tick before selecting a new CBV
         elif next_info:
             # the total reward for the CBV training
@@ -429,9 +435,10 @@ class CarlaEnv(gym.Env):
                 info['ego_collide'] = float(self.ego_collide)
 
             if self.use_feasibility:
-                assert len(self.ego_action_obs_pair) == 2, 'ego action pais should be full to calculate the feasibility Qs and Vs'
-                info.update(get_feasibility_Qs_Vs(self.feasibility_policy, self.ego_action_obs_pair))
-                self.ego_action_obs_pair = {}  # reset the ego action obs pair into empty dict
+                assert len(self.feasibility_dict) == 4, 'ego action pais should contain obs, action, Qs, Vs'
+                info['feasibility_Q'] = self.feasibility_dict['feasibility_Q']
+                info['feasibility_V'] = self.feasibility_dict['feasibility_V']
+                self.feasibility_dict = {}  # reset the ego action obs pair into empty dict
 
             # if CBV collide with other vehicles, then terminate
             info['CBVs_terminated'] = self._get_CBVs_terminated()
@@ -441,7 +448,7 @@ class CarlaEnv(gym.Env):
         # when before the tick
         else:
             if self.use_feasibility:
-                self.ego_action_obs_pair.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
+                self.feasibility_dict.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
 
         return info
 
@@ -702,7 +709,7 @@ class CarlaEnv(gym.Env):
                     remove_ego_CBV_initial_dis(self.ego_vehicle, CBV)
                     # remove the CBV collision sensor
                     self._remove_CBV_sensor(CBV_id)
-                    # remove the truncated CBV from existing CBV list
+                    # remove the truncated CBV from existing CBV lists
                     CBV.set_autopilot(enabled=True)  # set the original CBV to normal bvs
                     self.CBVs_nearby_vehicles.pop(CBV_id)
                     if self.birdeye_render:
@@ -734,7 +741,7 @@ class CarlaEnv(gym.Env):
         self.waypoints = None
         self.ego_collide = False
         self.CBVs_collision = {}
-        self.ego_action_obs_pair = {} if self.use_feasibility else None
+        self.feasibility_dict = {} if self.use_feasibility else None
 
     def clean_up(self):
         # remove temp variables

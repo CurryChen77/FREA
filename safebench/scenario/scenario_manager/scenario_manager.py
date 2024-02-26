@@ -66,8 +66,9 @@ class ScenarioManager(object):
     def stop_scenario(self):
         self.running = False
 
-    def update_running_status(self):
+    def update_running_status(self, extra_status):
         record, ego_stop, ego_collision, ego_truncated = self.route_scenario.get_running_status(self.running_record)
+        record.update(extra_status)  # pass the extra status to the record
         self.running_record.append(record)  # contain every step's record
         if ego_stop:
             self.running = False
