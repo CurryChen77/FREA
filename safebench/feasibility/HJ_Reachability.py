@@ -75,53 +75,12 @@ class HJR:
         for p in self.Vh_optimizer.param_groups:
             p['lr'] = lr_now
 
-    # def find_min_Qh(self, n_state):
-    #     """
-    #         Utilize gradient-free optimization methods to traverse the action space and find the minimum Qh value
-    #     """
-    #     def Qh(acceleration, steering, next_state):
-    #         acceleration = torch.from_numpy(acceleration)
-    #         steering = torch.from_numpy(steering)
-    #         safest_action = CUDA(torch.cat((acceleration, steering), dim=1).type(next_state.dtype))
-    #         Qh_value = self.Qh_net(next_state, safest_action)
-    #         # the object is to min the Qh value of each state (equal to min sum of overall Qh)
-    #         return Qh_value.sum().item()
-    #
-    #     parametrization = ng.p.Instrumentation(
-    #         acceleration=ng.p.Array(shape=(self.batch_size, 1)).set_bounds(-3.0, 3.0),
-    #         steering=ng.p.Array(shape=(self.batch_size, 1)).set_bounds(-0.3, 0.3),
-    #         next_state=n_state
-    #     )
-    #
-    #     optimizer = ng.optimizers.NGOpt(parametrization=parametrization, budget=100)
-    #     recommendation = optimizer.minimize(Qh)
-    #
-    #     acc = recommendation.kwargs['acceleration']
-    #     steer = recommendation.kwargs['steering']
-    #     acc = torch.from_numpy(acc)
-    #     steer = torch.from_numpy(steer)
-    #     best_action = CUDA(torch.cat((acc, steer), dim=1).type(n_state.dtype))
-    #     min_Qs = self.Qh_net(n_state, best_action)
-    #     return min_Qs
-
-    # @staticmethod
-    # def process_infos(infos):
-    #     ego_obs = [info['ego_obs'] for info in infos]
-    #     ego_obs = np.stack(ego_obs, axis=0)
-    #     return ego_obs.reshape(ego_obs.shape[0], -1)
-    #
-    # def get_feasibility_value(self, infos):
-    #     state = self.process_infos(infos)
-    #     state = CUDA(torch.FloatTensor(state))
-    #     feasibility_value = self.Vh_net(state)
-    #     return feasibility_value
-
-    def get_feasibility_V(self, state):
+    def get_feasibility_Vs(self, state):
         state = state.reshape(state.shape[0], -1)
         feasibility_value = self.Vh_net(state)
         return feasibility_value
 
-    def get_feasibility_Q(self, state, action):
+    def get_feasibility_Qs(self, state, action):
         state = state.reshape(state.shape[0], -1)
         feasibility_Q = self.Qh_target_net(state, action)
         return feasibility_Q

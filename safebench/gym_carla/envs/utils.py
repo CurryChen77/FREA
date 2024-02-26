@@ -9,12 +9,15 @@
 
 import carla
 import math
+
+import torch
 from rdp import rdp
 
 import numpy as np
 from distance3d import gjk, colliders
 from safebench.scenario.tools.scenario_utils import compute_box2origin
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
+from safebench.util.torch_util import CUDA, CPU
 
 
 def linear_map(value, original_range, desired_range):
@@ -66,6 +69,17 @@ def process_ego_action(ego_action, acc_range, steering_range):
         brake = 0.0
 
     return [throttle, steer, brake]
+
+
+def get_feasibility_Qs_Vs(feasibility_policy, ego_action_obs_pair):
+    ego_obs = CUDA(torch.FloatTensor(ego_action_obs_pair['ego_obs'])).unsqueeze(0)
+    ego_action = CUDA(torch.FloatTensor(ego_action_obs_pair['ego_action'])).unsqueeze(0)
+    Q = feasibility_policy.get_feasibility_Qs(ego_obs, ego_action).squeeze(0)
+    V = feasibility_policy.get_feasibility_Vs(ego_obs).squeeze(0)
+    return {
+        'feasibility_Q': CPU(Q),
+        'feasibility_V': CPU(V)
+    }
 
 
 def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40, bbox=True):

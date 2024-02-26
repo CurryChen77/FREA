@@ -14,6 +14,7 @@ import os
 import numpy as np
 import carla
 import pygame
+from safebench.feasibility import FEASIBILITY_LIST
 from tqdm import tqdm
 import os.path as osp
 from torch.utils.tensorboard import SummaryWriter
@@ -55,8 +56,8 @@ class CarlaRunner:
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.CBV_selection = scenario_config['CBV_selection']
         self.scenario_id = scenario_config['scenario_id']
-        # if train feasibility then definitely need feasibility, else, depending on whether scenario agent need feasibility
-        self.use_feasibility = scenario_config['feasibility']
+        # if the scenario agent need feasibility or need feasibility for eval
+        self.use_feasibility = scenario_config['feasibility'] or scenario_config['use_feasibility']
         self.scenario_policy_type = scenario_config['policy_type']
         self.agent_policy_type = agent_config['policy_type']
 
@@ -114,9 +115,6 @@ class CarlaRunner:
         # pass config from agent to scenario
         scenario_config['agent_policy'] = agent_config['policy_type']
         scenario_config['agent_obs_type'] = agent_config['obs_type']
-        if self.use_feasibility:
-            # if the scenario agent needs feasibility, then pass the config in
-            scenario_config['feasibility_config'] = feasibility_config
 
         CarlaDataProvider.set_ego_desired_speed(self.env_params['desired_speed'])
 
@@ -183,9 +181,10 @@ class CarlaRunner:
 
         self.logger.log('>> ' + '-' * 40)
 
-        # define agent policy, scenario policy
+        # define agent policy, scenario policy (feasibility policy)
         self.agent_policy = AGENT_POLICY_LIST[agent_config['policy_type']](agent_config, logger=self.logger)
         self.scenario_policy = SCENARIO_POLICY_LIST[scenario_config['policy_type']](scenario_config, logger=self.logger)
+        self.feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=self.logger) if self.use_feasibility else None
 
         if self.save_video:
             assert self.mode == 'eval', "only allow video saving in eval mode"
@@ -249,7 +248,7 @@ class CarlaRunner:
             # sample scenarios in this town (one town could contain multiple scenarios)
             # simulate multiple scenarios in parallel (usually 2 scenarios)
             sampled_scenario_configs, config_lengths = data_loader.sampler()
-            # if config length < num_scenarios, means need to balance to storing placement within buffer
+            # if config length < num_scenarios, needs to balance to storing placement within buffer
             if self.mode == 'train_agent' and self.agent_policy.type == 'onpolicy':
                 buffer.check_scenario_id_for_saving(config_lengths)
             # reset the index counter to create endless loader
@@ -441,7 +440,7 @@ class CarlaRunner:
                 self.world,
                 self.birdeye_render,
                 self.display,
-                self.use_feasibility,
+                self.feasibility_policy,
                 self.agent_state_encoder,
                 self.logger,
             )
@@ -457,6 +456,11 @@ class CarlaRunner:
                 self.scenario_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('eval')
+                if self.use_feasibility:
+                    # loading the feasibility policy model
+                    self.feasibility_policy.load_model(map_name=self.current_map)
+                    self.feasibility_policy.set_mode('eval')
+                    assert self.feasibility_policy.continue_episode != 0, 'The scenario policy need well-trained feasibility network'
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.eval(data_loader)
@@ -473,6 +477,11 @@ class CarlaRunner:
                 self.agent_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')
                 self.scenario_policy.set_mode('train')
+                if self.use_feasibility:
+                    # loading the feasibility policy model
+                    self.feasibility_policy.load_model(map_name=self.current_map)
+                    self.feasibility_policy.set_mode('eval')
+                    assert self.feasibility_policy.continue_episode != 0, 'The scenario policy need well-trained feasibility network'
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()
                 self.train(data_loader, start_episode)

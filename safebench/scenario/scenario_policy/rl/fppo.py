@@ -54,10 +54,6 @@ class FPPO(BasePolicy):
         self.scenario_id = config['scenario_id']
         self.agent_info = 'Ego_' + config['agent_policy']
 
-        # init the feasibility policy
-        feasibility_config = config['feasibility_config']
-        self.feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=logger)
-
         self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr, eps=1e-5)  # trick about eps
         self.value = CUDA(CriticPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
@@ -155,8 +151,8 @@ class FPPO(BasePolicy):
             rewards = CUDA(torch.FloatTensor(batch['rewards']))
             undones = CUDA(torch.FloatTensor(1-batch['dones']))
             unterminated = CUDA(torch.FloatTensor(1-batch['terminated']))
-            feasibility_actions = CUDA(torch.FloatTensor(batch['feasibility_actions']))
-            feasibility_obs = CUDA(torch.FloatTensor(batch['feasibility_obs']))
+            feasibility_Qs = CUDA(torch.FloatTensor(batch['feasibility_Qs']))
+            feasibility_Vs = CUDA(torch.FloatTensor(batch['feasibility_Vs']))
             buffer_size = states.shape[0]
 
             # the values of the reward
@@ -168,8 +164,6 @@ class FPPO(BasePolicy):
             del rewards, undones, values, next_values
 
             # the advantage of the feasibility
-            feasibility_Vs = self.feasibility_policy.get_feasibility_V(feasibility_obs)
-            feasibility_Qs = self.feasibility_policy.get_feasibility_Q(feasibility_obs, feasibility_actions)
             feasibility_advantages = - (feasibility_Qs - feasibility_Vs)
             # condition
             unsafe_condition = torch.where(feasibility_Vs > 0.0, 1.0, 0.0)
@@ -260,8 +254,3 @@ class FPPO(BasePolicy):
         else:
             self.logger.log(f'>> No scenario policy {self.name} model found at {filepath}', 'red')
             self.continue_episode = 0
-
-        # loading the feasibility policy model
-        self.feasibility_policy.load_model(map_name=map_name)
-        self.feasibility_policy.set_mode('eval')
-        assert self.feasibility_policy.continue_episode != 0, 'The scenario policy need well-trained feasibility network'

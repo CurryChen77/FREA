@@ -22,7 +22,7 @@ class VectorWrapper():
         The interface to control a list of environments.
     """
 
-    def __init__(self, env_params, scenario_config, world, birdeye_render, display, use_feasibility, agent_state_encoder, logger):
+    def __init__(self, env_params, scenario_config, world, birdeye_render, display, feasibility_policy, agent_state_encoder, logger):
         self.logger = logger
         self.world = world
         self.num_scenario = scenario_config['num_scenario']  # default 2
@@ -39,7 +39,7 @@ class VectorWrapper():
             # each small scenario corresponds to a carla_env create the ObservationWrapper()
             env = carla_env(
                 env_params, birdeye_render=birdeye_render, display=display,
-                world=world, use_feasibility=use_feasibility,
+                world=world, feasibility_policy=feasibility_policy,
                 agent_state_encoder=agent_state_encoder, logger=logger
             )
             self.env_list.append(env)
@@ -78,7 +78,7 @@ class VectorWrapper():
             obs_list.append(obs)
             info_list.append(info)
 
-        CarlaDataProvider.on_carla_tick()  # tick since each small scenario got several warm up tick
+        CarlaDataProvider.on_carla_tick()  # tick since each small scenario got several warm-up ticks
 
         if self.spectator:
             transform = CarlaDataProvider.get_first_ego_transform()  # from the first ego vehicle view
@@ -100,7 +100,7 @@ class VectorWrapper():
         # return obs
         return self.obs_postprocess(obs_list), info_list
 
-    def step(self, ego_actions, scenario_actions, onpolicy, feasibility_value=None):
+    def step(self, ego_actions, scenario_actions, onpolicy):
         """
             ego_actions: [num_alive_scenario]
             scenario_actions: [num_alive_scenario]
@@ -159,7 +159,7 @@ class VectorWrapper():
                         # the running results contain every data id (one specific scenario) running status at each time step
                         self.running_results[current_env.config.data_id] = current_env.scenario_manager.running_record
                 else:
-                    # if scenario is done, no need to do the transition
+                    # if the scenario is done, no need to do the transition
                     transition_obs_list.append(obs)
                     transition_info_list.append(info[1])
 
@@ -247,7 +247,7 @@ class ObservationWrapper(gym.Wrapper):
         self._env.clean_up()
 
 
-def carla_env(env_params, birdeye_render=None, display=None, world=None, use_feasibility=None, agent_state_encoder=None, logger=None):
+def carla_env(env_params, birdeye_render=None, display=None, world=None, feasibility_policy=None, agent_state_encoder=None, logger=None):
     return ObservationWrapper(
         gym.make(
             'carla-v0', 
@@ -255,7 +255,7 @@ def carla_env(env_params, birdeye_render=None, display=None, world=None, use_fea
             birdeye_render=birdeye_render,
             display=display, 
             world=world,
-            use_feasibility=use_feasibility,
+            feasibility_policy=feasibility_policy,
             agent_state_encoder=agent_state_encoder,
             logger=logger,
         ), 

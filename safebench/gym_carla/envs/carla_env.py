@@ -31,7 +31,7 @@ from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
     get_actor_off_road, get_CBV_bv_reward, linear_map, \
     update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, \
-    set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis, process_ego_action, get_ego_min_dis
+    set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis, process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -44,7 +44,7 @@ class CarlaEnv(gym.Env):
     """
 
     def __init__(self, env_params, birdeye_render=None, display=None, world=None,
-                 use_feasibility=None, agent_state_encoder=None, logger=None):
+                 feasibility_policy=None, agent_state_encoder=None, logger=None):
         assert world is not None, "the world passed into CarlaEnv is None"
 
         self.config = None
@@ -83,8 +83,10 @@ class CarlaEnv(gym.Env):
         self.agent_obs_type = env_params['agent_obs_type']
         self.agent_state_encoder = agent_state_encoder
 
-        # set the safety network's obs type
-        self.use_feasibility = use_feasibility
+        # for feasibility
+        self.use_feasibility = True if feasibility_policy is not None else False
+        self.ego_action_obs_pair = {} if feasibility_policy is not None else None
+        self.feasibility_policy = feasibility_policy
 
         # for CBV
         self.CBVs_select_method = env_params['CBV_selection']
@@ -340,11 +342,12 @@ class CarlaEnv(gym.Env):
                         act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
                     else:
                         # the learnable agent action
-                        throttle, steer, brake = process_ego_action(ego_action, acc_range=self.acc_range, steering_range=self.steering_range)
-
+                        ego_action = process_ego_action(ego_action, acc_range=self.acc_range, steering_range=self.steering_range)
                         # apply ego control
-                        act = carla.VehicleControl(throttle=float(throttle), steer=float(steer), brake=float(brake))
+                        act = carla.VehicleControl(throttle=float(ego_action[0]), steer=float(ego_action[1]), brake=float(ego_action[2]))
                     self.ego_vehicle.apply_control(act)  # apply action of the ego vehicle on the next tick
+                    if self.use_feasibility:
+                        self.ego_action_obs_pair['ego_action'] = ego_action
             else:
                 self.logger.log('>> Can not get snapshot!', color='red')
                 raise Exception()
@@ -403,7 +406,7 @@ class CarlaEnv(gym.Env):
         info.update(self.scenario_manager.route_scenario.update_info())  # add the info of all the actors
 
         # the feasibility needs the ego info (without route info) at the step "t"
-        if self.mode == 'collect_feasibility_data' or self.use_feasibility:
+        if self.mode == 'collect_feasibility_data':
             info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
 
         # when resetting
@@ -413,22 +416,32 @@ class CarlaEnv(gym.Env):
                 'gps_route': self.gps_route,  # the global gps route
                 'route': self.route,  # the global route
             })
-
+            if self.use_feasibility:
+                self.ego_action_obs_pair.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
         # when after the tick before selecting a new CBV
         elif next_info:
             # the total reward for the CBV training
             info['CBVs_reward'] = self._get_scenario_reward()
 
             # the cost or the constraint h should be calculated at state (t+1)
-            if self.mode == 'collect_feasibility_data' or self.use_feasibility:
+            if self.mode == 'collect_feasibility_data':
                 info['ego_min_dis'] = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicles, self.search_radius)
                 info['ego_collide'] = float(self.ego_collide)
+
+            if self.use_feasibility:
+                assert len(self.ego_action_obs_pair) == 2, 'ego action pais should be full to calculate the feasibility Qs and Vs'
+                info.update(get_feasibility_Qs_Vs(self.feasibility_policy, self.ego_action_obs_pair))
+                self.ego_action_obs_pair = {}  # reset the ego action obs pair into empty dict
 
             # if CBV collide with other vehicles, then terminate
             info['CBVs_terminated'] = self._get_CBVs_terminated()
 
             # if Ego stuck, timeout or max step, then truncated
             info['CBVs_truncated'] = self._get_CBVs_truncated()
+        # when before the tick
+        else:
+            if self.use_feasibility:
+                self.ego_action_obs_pair.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
 
         return info
 
@@ -721,6 +734,7 @@ class CarlaEnv(gym.Env):
         self.waypoints = None
         self.ego_collide = False
         self.CBVs_collision = {}
+        self.ego_action_obs_pair = {} if self.use_feasibility else None
 
     def clean_up(self):
         # remove temp variables
