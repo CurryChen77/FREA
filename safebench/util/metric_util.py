@@ -49,7 +49,7 @@ def cal_avg_yaw_velocity(sequence):
     return avg_yaw_velocity
 
 
-def get_route_scores(record_dict, time_out=30):
+def get_route_scores(record_dict, use_feasibility, time_out=30):
     # safety level
     num_collision = 0
     sum_out_of_road_length = 0
@@ -57,11 +57,25 @@ def get_route_scores(record_dict, time_out=30):
         for step in sequence:  # count all the collision event along the trajectory
             if step['collision'][0] == Status.FAILURE:
                 num_collision += 1
+                break  # only count one collision for each small scenario
 
         sum_out_of_road_length += cal_out_of_road_length(sequence)
 
     collision_rate = num_collision / len(record_dict)
     out_of_road_length = sum_out_of_road_length / len(record_dict)
+
+    # feasibility eval
+    unavoidable_rate = 0
+    if use_feasibility:
+        num_unavoidable_collision = 0
+        total_step = 0
+        for data_id, sequence in record_dict.items():  # for each data id (small scenario)
+            total_step += len(sequence)
+            for step in sequence:  # count all the collision event along the trajectory
+                if step['feasibility_V'] >= 0.0:
+                    num_unavoidable_collision += 1
+
+        unavoidable_rate = num_unavoidable_collision / total_step
 
     # task performance level
     total_route_completion = 0
@@ -123,12 +137,17 @@ def get_route_scores(record_dict, time_out=30):
         'incomplete_route': 1 - route_completion,
         'running_time': avg_time_spent,
     }
+    if use_feasibility:
+        scores['unavoidable_rate'] = unavoidable_rate
+        weights['unavoidable_rate'] = 0.2
+        weights['collision_rate'] = 0.2
+        predefined_max_values['unavoidable_rate'] = 1
 
-    all_scores = {key: round(value/predefined_max_values[key], 2) for key, value in scores.items()}
+    all_scores = {key: round(value/predefined_max_values[key], 4) for key, value in scores.items()}
     final_score = 0
     for key, score in all_scores.items():
         final_score += score * weights[key]
-    all_scores['final_score'] = final_score
+    all_scores['final_score'] = round(1 - final_score, 4)  # change from the lower, the better to the higher, the better
 
     return all_scores
 

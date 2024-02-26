@@ -372,7 +372,7 @@ class CarlaRunner:
             # calculate evaluation results
             score_function = get_route_scores
             all_running_results = self.logger.add_eval_results(records=self.env.running_results)  # running results is growing as the evaluation goes
-            all_scores = score_function(all_running_results)  # the current statistical scores from the start to the current evaluation scenario
+            all_scores = score_function(all_running_results, self.use_feasibility)  # the current statistical scores from the start to the current evaluation scenario
             self.logger.add_eval_results(scores=all_scores)
             self.logger.print_eval_results()  # the finial eval results represent the statistical score during the whole process of evaluation
             if len(self.env.running_results) % self.save_freq == 0:
