@@ -378,11 +378,12 @@ class CarlaEnv(gym.Env):
         if self.mode == 'collect_feasibility_data' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
+        extra_status = {}
         if self.use_feasibility:
-            extra_status = get_feasibility_Qs_Vs(self.feasibility_policy, self.feasibility_dict['ego_obs'], self.feasibility_dict['ego_action'])
-            self.feasibility_dict.update(extra_status)
-        else:
-            extra_status = {}
+            feasibility_Q_V = get_feasibility_Qs_Vs(self.feasibility_policy, self.feasibility_dict['ego_obs'], self.feasibility_dict['ego_action'])
+            self.feasibility_dict.update(feasibility_Q_V)
+            extra_status.update(feasibility_Q_V)
+            extra_status['CBVs_id'] = list(self.CBVs.keys())
 
         # update the running status and check whether terminate or not
         self.scenario_manager.update_running_status(extra_status)

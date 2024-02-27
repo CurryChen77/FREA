@@ -7,6 +7,7 @@
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
+from collections import Counter
 
 import joblib
 import math
@@ -53,15 +54,18 @@ def get_route_scores(record_dict, use_feasibility, time_out=30):
     # safety level
     num_collision = 0
     sum_out_of_road_length = 0
+    attacker = Counter()
     for data_id, sequence in record_dict.items():  # for each data id (small scenario)
         for step in sequence:  # count all the collision event along the trajectory
             if step['collision'][0] == Status.FAILURE:
                 num_collision += 1
-                break  # only count one collision for each small scenario
+            if 'CBVs_id' in step.keys():
+                attacker.update(step['CBVs_id'])
 
         sum_out_of_road_length += cal_out_of_road_length(sequence)
-
-    collision_rate = num_collision / len(record_dict)
+    attacker = list(attacker.keys())  # TODO how to make this more efficient
+    collision_actor = len(attacker) if len(attacker) > 0 else len(record_dict)
+    collision_rate = num_collision / collision_actor
     out_of_road_length = sum_out_of_road_length / len(record_dict)
 
     # feasibility eval
