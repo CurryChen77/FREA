@@ -157,11 +157,7 @@ class Logger:
                     hyperparameter configuration with multiple random seeds, you should give them all the same ``exp_name``.)
         """
         self.epoch = 0
-        self.first_row = True
-        self.log_headers = []
-        self.log_current_row = {}
         self.exp_name = exp_name
-        self.log_print_history = []
         self.video_recorder = None
 
         self.output_dir = output_dir or "/tmp/experiments/%i" % int(time.time())
@@ -174,27 +170,6 @@ class Logger:
         
         self.eval_results = {}
         self.eval_records = {}
-        self.training_results = {}
-
-    def create_training_dir(self):
-        result_dir = os.path.join(self.output_dir, 'training_results')
-        os.makedirs(result_dir, exist_ok=True)
-        self.result_file = os.path.join(result_dir, 'results.pkl')
-
-    def add_training_results(self, name=None, value=None):
-        if name is not None:
-            if name not in self.training_results:
-                self.training_results[name] = []
-            self.training_results[name].append(value)
-
-    def save_training_results(self):
-        self.log(f'>> Saving training results to {self.result_file}')
-        joblib.dump(self.training_results, self.result_file)
-
-    def print_training_results(self):
-        self.log("Training results:")
-        for key, value in self.eval_results.items():
-            self.log(f"\t {key: <25}{value}")
 
     def create_eval_dir(self, load_existing_results=True):
         result_dir = os.path.join(self.output_dir, 'eval_results')
@@ -230,23 +205,10 @@ class Logger:
     def log(self, msg, color='green'):
         # print with color
         print(colorize(msg, color, bold=True))
-        # save print message to log file
-        # self.log_print_history.append(msg)
 
     def log_dict(self, dict_msg, color='green'):
         for key, value in dict_msg.items():
             self.log("{}: {}".format(key, value), color)
-
-    # def log_tabular(self, key, val):
-    #     """
-    #         Log a value of some diagnostic.
-    #     """
-    #     if self.first_row:
-    #         self.log_headers.append(key)
-    #     else:
-    #         assert key in self.log_headers, "Trying to introduce a new key %s that you didn't include in the first iteration" % key
-    #     assert key not in self.log_current_row, "You already set %s this iteration. Maybe you forgot to call dump_tabular()" % key
-    #     self.log_current_row[key] = val
 
     def save_config(self, config):
         """
@@ -256,68 +218,8 @@ class Logger:
             config['exp_name'] = self.exp_name
         config_json = convert_json(config)
         output = json.dumps(config_json, separators=(',', ':\t'), indent=4, sort_keys=True)
-        # print(colorize('Saving config:\n', color='cyan', bold=True))
-        # print(output)
         with open(osp.join(self.output_dir, "config.json"), 'w') as out:
             out.write(output)
-
-        with open(osp.join(self.output_dir, "config.yaml"), 'w') as out:
-            yaml.dump(config, out, default_flow_style=False, indent=4, sort_keys=False)
-
-    def save_state(self, state_dict, itr=None):
-        """
-            Saves the state of an experiment.
-
-            Args:
-                state_dict (dict): Dictionary containing essential elements to
-                    describe the current state of training.
-
-                itr: An int, or None. Current iteration of training.
-        """
-        fname = 'vars.pkl' if itr is None else 'vars%d.pkl' % itr
-        try:
-            joblib.dump(state_dict, osp.join(self.output_dir, fname))
-        except:
-            self.log('Warning: could not pickle state_dict.', color='red')
-
-    # def dump_tabular(self, x_axis="Epoch", verbose=True, env=None):
-    #     """
-    #         Write all of the diagnostics from the current iteration.  Writes both to stdout, and to the output file.
-    #         x_axis: "Epoch" or "TotalEnvInteracts"
-    #     """
-    #     data_dict = {}
-    #     self.epoch += 1
-    #     vals = []
-    #     key_lens = [len(key) for key in self.log_headers]
-    #     max_key_len = max(15, max(key_lens))
-    #     keystr = '%' + '%d' % max_key_len
-    #     fmt = "| " + keystr + "s | %15s |"
-    #     n_slashes = 22 + max_key_len
-    #     if verbose:
-    #         print("-" * n_slashes)
-    #         if env is not None:
-    #             print("Env: ", env)
-    #             print("-" * n_slashes)
-    #     for key in self.log_headers:
-    #         val = self.log_current_row.get(key, "")
-    #         valstr = "%8.3g" % val if hasattr(val, "__float__") else val
-    #         if verbose:
-    #             print(fmt % (key, valstr))
-    #         vals.append(val)
-    #
-    #         if key == x_axis:
-    #             self.steps = val
-    #     if verbose:
-    #         print("-" * n_slashes, flush=True)
-    #     if self.output_file is not None:
-    #         if self.first_row:
-    #             self.output_file.write("\t".join(self.log_headers) + "\n")
-    #         self.output_file.write("\t".join(map(str, vals)) + "\n")
-    #         self.output_file.flush()
-    #
-    #     self.log_current_row.clear()
-    #     self.first_row = False
-    #     return data_dict
     
     def init_video_recorder(self):
         self.video_recorder = VideoRecorder(self.output_dir, logger=self)

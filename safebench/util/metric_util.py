@@ -63,7 +63,7 @@ def get_route_scores(record_dict, use_feasibility, time_out=30):
                 attacker.update(step['CBVs_id'])
 
         sum_out_of_road_length += cal_out_of_road_length(sequence)
-    attacker = list(attacker.keys())  # TODO how to make this more efficient
+    attacker = list(attacker.keys())
     collision_actor = len(attacker) if len(attacker) > 0 else len(record_dict)
     collision_rate = num_collision / collision_actor
     out_of_road_length = sum_out_of_road_length / len(record_dict)
