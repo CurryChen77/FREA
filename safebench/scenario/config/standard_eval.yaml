@@ -5,6 +5,7 @@ learnable: False
 feasibility: False
 
 route_dir: 'safebench/scenario/scenario_data/route'
+Town_ids: [5, 2, 1]
 scenario_id: 9
 route_id: null
 

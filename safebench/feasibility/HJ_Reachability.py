@@ -130,7 +130,7 @@ class HJR:
             # h = torch.where(torch.isclose(ego_collide, torch.tensor(1.0), atol=0.01), 20.0, -1.0)
 
             # h is -1.0 when Ego is safe, else, h is M
-            h = torch.where(min_dis < float(self.min_dis_threshold), self.M, -1)
+            h = torch.where(min_dis <= float(self.min_dis_threshold), self.M, -1)
 
             del min_dis
 

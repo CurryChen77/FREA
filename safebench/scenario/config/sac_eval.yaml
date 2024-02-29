@@ -5,6 +5,7 @@ learnable: True
 feasibility: False
 
 route_dir: 'safebench/scenario/scenario_data/route'
+Town_ids: [5, 2, 1]
 scenario_id: 9  # default null -> save and load an "all" model for all scenarios, 8 -> save and load one model for the "8" scenario
 route_id: null
 
@@ -17,7 +18,7 @@ scenario_action_dim: 2
 model_path: 'safebench/scenario/scenario_data/model_ckpt/sac'
 model_type: 'cbv'
 train_episode: 2000  # the training episode for each town
-save_freq: 20
+save_freq: 5
 
 buffer_capacity: 10000
 buffer_start_training: 200

@@ -29,9 +29,8 @@ from safebench.gym_carla.envs.misc import (
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    get_actor_off_road, get_CBV_bv_reward, linear_map, \
     update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, \
-    set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis, process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs
+    set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis, process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs, get_BVs_record
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -375,15 +374,16 @@ class CarlaEnv(gym.Env):
         self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
 
         # find ego nearby vehicles
-        if self.mode == 'collect_feasibility_data' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
+        if self.mode == 'collect_feasibility_data' or self.mode == 'eval' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         extra_status = {}
+        # update the BVs record when evaluating
+        extra_status.update(get_BVs_record(self.ego_vehicle, self.CBVs, self.ego_nearby_vehicles)) if self.mode == 'eval' else None
         if self.use_feasibility:
             feasibility_Q_V = get_feasibility_Qs_Vs(self.feasibility_policy, self.feasibility_dict['ego_obs'], self.feasibility_dict['ego_action'])
             self.feasibility_dict.update(feasibility_Q_V)
             extra_status.update(feasibility_Q_V)
-            extra_status['CBVs_id'] = list(self.CBVs.keys())
 
         # update the running status and check whether terminate or not
         self.scenario_manager.update_running_status(extra_status)

@@ -5,6 +5,7 @@ learnable: False
 feasibility: False
 
 route_dir: 'safebench/scenario/scenario_data/route'
+Town_ids: [5, 2, 1]
 scenario_id: 9
 route_id: null
 
@@ -13,6 +14,6 @@ model_path: ''
 standard_action: False
 buffer_capacity: 100
 
-save_freq: 5
+save_freq: 20
 train_episode: 100
 gamma: 0.99

@@ -17,7 +17,6 @@ from enum import Enum
 import shapely
 import carla
 
-from safebench.gym_carla.envs.utils import get_nearby_vehicles, get_min_distance_across_bboxes, calculate_abs_velocity
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.traffic_events import TrafficEvent, TrafficEventType
@@ -28,6 +27,10 @@ class Status(Enum):
     FAILURE = 'FAILURE'
     RUNNING = 'RUNNING'
     INVALID = 'INVALID'
+
+
+def calculate_abs_velocity(velocity):
+    return round(math.sqrt(velocity.x**2 + velocity.y**2), 2)
 
 
 class Criterion:

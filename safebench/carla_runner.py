@@ -42,11 +42,11 @@ class CarlaRunner:
         self.agent_config = agent_config
         self.feasibility_config = feasibility_config
         self.current_map = None
+        self.all_map = ['Town0' + str(Town_id) for Town_id in self.scenario_config['Town_ids']]
         self.birdeye_render = None
         self.display = None
 
         self.seed = scenario_config['seed']
-        self.exp_name = scenario_config['exp_name']
         self.output_dir = scenario_config['output_dir']
         self.mode = scenario_config['mode']
         self.save_video = scenario_config['save_video']
@@ -120,16 +120,13 @@ class CarlaRunner:
 
         # define logger
         logger_kwargs = setup_logger_kwargs(
-            self.exp_name,
             self.output_dir,
             self.seed,
             self.mode,
             agent=agent_config['policy_type'],
-            agent_obs_type=agent_config['obs_type'],
             scenario=scenario_config['policy_type'],
-            feasibility=feasibility_config['type'],
-            scenario_id=self.scenario_id,
             CBV_selection=self.CBV_selection,
+            all_map_name=self.all_map,
         )
         self.logger = Logger(**logger_kwargs)
 
@@ -151,7 +148,7 @@ class CarlaRunner:
         elif self.mode == 'eval':
             self.save_freq = scenario_config['save_freq']
             self.logger.log('>> Evaluation Mode, skip config saving', 'yellow')
-            self.logger.create_eval_dir(load_existing_results=True)
+            self.logger.create_eval_dir(load_existing_results=True, scenario_id=self.scenario_config['scenario_id'])
         else:
             raise NotImplementedError(f"Unsupported mode: {self.mode}.")
 
@@ -280,7 +277,7 @@ class CarlaRunner:
                 if self.mode == 'train_scenario':
                     scenario_reward = np.concatenate([np.array(list(info['CBVs_reward'].values())) for info in next_infos])
                     if scenario_reward.size != 0:
-                        scenario_episode_reward.append(np.mean(scenario_reward))  # the mean reward across CBVs across scenario at this moment
+                        scenario_episode_reward.append(np.mean(scenario_reward))  # the mean reward across CBVs across scenarios at this moment
 
                 # train off-policy agent or scenario
                 if self.mode == 'train_agent' and self.agent_policy.type == 'offpolicy':
@@ -371,13 +368,14 @@ class CarlaRunner:
 
             # calculate evaluation results
             score_function = get_route_scores
-            all_running_results = self.logger.add_eval_results(records=self.env.running_results)  # running results is growing as the evaluation goes
+            all_running_results = self.logger.add_eval_results(map_name=self.current_map, records=self.env.running_results)  # running results is growing as the evaluation goes
             all_scores = score_function(all_running_results, self.use_feasibility)  # the current statistical scores from the start to the current evaluation scenario
-            self.logger.add_eval_results(scores=all_scores)
-            self.logger.print_eval_results()  # the finial eval results represent the statistical score during the whole process of evaluation
+            self.logger.add_eval_results(map_name=self.current_map, scores=all_scores)
+            self.logger.print_eval_results(map_name=self.current_map)  # the finial eval results represent the statistical score during the whole process of evaluation
+            print("len running result", len(self.env.running_results))
             if len(self.env.running_results) % self.save_freq == 0:
-                self.logger.save_eval_results()
-        self.logger.save_eval_results()
+                self.logger.save_eval_results(map_name=self.current_map)
+        self.logger.save_eval_results(map_name=self.current_map)
 
     def collect_feasibility_data(self, data_loader, file_name):
         # general buffer for both agent and scenario
@@ -452,6 +450,7 @@ class CarlaRunner:
 
             # run with different modes
             if self.mode == 'eval':
+                # create the eval dir for each town
                 self.agent_policy.load_model(map_name=self.current_map)
                 self.scenario_policy.load_model(map_name=self.current_map)
                 self.agent_policy.set_mode('eval')

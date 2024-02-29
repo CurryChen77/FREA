@@ -82,8 +82,54 @@ def get_feasibility_Qs_Vs(feasibility_policy, ego_obs, ego_action):
     }
 
 
-def get_ego_min_dis(ego, ego_nearby_vehicles, search_redius=40, bbox=True):
-    ego_min_dis = search_redius
+def get_BVs_record(ego, CBVs, ego_nearby_vehicles):
+    if CBVs:
+        CBVs_id = list(CBVs.keys())
+        CBVs_velocity = {}
+        CBVs_acc_x = {}
+        CBVs_acc_y = {}
+        CBVs_acc_z = {}
+        CBVs_ego_dis = {}
+        for CBV_id, CBV in CBVs.items():
+            CBV_acc = CBV.get_acceleration()
+            CBVs_velocity[CBV_id] = calculate_abs_velocity(CarlaDataProvider.get_velocity(CBV))
+            CBVs_ego_dis[CBV_id] = get_min_distance_across_bboxes(ego, CBV)
+            CBVs_acc_x[CBV_id] = CBV_acc.x
+            CBVs_acc_y[CBV_id] = CBV_acc.y
+            CBVs_acc_z[CBV_id] = CBV_acc.z
+        BVs_record = {
+            'CBVs_id': CBVs_id,
+            'CBVs_velocity': CBVs_velocity,
+            'CBVs_acc_x': CBVs_acc_x,
+            'CBVs_acc_y': CBVs_acc_y,
+            'CBVs_acc_z': CBVs_acc_z,
+            'CBVs_ego_dis': CBVs_ego_dis,
+        }
+    else:
+        BVs_velocity = []
+        BVs_acc_x = []
+        BVs_acc_y = []
+        BVs_acc_z = []
+        BVs_ego_dis = []
+        for vehicle in ego_nearby_vehicles:
+            BVs_velocity.append(calculate_abs_velocity(CarlaDataProvider.get_velocity(vehicle)))
+            vehicle_acc = vehicle.get_acceleration()
+            BVs_acc_x.append(vehicle_acc.x)
+            BVs_acc_y.append(vehicle_acc.y)
+            BVs_acc_z.append(vehicle_acc.z)
+            BVs_ego_dis.append(get_min_distance_across_bboxes(ego, vehicle))
+        BVs_record = {
+            'BVs_velocity': BVs_velocity,
+            'BVs_acc_x': BVs_acc_x,
+            'BVs_acc_y': BVs_acc_y,
+            'BVs_acc_z': BVs_acc_z,
+            'BVs_ego_dis': BVs_ego_dis,
+        }
+    return BVs_record
+
+
+def get_ego_min_dis(ego, ego_nearby_vehicles, search_radius=40, bbox=True):
+    ego_min_dis = search_radius
     if ego_nearby_vehicles:
         for i, vehicle in enumerate(ego_nearby_vehicles):
             if i < 3:  # calculate only the closest three vehicles
@@ -116,6 +162,7 @@ def remove_ego_CBV_initial_dis(ego, CBV):
         the initial distance, when CBV is added in to the CBVs
     """
     CarlaDataProvider.ego_CBV_initial_dis[ego.id].pop(CBV.id)
+
 
 # def get_CBV_stuck(CBV, CBV_nearby_vehicles, ego, ego_nearby_vehicles):
 #     """
@@ -263,7 +310,7 @@ def get_relative_transform(ego_matrix, vehicle_matrix):
     rot = ego_matrix[:3, :3].T
     relative_pos = rot @ relative_pos
 
-    # transform to right-handed system
+    # transform to the right-handed system
     relative_pos[1] = - relative_pos[1]
 
     return relative_pos

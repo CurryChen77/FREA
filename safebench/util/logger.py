@@ -24,42 +24,23 @@ from safebench.util.run_util import VideoRecorder
 # Where experiment outputs are saved by default:
 DEFAULT_DATA_DIR = osp.abspath(osp.dirname(osp.dirname(osp.dirname(__file__))))
 
-# Whether to automatically insert a date and time stamp into the names of
-# save directories:
-FORCE_DATESTAMP = False
 
+def setup_logger_kwargs(output_dir, seed, mode, agent=None, scenario=None, CBV_selection=None, all_map_name=None):
 
-def setup_logger_kwargs(exp_name, output_dir, seed, mode, datestamp=False, agent=None, agent_obs_type=None,
-                        scenario=None, feasibility=None, scenario_id=None, CBV_selection=None):
-    # Datestamp forcing
-    datestamp = datestamp or FORCE_DATESTAMP
-
-    # Make base path
-    ymd_time = time.strftime("%Y-%m-%d_") if datestamp else ''
-    relpath = ''.join([ymd_time, mode])
-    # relpath = ''.join([ymd_time, exp_name])
+    # Make a base path
+    relpath = mode
 
     # specify agent policy and scenario policy in the experiment directory.
-    agent_scenario_safety_net_exp_name = exp_name
-    if agent is not None:
-        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + agent + '(' + agent_obs_type + ')'
-    if scenario is not None:
-        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + scenario + '(' + CBV_selection + ')'
-    if feasibility is not None:
-        agent_scenario_safety_net_exp_name = agent_scenario_safety_net_exp_name + '_' + feasibility
+    exp_name = agent + '_' + scenario + '_' + CBV_selection
 
     # Make a seed-specific subfolder in the experiment directory.
-    if datestamp:
-        hms_time = time.strftime("%Y-%m-%d_%H-%M-%S")
-        subfolder = ''.join([hms_time, '-', agent_scenario_safety_net_exp_name, '_s', str(seed)])
-    else:
-        subfolder = ''.join([agent_scenario_safety_net_exp_name, '_seed_', str(seed)])
+    subfolder = ''.join([exp_name, '_seed_', str(seed)])
     relpath = osp.join(relpath, subfolder)
 
     data_dir = os.path.join(DEFAULT_DATA_DIR, output_dir)
     logger_kwargs = dict(
         output_dir=osp.join(data_dir, relpath),
-        exp_name=exp_name,
+        all_map_name=all_map_name
     )
     return logger_kwargs
 
@@ -141,65 +122,57 @@ class Logger:
         A general-purpose logger.
         Makes it easy to save diagnostics, hyperparameter configurations, the state of a training run, and the trained model.
     """
-    def __init__(self, output_dir=None, output_fname='log.txt', exp_name=None):
+    def __init__(self, output_dir=None, all_map_name=None):
         """
             Initialize a Logger.
 
             Args:
-                output_dir (string): A directory for saving results to. 
-                    If ``None``, defaults to a temp directory of the form ``/tmp/experiments/somerandomnumber``.
-
-                output_fname (string): Name for the tab-separated-value file 
-                    containing metrics logged throughout a training run. Defaults to ``progress.txt``. 
-
-                exp_name (string): Experiment name. If you run multiple training
-                    runs and give them all the same ``exp_name``, the plotter will know to group them. (Use case: if you run the same
-                    hyperparameter configuration with multiple random seeds, you should give them all the same ``exp_name``.)
+                output_dir (string): A directory for saving results to.
         """
-        self.epoch = 0
-        self.exp_name = exp_name
+        self.all_map_name = all_map_name
         self.video_recorder = None
-
-        self.output_dir = output_dir or "/tmp/experiments/%i" % int(time.time())
+        self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
-        # self.output_file = open(osp.join(self.output_dir, output_fname), 'a')
-        # atexit.register(self.output_file.close)
         self.log('>> ' + '-' * 40)
         self.log(">> Logging to %s" % self.output_dir, 'green')
         self.log('>> ' + '-' * 40)
         
-        self.eval_results = {}
-        self.eval_records = {}
+        self.eval_results = {map_name: {} for map_name in self.all_map_name}
+        self.eval_records = {map_name: {} for map_name in self.all_map_name}
+        self.record_file = {}
+        self.result_file = {}
 
-    def create_eval_dir(self, load_existing_results=True):
-        result_dir = os.path.join(self.output_dir, 'eval_results')
-        os.makedirs(result_dir, exist_ok=True)
-        self.result_file = os.path.join(result_dir, 'results.pkl')
-        self.record_file = os.path.join(result_dir, 'records.pkl')
-        if load_existing_results:
-            if os.path.exists(self.record_file):
-                self.log(f'>> Loading existing evaluation records from {self.record_file}')
-                self.eval_records = joblib.load(self.record_file)
-            else:
-                self.log(f'>> Loading existing record fail because no records.pkl is found.')
-                self.eval_records = {}
+    def create_eval_dir(self, load_existing_results, scenario_id):
+        scenario_name = "all" if scenario_id is None else 'Scenario' + str(scenario_id)
+        for map_name in self.all_map_name:
+            result_dir = os.path.join(self.output_dir, scenario_name + "_" + map_name)
+            os.makedirs(result_dir, exist_ok=True)
+            self.result_file[map_name] = os.path.join(result_dir, 'results.pkl')
+            self.record_file[map_name] = os.path.join(result_dir, 'records.pkl')
+            if load_existing_results:
+                if os.path.exists(self.record_file[map_name]):
+                    self.log(f'>> Loading existing evaluation records from {self.record_file[map_name]}', 'yellow')
+                    self.eval_records[map_name] = joblib.load(self.record_file[map_name])
+                else:
+                    self.log(f'>> No records.pkl is found from {self.record_file[map_name]}.', 'red')
+                    self.eval_records[map_name] = {}
 
-    def add_eval_results(self, scores=None, records=None):
+    def add_eval_results(self, map_name, scores=None, records=None):
         if scores is not None:
-            self.eval_results.update(scores)
+            self.eval_results[map_name].update(scores)
         if records is not None:
-            self.eval_records.update(records)
-            return self.eval_records
+            self.eval_records[map_name].update(records)
+            return self.eval_records[map_name]
 
-    def save_eval_results(self):
-        self.log(f'>> Saving evaluation results to {self.result_file}')
-        joblib.dump(self.eval_results, self.result_file)
-        self.log(f'>> Saving evaluation records to {self.record_file}, length: {len(self.eval_records)}')
-        joblib.dump(self.eval_records, self.record_file)
+    def save_eval_results(self, map_name):
+        self.log(f'>> Saving evaluation results to {self.result_file[map_name]}', 'yellow')
+        joblib.dump(self.eval_results[map_name], self.result_file[map_name])
+        self.log(f'>> Saving evaluation records to {self.record_file[map_name]}, length: {len(self.eval_records[map_name])}', 'yellow')
+        joblib.dump(self.eval_records[map_name], self.record_file[map_name])
 
-    def print_eval_results(self):
-        self.log("Evaluation results up to now:")
-        for key, value in self.eval_results.items():
+    def print_eval_results(self, map_name):
+        self.log(f"Evaluation results on {map_name} up to now:")
+        for key, value in self.eval_results[map_name].items():
             self.log(f"\t {key: <25}{value}")
 
     def log(self, msg, color='green'):
@@ -214,8 +187,6 @@ class Logger:
         """
             Log an experiment configuration.
         """
-        if self.exp_name is not None:
-            config['exp_name'] = self.exp_name
         config_json = convert_json(config)
         output = json.dumps(config_json, separators=(',', ':\t'), indent=4, sort_keys=True)
         with open(osp.join(self.output_dir, "config.json"), 'w') as out:
