@@ -82,49 +82,38 @@ def get_feasibility_Qs_Vs(feasibility_policy, ego_obs, ego_action):
     }
 
 
-def get_BVs_record(ego, CBVs, ego_nearby_vehicles):
-    if CBVs:
-        CBVs_id = list(CBVs.keys())
-        CBVs_velocity = {}
-        CBVs_acc_x = {}
-        CBVs_acc_y = {}
-        CBVs_acc_z = {}
-        CBVs_ego_dis = {}
-        for CBV_id, CBV in CBVs.items():
-            CBV_acc = CBV.get_acceleration()
-            CBVs_velocity[CBV_id] = calculate_abs_velocity(CarlaDataProvider.get_velocity(CBV))
-            CBVs_ego_dis[CBV_id] = get_min_distance_across_bboxes(ego, CBV)
-            CBVs_acc_x[CBV_id] = CBV_acc.x
-            CBVs_acc_y[CBV_id] = CBV_acc.y
-            CBVs_acc_z[CBV_id] = CBV_acc.z
-        BVs_record = {
-            'CBVs_id': CBVs_id,
-            'CBVs_velocity': CBVs_velocity,
-            'CBVs_acc_x': CBVs_acc_x,
-            'CBVs_acc_y': CBVs_acc_y,
-            'CBVs_acc_z': CBVs_acc_z,
-            'CBVs_ego_dis': CBVs_ego_dis,
-        }
+def get_BVs_record(ego, CBVs, ego_nearby_vehicles, scenario_agent_learnable):
+    if scenario_agent_learnable:
+        if len(CBVs) > 0:
+            CBVs_id = list(CBVs.keys())
+            CBVs_velocity = {}
+            CBVs_acc = {}
+            CBVs_ego_dis = {}
+            for CBV_id, CBV in CBVs.items():
+                CBVs_velocity[CBV_id] = calculate_abs_velocity(CarlaDataProvider.get_velocity(CBV))
+                CBVs_ego_dis[CBV_id] = get_min_distance_across_bboxes(ego, CBV)
+                CBVs_acc[CBV_id] = calculate_abs_acc(CBV.get_acceleration())
+            BVs_record = {
+                'CBVs_id': CBVs_id,
+                'CBVs_velocity': CBVs_velocity,
+                'CBVs_acc': CBVs_acc,
+                'CBVs_ego_dis': CBVs_ego_dis,
+            }
+        else:
+            BVs_record = {}
     else:
-        BVs_velocity = []
-        BVs_acc_x = []
-        BVs_acc_y = []
-        BVs_acc_z = []
-        BVs_ego_dis = []
-        for vehicle in ego_nearby_vehicles:
-            BVs_velocity.append(calculate_abs_velocity(CarlaDataProvider.get_velocity(vehicle)))
-            vehicle_acc = vehicle.get_acceleration()
-            BVs_acc_x.append(vehicle_acc.x)
-            BVs_acc_y.append(vehicle_acc.y)
-            BVs_acc_z.append(vehicle_acc.z)
-            BVs_ego_dis.append(get_min_distance_across_bboxes(ego, vehicle))
-        BVs_record = {
-            'BVs_velocity': BVs_velocity,
-            'BVs_acc_x': BVs_acc_x,
-            'BVs_acc_y': BVs_acc_y,
-            'BVs_acc_z': BVs_acc_z,
-            'BVs_ego_dis': BVs_ego_dis,
-        }
+        if len(ego_nearby_vehicles) > 0:
+            closest_vehicle = ego_nearby_vehicles[0]
+            BVs_velocity = calculate_abs_velocity(CarlaDataProvider.get_velocity(closest_vehicle))
+            BVs_acc = calculate_abs_acc(closest_vehicle.get_acceleration())
+            BVs_ego_dis = get_min_distance_across_bboxes(ego, closest_vehicle)
+            BVs_record = {
+                'BVs_velocity': BVs_velocity,
+                'BVs_acc': BVs_acc,
+                'BVs_ego_dis': BVs_ego_dis,
+            }
+        else:
+            BVs_record = {}
     return BVs_record
 
 
@@ -468,3 +457,7 @@ def get_distance_across_centers(veh1, veh2):
 
 def calculate_abs_velocity(velocity):
     return round(math.sqrt(velocity.x**2 + velocity.y**2), 2)
+
+
+def calculate_abs_acc(acc):
+    return round(math.sqrt(acc.x**2 + acc.y**2 + acc.z**2), 2)

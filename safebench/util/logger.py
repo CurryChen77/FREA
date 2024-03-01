@@ -34,7 +34,7 @@ def setup_logger_kwargs(output_dir, seed, mode, agent=None, scenario=None, CBV_s
     exp_name = agent + '_' + scenario + '_' + CBV_selection
 
     # Make a seed-specific subfolder in the experiment directory.
-    subfolder = ''.join([exp_name, '_seed_', str(seed)])
+    subfolder = ''.join([exp_name, '_seed', str(seed)])
     relpath = osp.join(relpath, subfolder)
 
     data_dir = os.path.join(DEFAULT_DATA_DIR, output_dir)

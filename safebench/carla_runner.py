@@ -372,7 +372,6 @@ class CarlaRunner:
             all_scores = score_function(all_running_results, self.use_feasibility)  # the current statistical scores from the start to the current evaluation scenario
             self.logger.add_eval_results(map_name=self.current_map, scores=all_scores)
             self.logger.print_eval_results(map_name=self.current_map)  # the finial eval results represent the statistical score during the whole process of evaluation
-            print("len running result", len(self.env.running_results))
             if len(self.env.running_results) % self.save_freq == 0:
                 self.logger.save_eval_results(map_name=self.current_map)
         self.logger.save_eval_results(map_name=self.current_map)

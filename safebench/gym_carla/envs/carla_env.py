@@ -379,7 +379,7 @@ class CarlaEnv(gym.Env):
 
         extra_status = {}
         # update the BVs record when evaluating
-        extra_status.update(get_BVs_record(self.ego_vehicle, self.CBVs, self.ego_nearby_vehicles)) if self.mode == 'eval' else None
+        extra_status.update(get_BVs_record(self.ego_vehicle, self.CBVs, self.ego_nearby_vehicles, self.scenario_agent_learnable)) if self.mode == 'eval' else None
         if self.use_feasibility:
             feasibility_Q_V = get_feasibility_Qs_Vs(self.feasibility_policy, self.feasibility_dict['ego_obs'], self.feasibility_dict['ego_action'])
             self.feasibility_dict.update(feasibility_Q_V)
