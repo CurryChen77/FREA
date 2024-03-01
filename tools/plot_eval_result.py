@@ -8,6 +8,7 @@
 """
 
 import pickle
+import seaborn as sns
 import os.path as osp
 import os
 
@@ -34,24 +35,24 @@ def draw_hist(velocity, acc, ego_dis, title):
     for i in range(num_algorithm):
         for row, map_name in enumerate(velocity[i].keys()):
 
-            axs[row, 0].hist(velocity[i][map_name], bins=50, color=color_list[i], alpha=0.5)
+            sns.kdeplot(velocity[i][map_name], color=color_list[i], ax=axs[row, 0], label=title[i], alpha=0.3, fill=True, linewidth=0.5)
             axs[row, 0].set_title(map_name, fontsize=10)
             axs[row, 0].set_xlabel('Velocity')
             axs[row, 0].set_ylabel('Frequency')
 
-            axs[row, 1].hist(acc[i][map_name], bins=50, color=color_list[i], alpha=0.5)
+            sns.kdeplot(acc[i][map_name], color=color_list[i], ax=axs[row, 1], label=title[i], alpha=0.3, fill=True, linewidth=0.5)
             axs[row, 1].set_title(map_name, fontsize=10)
             axs[row, 1].set_xlabel('Acc')
             axs[row, 1].set_ylabel('Frequency')
 
-            axs[row, 2].hist(ego_dis[i][map_name], bins=50, color=color_list[i], alpha=0.5)
+            sns.kdeplot(ego_dis[i][map_name], color=color_list[i], ax=axs[row, 2], label=title[i], alpha=0.3, fill=True, linewidth=0.5)
             axs[row, 2].set_title(map_name, fontsize=10)
             axs[row, 2].set_xlabel('Ego distance')
             axs[row, 2].set_ylabel('Frequency')
 
     for i in range(num_map):
         for j in range(3):
-            axs[i, j].legend(labels=title, fontsize=8)
+            axs[i, j].legend(fontsize=8, loc='upper right')
 
     plt.tight_layout()
 
@@ -80,7 +81,7 @@ def main(ROOT_DIR, args):
                 scenario_map_title = f'\nScenario_map: {scenario_map}'
                 if osp.isdir(scenario_map_path):
                     files = os.listdir(scenario_map_path)
-                    if args.result and 'results.pkl' in files:
+                    if args.metric and 'results.pkl' in files:
                         results = read_pickle_file(osp.join(scenario_map_path, 'results.pkl'))
                         print('>> ' + '-' * 70)
                         print(algorithm_title + scenario_map_title)
@@ -107,7 +108,7 @@ def main(ROOT_DIR, args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--result', action='store_true')
+    parser.add_argument('--metric', '-m', action='store_true')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.realpath(__file__)))))
     args = parser.parse_args()
 

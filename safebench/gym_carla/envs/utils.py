@@ -460,4 +460,4 @@ def calculate_abs_velocity(velocity):
 
 
 def calculate_abs_acc(acc):
-    return round(math.sqrt(acc.x**2 + acc.y**2 + acc.z**2), 2)
+    return round(math.sqrt(acc.x**2 + acc.y**2), 2)
