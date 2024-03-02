@@ -55,18 +55,27 @@ def get_route_scores(record_dict, use_feasibility, time_out=30):
     num_collision = 0
     sum_out_of_road_length = 0
     attacker = Counter()
+    num_near_vehicle = 0
+    total_step = 0
     for data_id, sequence in record_dict.items():  # for each data id (small scenario)
         for step in sequence:  # count all the collision event along the trajectory
             if step['collision'][0] == Status.FAILURE:
                 num_collision += 1
             if 'CBVs_id' in step.keys():
                 attacker.update(step['CBVs_id'])
+            if step['ego_min_dis'] < 2:
+                num_near_vehicle += 1
+            elif step['ego_min_dis'] < 25:
+                total_step += 1
 
         sum_out_of_road_length += cal_out_of_road_length(sequence)
     attacker = list(attacker.keys())
     collision_actor = len(attacker) if len(attacker) > 0 else len(record_dict)
+
     collision_rate = num_collision / collision_actor
     out_of_road_length = sum_out_of_road_length / len(record_dict)
+    near_miss_rate = 1.0 - (num_collision / num_near_vehicle)
+    near_rate = num_near_vehicle / total_step
 
     # feasibility eval
     unavoidable_rate = 0
@@ -113,6 +122,8 @@ def get_route_scores(record_dict, use_feasibility, time_out=30):
         # safety level
         'collision_rate': 1,
         'out_of_road_length': 10,
+        'near_miss_rate': 1,
+        'near_rate': 1,
 
         # task performance level
         'distance_to_route': 5,
@@ -124,10 +135,12 @@ def get_route_scores(record_dict, use_feasibility, time_out=30):
         # safety level
         'collision_rate': 0.4,
         'out_of_road_length': 0.1,
+        'near_miss_rate': 0.1,
+        'near_rate': 0.1,
 
         # task performance level
         'distance_to_route': 0.1,
-        'incomplete_route': 0.3,
+        'incomplete_route': 0.1,
         'running_time': 0.1,
     }
 
@@ -135,6 +148,8 @@ def get_route_scores(record_dict, use_feasibility, time_out=30):
         # safety level
         'collision_rate': collision_rate,
         'out_of_road_length': out_of_road_length,
+        'near_miss_rate': near_miss_rate,
+        'near_rate': near_rate,
 
         # task performance level
         'distance_to_route': avg_distance_to_route,

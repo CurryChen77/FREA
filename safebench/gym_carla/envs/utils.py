@@ -114,10 +114,11 @@ def get_BVs_record(ego, CBVs, ego_nearby_vehicles, scenario_agent_learnable):
             }
         else:
             BVs_record = {}
+    BVs_record.update({'ego_min_dis': get_ego_min_dis(ego, ego_nearby_vehicles)})
     return BVs_record
 
 
-def get_ego_min_dis(ego, ego_nearby_vehicles, search_radius=40, bbox=True):
+def get_ego_min_dis(ego, ego_nearby_vehicles, search_radius=25, bbox=True):
     ego_min_dis = search_radius
     if ego_nearby_vehicles:
         for i, vehicle in enumerate(ego_nearby_vehicles):
