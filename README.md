@@ -6,7 +6,7 @@
 
 * [Train Agent](#Train-Agent)
 * [Train Scenario](#Train-Scenario)
-* [Train Safety network](#Train-Safety-network)
+* [Collect_feasibility_data](#Collect-feasibility-data)
 * [Visualization](#Visualization)
 
 ## Eval
@@ -18,8 +18,11 @@
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render
-network to help evaluation
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml --mode eval -sp
+
+# Use feasibility to help Eval
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml --mode eval -sp -fe 
+
 ```
 
 ### Remote Users
@@ -62,10 +65,10 @@ ssh -X username@host
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg sac.yaml --scenario_cfg standard_train.yaml --mode train_agent
+python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --mode train_agent
 
 # profile the memory usage
-mprof run python scripts/run.py --agent_cfg sac.yaml --scenario_cfg standard_train.yaml --mode train_agent
+mprof run python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --mode train_agent
 ``````
 
 
@@ -75,36 +78,27 @@ mprof run python scripts/run.py --agent_cfg sac.yaml --scenario_cfg standard_tra
 
 * **expert:** Carla leader board default rule-based agent (ego state)
 * **plant:**  transformer based planning agent, output ego's future waypoints (ego state)
-* **sac:** RL-based agent (from Safebench, default 4 dim simple state)
+* **PPO:** RL-based agent
 
 ### state/observation
 
-For learnable agent (SAC PPO......)
+For learnable agent (PPO......)
 
-* **Safebench default state for learning**
+* **Ego obs**
+  
+  |           vehicle            |  x   |  y   | extent_x | extent_y | yaw  | velocity |
+  | :--------------------------: | :--: | :--: | :------: | :------: | ---- | :------: |
+  | ego state (relative to ego)  |      |      |          |          |      |          |
+  | BV_1 state (relative to ego) |      |      |          |          |      |          |
+  | BV_2 state (relative to ego) |      |      |          |          |      |          |
 
-  1. **lateral dis** from the target point
+### Action
 
-  2. **-delta yaw** from the target point
+2-dim continues action
 
-  3. **ego speed**
-
-  4.  **front got vehicle or not**  
-
-     shape: 4
-
-* **PlanT style encoded state**
-
-  1. cls token after transformer block
-
-     shape: [1, 1, 512]
-
-For Carla Leader-board agent (Expert or PlanT)
-
-* **Ego state for PlanT and Expert**:
-  1. ego position (x, y)
-  2. ego speed (m/s)
-  3. ego yaw (radius)
+* throttle
+* steering
+* brake
 
 ## Train Scenario
 
@@ -115,15 +109,14 @@ For Carla Leader-board agent (Expert or PlanT)
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg sac_train.yaml --mode train_scenario
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
 ```
 
 ### Policy
 
-1. **sac**
-2. **standard (autopilot)**
-3. **ppo**
-4. **td3**
+1. PPO
+2. **FPPO (feasibility guided PPO)**
+3. standard (autopilot)
 
 ### optional
 
@@ -133,19 +126,18 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg sac_train.yaml --
   2. **rule-based** (nearest)
 
 ```bash
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode train_scenario  --CBV_selection 'attention-based'  # different method of selecting controlled bv
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml --mode train_scenario  --CBV_selection 'attention-based'  # different method of selecting controlled bv
 ```
 
 * Input state
 
   **Actor info**
 
-  |           vehicle            |  x   |  y   | yaw  |  Vx  |  Vy  |
-  | :--------------------------: | :--: | :--: | :--: | :--: | :--: |
-  | ego state (relative to CBV)  |      |      |      |      |      |
-  | BV_1 state (relative to CBV) |      |      |      |      |      |
-  | BV_2 state (relative to CBV) |      |      |      |      |      |
-  | BV_3 state (relative to CBV) |      |      |      |      |      |
+  |           vehicle            |  x   |  y   | extent_x | extent_y | yaw  | velocity |
+  | :--------------------------: | :--: | :--: | :------: | :------: | :--: | -------- |
+  | CBV state (relative to CBV)  |      |      |          |          |      |          |
+  | ego state (relative to CBV)  |      |      |          |          |      |          |
+  | BV_1 state (relative to CBV) |      |      |          |          |      |          |
   
   **Tips: if no BV then the corresponding state will set to 0**
   
@@ -157,7 +149,7 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 
   steer ~ [-0.3, 0.3]
 
-## collect feasibility data
+## Collect feasibility data
 
 ### Usage
 
@@ -177,11 +169,17 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mo
 
 [yaml file](safebench/feasibility/config/HJR.yaml)  ```obs_type: "ego_info" (default)```
 
-* **PlanT:** (encoded state) 
-
-* **Ego info:** (ego and surrounding 4 meaningful BVs' 9-dim state) *no route map information* (default)
-
 ## Visualization
+
+### World spectator
+
+```bash
+# Launch CARLA
+./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+
+# Launch in another terminal
+python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval -sp  # Set world spectator on the first scenario's ego
+```
 
 ### Ego route
 
@@ -224,23 +222,16 @@ python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yam
 The evaluation result are the statistical result up to now
 
 * collision rate
+* **unavoidable collision**
+* **near rate**
+* **near miss rate**
 * out of road length
 * distance to route
 * incomplete route
 * running time
-* final score
+* **final score**
 
 ## Tricks
-
-### Traffic light
-
-* Ego vehicle's front traffic
-
-  When the ego vehicle just run out of the junction, find the new closest traffic light, and set the corresponding light state to Green (the first traffic light has already set to Green at initialization)
-
-* CBV front traffic
-
-  When the ego is in the junction, find whether the selected CBV in under the control of Red traffic light, if so, set the affecting traffic light state to Green
 
 ### CBV selection candidate
 
