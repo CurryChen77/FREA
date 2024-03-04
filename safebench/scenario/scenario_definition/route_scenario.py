@@ -177,10 +177,7 @@ class RouteScenario():
         # collision with other objects
         if running_status['collision'][0] == Status.FAILURE:
             ego_collision = True
-            if running_status['collision'][1] is not None and running_status['collision'][1] in self.CBVs.keys():
-                # if collision with CBV then don't stop the scenario
-                self.logger.log(f'>> Ego collide with CBV', color='yellow')
-            else:
+            if running_status['collision'][1] is not None and running_status['collision'][1] not in self.CBVs.keys():
                 ego_stop = True
                 self.logger.log(f'>> Scenario stops due to collision with normal object', color='yellow')
 

@@ -16,7 +16,6 @@ import pandas as pd
 
 import matplotlib
 from matplotlib import pyplot as plt
-from tabulate import tabulate
 
 
 def read_pickle_file(file_path):
@@ -25,39 +24,49 @@ def read_pickle_file(file_path):
     return data
 
 
-def draw_hist(velocity, acc, ego_dis, title):
+def draw_density(velocity, acc, ego_dis, title):
     assert len(velocity) == len(acc) == len(ego_dis) == len(title), 'the input len should be the same'
     matplotlib.rcParams['font.family'] = 'Times New Roman'
     num_algorithm = len(title)
-    num_map = len(velocity[0])
-    color_list = ['darkblue', 'red']
+    color_list = sns.color_palette("coolwarm", num_algorithm)
 
-    fig, axs = plt.subplots(num_map, 3, figsize=(9, 9))
+    fig, axs = plt.subplots(num_algorithm, 3, figsize=(9, 9))
 
     for i in range(num_algorithm):
         for row, map_name in enumerate(velocity[i].keys()):
 
-            sns.kdeplot(velocity[i][map_name], color=color_list[i], ax=axs[row, 0], label=title[i], alpha=0.3, fill=True, linewidth=0.5)
+            sns.kdeplot(velocity[i][map_name], color=color_list[i], ax=axs[row, 0], label=title[i], alpha=0.7, fill=True, linewidth=0.5)
             axs[row, 0].set_title(map_name, fontsize=10)
             axs[row, 0].set_xlabel('Velocity')
             axs[row, 0].set_ylabel('Density')
 
-            sns.kdeplot(acc[i][map_name], color=color_list[i], ax=axs[row, 1], label=title[i], alpha=0.3, fill=True, linewidth=0.5)
+            sns.kdeplot(acc[i][map_name], color=color_list[i], ax=axs[row, 1], label=title[i], alpha=0.7, fill=True, linewidth=0.5)
             axs[row, 1].set_title(map_name, fontsize=10)
+            axs[row, 1].set_xlim(-20, 30)
             axs[row, 1].set_xlabel('Acc')
             axs[row, 1].set_ylabel('Density')
 
-            sns.kdeplot(ego_dis[i][map_name], color=color_list[i], ax=axs[row, 2], label=title[i], alpha=0.3, fill=True, linewidth=0.5)
+            sns.kdeplot(ego_dis[i][map_name], color=color_list[i], ax=axs[row, 2], label=title[i], alpha=0.8, fill=True, linewidth=0.5)
             axs[row, 2].set_title(map_name, fontsize=10)
             axs[row, 2].set_xlabel('Ego distance')
             axs[row, 2].set_ylabel('Density')
 
-    for i in range(num_map):
+    for i in range(num_algorithm):
         for j in range(3):
             axs[i, j].legend(fontsize=8, loc='upper right')
 
     plt.tight_layout()
 
+    plt.show()
+
+
+def draw_metric(all_results):
+    df = pd.DataFrame(all_results) * 100
+    sns.heatmap(df, annot=True, cmap='coolwarm', fmt='.0f', linewidths=.5)
+    plt.xticks(rotation=45, ha='center', fontsize=7)
+    plt.yticks(va='center', fontsize=7)
+    plt.title('Performance Metrics')
+    plt.tight_layout()
     plt.show()
 
 
@@ -95,26 +104,15 @@ def main(ROOT_DIR, args):
                         record = read_pickle_file(osp.join(scenario_map_path, 'records.pkl'))
                         for scenario_data in record.values():
                             for step in scenario_data:
-                                if cbv == 'standard' and 'BVs_velocity' in step.keys():
-                                    velocity[scenario_map].append(step['BVs_velocity'])
-                                    acc[scenario_map].append(step['BVs_acc'])
-                                    ego_dis[scenario_map].append(step['BVs_ego_dis'])
-                                elif 'CBVs_velocity' in step.keys():
-                                    velocity[scenario_map].extend(step['CBVs_velocity'].values())
-                                    acc[scenario_map].extend(step['CBVs_acc'].values())
-                                    ego_dis[scenario_map].extend(step['CBVs_ego_dis'].values())
+                                velocity[scenario_map].extend(step['BVs_velocity'])
+                                acc[scenario_map].extend(step['BVs_acc'])
+                                ego_dis[scenario_map].extend(step['BVs_ego_dis'])
             all_velocity.append(velocity)
             all_acc.append(acc)
             all_ego_dis.append(ego_dis)
     if args.metric:
-        df = pd.DataFrame(all_results)
-        sns.heatmap(df, annot=True, cmap='coolwarm', fmt='.1f', linewidths=.5)
-        plt.xticks(rotation=45, ha='right', fontsize=7)
-        plt.yticks(rotation=45, va='center', fontsize=7)
-        plt.title('Performance Metrics')
-        plt.tight_layout()
-        plt.show()
-    draw_hist(all_velocity, all_acc, all_ego_dis, algorithm_titles)
+        draw_metric(all_results)
+    draw_density(all_velocity, all_acc, all_ego_dis, algorithm_titles)
 
 
 if __name__ == '__main__':

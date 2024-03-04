@@ -18,7 +18,7 @@ for scenario_id in range(9, 9+1):
         if route_id == 17 or route_id == 22:
             pass  # remove the route in Town04
         else:
-            for i in range(1):  # repeating times
+            for i in range(5):  # repeating times
                 item = {
                     "data_id": data_id,
                     "scenario_id": int(scenario_id),
@@ -30,7 +30,7 @@ for scenario_id in range(9, 9+1):
                 data_id += 1
 
 # set the file name path
-json_file_name = "../safebench/scenario/config/scenario_type/carla_scenario_9_Town5-2-1_1x.json"
+json_file_name = "../safebench/scenario/config/scenario_type/carla_scenario_9_Town5-2-1_5x.json"
 
 # open the json file and write in the data
 with open(json_file_name, 'w') as json_file:

@@ -72,10 +72,8 @@ class ScenarioManager(object):
         self.running_record.append(record)  # contain every step's record
         if ego_stop:
             self.running = False
-        if ego_collision:
-            self.ego_collision = True
-        if ego_truncated:
-            self.ego_truncated = True
+        self.ego_collision = True if ego_collision else False
+        self.ego_truncated = True if ego_truncated else False
 
     def get_update(self, timestamp, scenario_action):
         if self._timestamp_last_run < timestamp.elapsed_seconds and self.running:

@@ -82,39 +82,27 @@ def get_feasibility_Qs_Vs(feasibility_policy, ego_obs, ego_action):
     }
 
 
-def get_BVs_record(ego, CBVs, ego_nearby_vehicles, scenario_agent_learnable):
-    if scenario_agent_learnable:
-        if len(CBVs) > 0:
-            CBVs_id = list(CBVs.keys())
-            CBVs_velocity = {}
-            CBVs_acc = {}
-            CBVs_ego_dis = {}
-            for CBV_id, CBV in CBVs.items():
-                CBVs_velocity[CBV_id] = calculate_abs_velocity(CarlaDataProvider.get_velocity(CBV))
-                CBVs_ego_dis[CBV_id] = get_min_distance_across_bboxes(ego, CBV)
-                CBVs_acc[CBV_id] = calculate_abs_acc(CBV.get_acceleration())
-            BVs_record = {
-                'CBVs_id': CBVs_id,
-                'CBVs_velocity': CBVs_velocity,
-                'CBVs_acc': CBVs_acc,
-                'CBVs_ego_dis': CBVs_ego_dis,
-            }
-        else:
-            BVs_record = {}
-    else:
-        if len(ego_nearby_vehicles) > 0:
-            closest_vehicle = ego_nearby_vehicles[0]
-            BVs_velocity = calculate_abs_velocity(CarlaDataProvider.get_velocity(closest_vehicle))
-            BVs_acc = calculate_abs_acc(closest_vehicle.get_acceleration())
-            BVs_ego_dis = get_min_distance_across_bboxes(ego, closest_vehicle)
-            BVs_record = {
-                'BVs_velocity': BVs_velocity,
-                'BVs_acc': BVs_acc,
-                'BVs_ego_dis': BVs_ego_dis,
-            }
-        else:
-            BVs_record = {}
-    BVs_record.update({'ego_min_dis': get_ego_min_dis(ego, ego_nearby_vehicles)})
+def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox=True):
+    BVs_record = {
+        'BVs_velocity': [],
+        'BVs_acc': [],
+        'BVs_ego_dis': [],
+        'ego_min_dis': search_radius,
+        'CBVs_collision': {}
+    }
+    if len(CBVs_collision) > 0:
+        collision = {}
+        for CBV_id, collision_actor in CBVs_collision.items():
+            collision[CBV_id] = True if collision_actor is not None and collision_actor.id == ego.id else False
+        BVs_record['CBVs_collision'] = collision
+    if ego_nearby_vehicles:
+        for i, vehicle in enumerate(ego_nearby_vehicles):
+            if i < 2:
+                BVs_record['BVs_velocity'].append(calculate_abs_velocity(CarlaDataProvider.get_velocity(vehicle)))
+                BVs_record['BVs_acc'].append(calculate_abs_acc(vehicle.get_acceleration()))
+                dis = get_min_distance_across_bboxes(ego, vehicle) if bbox else get_distance_across_centers(ego, vehicle)
+                BVs_record['BVs_ego_dis'].append(dis)
+        BVs_record['ego_min_dis'] = min(BVs_record['BVs_ego_dis'])
     return BVs_record
 
 

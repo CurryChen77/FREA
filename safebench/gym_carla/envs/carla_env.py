@@ -379,7 +379,7 @@ class CarlaEnv(gym.Env):
 
         extra_status = {}
         # update the BVs record when evaluating
-        extra_status.update(get_BVs_record(self.ego_vehicle, self.CBVs, self.ego_nearby_vehicles, self.scenario_agent_learnable)) if self.mode == 'eval' else None
+        extra_status.update(get_BVs_record(self.ego_vehicle, self.CBVs_collision, self.ego_nearby_vehicles, self.search_radius)) if self.mode == 'eval' else None
         if self.use_feasibility:
             feasibility_Q_V = get_feasibility_Qs_Vs(self.feasibility_policy, self.feasibility_dict['ego_obs'], self.feasibility_dict['ego_action'])
             self.feasibility_dict.update(feasibility_Q_V)
@@ -387,7 +387,9 @@ class CarlaEnv(gym.Env):
 
         # update the running status and check whether terminate or not
         self.scenario_manager.update_running_status(extra_status)
-        self.ego_collide = self.scenario_manager.ego_collision
+
+        # update the self.ego_collide status
+        self.get_ego_collision_status()
 
         origin_info = self._get_info(next_info=True)  # info of old CBV
 
@@ -663,6 +665,20 @@ class CarlaEnv(gym.Env):
                 CBVs_truncated[CBV_id] = False
 
         return CBVs_truncated
+
+    def get_ego_collision_status(self):
+        if self.scenario_manager.ego_collision:
+            # from the view of ego vehicle (maybe not correct since ignore too close collision)
+            self.ego_collide = True
+        else:
+            # if the ego collision detector didn't detect the collision, need to use CBV collision detector
+            self.ego_collide = False
+            for collision_actor in self.CBVs_collision.values():
+                if collision_actor is not None and collision_actor.id == self.ego_vehicle.id:
+                    self.ego_collide = True
+                    break
+
+        self.logger.log(f'>> Ego collide', color='yellow') if self.ego_collide else None
 
     def _terminal(self):
         return not self.scenario_manager.running

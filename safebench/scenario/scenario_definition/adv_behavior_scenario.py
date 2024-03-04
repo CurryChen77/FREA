@@ -23,7 +23,7 @@ class AdvBehaviorSingle(BasicScenario):
         by running a red traffic light (while the ego vehicle has green).
     """
 
-    def __init__(self, world, ego_vehicle, env_params, timeout=60):
+    def __init__(self, world, ego_vehicle, env_params, timeout=100):
         super(AdvBehaviorSingle, self).__init__("AdvBehaviorSingle", None, world)
         self.ego_vehicle = ego_vehicle
         self.timeout = timeout
