@@ -426,6 +426,7 @@ class CarlaEnv(gym.Env):
                 'route': self.route,  # the global route
             })
             if self.use_feasibility:
+                # update the ego obs
                 self.feasibility_dict.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
         # when after the tick before selecting a new CBV
         elif next_info:
@@ -451,6 +452,7 @@ class CarlaEnv(gym.Env):
         # when before the tick
         else:
             if self.use_feasibility:
+                # update the ego obs
                 self.feasibility_dict.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, need_route_info=False))
 
         return info
@@ -656,7 +658,7 @@ class CarlaEnv(gym.Env):
         # _, candidates_id = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, ego_fov=100)
         for CBV_id, CBV in self.CBVs.items():
             if not self.scenario_manager.running:
-                # if the Ego stops or the CBV no longer exists in the CBV candidates, then the CBV is truncated
+                # if the Ego stops or, the CBV no longer exists in the CBV candidates, then the CBV is truncated
                 CBVs_truncated[CBV_id] = True
             elif get_distance_across_centers(CBV, self.ego_vehicle) >= self.search_radius:
                 # if the CBV is too far away from the ego vehicle, then no long need the CBV
@@ -678,7 +680,7 @@ class CarlaEnv(gym.Env):
                     self.ego_collide = True
                     break
 
-        self.logger.log(f'>> Ego collide', color='yellow') if self.ego_collide else None
+        self.logger.log(f'>> Ego collide with surrounding vehicle', color='yellow') if self.ego_collide else None
 
     def _terminal(self):
         return not self.scenario_manager.running

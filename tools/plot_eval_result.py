@@ -30,8 +30,8 @@ def draw_density(velocity, acc, ego_dis, title):
     num_algorithm = len(title)
     color_list = sns.color_palette("coolwarm", num_algorithm)
 
-    fig, axs = plt.subplots(num_algorithm, 3, figsize=(9, 9))
-
+    num_scenarios = len(velocity[0].keys())
+    fig, axs = plt.subplots(num_scenarios, 3, figsize=(9, 9))
     for i in range(num_algorithm):
         for row, map_name in enumerate(velocity[i].keys()):
 

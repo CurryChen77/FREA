@@ -70,8 +70,8 @@ class ScenarioManager(object):
         record, ego_stop, ego_collision, ego_truncated = self.route_scenario.get_running_status(self.running_record)
         record.update(extra_status)  # pass the extra status to the record
         self.running_record.append(record)  # contain every step's record
-        if ego_stop:
-            self.running = False
+        # update the status of the scenario manager
+        self.running = False if ego_stop else True
         self.ego_collision = True if ego_collision else False
         self.ego_truncated = True if ego_truncated else False
 

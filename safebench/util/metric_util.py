@@ -157,10 +157,10 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
 
     weights = {
         # safety level
-        'collision_rate': 0.4,
+        'collision_rate': 0.2,
         'out_of_road_length': 0.05,
-        'near_miss_rate': 0.2,
-        'near_rate': 0.2,
+        'near_miss_rate': 0.3,
+        'near_rate': 0.3,
 
         # task performance level
         'distance_to_route': 0.05,
@@ -182,8 +182,9 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
     }
     if use_feasibility:
         scores['unavoidable_rate'] = unavoidable_rate
-        weights['unavoidable_rate'] = - 0.2
-        weights['collision_rate'] = 0.2
+        weights['unavoidable_rate'] = - 0.3
+        weights['collision_rate'] = 0.1
+        weights['near_rate'] = 0.1
         predefined_max_values['unavoidable_rate'] = 1
 
     all_scores = {key: round(value/predefined_max_values[key], 4) for key, value in scores.items()}
