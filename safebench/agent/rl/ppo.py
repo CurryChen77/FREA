@@ -134,7 +134,7 @@ class PPO(BasePolicy):
 
             advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
             reward_sums = advantages + values
-            del rewards, undones, values
+            del rewards, undones, values, unterminated
 
             advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
 

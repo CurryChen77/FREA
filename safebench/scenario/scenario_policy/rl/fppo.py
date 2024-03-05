@@ -161,7 +161,7 @@ class FPPO(BasePolicy):
             # the advantage of the reward
             reward_advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
             reward_sums = reward_advantages + values
-            del rewards, undones, values, next_values
+            del rewards, undones, values, next_values, unterminated
 
             # the advantage of the feasibility
             feasibility_advantages = - (feasibility_Qs - feasibility_Vs)

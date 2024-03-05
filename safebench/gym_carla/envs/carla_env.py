@@ -658,8 +658,9 @@ class CarlaEnv(gym.Env):
         # _, candidates_id = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, ego_fov=100)
         for CBV_id, CBV in self.CBVs.items():
             if not self.scenario_manager.running:
-                # if the Ego stops or, the CBV no longer exists in the CBV candidates, then the CBV is truncated
+                # if the Ego stops or the CBV no longer exists in the CBV candidates, then the CBV is truncated
                 CBVs_truncated[CBV_id] = True
+            # TODO need to find a new way to check whether the CBV is no longer a threat
             elif get_distance_across_centers(CBV, self.ego_vehicle) >= self.search_radius:
                 # if the CBV is too far away from the ego vehicle, then no long need the CBV
                 CBVs_truncated[CBV_id] = True
