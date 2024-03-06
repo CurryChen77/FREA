@@ -81,3 +81,4 @@ class ScenarioManager(object):
             GameTime.on_carla_tick(timestamp)
             # update the scenario instance receiving the scenario action
             self.scenario_instance.update_behavior(self.CBVs, scenario_action)
+            self.route_scenario.activate_background_actors()

@@ -166,6 +166,7 @@ class CarlaEnv(gym.Env):
 
         # init scenario
         self.ego_vehicle = scenario.ego_vehicle
+        self.ego_length = self.ego_vehicle.bounding_box.extent.x * 2
         self.scenario_manager.load_scenario(scenario)  # The scenario manager only controls the RouteScenario
         self.route = self.scenario_manager.route_scenario.route  # the global route
         self.gps_route = self.scenario_manager.route_scenario.gps_route  # the global gps route
@@ -197,7 +198,7 @@ class CarlaEnv(gym.Env):
         # when training the ego agent, don't need to calculate the CBV
         if self.scenario_agent_learnable and len(self.CBVs) < 2 and self.time_step % 2 == 0:
             # select the candidates of CBVs
-            CBV_candidates, _ = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, ego_fov=90)
+            CBV_candidates, _ = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, self.ego_length, ego_fov=90)
             if CBV_candidates:
                 # selecting the CBV
                 # 1.Rule-based
@@ -650,19 +651,21 @@ class CarlaEnv(gym.Env):
         CBVs_terminated = {}
         for CBV_id in self.CBVs.keys():
             # if CBV collide with the other vehicles, then CBV terminated
-            CBVs_terminated[CBV_id] = True if self.CBVs_collision[CBV_id] is not None else False
+            # CBVs_terminated[CBV_id] = True if self.CBVs_collision[CBV_id] is not None else False
+            if self.CBVs_collision[CBV_id]:
+                CBVs_terminated[CBV_id] = True
+
         return CBVs_terminated
 
     def _get_CBVs_truncated(self):
         CBVs_truncated = {}
         for CBV_id, CBV in self.CBVs.items():
             if not self.scenario_manager.running:
-                # if the Ego stops or the CBV no longer exists in the CBV candidates, then the CBV is truncated
+                # if the Ego stops, then the CBV is truncated
                 CBVs_truncated[CBV_id] = True
-            elif not check_interaction(self.ego_vehicle, CBV):
-                # if the CBV is behind the ego and got different direction, the interaction is False
+            elif not check_interaction(self.ego_vehicle, CBV, self.ego_length):
+                # CBV behind ego with a different direction, and got a certain distance away from ego
                 CBVs_truncated[CBV_id] = True
-                print("CBV got no interaction")
             else:
                 CBVs_truncated[CBV_id] = False
 
@@ -680,7 +683,7 @@ class CarlaEnv(gym.Env):
                     self.ego_collide = True
                     break
 
-        self.logger.log(f'>> Ego collide with surrounding vehicle', color='yellow') if self.ego_collide else None
+        self.logger.log(f'>> Ego collide', color='yellow') if self.ego_collide else None
 
     def _terminal(self):
         return not self.scenario_manager.running

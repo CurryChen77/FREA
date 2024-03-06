@@ -59,7 +59,8 @@ class RouteScenario():
 
         # create the route and ego's position (the start point of the route)
         self.route, self.ego_vehicle, self.gps_route = self._update_route_and_ego(timeout=self.timeout)
-        self.background_actors = []
+        self.next_intersection_loc = CarlaDataProvider.get_next_intersection_location(self.route[0][0].location)
+        self.unactivated_actors = []
         self.CBVs = {}
         self.CBVs_nearby_vehicles = {}
         self.criteria = self._create_criteria()
@@ -124,11 +125,9 @@ class RouteScenario():
         return ego_vehicle
 
     def get_location_nearby_spawn_points(self):
-        start_location = self.route[0][0].location
-        middle_location = self.route[len(self.route)//2][0].location
         end_location = self.route[-1][0].location
-        locations_list = [start_location, middle_location, end_location]
-        radius_list = [10, 45, 35]
+        locations_list = [self.next_intersection_loc, end_location]
+        radius_list = [50, 30]
         closest_dis = 5
 
         spawn_points = get_locations_nearby_spawn_points(
@@ -139,11 +138,12 @@ class RouteScenario():
 
     def initialize_actors(self):
         amount, spawn_points = self.get_location_nearby_spawn_points()
+        # don't activate all the actors when initialization
         new_actors = CarlaDataProvider.request_new_batch_actors(
             model='vehicle.*',
             amount=amount,
             spawn_points=spawn_points,
-            autopilot=True, 
+            autopilot=False,
             random_location=False,
             rolename='background'
         )
@@ -151,7 +151,14 @@ class RouteScenario():
             raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
         self.logger.log(f'>> successfully spawning {len(new_actors)} Autopilot vehicles', color='green')
         for _actor in new_actors:
-            self.background_actors.append(_actor)
+            self.unactivated_actors.append(_actor)
+
+    def activate_background_actors(self, activate_threshold=35):
+        ego_location = CarlaDataProvider.get_location(self.ego_vehicle)
+        for actor in self.unactivated_actors:
+            if CarlaDataProvider.get_location(actor).distance(ego_location) < activate_threshold:
+                actor.set_autopilot(True)
+                self.unactivated_actors.remove(actor)
 
     def get_running_status(self, running_record):
         running_status = {
@@ -311,6 +318,6 @@ class RouteScenario():
         self.scenario_instance.clean_up()  # nothing need to clean
 
         # clean background vehicle (the vehicle will be destroyed in CarlaDataProvider)
-        self.background_actors = []
+        self.unactivated_actors = []
 
 

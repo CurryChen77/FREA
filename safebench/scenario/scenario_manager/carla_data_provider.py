@@ -335,6 +335,22 @@ class CarlaDataProvider(object):
             param['light'].set_yellow_time(param['yellow_time'])
 
     @staticmethod
+    def get_next_intersection_location(location):
+        waypoint = CarlaDataProvider.get_map().get_waypoint(location)
+        # Create a list of all waypoints until the next intersection
+        list_of_waypoints = []
+        while waypoint and not waypoint.is_intersection:
+            list_of_waypoints.append(waypoint)
+            waypoint = waypoint.next(2.0)[0]
+        # move one more step ahead in the intersection
+        waypoint = waypoint.next(10.0)[0]
+        list_of_waypoints.append(waypoint)
+        next_intersection_location = list_of_waypoints[-1].transform.location if list_of_waypoints else location
+        # CarlaDataProvider.get_world().debug.draw_point(next_intersection_location + carla.Location(z=2.0), size=0.3, color=carla.Color(0, 0, 255, 0), life_time=-1)
+        return next_intersection_location
+
+
+    @staticmethod
     def get_next_traffic_light(actor, use_cached_location=True, use_transform=False):
         """
             returns the next relevant traffic light for the provided actor

@@ -358,25 +358,27 @@ def get_relative_info(actor, center_yaw, center_matrix):
     return actor_info
 
 
-def check_interaction(ego, CBV, ego_fov=180):
+def check_interaction(ego, CBV, ego_length, ego_fov=180):
     ego_transform = CarlaDataProvider.get_transform(ego)
     ego_forward_vector = ego_transform.rotation.get_forward_vector()
     CBV_transform = CarlaDataProvider.get_transform(CBV)
     CBV_forward_vector = CBV_transform.rotation.get_forward_vector()
     interaction = True
-    if abs(math.degrees(ego_forward_vector.get_vector_angle(CBV_forward_vector))) > 90:
+    # the delta angle between vectors is always positive
+    if math.degrees(ego_forward_vector.get_vector_angle(CBV_forward_vector)) > 90:
         # 1. ego and CBV got different direction
         ego_location = ego_transform.location
         CBV_location = CBV_transform.location
         relative_direction = (CBV_location - ego_location)
         relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))
-        if abs(relative_delta_angle) >= ego_fov / 2:
-            # 2. if the CBV is at the behind of the ego
+        distance = ego_location.distance(CBV_location)
+        if relative_delta_angle >= ego_fov / 2 and distance >= ego_length:
+            # 2. if the CBV is at the behind of the ego, and certain distances away from ego
             interaction = False
     return interaction
 
 
-def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_fov=60):
+def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_length, ego_fov=60):
     '''
         the foundation for the CBV selection, selecting the candidates nearby vehicles based on specific traffic rules
         ego_vehicle: the ego vehicle
@@ -400,7 +402,7 @@ def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_fov=60):
                 vehicle_location = CarlaDataProvider.get_location(vehicle)
                 vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(location=vehicle_location, project_to_road=True)
                 # 1.2 the vehicle is on the same junction as the target waypoint and ego and CBV got interaction
-                if vehicle_waypoint.junction_id == target_waypoint_junction_id and check_interaction(ego_vehicle, vehicle):
+                if vehicle_waypoint.junction_id == target_waypoint_junction_id and check_interaction(ego_vehicle, vehicle, ego_length):
                     candidates_info.append([vehicle, vehicle_id])
                     # # viz
                     # CarlaDataProvider._world.debug.draw_point(
@@ -421,7 +423,7 @@ def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_fov=60):
                     # 2.3 the vehicle is on the same side of the target waypoint
                     if vehicle_waypoint.lane_id * target_waypoint_lane_id > 0 and\
                             vehicle_location.distance(target_location) < search_radius and\
-                            check_interaction(ego_vehicle, vehicle):
+                            check_interaction(ego_vehicle, vehicle, ego_length):
                         candidates_info.append([vehicle, vehicle_id])
                         # # viz
                         # CarlaDataProvider._world.debug.draw_point(
@@ -433,7 +435,7 @@ def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_fov=60):
                         delta_angle = math.degrees(target_forward_vector.get_vector_angle(relative_direction))
                         if abs(delta_angle) < ego_fov / 2 and\
                                 vehicle_location.distance(target_location) < search_radius and\
-                                check_interaction(ego_vehicle, vehicle):
+                                    check_interaction(ego_vehicle, vehicle, ego_length):
                             candidates_info.append([vehicle, vehicle_id])
                             # # viz
                             # CarlaDataProvider._world.debug.draw_point(
