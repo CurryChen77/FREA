@@ -358,9 +358,29 @@ def get_relative_info(actor, center_yaw, center_matrix):
     return actor_info
 
 
+def check_interaction(ego, CBV, ego_fov=180):
+    ego_transform = CarlaDataProvider.get_transform(ego)
+    ego_location = ego_transform.location
+    ego_forward_vector = ego_transform.rotation.get_forward_vector()
+    CBV_transform = CarlaDataProvider.get_transform(CBV)
+    CBV_location = CBV_transform.location
+    CBV_forward_vector = CBV_transform.rotation.get_forward_vector()
+    no_interaction = False
+    if abs(math.degrees(ego_forward_vector.get_vector_angle(CBV_forward_vector))) > 90:
+        # 1. ego and CBV got different direction
+        relative_direction = (CBV_location - ego_location)
+        relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))
+        if abs(relative_delta_angle) >= ego_fov / 2:
+            # 2. if the CBV is at the behind of the ego
+            no_interaction = True
+    return no_interaction
+
+
 def get_CBV_candidates(center_vehicle, target_waypoint, search_radius, ego_fov=60):
     '''
         the foundation for the CBV selection, selecting the candidates nearby vehicles based on specific traffic rules
+        center_vehicle: the ego vehicle
+        target_waypoint: the next target waypoint of the ego vehicle, to forsee on step ahead
     '''
     # info for the target waypoint
     ego_vehicle_id = center_vehicle.id
