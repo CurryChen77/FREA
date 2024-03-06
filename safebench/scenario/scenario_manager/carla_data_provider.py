@@ -381,6 +381,8 @@ class CarlaDataProvider(object):
             if hasattr(traffic_light, 'trigger_volume'):
                 traffic_light.set_state(traffic_light_state)
                 traffic_light.set_green_time(timeout)
+            else:
+                print("got traffic light without trigger volume")
 
     @staticmethod
     def set_ego_vehicle_route(ego, route):
