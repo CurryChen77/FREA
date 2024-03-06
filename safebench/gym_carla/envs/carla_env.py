@@ -655,14 +655,12 @@ class CarlaEnv(gym.Env):
 
     def _get_CBVs_truncated(self):
         CBVs_truncated = {}
-        # _, candidates_id = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, ego_fov=100)
         for CBV_id, CBV in self.CBVs.items():
             if not self.scenario_manager.running:
                 # if the Ego stops or the CBV no longer exists in the CBV candidates, then the CBV is truncated
                 CBVs_truncated[CBV_id] = True
-            elif check_interaction(self.ego_vehicle, CBV):
-            # elif get_distance_across_centers(CBV, self.ego_vehicle) >= self.search_radius:
-                # if the CBV is too far away from the ego vehicle, then no long need the CBV
+            elif not check_interaction(self.ego_vehicle, CBV):
+                # if the CBV is behind the ego and got different direction, the interaction is False
                 CBVs_truncated[CBV_id] = True
                 print("CBV got no interaction")
             else:
