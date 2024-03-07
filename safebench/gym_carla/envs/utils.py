@@ -359,14 +359,14 @@ def get_relative_info(actor, center_yaw, center_matrix):
     return actor_info
 
 
-def check_interaction(ego, CBV, ego_length, ego_fov=180):
+def check_interaction(ego, CBV, ego_length, delta_forward_angle=90, ego_fov=180):
     ego_transform = CarlaDataProvider.get_transform(ego)
     ego_forward_vector = ego_transform.rotation.get_forward_vector()
     CBV_transform = CarlaDataProvider.get_transform(CBV)
     CBV_forward_vector = CBV_transform.rotation.get_forward_vector()
     interaction = True
     # the delta angle between vectors is always positive
-    if math.degrees(ego_forward_vector.get_vector_angle(CBV_forward_vector)) > 90:
+    if math.degrees(ego_forward_vector.get_vector_angle(CBV_forward_vector)) > delta_forward_angle:
         # 1. ego and CBV got different direction
         ego_location = ego_transform.location
         CBV_location = CBV_transform.location
@@ -402,17 +402,18 @@ def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_length):
         # 2. remove the too far away vehicle
         if target_location.distance(vehicle_location) > search_radius:
             key_to_remove.append(vehicle_id)
-            break
+            continue
         # 3. if the target waypoint in the straight lane, needs to remove the opposite direction vehicle
         if not target_waypoint.is_junction:
             vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(location=vehicle_location, project_to_road=True)
             if vehicle_waypoint.lane_id * target_waypoint_lane_id < 0:
                 key_to_remove.append(vehicle_id)
-                break
+                continue
         # 4. remove the back vehicle with no interaction
-        if not check_interaction(ego_vehicle, vehicle, ego_length):
+        if not check_interaction(ego_vehicle, vehicle, ego_length, delta_forward_angle=90, ego_fov=180):
+            # hard condition to check CBV candidates
             key_to_remove.append(vehicle_id)
-            break
+            continue
 
     for key in key_to_remove:
         del candidates[key]

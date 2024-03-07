@@ -660,8 +660,8 @@ class CarlaEnv(gym.Env):
             if not self.scenario_manager.running:
                 # if the Ego stops, then the CBV is truncated
                 CBVs_truncated[CBV_id] = True
-            elif not check_interaction(self.ego_vehicle, CBV, self.ego_length):
-                # CBV behind ego with a different direction, and got a certain distance away from ego
+            elif not check_interaction(self.ego_vehicle, CBV, self.ego_length, delta_forward_angle=120, ego_fov=240):
+                # loose condition to check truncated
                 CBVs_truncated[CBV_id] = True
             else:
                 CBVs_truncated[CBV_id] = False

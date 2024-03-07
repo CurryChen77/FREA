@@ -80,7 +80,7 @@ class CarlaRunner:
             'agent_obs_type': agent_config['obs_type'],  # default 0 (only 4 dimensions states )
             'CBV_selection': self.CBV_selection,  # the method using for selection the controlled bv
             'ROOT_DIR': scenario_config['ROOT_DIR'],
-            'signalized_junction': False,  # whether the junction is controlled by signal
+            'signalized_junction': False,  # whether signal controls the junction
             'warm_up_steps': 4,  # number of ticks after spawning the vehicles
             'disable_lidar': True,  # show bird-eye view lidar or not
             'enable_sem': agent_config['enable_sem'],  # whether to enable the sem visualization
@@ -90,7 +90,7 @@ class CarlaRunner:
             'max_past_step': 1,  # the number of past steps to draw
             'continuous_accel_range': [-3.0, 3.0],  # continuous acceleration range
             'continuous_steer_range': [-0.3, 0.3],  # continuous steering angle range
-            'max_episode_step': 300,  # maximum timesteps per episode
+            'max_episode_step': 300,  # maximum time steps per episode
             'max_waypt': 12,  # maximum number of waypoints
             'lidar_bin': 0.125,  # bin size of lidar sensor (meter)
             'out_lane_thres': 4,  # threshold for out of lane (meter)
