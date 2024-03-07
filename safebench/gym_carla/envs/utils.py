@@ -12,6 +12,7 @@ import math
 
 import torch
 from rdp import rdp
+from copy import deepcopy
 
 import numpy as np
 from distance3d import gjk, colliders
@@ -191,7 +192,7 @@ def get_CBV_bv_reward(CBV, search_radius, CBV_nearby_vehicles, tou=1):
     return min_dis, min_dis_reward
 
 
-def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=0, intensity=0.6, upper_limit=15):
+def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=0, intensity=0.6, upper_limit=18):
     CarlaDataProvider.generate_spawn_points()  # get all the possible spawn points in this map
 
     ego_locations = [ego.get_location() for ego in CarlaDataProvider.egos]
@@ -378,7 +379,7 @@ def check_interaction(ego, CBV, ego_length, ego_fov=180):
     return interaction
 
 
-def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_length, ego_fov=60):
+def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_length):
     '''
         the foundation for the CBV selection, selecting the candidates nearby vehicles based on specific traffic rules
         ego_vehicle: the ego vehicle
@@ -387,64 +388,36 @@ def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_length, 
     # info for the target waypoint
     target_transform = target_waypoint.transform
     target_location = target_transform.location
-    ego_vehicle_id = ego_vehicle.id
-    target_waypoint_junction_id = target_waypoint.junction_id
+    target_waypoint_lane_id = target_waypoint.lane_id
 
     # get all the vehicles on the world use the actors pool in CarlaDataProvider
-    all_vehicles = CarlaDataProvider.get_actors()
-    # store the nearby vehicle information [vehicle, distance]
-    candidates_info = []
-    if target_waypoint.is_junction:
-        # 1. at the junction
-        for vehicle_id, vehicle in all_vehicles.items():
-            # 1.1 except the ego vehicle
-            if vehicle_id != ego_vehicle_id:
-                vehicle_location = CarlaDataProvider.get_location(vehicle)
-                vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(location=vehicle_location, project_to_road=True)
-                # 1.2 the vehicle is on the same junction as the target waypoint and ego and CBV got interaction
-                if vehicle_waypoint.junction_id == target_waypoint_junction_id and check_interaction(ego_vehicle, vehicle, ego_length):
-                    candidates_info.append([vehicle, vehicle_id])
-                    # # viz
-                    # CarlaDataProvider._world.debug.draw_point(
-                    #     vehicle_location + carla.Location(z=4), size=0.1, color=carla.Color(255, 0, 0, 0), life_time=0.11
-                    # )  # red
-    else:
-        # 2. at the straight line
-        target_forward_vector = target_transform.rotation.get_forward_vector()
-        target_waypoint_road_id = target_waypoint.road_id
-        target_waypoint_lane_id = target_waypoint.lane_id
-        for vehicle_id, vehicle in all_vehicles.items():
-            # 2.1 except the center vehicle
-            if vehicle_id != ego_vehicle_id:
-                vehicle_location = CarlaDataProvider.get_location(vehicle)
-                vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(location=vehicle_location, project_to_road=True)
-                # 2.2 the vehicle is on the same road of the target waypoint
-                if vehicle_waypoint.road_id == target_waypoint_road_id:
-                    # 2.3 the vehicle is on the same side of the target waypoint
-                    if vehicle_waypoint.lane_id * target_waypoint_lane_id > 0 and\
-                            vehicle_location.distance(target_location) < search_radius and\
-                            check_interaction(ego_vehicle, vehicle, ego_length):
-                        candidates_info.append([vehicle, vehicle_id])
-                        # # viz
-                        # CarlaDataProvider._world.debug.draw_point(
-                        #     vehicle_location + carla.Location(z=4), size=0.1, color=carla.Color(0, 255, 0, 0), life_time=0.11
-                        # )  # green
-                    else:
-                        # 2.4 the vehicle is on the opposite lane but within target waypoint's Field of View
-                        relative_direction = (vehicle_location - target_location)
-                        delta_angle = math.degrees(target_forward_vector.get_vector_angle(relative_direction))
-                        if abs(delta_angle) < ego_fov / 2 and\
-                                vehicle_location.distance(target_location) < search_radius and\
-                                    check_interaction(ego_vehicle, vehicle, ego_length):
-                            candidates_info.append([vehicle, vehicle_id])
-                            # # viz
-                            # CarlaDataProvider._world.debug.draw_point(
-                            #     vehicle_location + carla.Location(z=4), size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11
-                            # )  # blue
+    all_actors = CarlaDataProvider.get_actors()
+    candidates = {key: value for key, value in all_actors.items()}
+    # 1. remove the ego vehicle
+    candidates.pop(ego_vehicle.id, None)
 
-    candidates, candidates_id = zip(*candidates_info) if candidates_info else ([], [])
+    key_to_remove = []
+    for vehicle_id, vehicle in candidates.items():
+        vehicle_location = CarlaDataProvider.get_location(vehicle)
+        # 2. remove the too far away vehicle
+        if target_location.distance(vehicle_location) > search_radius:
+            key_to_remove.append(vehicle_id)
+            break
+        # 3. if the target waypoint in the straight lane, needs to remove the opposite direction vehicle
+        if not target_waypoint.is_junction:
+            vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(location=vehicle_location, project_to_road=True)
+            if vehicle_waypoint.lane_id * target_waypoint_lane_id < 0:
+                key_to_remove.append(vehicle_id)
+                break
+        # 4. remove the back vehicle with no interaction
+        if not check_interaction(ego_vehicle, vehicle, ego_length):
+            key_to_remove.append(vehicle_id)
+            break
 
-    return candidates, candidates_id
+    for key in key_to_remove:
+        del candidates[key]
+
+    return list(candidates.values())
 
 
 def get_min_distance_across_bboxes(veh1, veh2):

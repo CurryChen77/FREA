@@ -9,6 +9,7 @@
 """
 import time
 import traceback
+from copy import deepcopy
 
 import numpy as np
 import carla
@@ -153,9 +154,10 @@ class RouteScenario():
         for _actor in new_actors:
             self.unactivated_actors.append(_actor)
 
-    def activate_background_actors(self, activate_threshold=35):
+    def activate_background_actors(self, activate_threshold=45):
         ego_location = CarlaDataProvider.get_location(self.ego_vehicle)
-        for actor in self.unactivated_actors:
+        unactivated_actors = list(self.unactivated_actors)  # for safer remove
+        for actor in unactivated_actors:
             if CarlaDataProvider.get_location(actor).distance(ego_location) < activate_threshold:
                 actor.set_autopilot(True)
                 self.unactivated_actors.remove(actor)

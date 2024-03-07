@@ -198,7 +198,7 @@ class CarlaEnv(gym.Env):
         # when training the ego agent, don't need to calculate the CBV
         if self.scenario_agent_learnable and len(self.CBVs) < 2 and self.time_step % 2 == 0:
             # select the candidates of CBVs
-            CBV_candidates, _ = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, self.ego_length, ego_fov=90)
+            CBV_candidates = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, self.ego_length)
             if CBV_candidates:
                 # selecting the CBV
                 # 1.Rule-based
@@ -651,10 +651,7 @@ class CarlaEnv(gym.Env):
         CBVs_terminated = {}
         for CBV_id in self.CBVs.keys():
             # if CBV collide with the other vehicles, then CBV terminated
-            # CBVs_terminated[CBV_id] = True if self.CBVs_collision[CBV_id] is not None else False
-            if self.CBVs_collision[CBV_id]:
-                CBVs_terminated[CBV_id] = True
-
+            CBVs_terminated[CBV_id] = True if self.CBVs_collision[CBV_id] is not None else False
         return CBVs_terminated
 
     def _get_CBVs_truncated(self):
