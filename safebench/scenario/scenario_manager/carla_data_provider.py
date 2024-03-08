@@ -765,8 +765,10 @@ class CarlaDataProvider(object):
         """
             Remove an actor from the pool using its ID
         """
+        # use carla.command.DestroyActor instead of actor.destroy()
+        DestroyActor = carla.command.DestroyActor
         if actor_id in CarlaDataProvider._carla_actor_pool:
-            CarlaDataProvider._carla_actor_pool[actor_id].destroy()
+            CarlaDataProvider._client.apply_batch([DestroyActor(CarlaDataProvider._carla_actor_pool[actor_id])])
             CarlaDataProvider._carla_actor_pool[actor_id] = None
             CarlaDataProvider._carla_actor_pool.pop(actor_id)
         else:
@@ -777,10 +779,21 @@ class CarlaDataProvider(object):
         """
             Remove all actors from the pool that are closer than distance to the provided location
         """
+        DestroyActor = carla.command.DestroyActor
+        batch = []
         for actor_id in CarlaDataProvider._carla_actor_pool.copy():
             if CarlaDataProvider._carla_actor_pool[actor_id].get_location().distance(location) < distance:
-                CarlaDataProvider._carla_actor_pool[actor_id].destroy()
+                batch.append(DestroyActor(CarlaDataProvider._carla_actor_pool[actor_id]))
                 CarlaDataProvider._carla_actor_pool.pop(actor_id)
+
+        if CarlaDataProvider._client:
+            try:
+                CarlaDataProvider._client.apply_batch_sync(batch)
+            except RuntimeError as e:
+                if "time-out" in str(e):
+                    pass
+                else:
+                    raise e
 
         # Remove all keys with None values
         CarlaDataProvider._carla_actor_pool = dict({k: v for k, v in CarlaDataProvider._carla_actor_pool.items() if v})
