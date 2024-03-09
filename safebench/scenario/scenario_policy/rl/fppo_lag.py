@@ -1,133 +1,57 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：ppo.py
+@File    ：fppo_lag
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
-@Date    ：2023/10/4
-@source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
+@Date    ：2024/3/8
 """
-
 import os
 
 import numpy as np
 import torch
+
 import torch.nn as nn
 from fnmatch import fnmatch
 
-from safebench.util.torch_util import CUDA, CPU
-from safebench.scenario.scenario_policy.base_policy import BasePolicy
-from safebench.gym_carla.net import ActorPPO, CriticPPO
+from safebench.util.torch_util import CUDA, CPU, hidden_init
+
+from safebench.gym_carla.Lagrange import Lagrange
+from safebench.scenario.scenario_policy.rl.ppo import PPO
 
 
-class PPO(BasePolicy):
-    name = 'PPO'
+class FPPOLag(PPO):
+    name = 'FPPOLag'
     type = 'onpolicy'
 
     def __init__(self, config, logger):
-        super(PPO, self).__init__(config, logger)
-
-        self.continue_episode = 0
-        self.logger = logger
-        self.gamma = config['gamma']
-        self.policy_lr = config['policy_lr']
-        self.value_lr = config['value_lr']
-        self.train_repeat_times = config['train_repeat_times']
-
-        self.state_dim = config['scenario_state_dim']
-        self.action_dim = config['scenario_action_dim']
-        self.clip_epsilon = config['clip_epsilon']
-        self.batch_size = config['batch_size']
-        self.lambda_gae_adv = config['lambda_gae_adv']
-        self.lambda_entropy = config['lambda_entropy']
-        self.lambda_entropy = CUDA(torch.tensor(self.lambda_entropy, dtype=torch.float32))
-        self.max_train_episode = config['train_episode']
-        self.dims = config['dims']
-
-        self.model_type = config['model_type']
-        self.CBV_selection = config['CBV_selection']
-        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.CBV_selection)
-        self.scenario_id = config['scenario_id']
-        self.agent_info = 'Ego_' + config['agent_policy']
-
-        self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
-        self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr, eps=1e-5)  # trick about eps
-        self.value = CUDA(CriticPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
-        self.value_optim = torch.optim.Adam(self.value.parameters(), lr=self.value_lr, eps=1e-5)  # trick about eps
-        self.value_criterion = nn.SmoothL1Loss()
-
-        self.mode = 'train'
+        super(FPPOLag, self).__init__(config, logger)
+        self.lagrange = Lagrange(**config['lagrange_cfgs'])
+        self.constraint_upper_bound = config['constraint_upper_bound']
 
     def set_mode(self, mode):
         self.mode = mode
         if mode == 'train':
             self.policy.train()
             self.value.train()
+            self.lagrange.lagrangian_multiplier.train()
         elif mode == 'eval':
             self.policy.eval()
             self.value.eval()
+            self.lagrange.lagrangian_multiplier.eval()
         else:
             raise ValueError(f'Unknown mode {mode}')
 
     def lr_decay(self, e_i):
         lr_policy_now = self.policy_lr * (1 - e_i / self.max_train_episode)
         lr_value_now = self.value_lr * (1 - e_i / self.max_train_episode)
+        lr_lagrange_multiplier_now = self.lagrange.lambda_lr * (1 - e_i / self.max_train_episode)
         for p in self.policy_optim.param_groups:
             p['lr'] = lr_policy_now
         for p in self.value_optim.param_groups:
             p['lr'] = lr_value_now
-
-    @staticmethod
-    def info_process(infos):
-        CBVs_obs = []
-        CBVs_id = []
-        env_index = []
-        for i, info in enumerate(infos):
-            for CBV_id, CBV_obs in info['CBVs_obs'].items():
-                CBVs_obs.append(CBV_obs)
-                CBVs_id.append(CBV_id)
-                env_index.append(i)
-        if CBVs_obs:
-            info_batch = np.stack(CBVs_obs, axis=0)
-            info_batch = info_batch.reshape(info_batch.shape[0], -1)
-        else:
-            info_batch = None
-
-        return info_batch, CBVs_id, env_index
-
-    def get_action(self, state, infos, deterministic=False):
-        state, CBVs_id, env_index = self.info_process(infos)
-        scenario_action = [{} for _ in range(len(infos))]
-        scenario_log_prob = [{} for _ in range(len(infos))]
-        if state is not None:
-            state_tensor = CUDA(torch.FloatTensor(state))
-            if deterministic:
-                action = self.policy(state_tensor)
-                for i, (CBV_id, env_id) in enumerate(zip(CBVs_id, env_index)):
-                    scenario_action[env_id][CBV_id] = CPU(action[i])
-            else:
-                action, log_prob = self.policy.get_action(state_tensor)
-                for i, (CBV_id, env_id) in enumerate(zip(CBVs_id, env_index)):
-                    scenario_action[env_id][CBV_id] = CPU(action[i])
-                    scenario_log_prob[env_id][CBV_id] = CPU(log_prob[i])
-        return scenario_action, scenario_log_prob
-
-    def get_advantages_vtrace(self, rewards, undones, values, next_values, unterminated):
-        """
-            unterminated: if the CBV collide with object, then it is terminated
-            undone: if the CBV is stuck or collide or max step will done
-            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
-        """
-        advantages = torch.empty_like(values)  # advantage value
-
-        horizon_len = rewards.shape[0]
-
-        advantage = torch.zeros_like(values[0])  # last advantage value by GAE (Generalized Advantage Estimate)
-
-        for t in range(horizon_len - 1, -1, -1):
-            delta = rewards[t] + unterminated[t] * self.gamma * next_values[t] - values[t]
-            advantages[t] = advantage = delta + undones[t] * self.gamma * self.lambda_gae_adv * advantage
-        return advantages
+        for p in self.lagrange.lambda_optimizer.param_groups:
+            p['lr'] = lr_lagrange_multiplier_now
 
     def train(self, buffer, writer, e_i):
         """
@@ -147,18 +71,35 @@ class PPO(BasePolicy):
             rewards = CUDA(torch.FloatTensor(batch['rewards']))
             undones = CUDA(torch.FloatTensor(1-batch['dones']))
             unterminated = CUDA(torch.FloatTensor(1-batch['terminated']))
+            feasibility_Qs = CUDA(torch.FloatTensor(batch['feasibility_Qs']))
+            feasibility_Vs = CUDA(torch.FloatTensor(batch['feasibility_Vs']))
             buffer_size = states.shape[0]
 
+            # the values of the reward
             values = self.value(states)
             next_values = self.value(next_states)
-
-            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
-            reward_sums = advantages + values
+            # the advantage of the reward
+            reward_advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
+            reward_sums = reward_advantages + values
             del rewards, undones, values, next_values, unterminated
 
-            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
+            # the advantage of the feasibility
+            feasibility_advantages = - (feasibility_Qs - feasibility_Vs)
 
-        # start to train, use gradient descent without batch size
+            # Lagrange multiplier
+            penalty = self.lagrange.get_lagrangian_multiplier(states)
+            constraints = torch.clamp(feasibility_Vs - self.constraint_upper_bound, min=-10., max=50)
+            # multi-advantages
+            reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
+            feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
+
+            # final advantage
+            advantages = (reward_advantages - penalty * feasibility_advantages) / (1 + penalty)
+            # norm the final advantage
+            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
+            del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, penalty
+
+        # start to train, use gradient descent without batch_size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
         assert update_times >= 1
 
@@ -169,6 +110,10 @@ class PPO(BasePolicy):
             log_prob = log_probs[indices]
             advantage = advantages[indices]
             reward_sum = reward_sums[indices]
+            constraint = constraints[indices]
+
+            # update the Lagrange multipliers
+            self.lagrange.update_lagrange_multiplier(state, constraint)
 
             # update value function
             value = self.value(state)
@@ -202,12 +147,14 @@ class PPO(BasePolicy):
             'policy': self.policy.state_dict(),
             'value': self.value.state_dict(),
             'policy_optim': self.policy_optim.state_dict(),
-            'value_optim': self.value_optim.state_dict()
+            'value_optim': self.value_optim.state_dict(),
+            'Lagrange_multiplier': self.lagrange.lagrangian_multiplier.state_dict(),
+            'Lagrange_multiplier_optim': self.lagrange.lambda_optimizer.state_dict(),
         }
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, self.agent_info, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
-        filepath = os.path.join(save_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
+        filepath = os.path.join(save_dir, f'model.fppo_lag.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}', 'yellow')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
@@ -223,7 +170,7 @@ class PPO(BasePolicy):
                         cur_episode = int(name.split(".")[-2])
                         if cur_episode > episode:
                             episode = cur_episode
-        filepath = os.path.join(load_dir, f'model.ppo.{self.model_type}.{episode:04}.torch')
+        filepath = os.path.join(load_dir, f'model.fppo_lag.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
             self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}', 'yellow')
             with open(filepath, 'rb') as f:
@@ -232,6 +179,8 @@ class PPO(BasePolicy):
             self.value.load_state_dict(checkpoint['value'])
             self.policy_optim.load_state_dict(checkpoint['policy_optim'])
             self.value_optim.load_state_dict(checkpoint['value_optim'])
+            self.lagrange.lagrangian_multiplier.load_state_dict(checkpoint['lagrange_multiplier'])
+            self.lagrange.lambda_optimizer.load_state_dict(checkpoint['Lagrange_multiplier_optim'])
             self.continue_episode = episode
         else:
             self.logger.log(f'>> No scenario policy {self.name} model found at {filepath}', 'red')
