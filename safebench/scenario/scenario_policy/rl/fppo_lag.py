@@ -89,6 +89,7 @@ class FPPOLag(PPO):
             # Lagrange multiplier
             penalty = self.lagrange.get_lagrangian_multiplier(states)
             constraints = torch.clamp(feasibility_Vs - self.constraint_upper_bound, min=-10., max=50)
+
             # multi-advantages
             reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
             feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
@@ -113,12 +114,13 @@ class FPPOLag(PPO):
             constraint = constraints[indices]
 
             # update the Lagrange multipliers
-            self.lagrange.update_lagrange_multiplier(state, constraint)
+            lambda_loss = self.lagrange.update_lagrange_multiplier(state, constraint)
+            writer.add_scalar("lambda loss", lambda_loss, e_i)
 
             # update value function
             value = self.value(state)
             value_loss = self.value_criterion(value, reward_sum)  # the value criterion is SmoothL1Loss() instead of MSE
-            writer.add_scalar("value loss", value_loss.item(), e_i)
+            writer.add_scalar("value loss", value_loss, e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
             nn.utils.clip_grad_norm_(self.value.parameters(), 0.5)
@@ -133,7 +135,7 @@ class FPPOLag(PPO):
             surrogate = torch.min(L1, L2).mean()
             actor_loss = -(surrogate + entropy.mean() * self.lambda_entropy)
             writer.add_scalar("actor entropy", entropy.mean(), e_i)
-            writer.add_scalar("actor loss", actor_loss.item(), e_i)
+            writer.add_scalar("actor loss", actor_loss, e_i)
             self.policy_optim.zero_grad()
             actor_loss.backward()
             nn.utils.clip_grad_norm_(self.policy.parameters(), 0.5)
@@ -148,8 +150,8 @@ class FPPOLag(PPO):
             'value': self.value.state_dict(),
             'policy_optim': self.policy_optim.state_dict(),
             'value_optim': self.value_optim.state_dict(),
-            'Lagrange_multiplier': self.lagrange.lagrangian_multiplier.state_dict(),
-            'Lagrange_multiplier_optim': self.lagrange.lambda_optimizer.state_dict(),
+            'lagrange_multiplier': self.lagrange.lagrangian_multiplier.state_dict(),
+            'lagrange_multiplier_optim': self.lagrange.lambda_optimizer.state_dict(),
         }
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, self.agent_info, scenario_name+"_"+map_name)
@@ -180,7 +182,7 @@ class FPPOLag(PPO):
             self.policy_optim.load_state_dict(checkpoint['policy_optim'])
             self.value_optim.load_state_dict(checkpoint['value_optim'])
             self.lagrange.lagrangian_multiplier.load_state_dict(checkpoint['lagrange_multiplier'])
-            self.lagrange.lambda_optimizer.load_state_dict(checkpoint['Lagrange_multiplier_optim'])
+            self.lagrange.lambda_optimizer.load_state_dict(checkpoint['lagrange_multiplier_optim'])
             self.continue_episode = episode
         else:
             self.logger.log(f'>> No scenario policy {self.name} model found at {filepath}', 'red')

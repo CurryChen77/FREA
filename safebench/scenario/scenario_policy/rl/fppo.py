@@ -191,7 +191,7 @@ class FPPO(BasePolicy):
             # update value function
             value = self.value(state)
             value_loss = self.value_criterion(value, reward_sum)  # the value criterion is SmoothL1Loss() instead of MSE
-            writer.add_scalar("value loss", value_loss.item(), e_i)
+            writer.add_scalar("value loss", value_loss, e_i)
             self.value_optim.zero_grad()
             value_loss.backward()
             nn.utils.clip_grad_norm_(self.value.parameters(), 0.5)
@@ -206,7 +206,7 @@ class FPPO(BasePolicy):
             surrogate = torch.min(L1, L2).mean()
             actor_loss = -(surrogate + entropy.mean() * self.lambda_entropy)
             writer.add_scalar("actor entropy", entropy.mean(), e_i)
-            writer.add_scalar("actor loss", actor_loss.item(), e_i)
+            writer.add_scalar("actor loss", actor_loss, e_i)
             self.policy_optim.zero_grad()
             actor_loss.backward()
             nn.utils.clip_grad_norm_(self.policy.parameters(), 0.5)

@@ -21,7 +21,7 @@ dims: [256, 256]
 train_episode: 2000
 
 save_freq: 20
-buffer_capacity: 2048
+buffer_capacity: 512
 
 clip_epsilon: 0.2
 gamma: 0.98

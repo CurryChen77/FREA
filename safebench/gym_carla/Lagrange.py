@@ -9,8 +9,35 @@
 
 from typing import Optional
 from safebench.util.torch_util import CUDA
-from .net import build_mlp, layer_init_with_orthogonal
+from torch import nn
+import torch.nn.init as init
+from .net import build_mlp
 import torch
+
+
+class LagrangeMultiplier(nn.Module):
+    def __init__(self, state_dim: int, hidden_dims: [int], hidden_activation: nn = nn.ReLU, output_activation: nn = nn.Softplus):
+        super(LagrangeMultiplier, self).__init__()
+        dims = [state_dim, *hidden_dims, 1]
+        self.layers = nn.ModuleList()
+        for i in range(len(dims) - 1):
+            self.layers.append(nn.Linear(dims[i], dims[i + 1]))
+            if i < len(dims) - 2:  # add
+                self.layers.append(hidden_activation())
+        self.layers.append(output_activation())
+        # init
+        self.apply(self.init_weights)
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+    def init_weights(self, layer):
+        if isinstance(layer, nn.Linear):
+            init.kaiming_uniform_(layer.weight, mode='fan_in', nonlinearity='relu')
+            if layer.bias is not None:
+                init.constant_(layer.bias, 0.1)
 
 
 class Lagrange:
@@ -56,9 +83,7 @@ class Lagrange:
         self.lambda_lr: float = lambda_lr
         self.lagrangian_upper_bound: Optional[float] = lagrangian_upper_bound
 
-        self.lagrangian_multiplier = CUDA(build_mlp(dims=[state_dim, *hidden_dims, 1]))
-        # initialize
-        layer_init_with_orthogonal(self.lagrangian_multiplier[-1], std=0.1)
+        self.lagrangian_multiplier = CUDA(LagrangeMultiplier(state_dim=state_dim, hidden_dims=hidden_dims, hidden_activation=nn.ReLU, output_activation=nn.Softplus))
 
         # fetch optimizer from PyTorch optimizer package
         assert hasattr(
@@ -75,7 +100,7 @@ class Lagrange:
         # get lagrangian multiplier
         lagrangian_multiplier = self.lagrangian_multiplier(state)  # [B, 1]
         # set upper bound if necessary
-        lagrangian_multiplier = lagrangian_multiplier.squeeze(1).clamp_(min=-1., max=self.lagrangian_upper_bound)
+        lagrangian_multiplier = lagrangian_multiplier.squeeze(1).clamp_(min=0.0, max=self.lagrangian_upper_bound)
         return lagrangian_multiplier
 
     def compute_lambda_loss(self, state: torch.Tensor, constraint: torch.Tensor) -> torch.Tensor:
@@ -84,10 +109,10 @@ class Lagrange:
         """
         constraint = CUDA(constraint)
         constraint_limit = CUDA(torch.ones_like(constraint) * self.constraint_limit)
-        loss = -self.lagrangian_multiplier(state) * (constraint - constraint_limit)
+        loss = -self.get_lagrangian_multiplier(state) * (constraint - constraint_limit)
         return loss.mean()
 
-    def update_lagrange_multiplier(self, state: torch.Tensor, constraint: torch.Tensor) -> None:
+    def update_lagrange_multiplier(self, state: torch.Tensor, constraint: torch.Tensor) -> torch.Tensor:
         """
             Update Lagrange multiplier (lambda).
         """
@@ -95,3 +120,4 @@ class Lagrange:
         lambda_loss = self.compute_lambda_loss(state, constraint)
         lambda_loss.backward()
         self.lambda_optimizer.step()
+        return lambda_loss
