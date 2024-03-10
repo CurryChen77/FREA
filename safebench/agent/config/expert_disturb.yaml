@@ -1,14 +1,16 @@
-policy_type: 'random_behavior'
+policy_type: 'expert_disturb'
 learnable: False
 onpolicy: False
 model_path: ''
 model_type: 'agent'
 results_folder_path: ''
-obs_type: 'no_obs'
+obs_type: 'ego_state'
+ego_state_dim: 3
 ego_action_dim: 3
 
-acc_range: [-3.0, 3.0]
-steer_range: [-0.8, 0.8]
+throttle_disturb: [-0.5, 0.5]
+steer_disturb: [-0.2, 0.2]
+brake_disturb: [-0.5, 0.5]
 
 train_episode: 2000
 

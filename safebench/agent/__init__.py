@@ -12,7 +12,7 @@
 from safebench.agent.rl.sac import SAC
 from safebench.agent.rl.ppo import PPO
 from safebench.agent.behavior import CarlaBehaviorAgent
-from safebench.agent.random_behavior import RandomAgent
+from safebench.agent.expert_disturb import CarlaExpertDisturbAgent
 from safebench.agent.expert.expert import CarlaExpertAgent
 from safebench.agent.PlanT.PlanT import PlanT
 
@@ -23,5 +23,5 @@ AGENT_POLICY_LIST = {
     'ppo': PPO,
     'expert': CarlaExpertAgent,
     'plant': PlanT,
-    'random_behavior': RandomAgent
+    'expert_disturb': CarlaExpertDisturbAgent
 }
