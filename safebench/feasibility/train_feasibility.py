@@ -21,7 +21,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_route', type=str, default='safebench/feasibility/data')
-    parser.add_argument('--map_name', '-map', type=str, default='Town05')
+    parser.add_argument('--map_list', '-maps', type=list, default=['Town05', 'Town01', 'Town02'])
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
@@ -35,58 +35,61 @@ if __name__ == '__main__':
     torch.set_num_threads(args.threads)
     seed = args.seed
     set_seed(seed)
-    map_name = args.map_name
+    map_list = args.map_list
 
     # load feasibility config
     feasibility_config_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/config', args.feasibility_cfg)
     feasibility_config = load_config(feasibility_config_path)
     feasibility_config.update(args_dict)
-    scenario_name = "all" if feasibility_config['scenario_id'] is None else 'Scenario' + str(feasibility_config['scenario_id'])
-    scenario_map_name = scenario_name + '_' + map_name
     min_dis_threshold = feasibility_config['min_dis_threshold']
+    scenario_name = "all" if feasibility_config['scenario_id'] is None else 'Scenario' + str(feasibility_config['scenario_id'])
+    # train multiple scenario maps
+    for map_name in map_list:
+        scenario_map_name = scenario_name + '_' + map_name
 
-    # the route of the data need to be processed
-    data_file_path = osp.join(args.ROOT_DIR, args.data_route, scenario_map_name, args.data_filename)
+        # the route of the data need to be processed
+        data_file_path = osp.join(args.ROOT_DIR, args.data_route, scenario_map_name, args.data_filename)
 
-    # set the logger
-    log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + str(min_dis_threshold), scenario_map_name)
-    log_exp_name = scenario_map_name
-    logger = Logger(log_path, log_exp_name)
+        # set the logger
+        log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + str(min_dis_threshold), scenario_map_name)
+        log_exp_name = scenario_map_name
+        logger = Logger(log_path, log_exp_name)
 
-    # read config parameters
-    train_episode = feasibility_config['train_episode']
-    batch_size = feasibility_config['batch_size']
-    save_freq = feasibility_config['save_freq']
+        # read config parameters
+        train_episode = feasibility_config['train_episode']
+        batch_size = feasibility_config['batch_size']
+        save_freq = feasibility_config['save_freq']
+        assert train_episode > save_freq, "train episode should be greater than save frequency"
 
-    # init the writer
-    writer = SummaryWriter(log_dir=log_path)
+        # init the writer
+        writer = SummaryWriter(log_dir=log_path)
 
-    # init the feasibility policy
-    feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=logger)
-    feasibility_policy.load_model(map_name)
-    if feasibility_policy.continue_episode == 0:
-        start_episode = 0
-        logger.log('>> Previous checkpoint not found. Training from scratch.')
-    else:
-        start_episode = feasibility_policy.continue_episode
-        logger.log('>> Continue training from previous checkpoint.')
+        # init the feasibility policy
+        feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=logger)
+        feasibility_policy.load_model(map_name)
+        if feasibility_policy.continue_episode == 0:
+            start_episode = 0
+            logger.log('>> Previous checkpoint not found. Training from scratch.')
+        else:
+            start_episode = feasibility_policy.continue_episode
+            logger.log('>> Continue training from previous checkpoint.')
 
-    logger.log('>> ' + '-' * 40)
-    logger.log('>> Feasibility Policy: ' + feasibility_config['type'], color="yellow")
-    logger.log('>> Scenario and map: ' + scenario_map_name, color="yellow")
+        logger.log('>> ' + '-' * 40)
+        logger.log('>> Feasibility Policy: ' + feasibility_config['type'], color="yellow")
+        logger.log('>> Scenario and map: ' + scenario_map_name, color="yellow")
 
-    # init the offline RL dataset
-    dataset = OffRLDataset(data_file_path, device=args.device)
+        # init the offline RL dataset
+        dataset = OffRLDataset(data_file_path, device=args.device)
 
-    for e_i in tqdm(range(start_episode, train_episode + 1)):
-        feasibility_policy.train(dataset, writer, e_i)
+        for e_i in tqdm(range(start_episode, train_episode + 1)):
+            feasibility_policy.train(dataset, writer, e_i)
 
-        # save the model
-        if e_i != start_episode and e_i % save_freq == 0:
-            feasibility_policy.save_model(e_i, map_name)
+            # save the model
+            if e_i != start_episode and e_i % save_freq == 0:
+                feasibility_policy.save_model(e_i, map_name)
 
-    # close the tensorboard writer
-    writer.close()
-    logger.log('>> Finish training feasibility')
-    logger.log('>> ' + '-' * 40)
+        # close the tensorboard writer
+        writer.close()
+        logger.log(f'>> Finish training feasibility of {map_name}')
+        logger.log('>> ' + '-' * 40)
 
