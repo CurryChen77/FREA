@@ -9,10 +9,12 @@
 import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
+import seaborn as sns
+
 from matplotlib import colors
 import os.path as osp
 import torch
+from matplotlib.colors import LogNorm, ListedColormap
 
 from safebench.feasibility import FEASIBILITY_LIST
 from safebench.feasibility.dataset import OffRLDataset
@@ -23,15 +25,17 @@ from safebench.util.torch_util import set_torch_variable, set_seed, CUDA, CPU
 
 
 def plot_feasibility_data_distribution(args):
-    # the route of the data need to be processed
+    # the route of the data needs to be processed
     data_file_path = osp.join(args.ROOT_DIR, args.data_route, args.scenario_map, args.data_filename)
     dataset = OffRLDataset(data_file_path, device='CPU')
 
     obs = dataset.dataset_dict['obs']
     action = dataset.dataset_dict['actions']
     ego_min_dis = dataset.dataset_dict['ego_min_dis']
-    ego_collision = dataset.dataset_dict['ego_collide']
-    ego_collision_percentage = np.mean(ego_collision == 1.0) * 100
+    ego_collision_num = np.sum(dataset.dataset_dict['ego_collide'])  # the total collision count
+    ego_episode_num = np.sum(dataset.dataset_dict['dones'])  # the total episode num
+    # not including PPO kind scenario agent, since they got multiple collision in one episode
+    ego_collision_percentage = ego_collision_num / ego_episode_num * 100
 
     # x, y position of the closest point
     x_coords = obs[:, 1, 0].flatten()
@@ -54,35 +58,34 @@ def plot_feasibility_data_distribution(args):
     matplotlib.rcParams['font.family'] = 'Times New Roman'
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+    color_palette = sns.color_palette("Blues")
+    cmap = ListedColormap(color_palette)
 
-    _, _, _, x_y_img = axs[0, 0].hist2d(non_zero_x, non_zero_y, bins=60, cmap='Blues', norm=LogNorm())
+    _, _, _, x_y_img = axs[0, 0].hist2d(non_zero_x, non_zero_y, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
     axs[0, 0].set_title('Closest Vehicle Position (x, y)', fontsize=12)
     axs[0, 0].set_xlabel('X Coordinate')
     axs[0, 0].set_ylabel('Y Coordinate')
-    x_y_bar = fig.colorbar(x_y_img, ax=axs[0, 0], label="Density")
+    fig.colorbar(x_y_img, ax=axs[0, 0])
 
-    axs[0, 1].hist(ego_min_dis, bins=50, color='darkblue', alpha=0.8)
+    sns.kdeplot(ego_min_dis, color=color_palette[len(color_palette) // 2], ax=axs[0, 1], alpha=0.6, fill=True, linewidth=1.2)
     axs[0, 1].set_title('Closest dis between Ego and BVs', fontsize=12)
     axs[0, 1].set_xlabel('Closest distance')
-    x_lim = axs[0, 1].get_xlim()
-    y_lim = axs[0, 1].get_ylim()
-    x_center = (x_lim[1] - x_lim[0]) / 2 + x_lim[0]
-    y_two_thirds = (y_lim[1] - y_lim[0]) * 2 / 3 + y_lim[0]
-    text = 'Ego Collision: {:.2f}%'.format(ego_collision_percentage)
-    axs[0, 1].text(x_center, y_two_thirds, text, ha='center', va='center', fontsize=10, alpha=0.8, color='red', weight='bold')
     axs[0, 1].set_ylabel('Frequency')
+    text = 'Ego Collision: {:.2f}%'.format(ego_collision_percentage)
+    axs[0, 1].legend(labels=[text], loc='upper right', fontsize=12, labelcolor='red')
 
-    _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap='Blues', norm=LogNorm())
+    _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
     axs[1, 0].set_title('Closest Vehicle yaw and Speed', fontsize=12)
     axs[1, 0].set_xlabel('Relative yaw')
     axs[1, 0].set_ylabel('Speed')
-    yaw_speed_bar = fig.colorbar(yaw_speed_img, ax=axs[1, 0], label="Density")
+    axs[1, 0].set_ylim([0, 12])
+    fig.colorbar(yaw_speed_img, ax=axs[1, 0])
 
-    _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap='Blues', norm=LogNorm())
+    _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap=cmap, norm=LogNorm(), alpha=0.9)
     axs[1, 1].set_title('Ego Vehicle Throttle and Speed', fontsize=12)
     axs[1, 1].set_xlabel('Throttle')
     axs[1, 1].set_ylabel('Steering angle')
-    throttle_steering_angle_bar = fig.colorbar(throttle_steering_angle_img, ax=axs[1, 1], label="Density")
+    fig.colorbar(throttle_steering_angle_img, ax=axs[1, 1])
 
     plt.tight_layout()
 
@@ -334,7 +337,7 @@ if __name__ == '__main__':
     parser.add_argument('--y_range', type=tuple, default=(-7, 7))
     parser.add_argument('--width', type=float, default=4.9)
     parser.add_argument('--height', type=float, default=2.12)
-    parser.add_argument('--seed', '-s', type=int, default=66)
+    parser.add_argument('--seed', '-s', type=int, default=77)
     parser.add_argument('--threads', type=int, default=4)
     parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
