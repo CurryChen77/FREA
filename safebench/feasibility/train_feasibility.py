@@ -21,7 +21,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_route', type=str, default='safebench/feasibility/data')
-    parser.add_argument('--map_list', '-maps', type=list, default=['Town05', 'Town01', 'Town02'])
+    parser.add_argument('--map_list', '-maps', nargs='+', default=['Town05', 'Town01', 'Town02'])
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
