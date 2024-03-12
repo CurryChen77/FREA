@@ -49,6 +49,7 @@ if __name__ == '__main__':
 
         # the route of the data need to be processed
         data_file_path = osp.join(args.ROOT_DIR, args.data_route, scenario_map_name, args.data_filename)
+        assert osp.exists(data_file_path), f"file {args.data_filename} don't exists"
 
         # set the logger
         log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + str(min_dis_threshold), scenario_map_name)

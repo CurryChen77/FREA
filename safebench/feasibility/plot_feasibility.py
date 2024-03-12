@@ -24,6 +24,27 @@ from safebench.util.run_util import load_config
 from safebench.util.torch_util import set_torch_variable, set_seed, CUDA, CPU
 
 
+def calculate_collision_rate(done, collision):
+    '''
+        the collision is counted considering the episode collision
+        (if collision happens in this episode, then the collision is counted as collision_episode)
+    '''
+    total_episodes = 0
+    collision_episodes = 0
+    has_collision = False
+    for d, c in zip(done, collision):
+        if d:  # episode end
+            total_episodes += 1
+            if has_collision or c:
+                collision_episodes += 1
+            has_collision = False
+        else:
+            has_collision = True if c else False
+    # count the total collision
+    collision_rate = collision_episodes / total_episodes if total_episodes != 0 else None
+    return collision_rate
+
+
 def plot_feasibility_data_distribution(args):
     # the route of the data needs to be processed
     data_file_path = osp.join(args.ROOT_DIR, args.data_route, args.scenario_map, args.data_filename)
@@ -32,10 +53,7 @@ def plot_feasibility_data_distribution(args):
     obs = dataset.dataset_dict['obs']
     action = dataset.dataset_dict['actions']
     ego_min_dis = dataset.dataset_dict['ego_min_dis']
-    ego_collision_num = np.sum(dataset.dataset_dict['ego_collide'])  # the total collision count
-    ego_episode_num = np.sum(dataset.dataset_dict['dones'])  # the total episode num
-    # not including PPO kind scenario agent, since they got multiple collision in one episode
-    ego_collision_percentage = ego_collision_num / ego_episode_num * 100
+    ego_collision_percentage = calculate_collision_rate(dataset.dataset_dict['dones'], dataset.dataset_dict['ego_collide']) * 100
 
     # x, y position of the closest point
     x_coords = obs[:, 1, 0].flatten()
@@ -71,20 +89,20 @@ def plot_feasibility_data_distribution(args):
     axs[0, 1].set_title('Closest dis between Ego and BVs', fontsize=12)
     axs[0, 1].set_xlabel('Closest distance')
     axs[0, 1].set_ylabel('Frequency')
-    text = 'Ego Collision: {:.2f}%'.format(ego_collision_percentage)
+    text = 'Ego episode collision rate: {:.2f}%'.format(ego_collision_percentage)
     axs[0, 1].legend(labels=[text], loc='upper right', fontsize=12, labelcolor='red')
 
     _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
     axs[1, 0].set_title('Closest Vehicle yaw and Speed', fontsize=12)
     axs[1, 0].set_xlabel('Relative yaw')
     axs[1, 0].set_ylabel('Speed')
-    axs[1, 0].set_ylim([0, 12])
     fig.colorbar(yaw_speed_img, ax=axs[1, 0])
 
     _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap=cmap, norm=LogNorm(), alpha=0.9)
     axs[1, 1].set_title('Ego Vehicle Throttle and Speed', fontsize=12)
     axs[1, 1].set_xlabel('Throttle')
     axs[1, 1].set_ylabel('Steering angle')
+    axs[1, 1].set_ylim([-0.75, 0.75])
     fig.colorbar(throttle_steering_angle_img, ax=axs[1, 1])
 
     plt.tight_layout()
