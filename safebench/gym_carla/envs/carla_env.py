@@ -62,7 +62,7 @@ class CarlaEnv(gym.Env):
         self.enable_sem = env_params['enable_sem']
         self.ego_agent_learnable = env_params['ego_agent_learnable']
         self.scenario_agent_learnable = env_params['scenario_agent_learnable']
-        self.scenario_agent_reward_shaping = env_params['scenario_agent_agent']
+        self.scenario_agent_reward_shaping = env_params['scenario_reward_shaping']
         self.spectator = env_params['spectator']
         self.mode = env_params['mode']
 
@@ -442,8 +442,9 @@ class CarlaEnv(gym.Env):
 
             if self.use_feasibility:
                 assert len(self.feasibility_dict) == 4, 'ego action pais should contain obs, action, Qs, Vs'
-                info['feasibility_Q'] = self.feasibility_dict['feasibility_Q']
-                info['feasibility_V'] = self.feasibility_dict['feasibility_V']
+                CBVs_feasibility_Vs, CBVs_feasibility_Qs = self._get_feasibility()
+                info['CBVs_feasibility_Vs'] = CBVs_feasibility_Vs
+                info['CBVs_feasibility_Qs'] = CBVs_feasibility_Qs
                 self.feasibility_dict = {}  # reset the ego action obs pair into empty dict
 
             # if CBV collide with other vehicles, then terminate
@@ -654,6 +655,31 @@ class CarlaEnv(gym.Env):
             CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward + feasibility_reward
 
         return CBVs_reward
+
+    def _get_feasibility(self):
+        """
+            only the closest CBV from ego will get the actual feasibility value
+            the rest CBV will not affected by the feasibility value
+        """
+        CBVs_feasibility_Vs = {}
+        CBVs_feasibility_Qs = {}
+
+        closest_dis = self.search_radius
+        closest_CBV_id = None
+        for CBV_id, CBV in self.CBVs.items():
+            dis = get_distance_across_centers(CBV, self.ego_vehicle)
+            if dis < closest_dis:
+                closest_dis = dis
+                closest_CBV_id = CBV_id
+            CBVs_feasibility_Vs[CBV_id] = -1.0  # safe feasibility V
+            CBVs_feasibility_Qs[CBV_id] = -1.0  # safe feasibility Q
+
+        if closest_CBV_id is not None:
+            # ego's feasibility value only affects the closest CBV
+            CBVs_feasibility_Vs[closest_CBV_id] = self.feasibility_dict['feasibility_V']
+            CBVs_feasibility_Qs[closest_CBV_id] = self.feasibility_dict['feasibility_Q']
+
+        return CBVs_feasibility_Vs, CBVs_feasibility_Qs
 
     def _get_CBVs_terminated(self):
         CBVs_terminated = {}

@@ -88,7 +88,7 @@ class FPPOLag(PPO):
 
             # Lagrange multiplier
             penalty = self.lagrange.get_lagrangian_multiplier(states)
-            constraints = torch.clamp(feasibility_Vs - self.constraint_upper_bound, min=-10., max=50)
+            constraints = torch.clamp(feasibility_Vs - self.constraint_upper_bound, min=-5., max=30)
 
             # multi-advantages
             reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)

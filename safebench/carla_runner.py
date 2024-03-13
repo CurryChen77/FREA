@@ -22,7 +22,8 @@ from torch.utils.tensorboard import SummaryWriter
 from safebench.util.run_util import load_config
 from safebench.gym_carla.env_wrapper import VectorWrapper
 from safebench.gym_carla.envs.render import BirdeyeRender
-from safebench.gym_carla.buffer import ReplayBuffer, RolloutBuffer
+from safebench.gym_carla.replay_buffer import ReplayBuffer
+from safebench.gym_carla.rollout_buffer import RolloutBuffer
 
 from safebench.agent import AGENT_POLICY_LIST
 from safebench.scenario import SCENARIO_POLICY_LIST
