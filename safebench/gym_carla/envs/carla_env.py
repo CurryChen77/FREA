@@ -62,6 +62,7 @@ class CarlaEnv(gym.Env):
         self.enable_sem = env_params['enable_sem']
         self.ego_agent_learnable = env_params['ego_agent_learnable']
         self.scenario_agent_learnable = env_params['scenario_agent_learnable']
+        self.scenario_agent_reward_shaping = env_params['scenario_agent_agent']
         self.spectator = env_params['spectator']
         self.mode = env_params['mode']
 
@@ -626,6 +627,13 @@ class CarlaEnv(gym.Env):
             ego_CBV_dis_reward ~ [-1, 1]: the ratio of (init_ego_CBV_dis-current_ego_CBV_dis)/init_ego_CBV_dis
         """
         CBVs_reward = {}
+
+        # feasibility-guided reward shaping
+        if self.scenario_agent_reward_shaping and self.use_feasibility:
+            feasibility_reward = -1 * np.clip(self.feasibility_dict['feasibility_V'], -10, 5)
+        else:
+            feasibility_reward = 0
+
         for CBV_id in self.CBVs.keys():
             # prevent the CBV getting too close to the other bvs
             # CBV_min_dis, CBV_min_dis_reward = get_CBV_bv_reward(self.CBVs[CBV_id], self.search_radius, self.CBVs_nearby_vehicles[CBV_id])
@@ -642,8 +650,8 @@ class CarlaEnv(gym.Env):
             else:
                 collision_reward = 0
 
-                # final scenario agent rewards
-            CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward
+            # final scenario agent rewards
+            CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward + feasibility_reward
 
         return CBVs_reward
 

@@ -79,6 +79,7 @@ class CarlaRunner:
             'scenario_agent_learnable': scenario_config['learnable'],  # whether the scenario agent is a learnable method
             'agent_obs_type': agent_config['obs_type'],  # default 0 (only 4 dimensions states )
             'CBV_selection': self.CBV_selection,  # the method using for selection the controlled bv
+            'scenario_reward_shaping': scenario_config['reward_shaping'],  # whether the scenario agent got a reward shaping
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'signalized_junction': False,  # whether signal controls the junction
             'warm_up_steps': 4,  # number of ticks after spawning the vehicles

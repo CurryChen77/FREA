@@ -350,7 +350,7 @@ if __name__ == '__main__':
     parser.add_argument('--min_dis_threshold', '-dis', type=str, default='0.1')
     parser.add_argument('--mode', type=str, default='region', choices=['region', 'data'])
     parser.add_argument('--actor_num', type=int, default=3)
-    parser.add_argument('--spatial_interval', type=int, default=64)
+    parser.add_argument('--spatial_interval', type=int, default=80)
     parser.add_argument('--x_range', type=tuple, default=(-22, 22))
     parser.add_argument('--y_range', type=tuple, default=(-7, 7))
     parser.add_argument('--width', type=float, default=4.9)

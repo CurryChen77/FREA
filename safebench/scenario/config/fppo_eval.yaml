@@ -3,6 +3,7 @@ scenario_type: 'carla_scenario_9_Town5-2-1_1x.json'
 policy_type: 'fppo'
 learnable: True
 feasibility: True
+reward_shaping: False
 
 route_dir: 'safebench/scenario/scenario_data/route'
 Town_ids: [5, 2, 1]
