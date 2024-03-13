@@ -57,9 +57,7 @@ class FPPOAdv(PPO):
             # condition
             unsafe_condition = torch.where(feasibility_Vs > 0.0, 1.0, 0.0)
             safe_condition = torch.where(feasibility_Vs <= 0.0, 1.0, 0.0)
-            # multi-advantages
-            reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
-            feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
+
             # final advantage
             advantages = unsafe_condition * feasibility_advantages + safe_condition * reward_advantages
             advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)

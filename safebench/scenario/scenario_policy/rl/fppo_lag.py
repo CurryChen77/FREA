@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 from fnmatch import fnmatch
 
-from safebench.util.torch_util import CUDA, CPU, hidden_init
+from safebench.util.torch_util import CUDA
 
 from safebench.gym_carla.Lagrange import Lagrange
 from safebench.scenario.scenario_policy.rl.ppo import PPO
@@ -89,10 +89,6 @@ class FPPOLag(PPO):
             # Lagrange multiplier
             penalty = self.lagrange.get_lagrangian_multiplier(states)
             constraints = torch.clamp(feasibility_Vs - self.constraint_upper_bound, min=-5., max=30)
-
-            # multi-advantages
-            reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
-            feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
 
             # final advantage
             advantages = (reward_advantages - penalty * feasibility_advantages) / (1 + penalty)

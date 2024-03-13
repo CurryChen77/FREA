@@ -7,13 +7,8 @@
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
-import os
-import pickle
 import h5py
-import time
-
 import numpy as np
-import torch
 
 from safebench.gym_carla.envs.utils import process_ego_action
 

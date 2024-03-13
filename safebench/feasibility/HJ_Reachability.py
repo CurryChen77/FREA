@@ -82,13 +82,13 @@ class HJR:
 
     def get_feasibility_Qs(self, state, action):
         state = state.reshape(state.shape[0], -1)
-        feasibility_Q = self.Qh_target_net(state, action)
+        feasibility_Q = self.Qh_net(state, action)
         return feasibility_Q
 
     def get_feasibility_advantage(self, state, action):
         state = state.reshape(state.shape[0], -1)
         feasibility_value = self.Vh_net(state)
-        feasibility_Q = self.Qh_target_net(state, action)
+        feasibility_Q = self.Qh_net(state, action)
         feasibility_advantage = feasibility_Q - feasibility_value
         return feasibility_advantage
 

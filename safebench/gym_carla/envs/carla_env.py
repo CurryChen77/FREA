@@ -7,17 +7,12 @@
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
-import math
-import random
-import weakref
 import copy
-
 import numpy as np
 import pygame
 from skimage.transform import resize
 import gym
 import carla
-import time
 
 from safebench.gym_carla.envs.route_planner import RoutePlanner
 from safebench.gym_carla.envs.misc import (

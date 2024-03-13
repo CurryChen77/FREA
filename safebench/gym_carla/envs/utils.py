@@ -12,7 +12,6 @@ import math
 
 import torch
 from rdp import rdp
-from copy import deepcopy
 
 import numpy as np
 from distance3d import gjk, colliders

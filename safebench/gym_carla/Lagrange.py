@@ -11,7 +11,7 @@ from typing import Optional
 from safebench.util.torch_util import CUDA
 from torch import nn
 import torch.nn.init as init
-from .net import build_mlp
+
 import torch
 
 
@@ -119,5 +119,6 @@ class Lagrange:
         self.lambda_optimizer.zero_grad()
         lambda_loss = self.compute_lambda_loss(state, constraint)
         lambda_loss.backward()
+        nn.utils.clip_grad_norm_(self.lagrangian_multiplier.parameters(), 0.5)
         self.lambda_optimizer.step()
         return lambda_loss
