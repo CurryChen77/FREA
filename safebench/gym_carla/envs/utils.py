@@ -176,7 +176,7 @@ def get_CBV_ego_reward(ego, CBV):
     init_dis = CarlaDataProvider.ego_CBV_initial_dis[ego.id][CBV.id]
     dis_ratio = np.clip((init_dis - dis)/init_dis, a_min=-1., a_max=1.)
 
-    return delta_dis, dis_ratio
+    return delta_dis, dis_ratio, dis
 
 
 def get_CBV_bv_reward(CBV, search_radius, CBV_nearby_vehicles, tou=1):

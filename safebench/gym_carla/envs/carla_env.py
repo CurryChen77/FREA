@@ -440,7 +440,7 @@ class CarlaEnv(gym.Env):
                 info['ego_min_dis'] = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicles, self.search_radius)
                 info['ego_collide'] = float(self.ego_collide)
 
-            if self.use_feasibility:
+            if self.use_feasibility and not self.scenario_agent_reward_shaping:
                 assert len(self.feasibility_dict) == 4, 'ego action pais should contain obs, action, Qs, Vs'
                 CBVs_feasibility_Vs, CBVs_feasibility_Qs = self._get_feasibility()
                 info['CBVs_feasibility_Vs'] = CBVs_feasibility_Vs
@@ -628,19 +628,18 @@ class CarlaEnv(gym.Env):
             ego_CBV_dis_reward ~ [-1, 1]: the ratio of (init_ego_CBV_dis-current_ego_CBV_dis)/init_ego_CBV_dis
         """
         CBVs_reward = {}
-
-        # feasibility-guided reward shaping
-        if self.scenario_agent_reward_shaping and self.use_feasibility:
-            feasibility_reward = -1 * np.clip(self.feasibility_dict['feasibility_V'], -10, 5)
-        else:
-            feasibility_reward = 0
+        closest_CBV_id = None
+        closest_dis = self.search_radius
 
         for CBV_id in self.CBVs.keys():
             # prevent the CBV getting too close to the other bvs
             # CBV_min_dis, CBV_min_dis_reward = get_CBV_bv_reward(self.CBVs[CBV_id], self.search_radius, self.CBVs_nearby_vehicles[CBV_id])
 
             # encourage CBV to get closer to the ego
-            delta_dis, dis_ratio = get_CBV_ego_reward(self.ego_vehicle, self.CBVs[CBV_id])  # [-1, 1]
+            delta_dis, dis_ratio, dis = get_CBV_ego_reward(self.ego_vehicle, self.CBVs[CBV_id])  # [-1, 1]
+            if dis < closest_dis:
+                closest_dis = dis
+                closest_CBV_id = CBV_id
 
             # CBV collision reward (collide with ego reward -> 1; collide with rest bvs reward -> -1)
             if self.CBVs_collision[CBV_id] is not None:
@@ -652,7 +651,12 @@ class CarlaEnv(gym.Env):
                 collision_reward = 0
 
             # final scenario agent rewards
-            CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward + feasibility_reward
+            CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward
+
+        if self.scenario_agent_reward_shaping and self.use_feasibility and closest_CBV_id is not None:
+            feasibility_reward = -1 * np.clip(self.feasibility_dict['feasibility_V'], -10, 5)
+            CBVs_reward[closest_CBV_id] += feasibility_reward  # update the closest CBVs reward
+            self.feasibility_dict = {}  # reset the ego action obs pair into empty dict
 
         return CBVs_reward
 

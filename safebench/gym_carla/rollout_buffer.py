@@ -44,7 +44,7 @@ class RolloutBuffer:
             self.action_dim = scenario_config['scenario_action_dim']
             self.state_dim = scenario_config['scenario_state_dim']
             # if the scenario agent needs the feasibility
-            self.use_feasibility = scenario_config['feasibility']
+            self.use_feasibility = scenario_config['feasibility'] and not scenario_config['reward_shaping']
             if self.use_feasibility:
                 self.feasibility_obs_shape = tuple(feasibility_config['state_shape'])
                 self.feasibility_action_dim = feasibility_config['agent_action_dim']
