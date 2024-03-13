@@ -9,7 +9,6 @@
 """
 
 # for planning scenario
-from safebench.agent.rl.sac import SAC
 from safebench.agent.rl.ppo import PPO
 from safebench.agent.behavior import CarlaBehaviorAgent
 from safebench.agent.expert_disturb import CarlaExpertDisturbAgent
@@ -19,7 +18,6 @@ from safebench.agent.PlanT.PlanT import PlanT
 
 AGENT_POLICY_LIST = {
     'behavior': CarlaBehaviorAgent,
-    'sac': SAC,
     'ppo': PPO,
     'expert': CarlaExpertAgent,
     'plant': PlanT,

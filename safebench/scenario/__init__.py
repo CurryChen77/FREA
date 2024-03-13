@@ -10,17 +10,17 @@
 
 # collect policy models from scenarios
 from safebench.scenario.scenario_policy.dummy_policy import DummyPolicy
-from safebench.scenario.scenario_policy.rl.sac import SAC
 from safebench.scenario.scenario_policy.rl.ppo import PPO
-from safebench.scenario.scenario_policy.rl.fppo import FPPO
+from safebench.scenario.scenario_policy.rl.fppo_adv import FPPOAdv
 from safebench.scenario.scenario_policy.rl.fppo_lag import FPPOLag
+from safebench.scenario.scenario_policy.rl.fppo_rs import FPPORs
 
 
 SCENARIO_POLICY_LIST = {
     'standard': DummyPolicy,
     'scenic': DummyPolicy,
-    'sac': SAC,
     'ppo': PPO,
-    'fppo': FPPO,
-    'fppo_lag': FPPOLag
+    'fppo_adv': FPPOAdv,
+    'fppo_lag': FPPOLag,
+    'fppo_rs': FPPORs,
 }

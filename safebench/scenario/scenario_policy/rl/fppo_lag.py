@@ -21,7 +21,7 @@ from safebench.scenario.scenario_policy.rl.ppo import PPO
 
 
 class FPPOLag(PPO):
-    name = 'FPPOLag'
+    name = 'fppo_lag'
     type = 'onpolicy'
 
     def __init__(self, config, logger):
@@ -156,7 +156,7 @@ class FPPOLag(PPO):
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, self.agent_info, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
-        filepath = os.path.join(save_dir, f'model.fppo_lag.{self.model_type}.{episode:04}.torch')
+        filepath = os.path.join(save_dir, f'model.{self.name}.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}', 'yellow')
         with open(filepath, 'wb+') as f:
             torch.save(states, f)
@@ -172,7 +172,7 @@ class FPPOLag(PPO):
                         cur_episode = int(name.split(".")[-2])
                         if cur_episode > episode:
                             episode = cur_episode
-        filepath = os.path.join(load_dir, f'model.fppo_lag.{self.model_type}.{episode:04}.torch')
+        filepath = os.path.join(load_dir, f'model.{self.name}.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
             self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}', 'yellow')
             with open(filepath, 'rb') as f:
