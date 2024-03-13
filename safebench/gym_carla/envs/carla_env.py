@@ -649,7 +649,7 @@ class CarlaEnv(gym.Env):
             CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward
 
         if self.scenario_agent_reward_shaping and self.use_feasibility and closest_CBV_id is not None:
-            feasibility_reward = -1 * np.clip(self.feasibility_dict['feasibility_V'], -10, 5)
+            feasibility_reward = -1 if self.feasibility_dict['feasibility_V'] > 0 else 0
             CBVs_reward[closest_CBV_id] += feasibility_reward  # update the closest CBVs reward
             self.feasibility_dict = {}  # reset the ego action obs pair into empty dict
 
