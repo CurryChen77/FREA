@@ -84,7 +84,7 @@ class FPPOLag(PPO):
             del rewards, undones, values, next_values, unterminated
 
             # the advantage of the feasibility
-            feasibility_advantages = - (feasibility_Qs - feasibility_Vs)
+            feasibility_advantages = feasibility_Qs - feasibility_Vs
 
             # Lagrange multiplier
             penalty = self.lagrange.get_lagrangian_multiplier(states)

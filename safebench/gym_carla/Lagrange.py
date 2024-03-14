@@ -109,7 +109,7 @@ class Lagrange:
         """
         constraint = CUDA(constraint)
         constraint_limit = CUDA(torch.ones_like(constraint) * self.constraint_limit)
-        loss = -self.get_lagrangian_multiplier(state) * (constraint - constraint_limit)
+        loss = - self.get_lagrangian_multiplier(state) * (constraint - constraint_limit)
         return loss.mean()
 
     def update_lagrange_multiplier(self, state: torch.Tensor, constraint: torch.Tensor) -> torch.Tensor:
