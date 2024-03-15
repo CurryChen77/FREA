@@ -27,7 +27,6 @@ class FPPOLag(PPO):
     def __init__(self, config, logger):
         super(FPPOLag, self).__init__(config, logger)
         self.lagrange = Lagrange(**config['lagrange_cfgs'])
-        self.constraint_upper_bound = config['constraint_upper_bound']
 
     def set_mode(self, mode):
         self.mode = mode
@@ -88,7 +87,7 @@ class FPPOLag(PPO):
 
             # Lagrange multiplier
             penalty = self.lagrange.get_lagrangian_multiplier(states)
-            constraints = torch.clamp(feasibility_Vs - self.constraint_upper_bound, min=-5., max=30)
+            constraints = torch.clamp(feasibility_Vs, min=-5., max=30)
 
             # final advantage
             advantages = (reward_advantages - penalty * feasibility_advantages) / (1 + penalty)
@@ -110,8 +109,9 @@ class FPPOLag(PPO):
             constraint = constraints[indices]
 
             # update the Lagrange multipliers
-            lambda_loss = self.lagrange.update_lagrange_multiplier(state, constraint)
+            lambda_loss, lagrange_multiplier = self.lagrange.update_lagrange_multiplier(state, constraint)
             writer.add_scalar("lambda loss", lambda_loss, e_i)
+            writer.add_scalar("max lagrange multiplier", torch.max(lagrange_multiplier), e_i)
 
             # update value function
             value = self.value(state)

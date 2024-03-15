@@ -7,7 +7,7 @@
 @Date    ：2024/3/9
 """
 
-from typing import Optional
+from typing import Optional, Tuple
 from safebench.util.torch_util import CUDA
 from torch import nn
 import torch.nn.init as init
@@ -74,6 +74,7 @@ class Lagrange:
         constraint_limit: float,
         lambda_lr: float,
         lambda_optimizer: str,
+        multiplier_upper_bound: int,
         lagrangian_upper_bound: Optional[float] = None,
     ) -> None:
         """Initialize an instance of :class:`Lagrange`."""
@@ -82,7 +83,8 @@ class Lagrange:
         self.constraint_limit: float = constraint_limit
         self.lambda_lr: float = lambda_lr
         self.lagrangian_upper_bound: Optional[float] = lagrangian_upper_bound
-
+        self.criterion = nn.MSELoss()
+        self.multiplier_upper_bound = multiplier_upper_bound
         self.lagrangian_multiplier = CUDA(LagrangeMultiplier(state_dim=state_dim, hidden_dims=hidden_dims, hidden_activation=nn.ReLU, output_activation=nn.Softplus))
 
         # fetch optimizer from PyTorch optimizer package
@@ -103,22 +105,28 @@ class Lagrange:
         lagrangian_multiplier = lagrangian_multiplier.squeeze(1).clamp_(min=0.0, max=self.lagrangian_upper_bound)
         return lagrangian_multiplier
 
-    def compute_lambda_loss(self, state: torch.Tensor, constraint: torch.Tensor) -> torch.Tensor:
+    def compute_lambda_loss(self, state: torch.Tensor, constraint: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Special lambda loss
+            For safe states, learn their lambdas: 0 or finite values
+            For unsafe states, want their lambdas to be close to the upper bound, a large penalty
+            why (upper_bound - 1): because the upperbound of lambdas is upper_bound, to avoid grad vanishing
         """
-            Penalty loss for Lagrange multiplier.
-        """
-        constraint = CUDA(constraint)
-        constraint_limit = CUDA(torch.ones_like(constraint) * self.constraint_limit)
-        loss = - self.get_lagrangian_multiplier(state) * (constraint - constraint_limit)
-        return loss.mean()
+        penalty = CUDA(constraint - torch.ones_like(constraint) * self.constraint_limit)
+        lagrangian_multiplier = self.get_lagrangian_multiplier(state)
+        lagrangian_multiplier_safe = torch.mul(constraint <= 0, lagrangian_multiplier)
+        lagrangian_multiplier_unsafe = torch.mul(constraint > 0, lagrangian_multiplier)
+        # special lambda multiplier loss
+        loss = - 0.5 * torch.mean(torch.mul(lagrangian_multiplier_safe, penalty)) + \
+            self.criterion(lagrangian_multiplier_unsafe, (constraint > 0) * (self.multiplier_upper_bound - 1))
+        return loss.mean(), lagrangian_multiplier
 
-    def update_lagrange_multiplier(self, state: torch.Tensor, constraint: torch.Tensor) -> torch.Tensor:
+    def update_lagrange_multiplier(self, state: torch.Tensor, constraint: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
             Update Lagrange multiplier (lambda).
         """
         self.lambda_optimizer.zero_grad()
-        lambda_loss = self.compute_lambda_loss(state, constraint)
+        lambda_loss, lagrange_multiplier = self.compute_lambda_loss(state, constraint)
         lambda_loss.backward()
         nn.utils.clip_grad_norm_(self.lagrangian_multiplier.parameters(), 0.5)
         self.lambda_optimizer.step()
-        return lambda_loss
+        return lambda_loss, lagrange_multiplier
