@@ -431,7 +431,7 @@ class CarlaRunner:
             # initialize map and render
             self.current_map = m_i  # record the current running map name
             self._init_world(m_i)
-            self._init_renderer() if self.mode == 'eval' else None
+            self._init_renderer() if self.mode == 'eval' and self.render else None
 
             # create scenarios within the vectorized wrapper
             self.env = VectorWrapper(
