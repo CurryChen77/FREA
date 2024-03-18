@@ -104,7 +104,7 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
     near_rate = num_near_step / total_step
     # TODO: maybe got multi CBVs attack ego, but ego_min_dis only record the closer CBV and ignore the near period of the other CBV
     near_collide_rate = num_collision / near_period_count if num_collision < near_period_count else 1.0
-    near_miss_rate = 1.0 - near_collide_rate if near_rate == 0 else 0
+    near_miss_rate = 1.0 - near_collide_rate if near_rate != 0 else 0
 
     # feasibility eval
     unavoidable_rate = 0
