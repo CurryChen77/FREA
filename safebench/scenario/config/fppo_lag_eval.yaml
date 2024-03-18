@@ -34,8 +34,6 @@ batch_size: 256
 lambda_gae_adv: 0.98
 lambda_entropy: 0.01
 
-# the upper bound of the constraint
-constraint_upper_bound: 0.0
 # lagrangian configurations
 lagrange_cfgs:
   # the same state dims as the scenario agent
@@ -44,7 +42,9 @@ lagrange_cfgs:
   hidden_dims: [64, 64]
   # Tolerance of constraint violation
   constraint_limit: 0
+  # upper bound of the lagrange multiplier
+  multiplier_upper_bound: 50.
   # Learning rate of lagrangian multiplier
-  lambda_lr: 0.035
+  lambda_lr: 3.0e-4
   # Type of lagrangian optimizer
   lambda_optimizer: "Adam"
