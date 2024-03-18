@@ -646,7 +646,7 @@ class CarlaEnv(gym.Env):
                 collision_reward = 0
 
             # final scenario agent rewards
-            CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward
+            CBVs_reward[CBV_id] = dis_ratio + 15 * collision_reward
 
         if self.scenario_agent_reward_shaping and self.use_feasibility and closest_CBV_id is not None:
             feasibility_reward = -1 if self.feasibility_dict['feasibility_V'] > 0 else 0
