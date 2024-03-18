@@ -32,21 +32,23 @@ def draw_density(velocity, acc, ego_dis, title):
 
     num_scenarios = len(velocity[0].keys())
     fig, axs = plt.subplots(num_scenarios, 3, figsize=(9, 9))
+    step = (0.9 - 0.3) / num_algorithm
+    alpha_rate = [0.9 - i * step for i in range(num_algorithm)]
     for i in range(num_algorithm):
         for row, map_name in enumerate(velocity[i].keys()):
 
-            sns.kdeplot(velocity[i][map_name], color=color_list[i], ax=axs[row, 0], label=title[i], alpha=0.7, fill=True, linewidth=0.5)
+            sns.kdeplot(velocity[i][map_name], color=color_list[i], ax=axs[row, 0], label=title[i], alpha=alpha_rate[i], fill=True, linewidth=0.5)
             axs[row, 0].set_title(map_name, fontsize=10)
             axs[row, 0].set_xlabel('Velocity')
             axs[row, 0].set_ylabel('Density')
 
-            sns.kdeplot(acc[i][map_name], color=color_list[i], ax=axs[row, 1], label=title[i], alpha=0.7, fill=True, linewidth=0.5)
+            sns.kdeplot(acc[i][map_name], color=color_list[i], ax=axs[row, 1], label=title[i], alpha=alpha_rate[i], fill=True, linewidth=0.5)
             axs[row, 1].set_title(map_name, fontsize=10)
             axs[row, 1].set_xlim(-20, 30)
             axs[row, 1].set_xlabel('Acc')
             axs[row, 1].set_ylabel('Density')
 
-            sns.kdeplot(ego_dis[i][map_name], color=color_list[i], ax=axs[row, 2], label=title[i], alpha=0.8, fill=True, linewidth=0.5)
+            sns.kdeplot(ego_dis[i][map_name], color=color_list[i], ax=axs[row, 2], label=title[i], alpha=alpha_rate[i], fill=True, linewidth=0.5)
             axs[row, 2].set_title(map_name, fontsize=10)
             axs[row, 2].set_xlabel('Ego distance')
             axs[row, 2].set_ylabel('Density')
@@ -78,7 +80,11 @@ def main(ROOT_DIR, args):
     algorithm_titles = []
     all_results = {}
     for algorithm in algorithm_files:
-        ego, cbv, select, seed = algorithm.split('_')
+        split_name = algorithm.split('_')
+        ego = split_name.pop(0)
+        seed = split_name.pop(-1)
+        select = split_name.pop(-1)
+        cbv = '_'.join(split_name)
         algorithm_path = osp.join(ROOT_DIR, algorithm)
         if osp.isdir(algorithm_path):
             scenario_map_files = os.listdir(algorithm_path)
@@ -106,7 +112,7 @@ def main(ROOT_DIR, args):
                             for step in scenario_data:
                                 velocity[scenario_map].extend(step['BVs_velocity'])
                                 acc[scenario_map].extend(step['BVs_acc'])
-                                ego_dis[scenario_map].extend(step['BVs_ego_dis'])
+                                ego_dis[scenario_map].append(step['ego_min_dis']) if step['ego_min_dis'] < 25 else None
             all_velocity.append(velocity)
             all_acc.append(acc)
             all_ego_dis.append(ego_dis)

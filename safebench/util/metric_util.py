@@ -88,26 +88,29 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
     # near miss
     num_near_step = 0
     total_step = 0
+    near_period_count = 0
+    start_near_period = False
     for data_id, sequence in record_dict.items():  # for each data id (small scenario)
         for step in sequence:  # count all the collision event along the trajectory
             if step['ego_min_dis'] < 1:
                 num_near_step += 1
-            if step['ego_min_dis'] < 25:
+                if not start_near_period:  # start a new period
+                    near_period_count += 1
+                    start_near_period = True
+            elif step['ego_min_dis'] < 25:
+                start_near_period = False
                 total_step += 1
 
     near_rate = num_near_step / total_step
-    if near_rate == 0:
-        near_miss_rate = 0
-    else:
-        near_miss_rate = 1.0 - (num_collision / num_near_step)
+    # TODO: maybe got multi CBVs attack ego, but ego_min_dis only record the closer CBV and ignore the near period of the other CBV
+    near_collide_rate = num_collision / near_period_count if num_collision < near_period_count else 1.0
+    near_miss_rate = 1.0 - near_collide_rate if near_rate == 0 else 0
 
     # feasibility eval
     unavoidable_rate = 0
     if use_feasibility:
         num_unavoidable_collision = 0
-        total_step = 0
         for data_id, sequence in record_dict.items():  # for each data id (small scenario)
-            total_step += len(sequence)
             for step in sequence:  # count all the collision event along the trajectory
                 if step['feasibility_V'] >= 0.0:
                     num_unavoidable_collision += 1
@@ -157,10 +160,10 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
 
     weights = {
         # safety level
-        'collision_rate': 0.2,
+        'collision_rate': 0.0,
         'out_of_road_length': 0.05,
-        'near_miss_rate': 0.3,
-        'near_rate': 0.3,
+        'near_miss_rate': 0.4,
+        'near_rate': 0.4,
 
         # task performance level
         'distance_to_route': 0.05,
@@ -181,11 +184,11 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
         'running_time': avg_time_spent,
     }
     if use_feasibility:
-        scores['unavoidable_rate'] = unavoidable_rate
-        weights['unavoidable_rate'] = - 0.3
-        weights['collision_rate'] = 0.1
-        weights['near_rate'] = 0.1
-        predefined_max_values['unavoidable_rate'] = 1
+        scores['avoidable_rate'] = 1 - unavoidable_rate
+        weights['avoidable_rate'] = 0.2
+        weights['near_miss_rate'] = 0.3
+        weights['near_rate'] = 0.3
+        predefined_max_values['avoidable_rate'] = 1
 
     all_scores = {key: round(value/predefined_max_values[key], 4) for key, value in scores.items()}
     final_score = 0
