@@ -53,7 +53,7 @@ def draw_density(velocity, acc, ego_dis, title):
             axs[row, 2].set_xlabel('Ego distance')
             axs[row, 2].set_ylabel('Density')
 
-    for i in range(num_algorithm):
+    for i in range(num_scenarios):
         for j in range(3):
             axs[i, j].legend(fontsize=8, loc='upper right')
 
@@ -84,7 +84,7 @@ def main(ROOT_DIR, args):
         ego = split_name.pop(0)
         seed = split_name.pop(-1)
         select = split_name.pop(-1)
-        cbv = '_'.join(split_name)
+        cbv = '_'.join(split_name) if len(split_name) > 1 else split_name[0]
         algorithm_path = osp.join(ROOT_DIR, algorithm)
         if osp.isdir(algorithm_path):
             scenario_map_files = os.listdir(algorithm_path)

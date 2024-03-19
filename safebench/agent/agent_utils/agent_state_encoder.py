@@ -100,7 +100,7 @@ class AgentStateEncoder(object):
         if self.viz_attn_map:
             keep_vehicle_ids, attn_indices, keep_vehicle_attn = get_vehicleID_from_attn_scores(self.data, self.data_car, self.config['topk'], attn_vector)
             draw_attention_bb_in_carla(self.world, keep_vehicle_ids, keep_vehicle_attn)
-        return encoded_state, most_relevant_vehicle
+        return most_relevant_vehicle
 
     def get_bev_boxes(self, ego_veh, ego_nearby_vehicles, waypoints):
         """

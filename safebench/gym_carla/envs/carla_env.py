@@ -202,7 +202,7 @@ class CarlaEnv(gym.Env):
                     CBV = find_closest_vehicle(self.ego_vehicle, self.search_radius, CBV_candidates)
                 # 2.attention-based
                 elif self.CBVs_select_method == 'attention-based':
-                    _, most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
+                    most_relevant_vehicle = self.agent_state_encoder.get_encoded_state(
                         self.ego_vehicle, CBV_candidates, self.waypoints, self.red_light_state
                     )
                     CBV = most_relevant_vehicle
@@ -646,7 +646,7 @@ class CarlaEnv(gym.Env):
                 collision_reward = 0
 
             # final scenario agent rewards
-            CBVs_reward[CBV_id] = dis_ratio + 15 * collision_reward
+            CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward
 
         if self.scenario_agent_reward_shaping and self.use_feasibility and closest_CBV_id is not None:
             feasibility_reward = -1 if self.feasibility_dict['feasibility_V'] > 0 else 0
