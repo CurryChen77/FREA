@@ -173,7 +173,7 @@ def get_CBV_ego_reward(ego, CBV):
 
     # distance ratio
     init_dis = CarlaDataProvider.ego_CBV_initial_dis[ego.id][CBV.id]
-    dis_ratio = np.clip((init_dis - dis)/init_dis, a_min=-1., a_max=1.)
+    dis_ratio = np.clip((init_dis - dis) / init_dis, a_min=-1., a_max=1.)
 
     return delta_dis, dis_ratio, dis
 
@@ -195,10 +195,27 @@ def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_
     CarlaDataProvider.generate_spawn_points()  # get all the possible spawn points in this map
 
     ego_locations = [ego.get_location() for ego in CarlaDataProvider.egos]
+    ego_waypoint = CarlaDataProvider.get_map().get_waypoint(location=ego_locations[0], project_to_road=True)
 
-    nearby_spawn_points = [spawn_point for spawn_point in CarlaDataProvider._spawn_points \
-                        if any(spawn_point.location.distance(location) <= radius for location, radius in zip(location_lists, radius_list)) \
-                        and all(spawn_point.location.distance(ego_location) > closest_dis for ego_location in ego_locations)]
+    nearby_spawn_points = []
+    for spawn_point in CarlaDataProvider._spawn_points:
+        spawn_waypoint = CarlaDataProvider.get_map().get_waypoint(location=spawn_point.location, project_to_road=True)
+        # remove the opposite lane vehicle on the same road
+        if spawn_waypoint.road_id == ego_waypoint.road_id and spawn_waypoint.lane_id * ego_waypoint.lane_id < 0:
+            continue
+
+        in_radius = any(
+            spawn_point.location.distance(location) <= radius
+            for location, radius in zip(location_lists, radius_list)
+        )
+
+        far_from_ego = all(
+            spawn_point.location.distance(ego_location) > closest_dis
+            for ego_location in ego_locations
+        )
+
+        if in_radius and far_from_ego:
+            nearby_spawn_points.append(spawn_point)
 
     # # debugging the location of all the spawn points
     # for point in nearby_spawn_points:
@@ -206,7 +223,7 @@ def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_
 
     CarlaDataProvider._rng.shuffle(nearby_spawn_points)
     spawn_points_count = len(nearby_spawn_points)
-    picking_number = min(int(spawn_points_count * intensity), upper_limit) if spawn_points_count > upper_limit else spawn_points_count
+    picking_number = min(int(spawn_points_count * intensity), upper_limit)
     nearby_spawn_points = nearby_spawn_points[:picking_number]  # sampling part of the nearby spawn points
 
     return nearby_spawn_points
@@ -365,7 +382,7 @@ def check_interaction(ego, CBV, ego_length, delta_forward_angle=90, ego_fov=180)
     CBV_forward_vector = CBV_transform.rotation.get_forward_vector()
     interaction = True
 
-    # the delta angle between vectors is always positive
+    # the no interaction case
     if math.degrees(ego_forward_vector.get_vector_angle(CBV_forward_vector)) > delta_forward_angle:
         # 1. ego and CBV got different direction
         ego_location = ego_transform.location
@@ -390,7 +407,6 @@ def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_length):
     target_transform = target_waypoint.transform
     target_location = target_transform.location
     target_waypoint_lane_id = target_waypoint.lane_id
-    ego_transform = CarlaDataProvider.get_transform(ego_vehicle)
 
     # get all the vehicles on the world to use the actor pool in CarlaDataProvider
     all_actors = CarlaDataProvider.get_actors()
@@ -401,24 +417,20 @@ def get_CBV_candidates(ego_vehicle, target_waypoint, search_radius, ego_length):
     key_to_remove = []
     for vehicle_id, vehicle in candidates.items():
         vehicle_location = CarlaDataProvider.get_location(vehicle)
-        vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(location=vehicle_location, project_to_road=True)
 
-        # 2. remove the opposite direction vehicle
-        if vehicle_waypoint.lane_id * target_waypoint_lane_id < 0:
-            key_to_remove.append(vehicle_id)
-            continue
-
-        # 3. remove the too far away vehicle
+        # 2. remove the too far away vehicle
         if target_location.distance(vehicle_location) > search_radius:
             key_to_remove.append(vehicle_id)
             continue
 
-        # 4. remove the vehicle in front of the ego, and with in a certain angle
-        if is_within_distance_ahead(vehicle_location, ego_transform.location, ego_transform.rotation.yaw, angle=15, max_distance=25):
-            key_to_remove.append(vehicle_id)
-            continue
+        # 3. if the target waypoint in the straight lane, needs to remove the opposite direction vehicle
+        if not target_waypoint.is_junction:
+            vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(location=vehicle_location, project_to_road=True)
+            if vehicle_waypoint.lane_id * target_waypoint_lane_id < 0:
+                key_to_remove.append(vehicle_id)
+                continue
 
-        # 5. remove the back vehicle with no interaction
+        # 4. remove the back vehicle with no interaction
         if not check_interaction(ego_vehicle, vehicle, ego_length, delta_forward_angle=90, ego_fov=180):
             # hard condition to check CBV candidates
             key_to_remove.append(vehicle_id)
@@ -470,8 +482,8 @@ def get_distance_across_centers(veh1, veh2):
 
 
 def calculate_abs_velocity(velocity):
-    return round(math.sqrt(velocity.x**2 + velocity.y**2), 2)
+    return round(math.sqrt(velocity.x ** 2 + velocity.y ** 2), 2)
 
 
 def calculate_abs_acc(acc):
-    return round(math.sqrt(acc.x**2 + acc.y**2), 2)
+    return round(math.sqrt(acc.x ** 2 + acc.y ** 2), 2)
