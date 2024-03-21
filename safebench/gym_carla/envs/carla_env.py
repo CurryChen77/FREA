@@ -24,8 +24,8 @@ from safebench.gym_carla.envs.misc import (
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
-    update_ego_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, \
-    set_ego_CBV_initial_dis, remove_ego_CBV_initial_dis, process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs, get_BVs_record, check_interaction
+    update_goal_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, \
+    set_goal_CBV_initial_dis, remove_goal_CBV_initial_dis, process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs, get_BVs_record, check_interaction
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -73,6 +73,7 @@ class CarlaEnv(gym.Env):
         self.gps_route = None
         self.route = None
         self.CBVs_collision = {}
+        self.CBV_reach_goal = []
         self.ego_collide = False
         self.search_radius = env_params['search_radius']
         self.agent_obs_type = env_params['agent_obs_type']
@@ -194,7 +195,10 @@ class CarlaEnv(gym.Env):
         # when training the ego agent, don't need to calculate the CBV
         if self.scenario_agent_learnable and len(self.CBVs) < 2 and self.time_step % 2 == 0:
             # select the candidates of CBVs
-            CBV_candidates = get_CBV_candidates(self.ego_vehicle, self.target_waypoint, self.search_radius, self.ego_length)
+            CBV_candidates = get_CBV_candidates(
+                self.ego_vehicle, self.target_waypoint,
+                self.CBV_reach_goal, self.search_radius, self.ego_length
+            )
             if CBV_candidates:
                 # selecting the CBV
                 # 1.Rule-based
@@ -214,7 +218,7 @@ class CarlaEnv(gym.Env):
                     if CBV.id not in self.CBVs.keys():
                         self.CBVs[CBV.id] = CBV
                         # set the initial ego CBV distance
-                        set_ego_CBV_initial_dis(self.ego_vehicle, CBV)
+                        set_goal_CBV_initial_dis(self.ego_vehicle, CBV, self.goal_point)
                         CBV.set_autopilot(enabled=False)  # prepared to be controlled
                         self.register_CBV_sensor(CBV)
                         # update the CBV for BEV visualization
@@ -244,6 +248,8 @@ class CarlaEnv(gym.Env):
         self.global_route_waypoints = self._global_route_to_waypoints()  # the initial route waypoints from the config
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
         self.waypoints, _, _, self.target_waypoint, self.red_light_state = self.routeplanner.run_step()
+        # the 1/3 waypoint is the goal point of CBV
+        self.goal_point = self.waypoints[len(self.waypoints) // 3]
 
         # Update time_steps
         self.time_step = 0
@@ -309,7 +315,8 @@ class CarlaEnv(gym.Env):
         if self.CBVs and self.spectator:
             for CBV in self.CBVs.values():
                 CBV_location = CarlaDataProvider.get_location(CBV)
-                self.world.debug.draw_point(CBV_location + carla.Location(z=4), size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11)
+                self.world.debug.draw_point(CBV_location + carla.Location(z=4),
+                                            size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11)
 
         # if the ego agent is learnable and need to viz the route, then draw the target waypoints
         if self.viz_route:
@@ -326,7 +333,7 @@ class CarlaEnv(gym.Env):
                 self.scenario_manager.get_update(timestamp, scenario_action)
 
                 # if CBV has changed, update the ego CBV distance
-                update_ego_CBV_dis(self.ego_vehicle, self.CBVs)
+                update_goal_CBV_dis(self.ego_vehicle, self.CBVs, self.goal_point)
 
                 # Calculate acceleration and steering
                 if not self.auto_ego:
@@ -369,6 +376,8 @@ class CarlaEnv(gym.Env):
         # route planner
         # self.waypoints: the waypoints from the waypoint buffer, needed to be followed
         self.waypoints, _, _, self.target_waypoint, self.red_light_state = self.routeplanner.run_step()
+        # the 1/3 waypoint is the goal point of CBV
+        self.goal_point = self.waypoints[len(self.waypoints) // 3]
 
         # find ego nearby vehicles
         if self.mode == 'collect_feasibility_data' or self.mode == 'eval' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
@@ -567,6 +576,8 @@ class CarlaEnv(gym.Env):
             obs = self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles, waypoints=self.waypoints, need_route_info=True)
         elif self.agent_obs_type == 'no_obs':
             obs = None
+        else:
+            raise NotImplementedError(f"Unsupported obs tyep: {self.agent_obs_type}.")
         return obs
 
     def _get_reward(self):
@@ -604,7 +615,7 @@ class CarlaEnv(gym.Env):
             -1:CBV collide with other bvs or not on the road
             0:CBV normal driving
             1:CBV collide with ego vehicle
-            ego_CBV_dis_reward ~ [-1, 1]: the ratio of (init_ego_CBV_dis-current_ego_CBV_dis)/init_ego_CBV_dis
+            goal_CBV_dis_reward ~ [-1, 1]: the ratio of (init_goal_CBV_dis-current_goal_CBV_dis)/init_goal_CBV_dis
         """
         CBVs_reward = {}
         closest_CBV_id = None
@@ -614,23 +625,30 @@ class CarlaEnv(gym.Env):
             # prevent the CBV getting too close to the other bvs
             # CBV_min_dis, CBV_min_dis_reward = get_CBV_bv_reward(self.CBVs[CBV_id], self.search_radius, self.CBVs_nearby_vehicles[CBV_id])
 
-            # encourage CBV to get closer to the ego
-            delta_dis, dis_ratio, dis = get_CBV_ego_reward(self.ego_vehicle, self.CBVs[CBV_id])  # [-1, 1]
-            if dis < closest_dis:
-                closest_dis = dis
+            # find the closest CBV vehicle from ego vehicle
+            ego_CBV_dis = get_distance_across_centers(self.ego_vehicle, self.CBVs[CBV_id])
+            if ego_CBV_dis < closest_dis:
+                closest_dis = ego_CBV_dis
                 closest_CBV_id = CBV_id
 
-            # CBV collision reward (collide with ego reward -> 1; collide with rest bvs reward -> -1)
+            # encourage CBV to get closer to the goal point
+            delta_dis, dis_ratio, dis = get_CBV_ego_reward(self.ego_vehicle, self.CBVs[CBV_id], self.goal_point)  # [-1, 1]
+
+            # CBV collision punish (collide with rest bvs punish -> -1)
+            collision_punish = 0
             if self.CBVs_collision[CBV_id] is not None:
-                if self.CBVs_collision[CBV_id].id == self.ego_vehicle.id:
-                    collision_reward = 1
-                else:
-                    collision_reward = -1
+                if self.CBVs_collision[CBV_id].id != self.ego_vehicle.id:
+                    collision_punish = -1
+
+            # terminal reward (reach the goal)
+            if dis < 2.0:
+                terminal_reward = 1
+                self.CBV_reach_goal.append(CBV_id)
             else:
-                collision_reward = 0
+                terminal_reward = 0
 
             # final scenario agent rewards
-            CBVs_reward[CBV_id] = delta_dis + 15 * collision_reward
+            CBVs_reward[CBV_id] = delta_dis + 15 * collision_punish + 15 * terminal_reward
 
         if self.scenario_agent_reward_shaping and self.use_feasibility and closest_CBV_id is not None:
             feasibility_reward = -1 if self.feasibility_dict['feasibility_V'] > 0 else 0
@@ -668,7 +686,13 @@ class CarlaEnv(gym.Env):
         CBVs_terminated = {}
         for CBV_id in self.CBVs.keys():
             # if CBV collide with the other vehicles, then CBV terminated
-            CBVs_terminated[CBV_id] = True if self.CBVs_collision[CBV_id] is not None else False
+            if self.CBVs_collision[CBV_id] is not None:
+                CBVs_terminated[CBV_id] = True
+            # if CBV reach the goal, then CBV terminated
+            elif CBV_id in self.CBV_reach_goal:
+                CBVs_terminated[CBV_id] = True
+            else:
+                CBVs_terminated[CBV_id] = False
         return CBVs_terminated
 
     def _get_CBVs_truncated(self):
@@ -742,7 +766,7 @@ class CarlaEnv(gym.Env):
                 CBV = self.CBVs.pop(CBV_id, None)
                 if CBV is not None:
                     # remove the initial ego CBV distance
-                    remove_ego_CBV_initial_dis(self.ego_vehicle, CBV)
+                    remove_goal_CBV_initial_dis(self.ego_vehicle, CBV)
                     # remove the CBV collision sensor
                     self._remove_CBV_sensor(CBV_id)
                     # remove the truncated CBV from existing CBV lists
@@ -758,12 +782,16 @@ class CarlaEnv(gym.Env):
                 CBV = self.CBVs.pop(CBV_id, None)
                 if CBV is not None:
                     # remove the initial ego CBV distance
-                    remove_ego_CBV_initial_dis(self.ego_vehicle, CBV)
+                    remove_goal_CBV_initial_dis(self.ego_vehicle, CBV)
                     # remove sensor
                     self._remove_CBV_sensor(CBV_id)
-                    # clean the CBV from the environment
-                    if CarlaDataProvider.actor_id_exists(CBV_id):
-                        CarlaDataProvider.remove_actor_by_id(CBV_id)
+                    if CBV_id in self.CBV_reach_goal:
+                        # set the goal reaching CBV free
+                        CBV.set_autopilot(enabled=True)
+                    else:
+                        # clean the CBV from the environment
+                        if CarlaDataProvider.actor_id_exists(CBV_id):
+                            CarlaDataProvider.remove_actor_by_id(CBV_id)
                     self.CBVs_nearby_vehicles.pop(CBV_id)
                     if self.birdeye_render:
                         self.birdeye_render.remove_old_CBV(CBV_id)
@@ -775,8 +803,10 @@ class CarlaEnv(gym.Env):
         self.route = None
         self.global_route_waypoints = None
         self.waypoints = None
+        self.goal_point = None
         self.ego_collide = False
         self.CBVs_collision = {}
+        self.CBV_reach_goal = []
         self.feasibility_dict = {} if self.use_feasibility else None
 
     def clean_up(self):

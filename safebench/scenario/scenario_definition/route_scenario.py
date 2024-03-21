@@ -154,7 +154,7 @@ class RouteScenario():
         for _actor in new_actors:
             self.unactivated_actors.append(_actor)
 
-    def activate_background_actors(self, activate_threshold=45):
+    def activate_background_actors(self, activate_threshold=40):
         ego_location = CarlaDataProvider.get_location(self.ego_vehicle)
         unactivated_actors = list(self.unactivated_actors)  # for safer remove
         for actor in unactivated_actors:
