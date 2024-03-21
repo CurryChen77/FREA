@@ -243,7 +243,7 @@ class CarlaEnv(gym.Env):
         # route planner for ego vehicle
         self.global_route_waypoints = self._global_route_to_waypoints()  # the initial route waypoints from the config
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
-        self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front = self.routeplanner.run_step()
+        self.waypoints, _, _, self.target_waypoint, self.red_light_state = self.routeplanner.run_step()
 
         # Update time_steps
         self.time_step = 0
@@ -368,7 +368,7 @@ class CarlaEnv(gym.Env):
 
         # route planner
         # self.waypoints: the waypoints from the waypoint buffer, needed to be followed
-        self.waypoints, _, _, self.target_waypoint, self.red_light_state, self.vehicle_front, = self.routeplanner.run_step()
+        self.waypoints, _, _, self.target_waypoint, self.red_light_state = self.routeplanner.run_step()
 
         # find ego nearby vehicles
         if self.mode == 'collect_feasibility_data' or self.mode == 'eval' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
@@ -561,22 +561,6 @@ class CarlaEnv(gym.Env):
             }
             obs = {
                 'ego_state': ego_state,
-            }
-        elif self.agent_obs_type == 'simple_state':
-            # default State observation from safebench
-            ego_trans = CarlaDataProvider.get_transform(self.ego_vehicle)
-            ego_x = ego_trans.location.x
-            ego_y = ego_trans.location.y
-            ego_yaw = ego_trans.rotation.yaw / 180 * np.pi
-            lateral_dis, w = get_preview_lane_dis(self.waypoints, ego_x, ego_y)
-            yaw = np.array([np.cos(ego_yaw), np.sin(ego_yaw)])
-            delta_yaw = np.arcsin(np.cross(w, yaw))
-
-            v = CarlaDataProvider.get_velocity(self.ego_vehicle)
-            speed = calculate_abs_velocity(v)
-            simple_state = np.array([lateral_dis, -delta_yaw, speed, self.vehicle_front])
-            obs = {
-                'simple_state': simple_state.astype(np.float32),
             }
         elif self.agent_obs_type == 'ego_obs':
             # the ego obs for RL training needs the route_info

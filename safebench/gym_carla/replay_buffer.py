@@ -50,7 +50,7 @@ class ReplayBuffer:
 
         self.buffer_capacity = buffer_capacity
         self.num_scenario = num_scenario
-        self.agent_need_obs = True if (agent_config['obs_type'] == 'simple_state' or agent_config['obs_type'] == 'plant') else False
+        self.agent_need_obs = True if (agent_config['obs_type'] == 'plant') else False
         self.pos = 0
         self.buffer_len = 0
         self.full = False
