@@ -15,6 +15,6 @@ model_path: ''
 standard_action: False
 buffer_capacity: 100
 
-save_freq: 20
+save_freq: 50
 train_episode: 100
 gamma: 0.99

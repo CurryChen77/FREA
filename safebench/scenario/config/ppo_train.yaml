@@ -21,7 +21,7 @@ model_type: 'cbv'
 dims: [256, 256]
 train_episode: 2000
 
-save_freq: 20
+save_freq: 50
 buffer_capacity: 2048
 
 clip_epsilon: 0.2
