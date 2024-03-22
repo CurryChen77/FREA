@@ -25,7 +25,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
     update_goal_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, \
-    set_goal_CBV_initial_dis, remove_goal_CBV_initial_dis, process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs, get_BVs_record, check_interaction
+    process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs, get_BVs_record, check_interaction
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -217,8 +217,6 @@ class CarlaEnv(gym.Env):
                     # if CBV not in the CBVs list, put the new one in
                     if CBV.id not in self.CBVs.keys():
                         self.CBVs[CBV.id] = CBV
-                        # set the initial ego CBV distance
-                        set_goal_CBV_initial_dis(self.ego_vehicle, CBV, self.goal_point)
                         CBV.set_autopilot(enabled=False)  # prepared to be controlled
                         self.register_CBV_sensor(CBV)
                         # update the CBV for BEV visualization
@@ -632,7 +630,7 @@ class CarlaEnv(gym.Env):
                 closest_CBV_id = CBV_id
 
             # encourage CBV to get closer to the goal point
-            delta_dis, dis_ratio, dis = get_CBV_ego_reward(self.ego_vehicle, self.CBVs[CBV_id], self.goal_point)  # [-1, 1]
+            delta_dis, CBV_goal_dis = get_CBV_ego_reward(self.ego_vehicle, self.CBVs[CBV_id], self.goal_point)  # [-1, 1]
 
             # CBV collision punish (collide with rest bvs punish -> -1)
             collision_punish = 0
@@ -641,7 +639,7 @@ class CarlaEnv(gym.Env):
                     collision_punish = -1
 
             # terminal reward (reach the goal)
-            if dis < 2.0:
+            if CBV_goal_dis < 2.0:
                 terminal_reward = 1
                 self.CBV_reach_goal.append(CBV_id)
             else:
@@ -701,7 +699,7 @@ class CarlaEnv(gym.Env):
             if not self.scenario_manager.running:
                 # if the Ego stops, then the CBV is truncated
                 CBVs_truncated[CBV_id] = True
-            elif not check_interaction(self.ego_vehicle, CBV, self.ego_length, delta_forward_angle=120, ego_fov=240):
+            elif not check_interaction(self.ego_vehicle, CBV, self.ego_length, delta_forward_angle=100, ego_fov=200):
                 # loose condition to check truncated
                 CBVs_truncated[CBV_id] = True
             else:
@@ -765,8 +763,6 @@ class CarlaEnv(gym.Env):
             if truncated:
                 CBV = self.CBVs.pop(CBV_id, None)
                 if CBV is not None:
-                    # remove the initial ego CBV distance
-                    remove_goal_CBV_initial_dis(self.ego_vehicle, CBV)
                     # remove the CBV collision sensor
                     self._remove_CBV_sensor(CBV_id)
                     # remove the truncated CBV from existing CBV lists
@@ -781,8 +777,6 @@ class CarlaEnv(gym.Env):
             if terminated:
                 CBV = self.CBVs.pop(CBV_id, None)
                 if CBV is not None:
-                    # remove the initial ego CBV distance
-                    remove_goal_CBV_initial_dis(self.ego_vehicle, CBV)
                     # remove sensor
                     self._remove_CBV_sensor(CBV_id)
                     if CBV_id in self.CBV_reach_goal:

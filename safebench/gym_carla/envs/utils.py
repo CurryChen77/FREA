@@ -131,42 +131,6 @@ def update_goal_CBV_dis(ego, CBVs, goal_point):
         CarlaDataProvider.goal_CBV_dis[ego_id][CBV_id] = CBV_loc.distance(goal_point_loc)
 
 
-def set_goal_CBV_initial_dis(ego, CBV, goal_point):
-    """
-        the initial distance, when CBV is added in to the CBVs
-    """
-    CBV_loc = CarlaDataProvider.get_location(CBV)
-    goal_point_loc = carla.Location(x=goal_point[0], y=goal_point[1], z=CBV_loc.z)
-    CarlaDataProvider.goal_CBV_initial_dis[ego.id][CBV.id] = CBV_loc.distance(goal_point_loc)
-
-
-def remove_goal_CBV_initial_dis(ego, CBV):
-    """
-        the initial distance, when CBV is added in to the CBVs
-    """
-    CarlaDataProvider.goal_CBV_initial_dis[ego.id].pop(CBV.id)
-
-
-# def get_CBV_stuck(CBV, CBV_nearby_vehicles, ego, ego_nearby_vehicles):
-#     """
-#         if CBV movement causing stuck in the traffic flow especially for ego, punish this
-#     """
-#     stuck = False
-#     if CBV is not None and CBV_nearby_vehicles is not None and ego_nearby_vehicles is not None:
-#         CBV_v = CarlaDataProvider.get_velocity(CBV)
-#         ego_v = CarlaDataProvider.get_velocity(ego)
-#         relative_velocity_list = [CBV_v.distance_2d(ego_v)]
-#         for bv in ego_nearby_vehicles:
-#             if any(actor.id == bv.id for actor in CBV_nearby_vehicles):
-#                 bv_v = CarlaDataProvider.get_velocity(bv)
-#                 relative_velocity_list.append(bv_v.distance_2d(ego_v))
-#                 break
-#         if relative_velocity_list[0] < 0.1 or np.average(relative_velocity_list) < 0.1:
-#             stuck = True
-#
-#     return stuck
-
-
 def get_CBV_ego_reward(ego, CBV, goal_point):
     """
         distance ratio and delta distance calculation
@@ -175,14 +139,11 @@ def get_CBV_ego_reward(ego, CBV, goal_point):
     CBV_loc = CarlaDataProvider.get_location(CBV)
     goal_point_loc = carla.Location(x=goal_point[0], y=goal_point[1], z=CBV_loc.z)
     dis = CBV_loc.distance(goal_point_loc)
+
     # delta_dis > 0 means ego and CBV are getting closer, otherwise punish CBV drive away from ego
     delta_dis = np.clip(CarlaDataProvider.goal_CBV_dis[ego.id][CBV.id] - dis, a_min=-1., a_max=1.)
 
-    # distance ratio
-    init_dis = CarlaDataProvider.goal_CBV_initial_dis[ego.id][CBV.id]
-    dis_ratio = np.clip((init_dis - dis) / init_dis, a_min=-1., a_max=1.)
-
-    return delta_dis, dis_ratio, dis
+    return delta_dis, dis
 
 
 def get_CBV_bv_reward(CBV, search_radius, CBV_nearby_vehicles, tou=1):
@@ -388,18 +349,16 @@ def check_interaction(ego, CBV, ego_length, delta_forward_angle=90, ego_fov=180)
     CBV_transform = CarlaDataProvider.get_transform(CBV)
     CBV_forward_vector = CBV_transform.rotation.get_forward_vector()
     interaction = True
+    ego_location = ego_transform.location
+    CBV_location = CBV_transform.location
+    relative_direction = (CBV_location - ego_location)
+    relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))
+    distance = ego_location.distance(CBV_location)
+    direction_angle = math.degrees(ego_forward_vector.get_vector_angle(CBV_forward_vector))
 
-    # the no interaction case
-    if math.degrees(ego_forward_vector.get_vector_angle(CBV_forward_vector)) > delta_forward_angle:
-        # 1. ego and CBV got different direction
-        ego_location = ego_transform.location
-        CBV_location = CBV_transform.location
-        relative_direction = (CBV_location - ego_location)
-        relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))
-        distance = ego_location.distance(CBV_location)
-        if relative_delta_angle >= ego_fov / 2 and distance >= ego_length:
-            # 2. if the CBV is at the behind of the ego, and certain distances away from ego
-            interaction = False
+    # 1. ego and CBV got different direction, and behind ego a certain distance
+    if distance >= ego_length and relative_delta_angle >= ego_fov / 2 and direction_angle > delta_forward_angle:
+        interaction = False
 
     return interaction
 
