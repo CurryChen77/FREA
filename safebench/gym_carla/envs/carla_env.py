@@ -116,18 +116,18 @@ class CarlaEnv(gym.Env):
 
     def _create_sensors(self):
         if self.mode == 'eval':
-            # lidar sensor
-            self.lidar_trans = carla.Transform(carla.Location(x=0.0, z=self.lidar_height))
-            self.lidar_bp = CarlaDataProvider._blueprint_library.find('sensor.lidar.ray_cast')
-            self.lidar_bp.set_attribute('channels', '16')
-            self.lidar_bp.set_attribute('range', '1000')
+            if not self.disable_lidar:
+                # lidar sensor
+                self.lidar_trans = carla.Transform(carla.Location(x=0.0, z=self.lidar_height))
+                self.lidar_bp = CarlaDataProvider._blueprint_library.find('sensor.lidar.ray_cast')
+                self.lidar_bp.set_attribute('channels', '16')
+                self.lidar_bp.set_attribute('range', '1000')
 
             # camera sensor
             self.camera_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
             self.BGR_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
             # self.camera_trans = carla.Transform(carla.Location(x=0.8, z=1.7))  # for ego view
-            self.camera_trans = carla.Transform(carla.Location(x=-4., y=0., z=5.),
-                                                carla.Rotation(pitch=-20.0))  # for third-person view
+            self.camera_trans = carla.Transform(carla.Location(x=-2., y=0., z=12.),carla.Rotation(pitch=-50.0))  # for third-person view
             self.camera_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.rgb')
             # Modify the attributes of the blueprint to set image resolution and field of view.
             self.camera_bp.set_attribute('image_size_x', str(self.obs_size))
@@ -139,7 +139,7 @@ class CarlaEnv(gym.Env):
             # sem camera sensor
             if self.enable_sem:
                 self.sem_img = np.zeros((self.obs_size, self.obs_size, 2), dtype=np.uint8)
-                self.sem_trans = carla.Transform(carla.Location(x=-4., y=0, z=5.), carla.Rotation(pitch=-20.0))  # for third-person view
+                self.sem_trans = carla.Transform(carla.Location(x=-2., y=0, z=12.), carla.Rotation(pitch=-50.0))  # for third-person view
                 self.sem_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.semantic_segmentation')
                 self.sem_bp.set_attribute('image_size_x', str(self.obs_size))
                 self.sem_bp.set_attribute('image_size_y', str(self.obs_size))

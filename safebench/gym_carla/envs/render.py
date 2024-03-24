@@ -87,7 +87,7 @@ class MapImage(object):
     def __init__(self, carla_world, carla_map, pixels_per_meter, logger):
         logger.log('>> Drawing the map of the entire town. This may take a while...')
         self._pixels_per_meter = pixels_per_meter
-        self.scale = 1.0
+        self.scale = 1
 
         waypoints = carla_map.generate_waypoints(2)
         margin = 50

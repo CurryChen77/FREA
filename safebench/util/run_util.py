@@ -59,17 +59,16 @@ class VideoRecorder(object):
         self.video_count = 0
         self.fps = 20
         self.frame_list = []
-        hms_time = time.strftime("%Y-%m-%d_%H-%M-%S")
-        self.video_dir = os.path.join(self.output_dir, 'video', hms_time)
 
     def add_frame(self, frame):
         self.frame_list.append(frame)
     
-    def save(self, data_ids):
+    def save(self, data_ids, file_name):
         data_ids = ['{:04d}'.format(data_id) for data_id in data_ids]
         video_name = f'video_{"{:04d}".format(self.video_count)}_id_{"_".join(data_ids)}.mp4'
-        os.makedirs(self.video_dir, exist_ok=True)
-        video_file = os.path.join(self.video_dir, video_name)
+        file_path = os.path.join(self.output_dir, file_name, 'video')
+        os.makedirs(file_path, exist_ok=True)
+        video_file = os.path.join(file_path, video_name)
         self.logger.log(f'>> Saving video to {video_file}')
 
         # define video writer

@@ -72,7 +72,7 @@ class CarlaRunner:
         self.env_params = {
             'mode': self.mode,  # the mode of the script
             'search_radius': 25,  # the default search radius
-            'traffic_intensity': 0.8,  # the default traffic intensity
+            'traffic_intensity': 0.6,  # the default traffic intensity
             'auto_ego': scenario_config['auto_ego'],
             'spectator': agent_config['spectator'],  # whether to put spectator on the world
             'viz_route': agent_config['viz_route'],  # whether to visualize the route
@@ -86,15 +86,15 @@ class CarlaRunner:
             'warm_up_steps': 4,  # number of ticks after spawning the vehicles
             'disable_lidar': True,  # show bird-eye view lidar or not
             'enable_sem': agent_config['enable_sem'],  # whether to enable the sem visualization
-            'display_size': 192,  # screen size of one bird-eye view window
-            'obs_range': 32,  # observation range (meter)
+            'display_size': 256,  # screen size of one bird-eye view window
+            'obs_range': 36,  # observation range (meter)
             'd_behind': 12,  # distance behind the ego vehicle (meter)
             'max_past_step': 1,  # the number of past steps to draw
             'continuous_accel_range': [-3.0, 3.0],  # continuous acceleration range
             'continuous_steer_range': [-0.3, 0.3],  # continuous steering angle range
             'max_episode_step': 300,  # maximum time steps per episode
             'max_waypt': 12,  # maximum number of waypoints
-            'lidar_bin': 0.125,  # bin size of lidar sensor (meter)
+            'lidar_bin': 0.0625,  # bin size of lidar sensor (meter)
             'out_lane_thres': 4,  # threshold for out of lane (meter)
             'desired_speed': 6,  # desired speed (m/s)
         }
@@ -362,7 +362,7 @@ class CarlaRunner:
             # save video
             if self.save_video:
                 data_ids = [config.data_id for config in sampled_scenario_configs]
-                self.logger.save_video(data_ids=data_ids)
+                self.logger.save_video(data_ids=data_ids, scenario_id=self.scenario_id, map_name=self.current_map)
 
             # print score for ranking
             self.logger.log(f'[{num_finished_scenario}/{data_loader.num_total_scenario}] Ranking scores (rewards) for batch scenario:', 'yellow')

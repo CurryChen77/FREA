@@ -198,5 +198,7 @@ class Logger:
     def add_frame(self, frame):
         self.video_recorder.add_frame(frame)
 
-    def save_video(self, data_ids):
-        self.video_recorder.save(data_ids=data_ids)
+    def save_video(self, data_ids, scenario_id, map_name):
+        scenario_name = "all" if scenario_id is None else 'Scenario' + str(scenario_id)
+        file_name = scenario_name + '_' + map_name
+        self.video_recorder.save(data_ids=data_ids, file_name=file_name)
