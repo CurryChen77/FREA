@@ -10,7 +10,7 @@
 
 import copy
 import os
-
+import re
 import numpy as np
 import carla
 import pygame
@@ -43,7 +43,7 @@ class CarlaRunner:
         self.agent_config = agent_config
         self.feasibility_config = feasibility_config
         self.current_map = None
-        self.all_map = ['Town0' + str(Town_id) for Town_id in self.scenario_config['Town_ids']]
+        self.all_map = re.findall(r'Town\d+', scenario_config['scenario_type'])
         self.birdeye_render = None
         self.display = None
 
@@ -137,12 +137,12 @@ class CarlaRunner:
         if self.mode == 'train_agent':
             self.buffer_capacity = agent_config['buffer_capacity']
             self.save_freq = agent_config['save_freq']
-            self.train_episode = agent_config['train_episode']
+            self.train_episode_list = agent_config['train_episode']
             self.logger.save_config(agent_config)
         elif self.mode == 'train_scenario':
             self.buffer_capacity = scenario_config['buffer_capacity']
             self.save_freq = scenario_config['save_freq']
-            self.train_episode = scenario_config['train_episode']
+            self.train_episode_list = scenario_config['train_episode']
             self.logger.save_config(scenario_config)
         elif self.mode == 'collect_feasibility_data':
             self.buffer_capacity = feasibility_config['buffer_capacity']
@@ -244,7 +244,7 @@ class CarlaRunner:
 
         data_loader.set_mode("train")
 
-        for e_i in tqdm(range(start_episode, self.train_episode + 1)):
+        for e_i in tqdm(range(start_episode, self.train_episode_list[self.current_map] + 1)):
             # sample scenarios in this town (one town could contain multiple scenarios)
             # simulate multiple scenarios in parallel (usually 2 scenarios)
             sampled_scenario_configs, config_lengths = data_loader.sampler()

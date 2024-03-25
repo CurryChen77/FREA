@@ -55,7 +55,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--town_names', nargs='+', default=['Town05', 'Town01', 'Town02'])
+    parser.add_argument('--town_names', nargs='+', default=['Town05', 'Town02'])
     parser.add_argument('--repeat_times', '-r', type=int, default=10)
     args = parser.parse_args()
     main(args)

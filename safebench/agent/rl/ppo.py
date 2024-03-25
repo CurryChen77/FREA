@@ -43,7 +43,8 @@ class PPO(BasePolicy):
         self.batch_size = config['batch_size']
         self.lambda_gae_adv = config['lambda_gae_adv']
         self.lambda_entropy = config['lambda_entropy']
-        self.max_train_episode = config['train_episode']
+        self.train_episode_list = config['train_episode']
+        self.map_train_episode = None
         self.dims = config['dims']
 
         self.model_type = config['model_type']
@@ -72,8 +73,8 @@ class PPO(BasePolicy):
             raise ValueError(f'Unknown mode {mode}')
 
     def lr_decay(self, e_i):
-        lr_policy_now = self.policy_lr * (1 - e_i / self.max_train_episode)
-        lr_value_now = self.value_lr * (1 - e_i / self.max_train_episode)
+        lr_policy_now = self.policy_lr * (1 - e_i / self.map_train_episode)
+        lr_value_now = self.value_lr * (1 - e_i / self.map_train_episode)
         for p in self.policy_optim.param_groups:
             p['lr'] = lr_policy_now
         for p in self.value_optim.param_groups:
@@ -192,6 +193,7 @@ class PPO(BasePolicy):
             torch.save(states, f)
 
     def load_model(self, map_name, episode=None):
+        self.map_train_episode = self.train_episode_list[map_name]
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         load_dir = os.path.join(self.model_path, self.scenario_policy_type, scenario_name+'_'+map_name)
         if episode is None:

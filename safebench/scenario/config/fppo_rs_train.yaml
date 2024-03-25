@@ -1,12 +1,11 @@
 scenario_type_dir: 'safebench/scenario/config/scenario_type'
-scenario_type: 'Scenario9_Town05_Town01_Town02_10x.json'
+scenario_type: 'Scenario9_Town05_Town02_10x.json'
 policy_type: 'fppo_rs'
 learnable: True
 feasibility: True
 reward_shaping: True
 
 route_dir: 'safebench/scenario/scenario_data/route'
-Town_ids: [5, 2, 1]
 scenario_id: 9  # default null -> save and load an "all" model for all scenarios, 9 -> save and load one model for the "9" scenario
 route_id: null
 
@@ -19,7 +18,9 @@ scenario_action_dim: 2
 model_path: 'safebench/scenario/scenario_data/model_ckpt/fppo_rs'
 model_type: 'cbv'
 dims: [256, 256]
-train_episode: 2000
+train_episode:
+  Town05: 2000
+  Town02: 800
 
 save_freq: 50
 buffer_capacity: 2048

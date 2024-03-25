@@ -1,12 +1,11 @@
 scenario_type_dir: 'safebench/scenario/config/scenario_type'
-scenario_type: 'Scenario9_Town05_Town01_Town02_5x.json'
+scenario_type: 'Scenario9_Town05_Town02_5x.json'
 policy_type: 'standard'
 learnable: False
 feasibility: False
 reward_shaping: False
 
 route_dir: 'safebench/scenario/scenario_data/route'
-Town_ids: [5, 2, 1]
 scenario_id: 9
 route_id: null
 
@@ -15,6 +14,8 @@ model_path: ''
 standard_action: False
 buffer_capacity: 100
 
-save_freq: 5
-train_episode: 100
+save_freq: 20
+train_episode:
+  Town05: 2000
+  Town02: 800
 gamma: 0.99

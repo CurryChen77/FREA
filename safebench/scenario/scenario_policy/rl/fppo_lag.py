@@ -42,9 +42,9 @@ class FPPOLag(PPO):
             raise ValueError(f'Unknown mode {mode}')
 
     def lr_decay(self, e_i):
-        lr_policy_now = self.policy_lr * (1 - e_i / self.max_train_episode)
-        lr_value_now = self.value_lr * (1 - e_i / self.max_train_episode)
-        lr_lagrange_multiplier_now = self.lagrange.lambda_lr * (1 - e_i / self.max_train_episode)
+        lr_policy_now = self.policy_lr * (1 - e_i / self.map_train_episode)
+        lr_value_now = self.value_lr * (1 - e_i / self.map_train_episode)
+        lr_lagrange_multiplier_now = self.lagrange.lambda_lr * (1 - e_i / self.map_train_episode)
         for p in self.policy_optim.param_groups:
             p['lr'] = lr_policy_now
         for p in self.value_optim.param_groups:
@@ -158,6 +158,7 @@ class FPPOLag(PPO):
             torch.save(states, f)
 
     def load_model(self, map_name, episode=None):
+        self.map_train_episode = self.train_episode_list[map_name]
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         load_dir = os.path.join(self.model_path, self.agent_info, scenario_name+"_"+map_name)
         if episode is None:
