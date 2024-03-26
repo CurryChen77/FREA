@@ -26,31 +26,37 @@ class FPPOLag(PPO):
 
     def __init__(self, config, logger):
         super(FPPOLag, self).__init__(config, logger)
-        self.lagrange = Lagrange(**config['lagrange_cfgs'])
+        self.mlp_multiplier = config['mlp_multiplier']
+        if self.mlp_multiplier:
+            self.lagrange = Lagrange(**config['lagrange_cfgs'])
+        else:
+            self.lagrange = config['fix_multiplier']
 
     def set_mode(self, mode):
         self.mode = mode
         if mode == 'train':
             self.policy.train()
             self.value.train()
-            self.lagrange.lagrangian_multiplier.train()
+            self.lagrange.lagrangian_multiplier.train() if self.mlp_multiplier else None
         elif mode == 'eval':
             self.policy.eval()
             self.value.eval()
-            self.lagrange.lagrangian_multiplier.eval()
+            self.lagrange.lagrangian_multiplier.eval() if self.mlp_multiplier else None
         else:
             raise ValueError(f'Unknown mode {mode}')
 
     def lr_decay(self, e_i):
         lr_policy_now = self.policy_lr * (1 - e_i / self.map_train_episode)
         lr_value_now = self.value_lr * (1 - e_i / self.map_train_episode)
-        lr_lagrange_multiplier_now = self.lagrange.lambda_lr * (1 - e_i / self.map_train_episode)
         for p in self.policy_optim.param_groups:
             p['lr'] = lr_policy_now
         for p in self.value_optim.param_groups:
             p['lr'] = lr_value_now
-        for p in self.lagrange.lambda_optimizer.param_groups:
-            p['lr'] = lr_lagrange_multiplier_now
+
+        if self.mlp_multiplier:
+            lr_lagrange_multiplier_now = self.lagrange.lambda_lr * (1 - e_i / self.map_train_episode)
+            for p in self.lagrange.lambda_optimizer.param_groups:
+                p['lr'] = lr_lagrange_multiplier_now
 
     def train(self, buffer, writer, e_i):
         """
@@ -86,13 +92,20 @@ class FPPOLag(PPO):
             feasibility_advantages = feasibility_Qs - feasibility_Vs
 
             # Lagrange multiplier
-            penalty = self.lagrange.get_lagrangian_multiplier(states)
-            constraints = torch.clamp(feasibility_Vs, min=-5., max=10)
+            if self.mlp_multiplier:
+                penalty = self.lagrange.get_lagrangian_multiplier(states)
+                constraints = torch.clamp(feasibility_Vs, min=-5., max=10)
+            else:
+                penalty = torch.mul(feasibility_Vs > 0, self.lagrange)
+
+            # norm the reward advantage
+            reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
+            # norm the feasibility advantage
+            feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
 
             # final advantage
             advantages = (reward_advantages - torch.mul(penalty, feasibility_advantages)) / (1 + penalty)
-            # norm the final advantage
-            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
+
             del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, penalty
 
         # start to train, use gradient descent without batch_size
@@ -106,13 +119,15 @@ class FPPOLag(PPO):
             log_prob = log_probs[indices]
             advantage = advantages[indices]
             reward_sum = reward_sums[indices]
-            constraint = constraints[indices]
 
             # update the Lagrange multipliers
-            lambda_loss, lagrange_multiplier = self.lagrange.update_lagrange_multiplier(state, constraint)
-            writer.add_scalar("lambda loss", lambda_loss, e_i)
-            writer.add_scalar("unsafe mean lambda", torch.mean(torch.mul(constraint >= 0, lagrange_multiplier)), e_i)
-            writer.add_scalar("safe mean lambda", torch.mean(torch.mul(constraint < 0, lagrange_multiplier)), e_i)
+            if self.mlp_multiplier:
+                constraint = constraints[indices]
+                lambda_loss, lagrange_multiplier = self.lagrange.update_lagrange_multiplier(state, constraint)
+                writer.add_scalar("lambda loss", lambda_loss, e_i)
+                writer.add_scalar("unsafe mean lambda", torch.mean(torch.mul(constraint >= 0, lagrange_multiplier)), e_i)
+                writer.add_scalar("safe mean lambda", torch.mean(torch.mul(constraint < 0, lagrange_multiplier)), e_i)
+                writer.add_scalar("max lambda", torch.max(lagrange_multiplier), e_i)
 
             # update value function
             value = self.value(state)
@@ -147,8 +162,8 @@ class FPPOLag(PPO):
             'value': self.value.state_dict(),
             'policy_optim': self.policy_optim.state_dict(),
             'value_optim': self.value_optim.state_dict(),
-            'lagrange_multiplier': self.lagrange.lagrangian_multiplier.state_dict(),
-            'lagrange_multiplier_optim': self.lagrange.lambda_optimizer.state_dict(),
+            'lagrange_multiplier': self.lagrange.lagrangian_multiplier.state_dict() if self.mlp_multiplier else None,
+            'lagrange_multiplier_optim': self.lagrange.lambda_optimizer.state_dict() if self.mlp_multiplier else None,
         }
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
         save_dir = os.path.join(self.model_path, self.agent_info, scenario_name+"_"+map_name)
@@ -179,8 +194,9 @@ class FPPOLag(PPO):
             self.value.load_state_dict(checkpoint['value'])
             self.policy_optim.load_state_dict(checkpoint['policy_optim'])
             self.value_optim.load_state_dict(checkpoint['value_optim'])
-            self.lagrange.lagrangian_multiplier.load_state_dict(checkpoint['lagrange_multiplier'])
-            self.lagrange.lambda_optimizer.load_state_dict(checkpoint['lagrange_multiplier_optim'])
+            if self.mlp_multiplier:
+                self.lagrange.lagrangian_multiplier.load_state_dict(checkpoint['lagrange_multiplier'])
+                self.lagrange.lambda_optimizer.load_state_dict(checkpoint['lagrange_multiplier_optim'])
             self.continue_episode = episode
         else:
             self.logger.log(f'>> No scenario policy {self.name} model found at {filepath}', 'red')

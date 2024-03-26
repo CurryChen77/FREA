@@ -58,9 +58,14 @@ class FPPOAdv(PPO):
             unsafe_condition = torch.where(feasibility_Vs > 0.0, 1.0, 0.0)
             safe_condition = torch.where(feasibility_Vs <= 0.0, 1.0, 0.0)
 
+            # norm the reward advantage
+            reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
+            # norm the feasibility advantage
+            feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
+
             # final advantage
             advantages = unsafe_condition * feasibility_advantages + safe_condition * reward_advantages
-            advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
+
             del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, unsafe_condition, safe_condition
 
         # start to train, use gradient descent without batch_size

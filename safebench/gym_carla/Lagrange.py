@@ -72,9 +72,9 @@ class Lagrange:
         state_dim: int,
         hidden_dims: [int],
         constraint_limit: float,
+        multiplier_upper_bound: int,
         lambda_lr: float,
         lambda_optimizer: str,
-        multiplier_upper_bound: int,
     ) -> None:
         """Initialize an instance of :class:`Lagrange`."""
         self.state_dim = state_dim

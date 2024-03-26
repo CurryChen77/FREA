@@ -36,6 +36,8 @@ lambda_gae_adv: 0.98
 lambda_entropy: 0.01
 
 # lagrangian configurations
+mlp_multiplier: False
+fix_multiplier: 100
 lagrange_cfgs:
   # the same state dims as the scenario agent
   state_dim: 18
@@ -46,6 +48,6 @@ lagrange_cfgs:
   # upper bound of the lagrange multiplier
   multiplier_upper_bound: 70.
   # Learning rate of lagrangian multiplier
-  lambda_lr: 0.035
+  lambda_lr: 3.0e-3
   # Type of lagrangian optimizer
   lambda_optimizer: "Adam"
