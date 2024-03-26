@@ -38,8 +38,8 @@ def calculate_collision_rate(done, collision):
             if has_collision or c:
                 collision_episodes += 1
             has_collision = False
-        else:
-            has_collision = True if c else False
+        elif c:
+            has_collision = True
     # count the total collision
     collision_rate = collision_episodes / total_episodes if total_episodes != 0 else None
     return collision_rate
