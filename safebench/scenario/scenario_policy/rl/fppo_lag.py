@@ -111,7 +111,8 @@ class FPPOLag(PPO):
             # update the Lagrange multipliers
             lambda_loss, lagrange_multiplier = self.lagrange.update_lagrange_multiplier(state, constraint)
             writer.add_scalar("lambda loss", lambda_loss, e_i)
-            writer.add_scalar("max lagrange multiplier", torch.max(lagrange_multiplier), e_i)
+            writer.add_scalar("unsafe mean lambda", torch.mean(torch.mul(constraint >= 0, lagrange_multiplier)), e_i)
+            writer.add_scalar("safe mean lambda", torch.mean(torch.mul(constraint < 0, lagrange_multiplier)), e_i)
 
             # update value function
             value = self.value(state)

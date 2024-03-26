@@ -44,8 +44,8 @@ lagrange_cfgs:
   # Tolerance of constraint violation
   constraint_limit: 0
   # upper bound of the lagrange multiplier
-  multiplier_upper_bound: 50.
+  multiplier_upper_bound: 70.
   # Learning rate of lagrangian multiplier
-  lambda_lr: 3.0e-4
+  lambda_lr: 0.035
   # Type of lagrangian optimizer
   lambda_optimizer: "Adam"

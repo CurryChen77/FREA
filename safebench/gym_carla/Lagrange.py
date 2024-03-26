@@ -75,16 +75,14 @@ class Lagrange:
         lambda_lr: float,
         lambda_optimizer: str,
         multiplier_upper_bound: int,
-        lagrangian_upper_bound: Optional[float] = None,
     ) -> None:
         """Initialize an instance of :class:`Lagrange`."""
         self.state_dim = state_dim
         self.hidden_dims = hidden_dims
         self.constraint_limit: float = constraint_limit
         self.lambda_lr: float = lambda_lr
-        self.lagrangian_upper_bound: Optional[float] = lagrangian_upper_bound
+        self.multiplier_upper_bound: Optional[float] = multiplier_upper_bound
         self.criterion = nn.MSELoss()
-        self.multiplier_upper_bound = multiplier_upper_bound
         self.lagrangian_multiplier = CUDA(LagrangeMultiplier(state_dim=state_dim, hidden_dims=hidden_dims, hidden_activation=nn.ReLU, output_activation=nn.Softplus))
 
         # fetch optimizer from PyTorch optimizer package
@@ -102,7 +100,7 @@ class Lagrange:
         # get lagrangian multiplier
         lagrangian_multiplier = self.lagrangian_multiplier(state)  # [B, 1]
         # set upper bound if necessary
-        lagrangian_multiplier = lagrangian_multiplier.squeeze(1).clamp_(min=0.0, max=self.lagrangian_upper_bound)
+        lagrangian_multiplier = lagrangian_multiplier.squeeze(1).clamp_(min=0.0, max=self.multiplier_upper_bound)
         return lagrangian_multiplier
 
     def compute_lambda_loss(self, state: torch.Tensor, constraint: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
