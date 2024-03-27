@@ -36,7 +36,7 @@ class RoutePlanner():
         self._sampling_radius = 2
         self._min_distance = 4
 
-        self._target_waypoint = None
+        self._goal_waypoint = None
         self._buffer_size = buffer_size
         self._waypoint_buffer = deque(maxlen=self._buffer_size)  # the local buffer to store the pop waypoint in the waypoints queue
 
@@ -94,11 +94,11 @@ class RoutePlanner():
 
     def run_step(self):
         # the following target means the next one
-        waypoints, target_road_option, current_waypoint, target_waypoint = self._get_waypoints()
+        waypoints, target_road_option, current_waypoint, goal_waypoint = self._get_waypoints()
         # red_light, hazard_vehicle_ids = self._get_hazard()
         # TODO ignore all the traffic light
         red_light = False
-        return waypoints, target_road_option, current_waypoint, target_waypoint, red_light
+        return waypoints, target_road_option, current_waypoint, goal_waypoint, red_light
 
     def _get_waypoints(self):
         """
@@ -138,10 +138,10 @@ class RoutePlanner():
 
         # current vehicle waypoint
         self._current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
-        # target waypoint the next waypoint
-        self._target_waypoint, self._target_road_option = self._waypoint_buffer[0]
+        # goal waypoint of the ego vehicle
+        self._goal_waypoint, self._target_road_option = self._waypoint_buffer[len(self._waypoint_buffer) // 3]
 
-        return waypoints, self._target_road_option, self._current_waypoint, self._target_waypoint
+        return waypoints, self._target_road_option, self._current_waypoint, self._goal_waypoint
 
     def _get_hazard(self):
         # retrieve relevant elements for safe navigation, i.e.: traffic lights
@@ -206,8 +206,8 @@ class RoutePlanner():
             # It is too late. Do not block the intersection! Keep going!
             return False
 
-        if self._target_waypoint is not None:
-            if self._target_waypoint.is_intersection:
+        if self._goal_waypoint is not None:
+            if self._goal_waypoint.is_intersection:
                 potential_lights = []
                 min_angle = 180.0
                 sel_magnitude = 0.0

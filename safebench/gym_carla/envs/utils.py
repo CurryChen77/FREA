@@ -117,7 +117,7 @@ def get_ego_min_dis(ego, ego_nearby_vehicles, search_radius=25, bbox=True):
     return ego_min_dis
 
 
-def update_goal_CBV_dis(ego, CBVs, goal_point):
+def update_goal_CBV_dis(ego, CBVs, goal_waypoint):
     """
         if the CBV has changed, then reset the corresponding initial distance
     """
@@ -127,18 +127,16 @@ def update_goal_CBV_dis(ego, CBVs, goal_point):
 
     for CBV_id, CBV in CBVs.items():
         CBV_loc = CarlaDataProvider.get_location(CBV)
-        goal_point_loc = carla.Location(x=goal_point[0], y=goal_point[1], z=CBV_loc.z)
-        CarlaDataProvider.goal_CBV_dis[ego_id][CBV_id] = CBV_loc.distance(goal_point_loc)
+        CarlaDataProvider.goal_CBV_dis[ego_id][CBV_id] = CBV_loc.distance(goal_waypoint.transform.location)
 
 
-def get_CBV_ego_reward(ego, CBV, goal_point):
+def get_CBV_ego_reward(ego, CBV, goal_waypoint):
     """
         distance ratio and delta distance calculation
     """
     # get the dis between the goal and the CBV
     CBV_loc = CarlaDataProvider.get_location(CBV)
-    goal_point_loc = carla.Location(x=goal_point[0], y=goal_point[1], z=CBV_loc.z)
-    dis = CBV_loc.distance(goal_point_loc)
+    dis = CBV_loc.distance(goal_waypoint.transform.location)
 
     # delta_dis > 0 means ego and CBV are getting closer, otherwise punish CBV drive away from ego
     delta_dis = np.clip(CarlaDataProvider.goal_CBV_dis[ego.id][CBV.id] - dis, a_min=-1., a_max=1.)
@@ -279,6 +277,23 @@ def get_relative_transform(ego_matrix, vehicle_matrix):
     return relative_pos
 
 
+def get_relative_waypoint_info(goal_waypoint, center_yaw, center_matrix):
+    """
+        get the relative waypoint info from the view of center vehicle
+        info [x, y, 0, 0, yaw, 0]
+    """
+    goal_transform = goal_waypoint.transform
+    goal_matrix = np.array(goal_transform.get_matrix())
+    # relative yaw angle
+    yaw = goal_transform.rotation.yaw / 180 * np.pi
+    relative_yaw = normalize_angle(yaw - center_yaw)
+    # relative pos
+    relative_pos = get_relative_transform(ego_matrix=center_matrix, vehicle_matrix=goal_matrix)
+    goal_info = [relative_pos[0], relative_pos[1], 0., 0., relative_yaw, 0.]
+
+    return goal_info
+
+
 def get_relative_route_info(waypoints, center_yaw, center_matrix, center_extent):
     """
         get the relative route info from the view of center vehicle
@@ -343,6 +358,26 @@ def get_relative_info(actor, center_yaw, center_matrix):
     return actor_info
 
 
+def check_CBV_ahead_goal(CBV, goal_waypoint, ego):
+    CBV_ahead_goal = False
+    ego_transform = CarlaDataProvider.get_transform(ego)
+    ego_waypoint = CarlaDataProvider.get_map().get_waypoint(location=ego_transform.location, project_to_road=True)
+
+    CBV_loc = CarlaDataProvider.get_location(CBV)
+    ego_forward_vector = ego_transform.rotation.get_forward_vector()
+    CBV_waypoint = CarlaDataProvider.get_map().get_waypoint(location=CBV_loc, project_to_road=True)
+    if (CBV_waypoint.road_id == goal_waypoint.road_id and CBV_waypoint.lane_id == goal_waypoint.lane_id) \
+            or (CBV_waypoint.road_id == ego_waypoint.road_id and CBV_waypoint.lane_id == ego_waypoint.lane_id):
+        # if CBV and goal and ego are in the same lane in the straight lane
+        relative_direction = (CBV_loc - ego_transform.location)
+        relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))
+        if relative_delta_angle <= 90:
+            # if the CBV is ahead of the ego
+            CBV_ahead_goal = True
+
+    return CBV_ahead_goal
+
+
 def check_interaction(ego, CBV, ego_length, delta_forward_angle=90, ego_fov=180):
     ego_transform = CarlaDataProvider.get_transform(ego)
     ego_forward_vector = ego_transform.rotation.get_forward_vector()
@@ -363,16 +398,16 @@ def check_interaction(ego, CBV, ego_length, delta_forward_angle=90, ego_fov=180)
     return interaction
 
 
-def get_CBV_candidates(ego_vehicle, target_waypoint, CBV_reach_goal, search_radius, ego_length):
+def get_CBV_candidates(ego_vehicle, goal_waypoint, CBV_reach_goal, search_radius, ego_length):
     """
         the foundation for the CBV selection, selecting the candidates nearby vehicles based on specific traffic rules
         ego_vehicle: the ego vehicle
-        target_waypoint: the next target waypoint of the ego vehicle, to forsee on step ahead
     """
-    # info for the target waypoint
-    target_transform = target_waypoint.transform
-    target_location = target_transform.location
-    target_waypoint_lane_id = target_waypoint.lane_id
+    # info for the ego vehicle
+    ego_transform = CarlaDataProvider.get_transform(ego_vehicle)
+    ego_location = ego_transform.location
+    ego_waypoint = CarlaDataProvider.get_map().get_waypoint(location=ego_location, project_to_road=True)
+    goal_waypoint_lane_id = goal_waypoint.lane_id
 
     # get all the vehicles on the world to use the actor pool in CarlaDataProvider
     all_actors = CarlaDataProvider.get_actors()
@@ -384,20 +419,29 @@ def get_CBV_candidates(ego_vehicle, target_waypoint, CBV_reach_goal, search_radi
     key_to_remove = []
     for vehicle_id, vehicle in candidates.items():
         vehicle_location = CarlaDataProvider.get_location(vehicle)
+        vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(location=vehicle_location, project_to_road=True)
 
         # 2. remove the too far away vehicle
-        if target_location.distance(vehicle_location) > search_radius:
+        if ego_location.distance(vehicle_location) > search_radius:
             key_to_remove.append(vehicle_id)
             continue
 
-        # 3. if the target waypoint in the straight lane, needs to remove the opposite direction vehicle
-        if not target_waypoint.is_junction:
-            vehicle_waypoint = CarlaDataProvider.get_map().get_waypoint(location=vehicle_location, project_to_road=True)
-            if vehicle_waypoint.lane_id * target_waypoint_lane_id < 0:
+        # 3. if the ego waypoint and the goal waypoint are all not in the junction, remove the vehicle on the opposite lane
+        if (not goal_waypoint.is_junction) or (not ego_waypoint.is_junction):
+            if vehicle_waypoint.lane_id * goal_waypoint_lane_id < 0:
                 key_to_remove.append(vehicle_id)
                 continue
 
-        # 4. remove the back vehicle with no interaction
+        # 4. remove the vehicle on the same lane and ahead of ego
+        if vehicle_waypoint.lane_id == goal_waypoint.lane_id or vehicle_waypoint.lane_id == ego_waypoint.lane_id:
+            ego_forward_vector = ego_transform.rotation.get_forward_vector()
+            relative_direction = (vehicle_location - ego_transform.location)
+            relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))
+            if relative_delta_angle <= 90:
+                key_to_remove.append(vehicle_id)
+                continue
+
+        # 5. remove the back vehicle with no interaction
         if not check_interaction(ego_vehicle, vehicle, ego_length, delta_forward_angle=90, ego_fov=180):
             # hard condition to check CBV candidates
             key_to_remove.append(vehicle_id)

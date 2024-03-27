@@ -183,7 +183,7 @@ class RolloutBuffer:
                 feasibility_Qs, feasibility_Vs = self.process_CBV_data(data_list, additional_dict)
 
             length = len(dones)
-            if length > 5:  # remove the too short CBV trajectory
+            if length > 10:  # remove the too short CBV trajectory
                 if self.scenario_pos + length >= self.buffer_capacity:
                     # the buffer can just hold part of the trajectory dta
                     for i in range(length):

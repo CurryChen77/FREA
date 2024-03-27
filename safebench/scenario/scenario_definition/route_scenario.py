@@ -8,14 +8,11 @@
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
 import time
-import traceback
-from copy import deepcopy
 
 import numpy as np
-import carla
 
-from safebench.gym_carla.envs.misc import compute_magnitude_angle
-from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity, get_relative_info, get_forward_speed, get_relative_route_info
+from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity, get_relative_info, get_relative_route_info, \
+    get_relative_waypoint_info
 from safebench.scenario.scenario_manager.timer import GameTime
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
@@ -238,7 +235,7 @@ class RouteScenario():
 
         return criteria
 
-    def update_info(self, vehicle_count=3):
+    def update_info(self, vehicle_count=3, goal_waypoint=None):
         '''
             scenario agent state:
             first row is CBV's relative state [x, y, bbox_x, bbox_y, yaw, forward speed]
@@ -271,12 +268,17 @@ class RouteScenario():
             while len(actors_info) < vehicle_count:  # if no enough nearby vehicles, padding with 0
                 actors_info.append([0] * len(CBV_info))
 
+            # goal information
+            if goal_waypoint is not None:
+                route_info = get_relative_waypoint_info(goal_waypoint, center_yaw=CBV_yaw, center_matrix=CBV_matrix)
+                actors_info.append(route_info)
+
             CBVs_obs[CBV_id] = np.array(actors_info, dtype=np.float32)
         return {
             'CBVs_obs': CBVs_obs  # the controlled bv on the first line, while the rest bvs are sorted in ascending order
         }
 
-    def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=3, waypoints=None, need_route_info=False):
+    def update_ego_info(self, ego_nearby_vehicles, desired_nearby_vehicle=3, waypoints=None):
         '''
             safety network input state:
             all the rows are other bv's relative state
@@ -300,7 +302,7 @@ class RouteScenario():
             infos.append([0] * len(ego_info))
 
         # route information
-        if need_route_info:
+        if waypoints is not None:
             route_info = get_relative_route_info(waypoints, center_yaw=ego_yaw, center_matrix=ego_matrix, center_extent=ego_extent)
             infos.append(route_info)
 
