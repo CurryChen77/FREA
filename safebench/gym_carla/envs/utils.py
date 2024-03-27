@@ -358,16 +358,14 @@ def get_relative_info(actor, center_yaw, center_matrix):
     return actor_info
 
 
-def check_CBV_ahead_goal(CBV, goal_waypoint, ego):
+def check_CBV_ahead_goal(CBV, ego, waypoint_id_set):
     CBV_ahead_goal = False
     ego_transform = CarlaDataProvider.get_transform(ego)
-    ego_waypoint = CarlaDataProvider.get_map().get_waypoint(location=ego_transform.location, project_to_road=True)
+    ego_forward_vector = ego_transform.rotation.get_forward_vector()
 
     CBV_loc = CarlaDataProvider.get_location(CBV)
-    ego_forward_vector = ego_transform.rotation.get_forward_vector()
     CBV_waypoint = CarlaDataProvider.get_map().get_waypoint(location=CBV_loc, project_to_road=True)
-    if (CBV_waypoint.road_id == goal_waypoint.road_id and CBV_waypoint.lane_id == goal_waypoint.lane_id) \
-            or (CBV_waypoint.road_id == ego_waypoint.road_id and CBV_waypoint.lane_id == ego_waypoint.lane_id):
+    if (CBV_waypoint.lane_id, CBV_waypoint.road_id) in waypoint_id_set:
         # if CBV and goal and ego are in the same lane in the straight lane
         relative_direction = (CBV_loc - ego_transform.location)
         relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))
@@ -398,7 +396,7 @@ def check_interaction(ego, CBV, ego_length, delta_forward_angle=90, ego_fov=180)
     return interaction
 
 
-def get_CBV_candidates(ego_vehicle, goal_waypoint, CBV_reach_goal, search_radius, ego_length):
+def get_CBV_candidates(ego_vehicle, goal_waypoint, waypoint_id_set, CBV_reach_goal, search_radius, ego_length):
     """
         the foundation for the CBV selection, selecting the candidates nearby vehicles based on specific traffic rules
         ego_vehicle: the ego vehicle
@@ -433,7 +431,7 @@ def get_CBV_candidates(ego_vehicle, goal_waypoint, CBV_reach_goal, search_radius
                 continue
 
         # 4. remove the vehicle on the same lane and ahead of ego
-        if vehicle_waypoint.lane_id == goal_waypoint.lane_id or vehicle_waypoint.lane_id == ego_waypoint.lane_id:
+        if (vehicle_waypoint.lane_id, vehicle_waypoint.road_id) in waypoint_id_set:
             ego_forward_vector = ego_transform.rotation.get_forward_vector()
             relative_direction = (vehicle_location - ego_transform.location)
             relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))

@@ -180,7 +180,6 @@ class CarlaEnv(gym.Env):
             waypoint = self.carla_map.get_waypoint(loc, project_to_road=True, lane_type=carla.LaneType.Driving)
             waypoints_list.append(waypoint)
             self.waypoint_id_set.add((waypoint.lane_id, waypoint.road_id))
-        print("global route id set:", self.waypoint_id_set)
         return waypoints_list
 
     def register_CBV_sensor(self, CBV):
@@ -199,7 +198,7 @@ class CarlaEnv(gym.Env):
         if self.scenario_agent_learnable and len(self.CBVs) < 2 and self.time_step % 2 == 0:
             # select the candidates of CBVs
             CBV_candidates = get_CBV_candidates(
-                self.ego_vehicle, self.goal_waypoint,
+                self.ego_vehicle, self.goal_waypoint, self.waypoint_id_set,
                 self.CBV_reach_goal, self.search_radius, self.ego_length
             )
             if CBV_candidates:
