@@ -15,6 +15,8 @@ from rdp import rdp
 
 import numpy as np
 from distance3d import gjk, colliders
+
+from safebench.gym_carla.envs.misc import is_within_distance_ahead
 from safebench.scenario.tools.scenario_utils import compute_box2origin
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.util.torch_util import CUDA, CPU
@@ -358,22 +360,17 @@ def get_relative_info(actor, center_yaw, center_matrix):
     return actor_info
 
 
-def check_CBV_ahead_goal(CBV, ego, waypoint_id_set):
-    CBV_ahead_goal = False
-    ego_transform = CarlaDataProvider.get_transform(ego)
-    ego_forward_vector = ego_transform.rotation.get_forward_vector()
+def check_CBV_BV_stuck(CBV, CBV_reach_goal, max_distance=10, angle=10):
+    CBV_BV_stuck = False
 
-    CBV_loc = CarlaDataProvider.get_location(CBV)
-    CBV_waypoint = CarlaDataProvider.get_map().get_waypoint(location=CBV_loc, project_to_road=True)
-    if (CBV_waypoint.lane_id, CBV_waypoint.road_id) in waypoint_id_set:
-        # if CBV and goal and ego are in the same lane in the straight lane
-        relative_direction = (CBV_loc - ego_transform.location)
-        relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))
-        if relative_delta_angle <= 90:
-            # if the CBV is ahead of the ego
-            CBV_ahead_goal = True
+    CBV_trans = CarlaDataProvider.get_transform(CBV)
+    for old_CBV in CBV_reach_goal.values():
+        old_CBV_trans = CarlaDataProvider.get_transform(old_CBV)
+        if is_within_distance_ahead(CBV_trans, old_CBV_trans, max_distance, angle):
+            CBV_BV_stuck = True
+            break
 
-    return CBV_ahead_goal
+    return CBV_BV_stuck
 
 
 def check_interaction(ego, CBV, ego_length, delta_forward_angle=90, ego_fov=180):
@@ -396,7 +393,7 @@ def check_interaction(ego, CBV, ego_length, delta_forward_angle=90, ego_fov=180)
     return interaction
 
 
-def get_CBV_candidates(ego_vehicle, goal_waypoint, waypoint_id_set, CBV_reach_goal, search_radius, ego_length):
+def get_CBV_candidates(ego_vehicle, goal_waypoint, CBV_reach_goal, search_radius, ego_length):
     """
         the foundation for the CBV selection, selecting the candidates nearby vehicles based on specific traffic rules
         ego_vehicle: the ego vehicle
@@ -430,18 +427,13 @@ def get_CBV_candidates(ego_vehicle, goal_waypoint, waypoint_id_set, CBV_reach_go
                 key_to_remove.append(vehicle_id)
                 continue
 
-        # 4. remove the vehicle on the same lane and ahead of ego
-        if (vehicle_waypoint.lane_id, vehicle_waypoint.road_id) in waypoint_id_set:
-            ego_forward_vector = ego_transform.rotation.get_forward_vector()
-            relative_direction = (vehicle_location - ego_transform.location)
-            relative_delta_angle = math.degrees(ego_forward_vector.get_vector_angle(relative_direction))
-            if relative_delta_angle <= 90:
-                key_to_remove.append(vehicle_id)
-                continue
-
-        # 5. remove the back vehicle with no interaction
+        # 4. remove the back vehicle with no interaction
         if not check_interaction(ego_vehicle, vehicle, ego_length, delta_forward_angle=90, ego_fov=180):
             # hard condition to check CBV candidates
+            key_to_remove.append(vehicle_id)
+            continue
+
+        if check_CBV_BV_stuck(vehicle, CBV_reach_goal, max_distance=12, angle=15):
             key_to_remove.append(vehicle_id)
             continue
 
@@ -449,24 +441,6 @@ def get_CBV_candidates(ego_vehicle, goal_waypoint, waypoint_id_set, CBV_reach_go
         del candidates[key]
 
     return list(candidates.values())
-
-
-def is_within_distance_ahead(target_location, current_location, orientation, angle=15, max_distance=20):
-    """
-        Whether the target location is within distance ahead of ego vehicle
-    """
-    target_vector = np.array([target_location.x - current_location.x, target_location.y - current_location.y])
-    norm_target = np.linalg.norm(target_vector)
-    if norm_target > max_distance:
-        return False
-
-    forward_vector = np.array(
-        [math.cos(math.radians(orientation)), math.sin(math.radians(orientation))])
-    cos_angle = np.clip(np.dot(forward_vector, target_vector) / norm_target, -1.0, 1.0)
-    d_angle = math.degrees(math.acos(cos_angle))
-
-    return d_angle < angle
-
 
 def get_min_distance_across_bboxes(veh1, veh2):
     veh1_bbox = veh1.bounding_box

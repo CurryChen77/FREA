@@ -166,27 +166,21 @@ def get_preview_lane_dis(waypoints, x, y, idx=2):
     return dis, w
 
 
-def is_within_distance_ahead(target_location, current_location, orientation, max_distance):
+def is_within_distance_ahead(target_transform, current_transform, max_distance, angle=90):
     """
         Check if a target object is within a certain distance in front of a reference object.
-
-        :param target_location: location of the target object
-        :param current_location: location of the reference object
-        :param orientation: orientation of the reference object
-        :param max_distance: maximum allowed distance
-        :return: True if target object is within max_distance ahead of the reference object
     """
-    target_vector = np.array([target_location.x - current_location.x, target_location.y - current_location.y])
-    norm_target = np.linalg.norm(target_vector)
-    if norm_target > max_distance:
+    target_loc = target_transform.location
+    current_loc = current_transform.location
+    relative_direction = (target_transform - current_loc)
+    distance = target_loc.distance(current_loc)
+    if distance > max_distance:
         return False
 
-    forward_vector = np.array(
-        [math.cos(math.radians(orientation)), math.sin(math.radians(orientation))])
-    cos_angle = np.clip(np.dot(forward_vector, target_vector) / norm_target, -1.0, 1.0)
-    d_angle = math.degrees(math.acos(cos_angle))
+    current_vector = current_transform.rotation.get_forward_vector()
+    delta_angle = math.degrees(current_vector.get_vector_angle(relative_direction))
 
-    return d_angle < 90.0
+    return delta_angle < angle
 
 
 def compute_magnitude_angle(target_location, current_location, orientation):

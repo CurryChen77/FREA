@@ -185,8 +185,8 @@ class RoutePlanner():
             if target_vehicle_waypoint.road_id != ego_vehicle_waypoint.road_id or target_vehicle_waypoint.lane_id != ego_vehicle_waypoint.lane_id:
                 continue
 
-            loc = target_vehicle.get_location()
-            if is_within_distance_ahead(loc, ego_vehicle_location, self._vehicle.get_transform().rotation.yaw, self._proximity_threshold):
+            target_trans = target_vehicle.get_transform()
+            if is_within_distance_ahead(target_trans, self._vehicle.get_transform(), self._proximity_threshold):
                 hazard_vehicle_ids.append(target_vehicle.id)
 
         return hazard_vehicle_ids
