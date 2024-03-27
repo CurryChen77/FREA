@@ -159,7 +159,7 @@ def get_CBV_bv_reward(CBV, search_radius, CBV_nearby_vehicles, tou=1):
     return min_dis, min_dis_reward
 
 
-def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_dis=0, intensity=0.6, upper_limit=18):
+def get_locations_nearby_spawn_points(location_lists, radius_list, closest_dis, global_route_lane_road_ids, intensity=0.6, low_limit=12, upper_limit=18):
     CarlaDataProvider.generate_spawn_points()  # get all the possible spawn points in this map
 
     ego_locations = [ego.get_location() for ego in CarlaDataProvider.egos]
@@ -170,6 +170,10 @@ def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_
         spawn_waypoint = CarlaDataProvider.get_map().get_waypoint(location=spawn_point.location, project_to_road=True)
         # remove the opposite lane vehicle on the same road
         if spawn_waypoint.road_id == ego_waypoint.road_id and spawn_waypoint.lane_id * ego_waypoint.lane_id < 0:
+            continue
+
+        # remove the waypoint in the global route
+        if (spawn_waypoint.lane_id, spawn_waypoint.road_id) in global_route_lane_road_ids:
             continue
 
         in_radius = any(
@@ -191,7 +195,11 @@ def get_locations_nearby_spawn_points(location_lists, radius_list=None, closest_
 
     CarlaDataProvider._rng.shuffle(nearby_spawn_points)
     spawn_points_count = len(nearby_spawn_points)
-    picking_number = min(int(spawn_points_count * intensity), upper_limit)
+    if spawn_points_count < low_limit:
+        picking_number = low_limit
+    else:
+        picking_number = max(min(int(spawn_points_count * intensity), upper_limit), low_limit)
+
     nearby_spawn_points = nearby_spawn_points[:picking_number]  # sampling part of the nearby spawn points
 
     return nearby_spawn_points

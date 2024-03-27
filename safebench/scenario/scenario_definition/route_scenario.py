@@ -8,8 +8,8 @@
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
 import time
-
 import numpy as np
+import carla
 
 from safebench.gym_carla.envs.utils import get_locations_nearby_spawn_points, calculate_abs_velocity, get_relative_info, get_relative_route_info, \
     get_relative_waypoint_info
@@ -57,12 +57,24 @@ class RouteScenario():
 
         # create the route and ego's position (the start point of the route)
         self.route, self.ego_vehicle, self.gps_route = self._update_route_and_ego(timeout=self.timeout)
+        self.global_route_waypoints, self.global_route_lane_road_ids = self._global_route_to_waypoints()
         self.next_intersection_loc = CarlaDataProvider.get_next_intersection_location(self.route[0][0].location)
         self.unactivated_actors = []
         self.CBVs = {}
         self.CBVs_nearby_vehicles = {}
         self.criteria = self._create_criteria()
         self.scenario_instance = AdvBehaviorSingle(self.world, self.ego_vehicle, env_params)  # create the scenario instance
+
+    def _global_route_to_waypoints(self):
+        waypoints_list = []
+        waypoint_lane_road_ids = set()
+        carla_map = self.world.get_map()
+        for node in self.route:
+            loc = node[0].location
+            waypoint = carla_map.get_waypoint(loc, project_to_road=True, lane_type=carla.LaneType.Driving)
+            waypoints_list.append(waypoint)
+            waypoint_lane_road_ids.add((waypoint.lane_id, waypoint.road_id))
+        return waypoints_list, waypoint_lane_road_ids
 
     def _update_route_and_ego(self, timeout=None):
         ego_vehicle = None
@@ -123,13 +135,14 @@ class RouteScenario():
         return ego_vehicle
 
     def get_location_nearby_spawn_points(self):
+        start_location = self.route[0][0].location
         end_location = self.route[-1][0].location
-        locations_list = [self.next_intersection_loc, end_location]
-        radius_list = [50, 30]
+        locations_list = [start_location, self.next_intersection_loc, end_location]
+        radius_list = [20, 50, 30]
         closest_dis = 5
 
         spawn_points = get_locations_nearby_spawn_points(
-            locations_list, radius_list, closest_dis, self.traffic_intensity
+            locations_list, radius_list, closest_dis, self.global_route_lane_road_ids, self.traffic_intensity
         )
         amount = len(spawn_points)
         return amount, spawn_points
@@ -151,7 +164,7 @@ class RouteScenario():
         for _actor in new_actors:
             self.unactivated_actors.append(_actor)
 
-    def activate_background_actors(self, activate_threshold=40):
+    def activate_background_actors(self, activate_threshold=50):
         ego_location = CarlaDataProvider.get_location(self.ego_vehicle)
         unactivated_actors = list(self.unactivated_actors)  # for safer remove
         for actor in unactivated_actors:

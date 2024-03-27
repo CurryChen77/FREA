@@ -167,18 +167,10 @@ class CarlaEnv(gym.Env):
         self.scenario_manager.load_scenario(scenario)  # The scenario manager only controls the RouteScenario
         self.route = self.scenario_manager.route_scenario.route  # the global route
         self.gps_route = self.scenario_manager.route_scenario.gps_route  # the global gps route
+        self.global_route_waypoints = self.scenario_manager.route_scenario.global_route_waypoints
 
     def _run_scenario(self):
         self.scenario_manager.run_scenario()  # init the background vehicle
-
-    def _global_route_to_waypoints(self):
-        waypoints_list = []
-        self.carla_map = self.world.get_map()
-        for node in self.route:
-            loc = node[0].location
-            waypoint = self.carla_map.get_waypoint(loc, project_to_road=True, lane_type=carla.LaneType.Driving)
-            waypoints_list.append(waypoint)
-        return waypoints_list
 
     def register_CBV_sensor(self, CBV):
         blueprint = CarlaDataProvider._blueprint_library.find('sensor.other.collision')
@@ -243,7 +235,6 @@ class CarlaEnv(gym.Env):
         CarlaDataProvider.on_carla_tick()
 
         # route planner for ego vehicle
-        self.global_route_waypoints = self._global_route_to_waypoints()  # the initial route waypoints from the config
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
         self.waypoints, _, _, self.goal_waypoint, self.red_light_state = self.routeplanner.run_step()
 

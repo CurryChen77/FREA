@@ -172,7 +172,7 @@ def is_within_distance_ahead(target_transform, current_transform, max_distance, 
     """
     target_loc = target_transform.location
     current_loc = current_transform.location
-    relative_direction = (target_transform - current_loc)
+    relative_direction = (target_loc - current_loc)
     distance = target_loc.distance(current_loc)
     if distance > max_distance:
         return False
