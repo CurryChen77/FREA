@@ -158,19 +158,6 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
         'running_time': time_out,
     }
 
-    weights = {
-        # safety level
-        'collision_rate': 0.0,
-        'out_of_road_length': 0.05,
-        'near_miss_rate': 0.4,
-        'near_rate': 0.4,
-
-        # task performance level
-        'distance_to_route': 0.05,
-        'incomplete_route': 0.05,
-        'running_time': 0.05,
-    }
-
     scores = {
         # safety level
         'collision_rate': collision_rate,
@@ -184,16 +171,14 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
         'running_time': avg_time_spent,
     }
     if use_feasibility:
-        scores['avoidable_rate'] = 1 - unavoidable_rate
-        weights['avoidable_rate'] = 0.2
-        weights['near_miss_rate'] = 0.3
-        weights['near_rate'] = 0.3
-        predefined_max_values['avoidable_rate'] = 1
+        scores['unavoidable_rate'] = unavoidable_rate
+        predefined_max_values['unavoidable_rate'] = 1
 
     all_scores = {key: round(value/predefined_max_values[key], 4) for key, value in scores.items()}
-    final_score = 0
-    for key, score in all_scores.items():
-        final_score += score * weights[key]
+    if use_feasibility:
+        final_score = 0.2 * (1 - collision_rate) + 0.2 * (1 - unavoidable_rate) + 0.3 * near_miss_rate + 0.3 * near_rate
+    else:
+        final_score = 0.3 * (1 - collision_rate) + 0.35 * near_miss_rate + 0.35 * near_rate
     all_scores['final_score'] = round(final_score, 4)  # change from the lower, the better to the higher, the better
 
     return all_scores
