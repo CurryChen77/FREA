@@ -41,20 +41,18 @@ class RoutePlanner():
         self._waypoint_buffer = deque(maxlen=self._buffer_size)  # the local buffer to store the pop waypoint in the waypoints queue
 
         self._waypoints_queue = deque(maxlen=600)  # the global waypoints queue from the global route
-        self._current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
+        init_waypoint = self._map.get_waypoint(self._vehicle.get_location())
 
         if len(init_waypoints) == 0:
-            project_waypoint =  self._map.get_waypoint(self._vehicle.get_location(), project_to_road=True, lane_type=carla.LaneType.Driving)
-            self._waypoints_queue.append((self._current_waypoint, RoadOption.LANEFOLLOW))
+            project_waypoint = self._map.get_waypoint(self._vehicle.get_location(), project_to_road=True, lane_type=carla.LaneType.Driving)
+            self._waypoints_queue.append((init_waypoint, RoadOption.LANEFOLLOW))
             self._waypoints_queue.append((project_waypoint, RoadOption.LANEFOLLOW))
         else:
             for i, waypoint in enumerate(init_waypoints):
                 if i == 0:
-                    self._waypoints_queue.append((waypoint, compute_connection(self._current_waypoint, waypoint)))
+                    self._waypoints_queue.append((waypoint, compute_connection(init_waypoint, waypoint)))
                 else:
                     self._waypoints_queue.append((waypoint, compute_connection(init_waypoints[i - 1], waypoint)))
-
-        self._target_road_option = RoadOption.LANEFOLLOW  # the initial road option is LaneFollow
 
         self._last_traffic_light = None
         self._proximity_threshold = 15.0
@@ -94,11 +92,11 @@ class RoutePlanner():
 
     def run_step(self):
         # the following target means the next one
-        waypoints, target_road_option, current_waypoint, goal_waypoint = self._get_waypoints()
+        waypoints, goal_waypoint = self._get_waypoints()
         # red_light, hazard_vehicle_ids = self._get_hazard()
         # TODO ignore all the traffic light
         red_light = False
-        return waypoints, target_road_option, current_waypoint, goal_waypoint, red_light
+        return waypoints, goal_waypoint, red_light
 
     def _get_waypoints(self):
         """
@@ -136,12 +134,10 @@ class RoutePlanner():
         for i, (waypoint, _) in enumerate(self._waypoint_buffer):  # get the waypoint data from the waypoint buffer
             waypoints.append([waypoint.transform.location.x, waypoint.transform.location.y, waypoint.transform.rotation.yaw])
 
-        # current vehicle waypoint
-        self._current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
         # goal waypoint of the ego vehicle
-        self._goal_waypoint, self._target_road_option = self._waypoint_buffer[len(self._waypoint_buffer) // 3]
+        self._goal_waypoint, _ = self._waypoint_buffer[len(self._waypoint_buffer) // 3]
 
-        return waypoints, self._target_road_option, self._current_waypoint, self._goal_waypoint
+        return waypoints, self._goal_waypoint
 
     def _get_hazard(self):
         # retrieve relevant elements for safe navigation, i.e.: traffic lights

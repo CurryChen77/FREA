@@ -20,7 +20,6 @@ from safebench.gym_carla.envs.misc import (
     rgb_to_display_surface,
     get_lane_dis,
     get_pos,
-    get_preview_lane_dis,
 )
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
@@ -236,7 +235,7 @@ class CarlaEnv(gym.Env):
 
         # route planner for ego vehicle
         self.routeplanner = RoutePlanner(self.ego_vehicle, self.max_waypt, self.global_route_waypoints)
-        self.waypoints, _, _, self.goal_waypoint, self.red_light_state = self.routeplanner.run_step()
+        self.waypoints, self.goal_waypoint, self.red_light_state = self.routeplanner.run_step()
 
         # Update time_steps
         self.time_step = 0
@@ -362,7 +361,7 @@ class CarlaEnv(gym.Env):
 
         # route planner
         # self.waypoints: the waypoints from the waypoint buffer, needed to be followed
-        self.waypoints, _, _, self.goal_waypoint, self.red_light_state = self.routeplanner.run_step()
+        self.waypoints, self.goal_waypoint, self.red_light_state = self.routeplanner.run_step()
 
         # find ego nearby vehicles
         if self.mode == 'collect_feasibility_data' or self.mode == 'eval' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
@@ -398,7 +397,7 @@ class CarlaEnv(gym.Env):
         self.time_step += 1
         self.total_step += 1
 
-        return (self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_CBVs_info])
+        return self._get_obs(), self._get_reward(), self._terminal(), [origin_info, updated_CBVs_info]
 
     def _get_info(self, next_info, reset=False):
         info = {}
@@ -406,8 +405,7 @@ class CarlaEnv(gym.Env):
         info.update(self.scenario_manager.route_scenario.update_info(goal_waypoint=self.goal_waypoint))
 
         # the feasibility needs the ego info (without route info) at the step "t"
-        if self.mode == 'collect_feasibility_data':
-            info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles))
+        info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles)) if self.mode == 'collect_feasibility_data' else None
 
         # when resetting
         if reset:
@@ -603,18 +601,9 @@ class CarlaEnv(gym.Env):
             goal_CBV_dis_reward ~ [-1, 1]: the ratio of (init_goal_CBV_dis-current_goal_CBV_dis)/init_goal_CBV_dis
         """
         CBVs_reward = {}
-        closest_CBV_id = None
-        closest_dis = self.search_radius
-
         for CBV_id, CBV in self.CBVs.items():
             # prevent the CBV getting too close to the other bvs
             # CBV_min_dis, CBV_min_dis_reward = get_CBV_bv_reward(self.CBVs[CBV_id], self.search_radius, self.CBVs_nearby_vehicles[CBV_id])
-
-            # find the closest CBV vehicle from ego vehicle
-            ego_CBV_dis = get_distance_across_centers(self.ego_vehicle, CBV)
-            if ego_CBV_dis < closest_dis:
-                closest_dis = ego_CBV_dis
-                closest_CBV_id = CBV_id
 
             # encourage CBV to get closer to the goal point
             delta_dis, CBV_goal_dis = get_CBV_ego_reward(self.ego_vehicle, CBV, self.goal_waypoint)  # [-1, 1]
@@ -632,9 +621,12 @@ class CarlaEnv(gym.Env):
             # final scenario agent rewards
             CBVs_reward[CBV_id] = delta_dis + 15 * collision_punish + 15 * terminal_reward
 
-        if self.scenario_agent_reward_shaping and self.use_feasibility and closest_CBV_id is not None:
-            feasibility_reward = -1 if self.feasibility_dict['feasibility_V'] > 0 else 0
-            CBVs_reward[closest_CBV_id] += feasibility_reward  # update the closest CBVs reward
+        if self.use_feasibility and self.scenario_agent_reward_shaping:
+            CBVs_id_set = set(self.CBVs.keys())
+            closest_CBV_id = next((vehicle.id for vehicle in self.ego_nearby_vehicles if vehicle.id in CBVs_id_set), None)
+            if closest_CBV_id is not None:
+                feasibility_reward = -1 if self.feasibility_dict['feasibility_V'] > 0 else 0
+                CBVs_reward[closest_CBV_id] += feasibility_reward  # update the closest CBVs reward
             self.feasibility_dict = {}  # reset the ego action obs pair into empty dict
 
         return CBVs_reward
@@ -642,7 +634,7 @@ class CarlaEnv(gym.Env):
     def _get_feasibility(self):
         """
             only the closest CBV from ego will get the actual feasibility value
-            the rest CBV will not affected by the feasibility value
+            the rest CBV will not be affected by the feasibility value
         """
         CBVs_feasibility_Vs = {}
         CBVs_feasibility_Qs = {}
