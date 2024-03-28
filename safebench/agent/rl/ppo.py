@@ -93,11 +93,11 @@ class PPO(BasePolicy):
 
         return agent_action, agent_log_prob
 
-    def get_advantages_vtrace(self, rewards, undones, values, next_values, unterminated):
+    def get_advantages_GAE(self, rewards, undones, values, next_values, unterminated):
         """
             unterminated: if the CBV collide with object, then it is terminated
             undone: if the CBV is stuck or collide or max step will done
-            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
+            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/elegantrl/agents/AgentPPO.py
         """
         advantages = torch.empty_like(values)  # advantage value
 
@@ -112,7 +112,7 @@ class PPO(BasePolicy):
 
     def train(self, buffer, writer, e_i):
         """
-            from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
+            from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/elegantrl/agents/AgentPPO.py
         """
 
         with torch.no_grad():
@@ -133,7 +133,7 @@ class PPO(BasePolicy):
             values = self.value(states)
             next_values = self.value(next_states)
 
-            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
+            advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
             reward_sums = advantages + values
             del rewards, undones, values, unterminated
 

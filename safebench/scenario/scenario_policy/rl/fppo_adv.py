@@ -23,10 +23,6 @@ class FPPOAdv(PPO):
         super(FPPOAdv, self).__init__(config, logger)
 
     def train(self, buffer, writer, e_i):
-        """
-            from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
-        """
-
         with torch.no_grad():
             # learning rate decay
             self.lr_decay(e_i)  # add the learning rate decay
@@ -48,12 +44,14 @@ class FPPOAdv(PPO):
             values = self.value(states)
             next_values = self.value(next_states)
             # the advantage of the reward
-            reward_advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
+            reward_advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
+
             reward_sums = reward_advantages + values
-            del rewards, undones, values, next_values, unterminated
+            del rewards, values, next_values, unterminated
 
             # the advantage of the feasibility
-            feasibility_advantages = - (feasibility_Qs - feasibility_Vs)
+            feasibility_advantages = -1 * self.get_feasibility_advantage_GAE(feasibility_Vs, feasibility_Qs, undones)
+
             # condition
             unsafe_condition = torch.where(feasibility_Vs > 0.0, 1.0, 0.0)
             safe_condition = torch.where(feasibility_Vs <= 0.0, 1.0, 0.0)
@@ -66,7 +64,7 @@ class FPPOAdv(PPO):
             # final advantage
             advantages = unsafe_condition * feasibility_advantages + safe_condition * reward_advantages
 
-            del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, unsafe_condition, safe_condition
+            del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, unsafe_condition, safe_condition, undones
 
         # start to train, use gradient descent without batch_size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)

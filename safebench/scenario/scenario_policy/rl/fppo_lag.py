@@ -59,10 +59,6 @@ class FPPOLag(PPO):
                 p['lr'] = lr_lagrange_multiplier_now
 
     def train(self, buffer, writer, e_i):
-        """
-            from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
-        """
-
         with torch.no_grad():
             # learning rate decay
             self.lr_decay(e_i)  # add the learning rate decay
@@ -84,12 +80,12 @@ class FPPOLag(PPO):
             values = self.value(states)
             next_values = self.value(next_states)
             # the advantage of the reward
-            reward_advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
+            reward_advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
             reward_sums = reward_advantages + values
-            del rewards, undones, values, next_values, unterminated
+            del rewards, values, next_values, unterminated
 
             # the advantage of the feasibility
-            feasibility_advantages = feasibility_Qs - feasibility_Vs
+            feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_Vs, feasibility_Qs, undones)
 
             # Lagrange multiplier
             if self.mlp_multiplier:
@@ -106,7 +102,7 @@ class FPPOLag(PPO):
             # final advantage
             advantages = (reward_advantages - torch.mul(penalty, feasibility_advantages)) / (1 + penalty)
 
-            del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, penalty
+            del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, penalty, undones
 
         # start to train, use gradient descent without batch_size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)

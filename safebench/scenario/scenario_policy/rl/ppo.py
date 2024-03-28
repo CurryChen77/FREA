@@ -113,11 +113,11 @@ class PPO(BasePolicy):
                     scenario_log_prob[env_id][CBV_id] = CPU(log_prob[i])
         return scenario_action, scenario_log_prob
 
-    def get_advantages_vtrace(self, rewards, undones, values, next_values, unterminated):
+    def get_advantages_GAE(self, rewards, undones, values, next_values, unterminated):
         """
-            unterminated: if the CBV collide with object, then it is terminated
-            undone: if the CBV is stuck or collide or max step will done
-            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
+            unterminated: if the CBV collide with an object, then it is terminated
+            undone: if the CBV is stuck or collide or max step will cause 'done'
+            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/elegantrl/agents/AgentPPO.py
         """
         advantages = torch.empty_like(values)  # advantage value
 
@@ -130,9 +130,27 @@ class PPO(BasePolicy):
             advantages[t] = advantage = delta + undones[t] * self.gamma * self.lambda_gae_adv * advantage
         return advantages
 
+    def get_feasibility_advantage_GAE(self, feasibility_V, feasibility_Q, undones):
+        """
+            unterminated: if the CBV collide with an object, then it is terminated
+            undone: if the CBV is stuck or collide or max step will cause 'done'
+            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/elegantrl/agents/AgentPPO.py
+        """
+        advantages = torch.empty_like(feasibility_V)  # advantage value
+
+        horizon_len = feasibility_V.shape[0]
+
+        advantage = torch.zeros_like(feasibility_V[0])  # last advantage value by GAE (Generalized Advantage Estimate)
+
+        deltas = feasibility_Q - feasibility_V
+
+        for t in range(horizon_len - 1, -1, -1):
+            advantages[t] = advantage = deltas[t] + undones[t] * self.gamma * self.lambda_gae_adv * advantage
+        return advantages
+
     def train(self, buffer, writer, e_i):
         """
-            from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/helloworld/helloworld_PPO_single_file.py#L29
+            from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/elegantrl/agents/AgentPPO.py
         """
 
         with torch.no_grad():
@@ -153,7 +171,7 @@ class PPO(BasePolicy):
             values = self.value(states)
             next_values = self.value(next_states)
 
-            advantages = self.get_advantages_vtrace(rewards, undones, values, next_values, unterminated)
+            advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
             reward_sums = advantages + values
             del rewards, undones, values, next_values, unterminated
 
