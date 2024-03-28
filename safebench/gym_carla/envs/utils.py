@@ -287,7 +287,7 @@ def get_relative_transform(ego_matrix, vehicle_matrix):
     return relative_pos
 
 
-def get_relative_waypoint_info(goal_waypoint, center_yaw, center_matrix):
+def get_relative_waypoint_info(goal_waypoint, center_yaw, center_matrix, radius=2):
     """
         get the relative waypoint info from the view of center vehicle
         info [x, y, 0, 0, yaw, 0]
@@ -299,7 +299,8 @@ def get_relative_waypoint_info(goal_waypoint, center_yaw, center_matrix):
     relative_yaw = normalize_angle(yaw - center_yaw)
     # relative pos
     relative_pos = get_relative_transform(ego_matrix=center_matrix, vehicle_matrix=goal_matrix)
-    goal_info = [relative_pos[0], relative_pos[1], 0., 0., relative_yaw, 0.]
+    distance = np.linalg.norm(relative_pos)
+    goal_info = [relative_pos[0], relative_pos[1], radius, radius, relative_yaw, distance]
 
     return goal_info
 

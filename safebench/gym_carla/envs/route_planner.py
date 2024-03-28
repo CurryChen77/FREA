@@ -41,16 +41,16 @@ class RoutePlanner():
         self._waypoint_buffer = deque(maxlen=self._buffer_size)  # the local buffer to store the pop waypoint in the waypoints queue
 
         self._waypoints_queue = deque(maxlen=600)  # the global waypoints queue from the global route
-        init_waypoint = self._map.get_waypoint(self._vehicle.get_location())
+        start_waypoint = self._map.get_waypoint(self._vehicle.get_location())
 
         if len(init_waypoints) == 0:
             project_waypoint = self._map.get_waypoint(self._vehicle.get_location(), project_to_road=True, lane_type=carla.LaneType.Driving)
-            self._waypoints_queue.append((init_waypoint, RoadOption.LANEFOLLOW))
+            self._waypoints_queue.append((start_waypoint, RoadOption.LANEFOLLOW))
             self._waypoints_queue.append((project_waypoint, RoadOption.LANEFOLLOW))
         else:
             for i, waypoint in enumerate(init_waypoints):
                 if i == 0:
-                    self._waypoints_queue.append((waypoint, compute_connection(init_waypoint, waypoint)))
+                    self._waypoints_queue.append((waypoint, compute_connection(start_waypoint, waypoint)))
                 else:
                     self._waypoints_queue.append((waypoint, compute_connection(init_waypoints[i - 1], waypoint)))
 

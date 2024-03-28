@@ -73,6 +73,7 @@ class CarlaRunner:
             'mode': self.mode,  # the mode of the script
             'search_radius': 25,  # the default search radius
             'traffic_intensity': 0.6,  # the default traffic intensity
+            'goal_point_radius': 2,  # the default goal point radius
             'auto_ego': scenario_config['auto_ego'],
             'spectator': agent_config['spectator'],  # whether to put spectator on the world
             'viz_route': agent_config['viz_route'],  # whether to visualize the route

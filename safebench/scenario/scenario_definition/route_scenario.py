@@ -54,6 +54,7 @@ class RouteScenario():
         self.ego_max_driven_distance = 200
         self.traffic_intensity = env_params['traffic_intensity']
         self.search_radius = env_params['search_radius']
+        self.goal_point_radius = env_params['goal_point_radius']
 
         # create the route and ego's position (the start point of the route)
         self.route, self.ego_vehicle, self.gps_route = self._update_route_and_ego(timeout=self.timeout)
@@ -283,7 +284,7 @@ class RouteScenario():
 
             # goal information
             if goal_waypoint is not None:
-                route_info = get_relative_waypoint_info(goal_waypoint, center_yaw=CBV_yaw, center_matrix=CBV_matrix)
+                route_info = get_relative_waypoint_info(goal_waypoint, center_yaw=CBV_yaw, center_matrix=CBV_matrix, radius=self.goal_point_radius)
                 actors_info.append(route_info)
 
             CBVs_obs[CBV_id] = np.array(actors_info, dtype=np.float32)

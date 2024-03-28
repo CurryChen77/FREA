@@ -85,6 +85,7 @@ class CarlaEnv(gym.Env):
 
         # for CBV
         self.CBVs_select_method = env_params['CBV_selection']
+        self.goal_point_radius = env_params['goal_point_radius']
 
         # scenario manager
         self.scenario_manager = ScenarioManager(env_params, self.logger)
@@ -612,7 +613,7 @@ class CarlaEnv(gym.Env):
             collision_punish = -1 if self.CBVs_collision[CBV_id] is not None else 0
 
             # terminal reward (reach the goal)
-            if CBV_goal_dis < 2.0:
+            if CBV_goal_dis < self.goal_point_radius:
                 terminal_reward = 1
                 self.CBV_reach_goal[CBV_id] = CBV
             else:
