@@ -8,6 +8,8 @@
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
 import copy
+import weakref
+
 import numpy as np
 import pygame
 from skimage.transform import resize
@@ -175,13 +177,19 @@ class CarlaEnv(gym.Env):
     def register_CBV_sensor(self, CBV):
         blueprint = CarlaDataProvider._blueprint_library.find('sensor.other.collision')
         collision_sensor = self.world.spawn_actor(blueprint, carla.Transform(), attach_to=CBV)
-        collision_sensor.listen(lambda event: count_collisions(event))
-        self.CBVs_collision_sensor[CBV.id] = collision_sensor
-        self.CBVs_collision[CBV.id] = None
+
+        # use weak reference to avoid memory leak
+        self_weakref = weakref.ref(self)
 
         def count_collisions(event):
-            # Ignore the current one if it is the same id as before
-            self.CBVs_collision[event.actor.id] = event.other_actor
+            self_strongref = self_weakref()
+            if self_strongref is not None:
+                self_strongref.CBVs_collision[event.actor.id] = event.other_actor
+
+        collision_sensor.listen(lambda event: count_collisions(event))
+
+        self.CBVs_collision_sensor[CBV.id] = collision_sensor
+        self.CBVs_collision[CBV.id] = None
 
     def CBVs_selection(self):
         # when training the ego agent, don't need to calculate the CBV
@@ -266,36 +274,37 @@ class CarlaEnv(gym.Env):
 
     def _attach_sensor(self):
         if self.mode == 'eval':
+            self_weakref = weakref.ref(self)  # weak reference of self
             # Add lidar sensor
             if not self.disable_lidar:
                 self.lidar_sensor = self.world.spawn_actor(self.lidar_bp, self.lidar_trans, attach_to=self.ego_vehicle)
-                self.lidar_sensor.listen(lambda data: get_lidar_data(data))
+                self.lidar_sensor.listen(lambda data, self_ref=self_weakref: get_lidar_data(self_ref(), data) if self_ref() else None)
 
-            def get_lidar_data(data):
-                self.lidar_data = data
+            def get_lidar_data(ego_self, data):
+                ego_self.lidar_data = data
 
             # Add camera sensor
             self.camera_sensor = self.world.spawn_actor(self.camera_bp, self.camera_trans, attach_to=self.ego_vehicle)
-            self.camera_sensor.listen(lambda data: get_camera_img(data))
+            self.camera_sensor.listen(lambda data, self_ref=self_weakref: get_camera_img(self_ref(), data) if self_ref() else None)
 
-            def get_camera_img(data):
+            def get_camera_img(ego_self, data):
                 array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
                 array = np.reshape(array, (data.height, data.width, 4))
                 array = array[:, :, :3]
-                self.BGR_img = copy.deepcopy(array)
+                ego_self.BGR_img = copy.deepcopy(array)
                 array = array[:, :, ::-1]
-                self.camera_img = array
+                ego_self.camera_img = array
 
             # Add sem_camera sensor
             if self.enable_sem:
                 self.sem_sensor = self.world.spawn_actor(self.sem_bp, self.sem_trans, attach_to=self.ego_vehicle)
-                self.sem_sensor.listen(lambda data: get_sem_img(data))
+                self.sem_sensor.listen(lambda data, self_ref=self_weakref: get_sem_img(self_ref(), data) if self_ref() else None)
 
-            def get_sem_img(data):
+            def get_sem_img(ego_self, data):
                 array = np.frombuffer(data.raw_data, dtype=np.dtype("uint8"))
                 array = np.reshape(array, (data.height, data.width, 4))
                 array = array[:, :, 2]  # from PlanT
-                self.sem_img = array
+                ego_self.sem_img = array
 
     def visualize_ego_route_CBV(self):
         # Visualize the controlled bv
@@ -720,13 +729,15 @@ class CarlaEnv(gym.Env):
         if self.CBVs_collision_sensor:
             # remove the collision sensor that has not been destroyed
             for sensor in self.CBVs_collision_sensor.values():
-                sensor.stop()
-                sensor.destroy()
+                if sensor is not None and sensor.is_alive:
+                    sensor.stop()
+                    sensor.destroy()
             self.CBVs_collision_sensor = {}
+            # TODO remove the corresponding vehicle
 
     def _remove_CBV_sensor(self, CBV_id):
         sensor = self.CBVs_collision_sensor.pop(CBV_id, None)
-        if sensor is not None:
+        if sensor is not None and sensor.is_alive:
             sensor.stop()
             sensor.destroy()
             self.CBVs_collision.pop(CBV_id)
