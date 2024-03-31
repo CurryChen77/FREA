@@ -733,7 +733,6 @@ class CarlaEnv(gym.Env):
                     sensor.stop()
                     sensor.destroy()
             self.CBVs_collision_sensor = {}
-            # TODO remove the corresponding vehicle
 
     def _remove_CBV_sensor(self, CBV_id):
         sensor = self.CBVs_collision_sensor.pop(CBV_id, None)

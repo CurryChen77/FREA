@@ -84,27 +84,62 @@ def get_feasibility_Qs_Vs(feasibility_policy, ego_obs, ego_action):
     }
 
 
-def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox=True):
+def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox=True, BV_num=3):
     BVs_record = {
-        'BVs_velocity': [],
-        'BVs_acc': [],
+        'CBVs_collision': {},
+        'BVs_abs_x': [],
+        'BVs_abs_y': [],
+        'BVs_rel_x': [],
+        'BVs_rel_y': [],
+        'BVs_extent_x': [],
+        'BVs_extent_y': [],
+        'BVs_rel_yaw': [],
+        'BVs_forward_speed': [],
         'BVs_ego_dis': [],
-        'ego_min_dis': search_radius,
-        'CBVs_collision': {}
+        'BVs_id': [],
+        'ego_min_dis': search_radius
     }
     if len(CBVs_collision) > 0:
         collision = {}
         for CBV_id, collision_actor in CBVs_collision.items():
+            # only record the collision between CBV and ego
             collision[CBV_id] = True if collision_actor is not None and collision_actor.id == ego.id else False
         BVs_record['CBVs_collision'] = collision
+
+    # BVs info from ego's view
     if ego_nearby_vehicles:
-        for i, vehicle in enumerate(ego_nearby_vehicles):
-            if i < 2:
-                BVs_record['BVs_velocity'].append(calculate_abs_velocity(CarlaDataProvider.get_velocity(vehicle)))
-                BVs_record['BVs_acc'].append(calculate_abs_acc(vehicle.get_acceleration()))
-                dis = get_min_distance_across_bboxes(ego, vehicle) if bbox else get_distance_across_centers(ego, vehicle)
-                BVs_record['BVs_ego_dis'].append(dis)
-        BVs_record['ego_min_dis'] = min(BVs_record['BVs_ego_dis'])
+        infos = []
+        BVs_ego_dis = []
+        BVs_id = []
+        BVs_abs_loc = []
+        ego_transform = CarlaDataProvider.get_transform(ego)
+        ego_matrix = np.array(ego_transform.get_matrix())
+        ego_yaw = ego_transform.rotation.yaw / 180 * np.pi
+        # the relative BVs info
+        for actor in ego_nearby_vehicles:
+            if len(infos) < BV_num:
+                actor_info = get_relative_info(actor=actor, center_yaw=ego_yaw, center_matrix=ego_matrix)
+                infos.append(actor_info)
+                BVs_ego_dis.append(get_min_distance_across_bboxes(ego, actor) if bbox else get_distance_across_centers(ego, actor))
+                BVs_id.append(actor.id)
+                loc = CarlaDataProvider.get_location(actor)
+                BVs_abs_loc.append([loc.x, loc.y])
+            else:
+                break
+        infos = np.array(infos, dtype=np.float32)
+        BVs_abs_loc = np.array(BVs_abs_loc, dtype=np.float32)
+        BVs_record['BVs_abs_x'] = BVs_abs_loc[:, 0]
+        BVs_record['BVs_abs_y'] = BVs_abs_loc[:, 1]
+        BVs_record['BVs_rel_x'] = infos[:, 0]
+        BVs_record['BVs_rel_y'] = infos[:, 1]
+        BVs_record['BVs_extent_x'] = infos[:, 2]
+        BVs_record['BVs_extent_y'] = infos[:, 3]
+        BVs_record['BVs_rel_yaw'] = infos[:, 4]
+        BVs_record['BVs_forward_speed'] = infos[:, 5]
+        BVs_record['BVs_ego_dis'] = BVs_ego_dis
+        BVs_record['BVs_id'] = BVs_id
+        BVs_record['ego_min_dis'] = min(BVs_ego_dis)
+
     return BVs_record
 
 
