@@ -93,10 +93,11 @@ def get_sequence_pet(sequence):
     return pet_list
 
 
-def get_pet_list_from_one_pkl(pkl_path):
+def process_pet_from_one_pkl(pkl_path, save_folder):
     pet_list_all_experiments = []
     data = joblib.load(pkl_path)
     for sequence in tqdm(data.values()):
         pet_list_all_experiments.extend(get_sequence_pet(sequence))
-    return pet_list_all_experiments
+    # save the PET data to npy
+    np.save(osp.join(save_folder, "PET.npy"), pet_list_all_experiments)
 

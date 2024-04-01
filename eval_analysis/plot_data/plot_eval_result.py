@@ -32,40 +32,39 @@ def classified_data_by_ego(data):
     return classified_by_ego
 
 
-def draw_PET(PET_data, args):
-
+def draw_data(All_data, data_name, args):
     matplotlib.rcParams['font.family'] = 'Times New Roman'
-    PET_data_per_ego = classified_data_by_ego(PET_data)
-    for ego_type, data in PET_data_per_ego.items():
-        num_algorithm = len(data.keys())
-        num_scenarios = max(len(scenarios) for scenarios in data.values())
+    All_data_per_ego = classified_data_by_ego(All_data)
+    for ego_type, datas in All_data_per_ego.items():
+        num_algorithm = len(datas.keys())
+        num_scenarios = max(len(scenarios) for scenarios in datas.values())
         color_list = sns.color_palette("coolwarm", n_colors=num_algorithm)
         baseline_name = None
         fig, axs = plt.subplots(nrows=num_scenarios, ncols=max(num_algorithm-1, 1), squeeze=False)
         # plot the baseline
-        for algorithm, scenario in data.items():
+        for algorithm, scenario in datas.items():
             baseline_name = algorithm if algorithm.endswith('standard') else None
         # pop out the baseline data
-        baseline = data.pop(baseline_name, None) if baseline_name is not None else None
+        baseline = datas.pop(baseline_name, None) if baseline_name is not None else None
         bins = np.linspace(0, 5, 50)
         for i in range(max(num_algorithm-1, 1)):
-            for row, (scenario_name, PET) in enumerate(baseline.items()):
-                # sns.kdeplot(PET, color=color_list[0], ax=axs[row, i], alpha=0.8, label=baseline_name, fill=True, linewidth=1)
-                axs[row, i].hist(PET, density=True, bins=bins, alpha=0.75, label=baseline_name, color=color_list[0])
+            for row, (scenario_name, data) in enumerate(baseline.items()):
+                # sns.kdeplot(data, color=color_list[0], ax=axs[row, i], alpha=0.8, label=baseline_name, fill=True, linewidth=1)
+                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=baseline_name, color=color_list[0])
                 axs[row, i].set_title(scenario_name, fontsize=10)
-                axs[row, i].set_xlabel('Post encroachment time')
+                axs[row, i].set_xlabel(f'{data_name}')
                 axs[row, i].set_ylabel('Frequency')
                 axs[row, i].legend(fontsize=8, loc='upper right')
 
         # plot the rest algorithm
-        for i, (algorithm, scenario) in enumerate(data.items()):
-            for row, (scenario_name, PET) in enumerate(scenario.items()):
-                # sns.kdeplot(PET, color=color_list[i+1], ax=axs[row, i], alpha=0.7, label=algorithm, fill=True, linewidth=1)
-                axs[row, i].hist(PET, density=True, bins=bins, alpha=0.75, label=algorithm, color=color_list[i+1])
+        for i, (algorithm, scenario) in enumerate(datas.items()):
+            for row, (scenario_name, data) in enumerate(scenario.items()):
+                # sns.kdeplot(data, color=color_list[i+1], ax=axs[row, i], alpha=0.7, label=algorithm, fill=True, linewidth=1)
+                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=algorithm, color=color_list[i+1])
                 axs[row, i].legend(fontsize=8, loc='upper right')
 
         plt.tight_layout()
-        save_dir = osp.join(args.ROOT_DIR, 'eval_analysis/figures/PET.png')
+        save_dir = osp.join(args.ROOT_DIR, f'eval_analysis/figures/{data_name}.png')
         plt.savefig(save_dir, dpi=600)
         plt.show()
 
@@ -84,6 +83,7 @@ def main(args):
     base_dir = osp.join(args.ROOT_DIR, 'eval_analysis/processed_data')
     algorithm_files = os.listdir(base_dir)
     PET_data = {}
+    ego_min_dis_data = {}
 
     for algorithm in algorithm_files:
         split_name = algorithm.split('_')
@@ -97,6 +97,7 @@ def main(args):
             # the specific ego and CBV method
             algorithm_title = f"Ego:{ego} CBV:{cbv}"
             PET_data[algorithm_title] = {}
+            ego_min_dis_data[algorithm_title] = {}
 
             for scenario_map in scenario_map_files:
                 scenario_map_path = osp.join(algorithm_path, scenario_map)
@@ -107,9 +108,14 @@ def main(args):
                         if file == 'PET.npy':
                             file_path = os.path.join(scenario_map_path, file)
                             PET_data[algorithm_title][scenario_map] = np.load(file_path)
+                        elif file == 'ego_min_dis.npy':
+                            file_path = os.path.join(scenario_map_path, file)
+                            ego_min_dis_data[algorithm_title][scenario_map] = np.load(file_path)
 
     # draw PET data
-    draw_PET(PET_data, args)
+    draw_data(PET_data, 'PET', args)
+    # draw common data
+    draw_data(ego_min_dis_data, 'ego_min_dis', args)
 
 
 if __name__ == '__main__':

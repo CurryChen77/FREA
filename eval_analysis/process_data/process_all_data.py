@@ -9,7 +9,9 @@
 import os
 import os.path as osp
 import numpy as np
-from process_PET import get_pet_list_from_one_pkl
+
+from precess_common_state import process_common_data_from_one_pkl
+from process_PET import process_pet_from_one_pkl
 
 
 def main(args):
@@ -29,10 +31,11 @@ def main(args):
                         pkl_path = osp.join(scenario_map_path, 'records.pkl')
                         print('>> Processing PET')
                         # get PET
-                        pet_list_all_experiments = get_pet_list_from_one_pkl(pkl_path)
                         save_folder = osp.join(args.ROOT_DIR, "eval_analysis", "processed_data", algorithm, scenario_map)
                         os.makedirs(save_folder, exist_ok=True)
-                        np.save(osp.join(save_folder, "PET.npy"), pet_list_all_experiments)
+                        process_pet_from_one_pkl(pkl_path, save_folder)
+                        print('>> Processing common data')
+                        process_common_data_from_one_pkl(pkl_path, save_folder)
                         print('>> ' + '-' * 40)
 
 
