@@ -32,6 +32,7 @@ class PPO(BasePolicy):
         self.gamma = config['gamma']
         self.policy_lr = config['policy_lr']
         self.value_lr = config['value_lr']
+        self.seed = config['seed']
         self.train_repeat_times = config['train_repeat_times']
 
         self.state_dim = config['scenario_state_dim']
@@ -47,9 +48,9 @@ class PPO(BasePolicy):
 
         self.model_type = config['model_type']
         self.CBV_selection = config['CBV_selection']
-        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'], self.CBV_selection)
+        self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         self.scenario_id = config['scenario_id']
-        self.agent_info = 'Ego_' + config['agent_policy']
+        self.agent_info = config['agent_policy'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
 
         self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr, eps=1e-5)  # trick about eps
