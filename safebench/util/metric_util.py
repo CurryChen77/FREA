@@ -11,12 +11,10 @@ from collections import Counter
 
 import joblib
 import math
-import numpy as np
 
 from copy import deepcopy
 import argparse
 
-import torch
 from safebench.scenario.scenario_definition.atomic_criteria import Status
 
 
@@ -94,6 +92,7 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
         for step in sequence:  # count all the collision event along the trajectory
             if step['ego_min_dis'] < 1:
                 num_near_step += 1
+                total_step += 1
                 if not start_near_period:  # start a new period
                     near_period_count += 1
                     start_near_period = True
@@ -141,7 +140,7 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
         num_lane_invasion += sequence[-1]['lane_invasion']
         avg_acc = 0
         for time_stamp in sequence:
-            avg_acc += math.sqrt(time_stamp['ego_acceleration_x'] ** 2 + time_stamp['ego_acceleration_y'] ** 2 + time_stamp['ego_acceleration_z'] ** 2)
+            avg_acc += math.sqrt(time_stamp['ego_acc'][0] ** 2 + time_stamp['ego_acc'][1] ** 2)
         total_acc += avg_acc / len(sequence)
         total_yaw_velocity += cal_avg_yaw_velocity(sequence)
 

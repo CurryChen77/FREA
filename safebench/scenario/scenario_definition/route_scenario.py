@@ -174,16 +174,13 @@ class RouteScenario():
                 self.unactivated_actors.remove(actor)
 
     def get_running_status(self, running_record):
+        ego_vel = CarlaDataProvider.get_velocity(self.ego_vehicle)
+        ego_loc = CarlaDataProvider.get_transform(self.ego_vehicle).location
+        ego_acc = self.ego_vehicle.get_acceleration()
         running_status = {
-            'ego_velocity': calculate_abs_velocity(CarlaDataProvider.get_velocity(self.ego_vehicle)),
-            'ego_acceleration_x': self.ego_vehicle.get_acceleration().x,
-            'ego_acceleration_y': self.ego_vehicle.get_acceleration().y,
-            'ego_acceleration_z': self.ego_vehicle.get_acceleration().z,
-            'ego_x': CarlaDataProvider.get_transform(self.ego_vehicle).location.x,
-            'ego_y': CarlaDataProvider.get_transform(self.ego_vehicle).location.y,
-            'ego_z': CarlaDataProvider.get_transform(self.ego_vehicle).location.z,
-            'ego_roll': CarlaDataProvider.get_transform(self.ego_vehicle).rotation.roll,
-            'ego_pitch': CarlaDataProvider.get_transform(self.ego_vehicle).rotation.pitch,
+            'ego_vel': [ego_vel.x, ego_vel.y],
+            'ego_acc': [ego_acc.x, ego_acc.y],
+            'ego_loc': [ego_loc.x, ego_loc.y],
             'ego_yaw': CarlaDataProvider.get_transform(self.ego_vehicle).rotation.yaw,
             'current_game_time': GameTime.get_time()
         }

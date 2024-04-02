@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：process_PET.py
+@File    ：PET.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2024/3/31
 """
 
 import joblib
-from scipy.spatial import cKDTree
 from tqdm import tqdm
 import os.path as osp
-import os
 import numpy as np
 
 
@@ -21,7 +19,8 @@ def find_nearest(array, value):
     return idx, array[idx]
 
 
-def get_occupied_box_index_from_obs(x, y, x_list, y_list):
+def get_occupied_box_index_from_obs(loc, x_list, y_list):
+    x, y = loc
     x_id, near_x = find_nearest(x_list, x)
     y_id, near_y = find_nearest(y_list, y)
     width_id_range = range(-4, 5)
@@ -57,15 +56,15 @@ def get_sequence_pet(sequence):
     pet_list = []
     pet_dict = {}
 
-    x_max, x_min = max(sequence[0]['ego_x'], sequence[-1]['ego_x']), min(sequence[0]['ego_x'], sequence[-1]['ego_x'])
-    y_max, y_min = max(sequence[0]['ego_y'], sequence[-1]['ego_y']), min(sequence[0]['ego_y'], sequence[-1]['ego_y'])
+    x_max, x_min = max(sequence[0]['ego_loc'][0], sequence[-1]['ego_loc'][0]), min(sequence[0]['ego_loc'][0], sequence[-1]['ego_loc'][0])
+    y_max, y_min = max(sequence[0]['ego_loc'][1], sequence[-1]['ego_loc'][1]), min(sequence[0]['ego_loc'][1], sequence[-1]['ego_loc'][1])
 
     x_list = np.linspace(x_min - 5, x_max + 5, num=2*(int(x_max - x_min)+10))
     y_list = np.linspace(y_min - 5, y_max + 5, num=2*(int(x_max - x_min)+10))
 
     for step in sequence:
         # add ego
-        occupied_index_list = get_occupied_box_index_from_obs(step['ego_x'], step['ego_y'], x_list, y_list)
+        occupied_index_list = get_occupied_box_index_from_obs(step['ego_loc'], x_list, y_list)
         for occupied_index in occupied_index_list:
             if str(occupied_index) in pet_dict:
                 pet_dict[str(occupied_index)].append([step['current_game_time'], 'ego'])
@@ -74,7 +73,7 @@ def get_sequence_pet(sequence):
         # add all the bv
         for BV_index, BV_ego_dis in enumerate(step['BVs_ego_dis']):
             occupied_index_list = get_occupied_box_index_from_obs(
-                step['BVs_abs_x'][BV_index], step['BVs_abs_y'][BV_index], x_list, y_list,
+                step['BVs_loc'][BV_index], x_list, y_list,
             )
             for occupied_index in occupied_index_list:
                 if str(occupied_index) in pet_dict:

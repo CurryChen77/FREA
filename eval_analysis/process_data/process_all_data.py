@@ -10,8 +10,9 @@ import os
 import os.path as osp
 import numpy as np
 
-from precess_common_state import process_common_data_from_one_pkl
-from process_PET import process_pet_from_one_pkl
+from common import process_common_data_from_one_pkl, process_collision_from_one_pkl
+from PET import process_pet_from_one_pkl
+from eval_analysis.process_data.TTC import process_ttc_from_one_pkl
 
 
 def main(args):
@@ -34,9 +35,15 @@ def main(args):
                         if 'PET' in args.data:
                             print('>> Processing PET')
                             process_pet_from_one_pkl(pkl_path, save_folder)
-                        elif 'common' in args.data:
+                        if 'common' in args.data:
                             print('>> Processing common data')
                             process_common_data_from_one_pkl(pkl_path, save_folder)
+                        if 'TTC' in args.data:
+                            print('>> Processing TTC data')
+                            process_ttc_from_one_pkl(pkl_path, save_folder)
+                        if 'Collision' in args.data:
+                            print('>> Processing Collision data')
+                            process_collision_from_one_pkl(pkl_path, algorithm, save_folder)
                         print('>> ' + '-' * 40)
 
 
@@ -45,7 +52,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
-    parser.add_argument('--data', '-d', nargs='*', type=str, default=['common', 'PET'])
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['common', 'PET', 'TTC', 'Collision'])
     args = parser.parse_args()
 
     main(args)

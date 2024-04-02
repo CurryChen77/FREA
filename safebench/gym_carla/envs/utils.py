@@ -87,14 +87,10 @@ def get_feasibility_Qs_Vs(feasibility_policy, ego_obs, ego_action):
 def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox=True, BV_num=3):
     BVs_record = {
         'CBVs_collision': {},
-        'BVs_abs_x': [],
-        'BVs_abs_y': [],
-        'BVs_rel_x': [],
-        'BVs_rel_y': [],
-        'BVs_extent_x': [],
-        'BVs_extent_y': [],
-        'BVs_rel_yaw': [],
-        'BVs_forward_speed': [],
+        'BVs_loc': [],
+        'BVs_vel': [],
+        'BVs_yaw': [],
+        'BVs_extent': [],
         'BVs_ego_dis': [],
         'BVs_id': [],
         'ego_min_dis': search_radius
@@ -108,34 +104,34 @@ def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, b
 
     # BVs info from ego's view
     if ego_nearby_vehicles:
-        infos = []
         BVs_ego_dis = []
         BVs_id = []
         BVs_abs_loc = []
-        ego_transform = CarlaDataProvider.get_transform(ego)
-        ego_matrix = np.array(ego_transform.get_matrix())
-        ego_yaw = ego_transform.rotation.yaw / 180 * np.pi
-        # the relative BVs info
+        BVs_vel = []
+        BVs_extent = []
+        BVs_yaw = []
+
         for actor in ego_nearby_vehicles:
-            if len(infos) < BV_num:
-                actor_info = get_relative_info(actor=actor, center_yaw=ego_yaw, center_matrix=ego_matrix)
-                infos.append(actor_info)
-                BVs_ego_dis.append(get_min_distance_across_bboxes(ego, actor) if bbox else get_distance_across_centers(ego, actor))
+            if len(BVs_id) < BV_num:
+                actor_transform = CarlaDataProvider.get_transform(actor)
+                actor_vel = CarlaDataProvider.get_velocity(actor)
+                BVs_vel.append([actor_vel.x, actor_vel.y])
                 BVs_id.append(actor.id)
                 loc = CarlaDataProvider.get_location(actor)
                 BVs_abs_loc.append([loc.x, loc.y])
+                actor_extent = actor.bounding_box.extent
+                BVs_extent.append([actor_extent.x * 2., actor_extent.y * 2.])
+                BVs_yaw.append(actor_transform.rotation.yaw / 180 * np.pi)
+                BVs_ego_dis.append(get_min_distance_across_bboxes(ego, actor) if bbox else get_distance_across_centers(ego, actor))
             else:
                 break
-        infos = np.array(infos, dtype=np.float32)
         BVs_abs_loc = np.array(BVs_abs_loc, dtype=np.float32)
-        BVs_record['BVs_abs_x'] = BVs_abs_loc[:, 0]
-        BVs_record['BVs_abs_y'] = BVs_abs_loc[:, 1]
-        BVs_record['BVs_rel_x'] = infos[:, 0]
-        BVs_record['BVs_rel_y'] = infos[:, 1]
-        BVs_record['BVs_extent_x'] = infos[:, 2]
-        BVs_record['BVs_extent_y'] = infos[:, 3]
-        BVs_record['BVs_rel_yaw'] = infos[:, 4]
-        BVs_record['BVs_forward_speed'] = infos[:, 5]
+        BVs_extent = np.array(BVs_extent, dtype=np.float32)
+        BVs_vel = np.array(BVs_vel, dtype=np.float32)
+        BVs_record['BVs_loc'] = BVs_abs_loc
+        BVs_record['BVs_vel'] = BVs_vel
+        BVs_record['BVs_yaw'] = BVs_yaw
+        BVs_record['BVs_extent'] = BVs_extent
         BVs_record['BVs_ego_dis'] = BVs_ego_dis
         BVs_record['BVs_id'] = BVs_id
         BVs_record['ego_min_dis'] = min(BVs_ego_dis)

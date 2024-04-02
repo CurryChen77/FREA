@@ -49,18 +49,18 @@ def draw_data(All_data, data_name, ROOT_DIR, bins):
         for i in range(max(num_algorithm-1, 1)):
             for row, (scenario_name, data) in enumerate(baseline.items()):
                 # sns.kdeplot(data, color=color_list[0], ax=axs[row, i], alpha=0.8, label=baseline_name, fill=True, linewidth=1)
-                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=baseline_name, color=color_list[0])
+                axs[row, i].hist(data, density=False, bins=bins, alpha=0.75, label=baseline_name, color=color_list[0])
                 axs[row, i].set_title(scenario_name, fontsize=10)
                 axs[row, i].set_xlabel(f'{data_name}')
                 axs[row, i].set_ylabel('Frequency')
-                axs[row, i].legend(fontsize=8, loc='upper right')
+                axs[row, i].legend(fontsize=8, loc='best')
 
         # plot the rest algorithm
         for i, (algorithm, scenario) in enumerate(datas.items()):
             for row, (scenario_name, data) in enumerate(scenario.items()):
                 # sns.kdeplot(data, color=color_list[i+1], ax=axs[row, i], alpha=0.7, label=algorithm, fill=True, linewidth=1)
-                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=algorithm, color=color_list[i+1])
-                axs[row, i].legend(fontsize=8, loc='upper right')
+                axs[row, i].hist(data, density=False, bins=bins, alpha=0.75, label=algorithm, color=color_list[i+1])
+                axs[row, i].legend(fontsize=8, loc='best')
 
         plt.tight_layout()
         data_save_name = data_name.replace(' ', "_")
@@ -69,15 +69,13 @@ def draw_data(All_data, data_name, ROOT_DIR, bins):
         plt.show()
 
 
-def draw_metric(all_results):
-    df = pd.DataFrame(all_results) * 100
-    sns.heatmap(df, annot=True, cmap='coolwarm', fmt='.0f', linewidths=.5)
-    plt.xticks(rotation=45, ha='center', fontsize=7)
-    plt.yticks(va='center', fontsize=7)
-    plt.title('Performance Metrics')
-    plt.tight_layout()
-    plt.show()
-
+def plot_metric(result, name):
+    print('>> ' + '-' * 20, str(name), '-' * 20)
+    for algorithm, scenario_data in result.items():
+        for scenario_name, data in scenario_data.items():
+            percentage = round(data * 100, 2)
+            print(f">> {algorithm} in {scenario_name}: {percentage}")
+    print('>> ' + '-' * 20, str(name), '-' * 20)
 
 def main(args):
     ROOT_DIR = args.ROOT_DIR
@@ -85,7 +83,12 @@ def main(args):
     algorithm_files = os.listdir(base_dir)
     PET_data = {}
     ego_min_dis_data = {}
+    near_rate = {}
     BVs_forward_speed_data = {}
+    TTC_data = {}
+    feasibility_data = {}
+    unfeasible_rate = {}
+    collision = {}
 
     for algorithm in algorithm_files:
         split_name = algorithm.split('_')
@@ -98,9 +101,15 @@ def main(args):
             scenario_map_files = os.listdir(algorithm_path)
             # the specific ego and CBV method
             algorithm_title = f"Ego:{ego} CBV:{cbv}"
+
             PET_data[algorithm_title] = {}
             ego_min_dis_data[algorithm_title] = {}
+            near_rate[algorithm_title] = {}
             BVs_forward_speed_data[algorithm_title] = {}
+            TTC_data[algorithm_title] = {}
+            feasibility_data[algorithm_title] = {}
+            unfeasible_rate[algorithm_title] = {}
+            collision[algorithm_title] = {}
 
             for scenario_map in scenario_map_files:
                 scenario_map_path = osp.join(algorithm_path, scenario_map)
@@ -111,25 +120,53 @@ def main(args):
                         if file == 'PET.npy' and 'PET' in args.data:
                             file_path = os.path.join(scenario_map_path, file)
                             PET_data[algorithm_title][scenario_map] = np.load(file_path)
-                        elif file == 'Ego_min_dis.npy' and 'Ego_min_dis' in args.data:
+                        if file == 'Ego_min_dis.pkl' and 'Ego_min_dis' in args.data:
                             file_path = os.path.join(scenario_map_path, file)
-                            ego_min_dis_data[algorithm_title][scenario_map] = np.load(file_path)
-                        elif file == 'BVs_forward_speed.npy' and 'BVs_forward_speed' in args.data:
+                            with open(file_path, 'rb') as pickle_file:
+                                all_ego_min_dis_data = pickle.load(pickle_file)
+                            ego_min_dis_data[algorithm_title][scenario_map] = all_ego_min_dis_data['ego_min_dis']
+                            near_rate[algorithm_title][scenario_map] = all_ego_min_dis_data['near_rate']
+                        if file == 'BVs_forward_speed.npy' and 'BVs_forward_speed' in args.data:
                             file_path = os.path.join(scenario_map_path, file)
                             BVs_forward_speed_data[algorithm_title][scenario_map] = np.load(file_path)
+                        if file == 'TTC.npy' and 'TTC' in args.data:
+                            file_path = os.path.join(scenario_map_path, file)
+                            TTC_data[algorithm_title][scenario_map] = np.load(file_path)
+                        if file == 'Feasibility.pkl' and 'Feasibility' in args.data:
+                            file_path = os.path.join(scenario_map_path, file)
+                            with open(file_path, 'rb') as pickle_file:
+                                all_feasibility_data = pickle.load(pickle_file)
+                            feasibility_data[algorithm_title][scenario_map] = all_feasibility_data['feasibility_value']
+                            unfeasible_rate[algorithm_title][scenario_map] = all_feasibility_data['unfeasible_rate']
+                        if file == 'Collision.pkl' and 'Collision' in args.data:
+                            file_path = os.path.join(scenario_map_path, file)
+                            with open(file_path, 'rb') as pickle_file:
+                                all_collision_data = pickle.load(pickle_file)
+                            collision[algorithm_title][scenario_map] = all_collision_data['collision_rate']
 
     # draw PET data
     if 'PET' in args.data:
-        PET_bins = np.linspace(0, 5, 40)
+        PET_bins = np.linspace(0, 5, 30)
         draw_data(PET_data, 'Post encroachment time', ROOT_DIR, bins=PET_bins)
     # draw Ego min distance
     if 'Ego_min_dis' in args.data:
+        plot_metric(near_rate, 'near_rate')
         ego_min_dis_bins = np.linspace(0, 10, 50)
         draw_data(ego_min_dis_data, 'Ego min distance', ROOT_DIR, bins=ego_min_dis_bins)
     # draw BVs forward speed
     if 'BVs_forward_speed' in args.data:
         BVs_forward_speed_bins = np.linspace(0, 10, 30)
         draw_data(BVs_forward_speed_data, 'BV forward Speed', ROOT_DIR, bins=BVs_forward_speed_bins)
+    # draw TTC
+    if 'TTC' in args.data:
+        TTC_bins = np.linspace(0, 5, 20)
+        draw_data(TTC_data, 'Time to collision', ROOT_DIR, bins=TTC_bins)
+    if 'Feasibility' in args.data:
+        plot_metric(unfeasible_rate, 'unfeasible_rate')
+        feasibility_bins = np.linspace(-4, 5, 15)
+        draw_data(feasibility_data, 'Feasibility Value', ROOT_DIR, bins=feasibility_bins)
+    if 'Collision' in args.data:
+        plot_metric(collision, 'collision_rate')
 
 
 if __name__ == '__main__':
@@ -137,7 +174,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--metric', '-m', action='store_true')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
-    parser.add_argument('--data', '-d', nargs='*', type=str, default=['Ego_min_dis', 'BVs_forward_speed', 'PET'])
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['Feasibility', 'Ego_min_dis', 'BVs_forward_speed', 'PET', 'TTC', 'Collision'])
     args = parser.parse_args()
 
     main(args)
