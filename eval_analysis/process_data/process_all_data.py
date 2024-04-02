@@ -29,13 +29,14 @@ def main(args):
                         print('>> ' + '-' * 40)
                         print(f'>> Reading {algorithm}, {scenario_map}')
                         pkl_path = osp.join(scenario_map_path, 'records.pkl')
-                        print('>> Processing PET')
-                        # get PET
                         save_folder = osp.join(args.ROOT_DIR, "eval_analysis", "processed_data", algorithm, scenario_map)
                         os.makedirs(save_folder, exist_ok=True)
-                        process_pet_from_one_pkl(pkl_path, save_folder)
-                        print('>> Processing common data')
-                        process_common_data_from_one_pkl(pkl_path, save_folder)
+                        if 'PET' in args.data:
+                            print('>> Processing PET')
+                            process_pet_from_one_pkl(pkl_path, save_folder)
+                        elif 'common' in args.data:
+                            print('>> Processing common data')
+                            process_common_data_from_one_pkl(pkl_path, save_folder)
                         print('>> ' + '-' * 40)
 
 
@@ -44,6 +45,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['common', 'PET'])
     args = parser.parse_args()
 
     main(args)

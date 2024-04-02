@@ -106,7 +106,7 @@ def plot_feasibility_data_distribution(args):
     fig.colorbar(throttle_steering_angle_img, ax=axs[1, 1])
 
     plt.tight_layout()
-    save_dir = osp.join(args.ROOT_DIR, 'safebench/feasibility/image/feasibility_data_distribution.png')
+    save_dir = osp.join(args.ROOT_DIR, 'safebench/feasibility/figures/feasibility_data_distribution.png')
     plt.savefig(save_dir, dpi=600)
     plt.show()
 
@@ -337,7 +337,7 @@ def plot_multi_feasibility_region(args):
         ax.spines['left'].set_color('white')
         ax.spines['right'].set_color('white')
 
-    save_dir = osp.join(args.ROOT_DIR, f'safebench/feasibility/image/feasibility_region_{args.min_dis_threshold}.png')
+    save_dir = osp.join(args.ROOT_DIR, f'safebench/feasibility/figures/feasibility_region_{args.min_dis_threshold}.png')
     plt.savefig(save_dir, dpi=600)
     plt.show()
 

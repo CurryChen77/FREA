@@ -32,7 +32,7 @@ def classified_data_by_ego(data):
     return classified_by_ego
 
 
-def draw_data(All_data, data_name, args):
+def draw_data(All_data, data_name, ROOT_DIR, bins):
     matplotlib.rcParams['font.family'] = 'Times New Roman'
     All_data_per_ego = classified_data_by_ego(All_data)
     for ego_type, datas in All_data_per_ego.items():
@@ -46,7 +46,6 @@ def draw_data(All_data, data_name, args):
             baseline_name = algorithm if algorithm.endswith('standard') else None
         # pop out the baseline data
         baseline = datas.pop(baseline_name, None) if baseline_name is not None else None
-        bins = np.linspace(0, 5, 50)
         for i in range(max(num_algorithm-1, 1)):
             for row, (scenario_name, data) in enumerate(baseline.items()):
                 # sns.kdeplot(data, color=color_list[0], ax=axs[row, i], alpha=0.8, label=baseline_name, fill=True, linewidth=1)
@@ -64,7 +63,8 @@ def draw_data(All_data, data_name, args):
                 axs[row, i].legend(fontsize=8, loc='upper right')
 
         plt.tight_layout()
-        save_dir = osp.join(args.ROOT_DIR, f'eval_analysis/figures/{data_name}.png')
+        data_save_name = data_name.replace(' ', "_")
+        save_dir = osp.join(ROOT_DIR, f'eval_analysis/figures/{data_save_name}.png')
         plt.savefig(save_dir, dpi=600)
         plt.show()
 
@@ -80,10 +80,12 @@ def draw_metric(all_results):
 
 
 def main(args):
-    base_dir = osp.join(args.ROOT_DIR, 'eval_analysis/processed_data')
+    ROOT_DIR = args.ROOT_DIR
+    base_dir = osp.join(ROOT_DIR, 'eval_analysis/processed_data')
     algorithm_files = os.listdir(base_dir)
     PET_data = {}
     ego_min_dis_data = {}
+    BVs_forward_speed_data = {}
 
     for algorithm in algorithm_files:
         split_name = algorithm.split('_')
@@ -98,6 +100,7 @@ def main(args):
             algorithm_title = f"Ego:{ego} CBV:{cbv}"
             PET_data[algorithm_title] = {}
             ego_min_dis_data[algorithm_title] = {}
+            BVs_forward_speed_data[algorithm_title] = {}
 
             for scenario_map in scenario_map_files:
                 scenario_map_path = osp.join(algorithm_path, scenario_map)
@@ -105,17 +108,28 @@ def main(args):
                     files = os.listdir(scenario_map_path)
                     for file in files:
                         # processing PET data
-                        if file == 'PET.npy':
+                        if file == 'PET.npy' and 'PET' in args.data:
                             file_path = os.path.join(scenario_map_path, file)
                             PET_data[algorithm_title][scenario_map] = np.load(file_path)
-                        elif file == 'ego_min_dis.npy':
+                        elif file == 'Ego_min_dis.npy' and 'Ego_min_dis' in args.data:
                             file_path = os.path.join(scenario_map_path, file)
                             ego_min_dis_data[algorithm_title][scenario_map] = np.load(file_path)
+                        elif file == 'BVs_forward_speed.npy' and 'BVs_forward_speed' in args.data:
+                            file_path = os.path.join(scenario_map_path, file)
+                            BVs_forward_speed_data[algorithm_title][scenario_map] = np.load(file_path)
 
     # draw PET data
-    draw_data(PET_data, 'PET', args)
-    # draw common data
-    draw_data(ego_min_dis_data, 'ego_min_dis', args)
+    if 'PET' in args.data:
+        PET_bins = np.linspace(0, 5, 40)
+        draw_data(PET_data, 'Post encroachment time', ROOT_DIR, bins=PET_bins)
+    # draw Ego min distance
+    if 'Ego_min_dis' in args.data:
+        ego_min_dis_bins = np.linspace(0, 10, 50)
+        draw_data(ego_min_dis_data, 'Ego min distance', ROOT_DIR, bins=ego_min_dis_bins)
+    # draw BVs forward speed
+    if 'BVs_forward_speed' in args.data:
+        BVs_forward_speed_bins = np.linspace(0, 10, 30)
+        draw_data(BVs_forward_speed_data, 'BV forward Speed', ROOT_DIR, bins=BVs_forward_speed_bins)
 
 
 if __name__ == '__main__':
@@ -123,6 +137,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--metric', '-m', action='store_true')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['Ego_min_dis', 'BVs_forward_speed', 'PET'])
     args = parser.parse_args()
 
     main(args)

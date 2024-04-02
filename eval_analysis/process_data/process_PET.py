@@ -24,12 +24,9 @@ def find_nearest(array, value):
 def get_occupied_box_index_from_obs(x, y, x_list, y_list):
     x_id, near_x = find_nearest(x_list, x)
     y_id, near_y = find_nearest(y_list, y)
-    surrounding_index = [
-        [x_id, y_id],
-        [x_id, y_id - 1], [x_id, y_id + 1],
-        [x_id - 1, y_id], [x_id + 1, y_id],
-
-    ]
+    width_id_range = range(-4, 5)
+    length_id_range = range(-4, 5)
+    surrounding_index = [[x_id + dx, y_id + dy] for dy in width_id_range for dx in length_id_range]
     return surrounding_index
 
 
@@ -63,8 +60,8 @@ def get_sequence_pet(sequence):
     x_max, x_min = max(sequence[0]['ego_x'], sequence[-1]['ego_x']), min(sequence[0]['ego_x'], sequence[-1]['ego_x'])
     y_max, y_min = max(sequence[0]['ego_y'], sequence[-1]['ego_y']), min(sequence[0]['ego_y'], sequence[-1]['ego_y'])
 
-    x_list = np.linspace(x_min - 5, x_max + 5, num=(int(x_max - x_min)+10))
-    y_list = np.linspace(y_min - 5, y_max + 5, num=(int(x_max - x_min)+10))
+    x_list = np.linspace(x_min - 5, x_max + 5, num=2*(int(x_max - x_min)+10))
+    y_list = np.linspace(y_min - 5, y_max + 5, num=2*(int(x_max - x_min)+10))
 
     for step in sequence:
         # add ego
