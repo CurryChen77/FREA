@@ -43,78 +43,18 @@ def cal_avg_yaw_velocity(sequence):
         total_yaw_change += abs(sequence[i]['ego_yaw'] - sequence[i - 1]['ego_yaw'])
     total_yaw_change = total_yaw_change / 180 * math.pi
     delta_time = sequence[-1]['current_game_time'] - sequence[0]['current_game_time']
-    avg_yaw_velocity = total_yaw_change / delta_time if delta_time == 0 else 0  # prevent the delta_time is 0
+    avg_yaw_velocity = total_yaw_change / delta_time if abs(delta_time) > 0.001 else 0  # prevent the delta_time is 0
 
     return avg_yaw_velocity
 
 
 def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, time_out=30):
     # safety level
-    if scenario_agent_learnable:
-        # learnable scenario agent
-        num_collision = 0
-        sum_out_of_road_length = 0
-        collision_attacker = 0
+    sum_out_of_road_length = 0
 
-        for data_id, sequence in record_dict.items():  # for each data id (small scenario)
-            collision_count = Counter()
-            all_count = Counter()
-
-            for step in sequence:
-                collision_count.update({k: 1 for k, v in step['CBVs_collision'].items() if v})
-                all_count.update(step['CBVs_collision'].keys())
-
-            num_collision += len(collision_count)
-            collision_attacker += len(all_count)
-
-            sum_out_of_road_length += cal_out_of_road_length(sequence)
-
-        collision_rate = num_collision / collision_attacker
-        out_of_road_length = sum_out_of_road_length / len(record_dict)
-    else:
-        # rule-based scenario agent
-        num_collision = 0
-        sum_out_of_road_length = 0
-        for data_id, sequence in record_dict.items():  # for each data id (small scenario)
-            for step in sequence:  # count all the collision event along the trajectory
-                if step['collision'][0] == Status.FAILURE:
-                    num_collision += 1
-            sum_out_of_road_length += cal_out_of_road_length(sequence)
-        collision_rate = num_collision / len(record_dict)
-        out_of_road_length = sum_out_of_road_length / len(record_dict)
-
-    # near miss
-    num_near_step = 0
-    total_step = 0
-    near_period_count = 0
-    start_near_period = False
     for data_id, sequence in record_dict.items():  # for each data id (small scenario)
-        for step in sequence:  # count all the collision event along the trajectory
-            if step['ego_min_dis'] < 1:
-                num_near_step += 1
-                total_step += 1
-                if not start_near_period:  # start a new period
-                    near_period_count += 1
-                    start_near_period = True
-            elif step['ego_min_dis'] < 25:
-                start_near_period = False
-                total_step += 1
-
-    near_rate = num_near_step / total_step
-    # TODO: maybe got multi CBVs attack ego, but ego_min_dis only record the closer CBV and ignore the near period of the other CBV
-    near_collide_rate = num_collision / near_period_count if num_collision < near_period_count else 1.0
-    near_miss_rate = 1.0 - near_collide_rate if near_rate != 0 else 0
-
-    # feasibility eval
-    unavoidable_rate = 0
-    if use_feasibility:
-        num_unavoidable_collision = 0
-        for data_id, sequence in record_dict.items():  # for each data id (small scenario)
-            for step in sequence:  # count all the collision event along the trajectory
-                if step['feasibility_V'] >= 0.0:
-                    num_unavoidable_collision += 1
-
-        unavoidable_rate = num_unavoidable_collision / total_step
+        sum_out_of_road_length += cal_out_of_road_length(sequence)
+    out_of_road_length = sum_out_of_road_length / len(record_dict)
 
     # task performance level
     total_route_completion = 0
@@ -138,47 +78,61 @@ def get_route_scores(record_dict, use_feasibility, scenario_agent_learnable, tim
     total_yaw_velocity = 0
     for data_id, sequence in record_dict.items():
         num_lane_invasion += sequence[-1]['lane_invasion']
-        avg_acc = 0
+        avg_sequence_acc = 0
         for time_stamp in sequence:
-            avg_acc += math.sqrt(time_stamp['ego_acc'][0] ** 2 + time_stamp['ego_acc'][1] ** 2)
-        total_acc += avg_acc / len(sequence)
+            avg_sequence_acc += math.sqrt(time_stamp['ego_acc'][0] ** 2 + time_stamp['ego_acc'][1] ** 2)
+        total_acc += avg_sequence_acc / len(sequence)
         total_yaw_velocity += cal_avg_yaw_velocity(sequence)
+    avg_acc = total_acc / len(record_dict)
+    avg_yaw_velocity = total_yaw_velocity / len(record_dict)
 
     predefined_max_values = {
         # safety level
-        'collision_rate': 1,
-        'out_of_road_length': 10,
-        'near_miss_rate': 1,
-        'near_rate': 1,
+        'out_of_road_length': 1,
 
         # task performance level
-        'distance_to_route': 5,
+        'distance_to_route': 1,
         'incomplete_route': 1,
         'running_time': time_out,
+
+        # comfort level
+        'average acceleration': 5,
+        'average yaw velocity': 0.6,
+    }
+
+    weights = {
+        # safety level
+        'out_of_road_length': 0.1,
+
+        # task performance level
+        'distance_to_route': 0.1,
+        'incomplete_route': 0.3,
+        'running_time': 0.1,
+
+        # comfort level
+        'average acceleration': 0.2,
+        'average yaw velocity': 0.2,
     }
 
     scores = {
         # safety level
-        'collision_rate': collision_rate,
         'out_of_road_length': out_of_road_length,
-        'near_miss_rate': near_miss_rate,
-        'near_rate': near_rate,
 
         # task performance level
         'distance_to_route': avg_distance_to_route,
         'incomplete_route': 1 - route_completion,
         'running_time': avg_time_spent,
-    }
-    if use_feasibility:
-        scores['unavoidable_rate'] = unavoidable_rate
-        predefined_max_values['unavoidable_rate'] = 1
 
-    all_scores = {key: round(value/predefined_max_values[key], 4) for key, value in scores.items()}
-    if use_feasibility:
-        final_score = 0.2 * (1 - collision_rate) + 0.2 * (1 - unavoidable_rate) + 0.3 * near_miss_rate + 0.3 * near_rate
-    else:
-        final_score = 0.3 * (1 - collision_rate) + 0.35 * near_miss_rate + 0.35 * near_rate
-    all_scores['final_score'] = round(final_score, 4)  # change from the lower, the better to the higher, the better
+        # comfort level
+        'average acceleration': avg_acc,
+        'average yaw velocity': avg_yaw_velocity,
+    }
+
+    all_scores = {key: round(max(0, min(value / predefined_max_values[key], 1)), 2) for key, value in scores.items()}
+    final_score = 0
+    for key, score in all_scores.items():
+        final_score += score * weights[key]
+    all_scores['final_score'] = round(1 - final_score, 2)  # the score of ego's driving behavior
 
     return all_scores
 
