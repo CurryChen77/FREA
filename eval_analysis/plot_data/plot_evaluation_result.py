@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：plot_eval_result.py
+@File    ：plot_evaluation_result.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2024/2/28
@@ -12,7 +12,6 @@ import numpy as np
 import seaborn as sns
 import os.path as osp
 import os
-import pandas as pd
 from collections import defaultdict
 import re
 import matplotlib
