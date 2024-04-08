@@ -257,6 +257,7 @@ class CollisionTest(Criterion):
         self.other_actor_type = other_actor_type
         self.registered_collisions = []
         self.last_id = None
+        self.collision_impulse = None
         self.collision_time = None
 
     def update(self):
@@ -265,9 +266,11 @@ class CollisionTest(Criterion):
         """
         new_status = Status.RUNNING
         collision_vehicle_id = None
+        collision_normal_impulse = None
         if self.test_status == "FAILURE":
             # remove the self.terminate_on_failure
             collision_vehicle_id = self.last_id
+            collision_normal_impulse = [self.collision_impulse.x, self.collision_impulse.y, self.collision_impulse.z]
             new_status = Status.FAILURE
             self.test_status = "RUNNING"  # refresh the status
 
@@ -288,7 +291,7 @@ class CollisionTest(Criterion):
         if self.last_id and GameTime.get_time() - self.collision_time > self.MAX_ID_TIME:
             self.last_id = None
 
-        return new_status, collision_vehicle_id
+        return new_status, collision_vehicle_id, collision_normal_impulse
 
     def terminate(self):
         """
@@ -376,6 +379,7 @@ class CollisionTest(Criterion):
         # Number 0: static objects -> ignore it
         if event.other_actor.id != 0:
             self.last_id = event.other_actor.id
+            self.collision_impulse = event.normal_impulse
 
 
 class ActorSpeedAboveThresholdTest(Criterion):

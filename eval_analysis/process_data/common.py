@@ -19,6 +19,7 @@ from safebench.scenario.scenario_definition.atomic_criteria import Status
 def process_collision_from_one_pkl(pkl_path, algorithm, save_folder):
     data = joblib.load(pkl_path)
     collision = {}
+    collision_impulse = []
     if 'standard' in algorithm:
         # rule-based scenario agent
         num_collision = 0
@@ -26,7 +27,11 @@ def process_collision_from_one_pkl(pkl_path, algorithm, save_folder):
             for step in sequence:  # count all the collision event along the trajectory
                 if step['collision'][0] == Status.FAILURE:
                     num_collision += 1
+                    if step['collision'][2] is not None:
+                        step_collision_impulse = step['collision'][2]
+                        collision_impulse.append(np.sqrt(np.sum(np.square(np.array(step_collision_impulse) / 1000))))  # kN*s
         collision['collision_rate'] = num_collision / len(data)
+        collision['collision_impulse'] = collision_impulse
     else:
         # learnable scenario agent
         num_collision = 0
@@ -36,13 +41,18 @@ def process_collision_from_one_pkl(pkl_path, algorithm, save_folder):
             all_count = Counter()
 
             for step in sequence:
-                collision_count.update({k: 1 for k, v in step['CBVs_collision'].items() if v})
-                all_count.update(step['CBVs_collision'].keys())
+                for CBV_id, collision_event in step['CBVs_collision'].items():
+                    if collision_event is not None:
+                        collision_count[CBV_id] += 1
+                        step_collision_impulse = collision_event['normal_impulse']
+                        collision_impulse.append(np.sqrt(np.sum(np.square(np.array(step_collision_impulse) / 1000))))  # kN*s
+                    all_count[CBV_id] += 1
 
             num_collision += len(collision_count)
             collision_attacker += len(all_count)
 
         collision['collision_rate'] = num_collision / collision_attacker
+        collision['collision_impulse'] = collision_impulse
     # save BVs forward speed
     with open(osp.join(save_folder, "Collision.pkl"), 'wb') as pickle_file:
         pickle.dump(collision, pickle_file)

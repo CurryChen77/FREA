@@ -184,7 +184,10 @@ class CarlaEnv(gym.Env):
         def count_collisions(event):
             self_strongref = self_weakref()
             if self_strongref is not None:
-                self_strongref.CBVs_collision[event.actor.id] = event.other_actor
+                self_strongref.CBVs_collision[event.actor.id] = {
+                    'other_actor_id': event.other_actor.id,
+                    'normal_impulse': [event.normal_impulse.x, event.normal_impulse.y, event.normal_impulse.z]
+                }
 
         collision_sensor.listen(lambda event: count_collisions(event))
 
@@ -703,8 +706,8 @@ class CarlaEnv(gym.Env):
         else:
             # if the ego collision detector didn't detect the collision, need to use CBV collision detector
             self.ego_collide = False
-            for collision_actor in self.CBVs_collision.values():
-                if collision_actor is not None and collision_actor.id == self.ego_vehicle.id:
+            for collision_event in self.CBVs_collision.values():
+                if collision_event is not None and collision_event['other_actor_id'] == self.ego_vehicle.id:
                     self.ego_collide = True
                     break
 

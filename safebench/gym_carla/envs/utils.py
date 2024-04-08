@@ -97,9 +97,15 @@ def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, b
     }
     if len(CBVs_collision) > 0:
         collision = {}
-        for CBV_id, collision_actor in CBVs_collision.items():
+        for CBV_id, collision_event in CBVs_collision.items():
             # only record the collision between CBV and ego
-            collision[CBV_id] = True if collision_actor is not None and collision_actor.id == ego.id else False
+            if collision_event is not None:
+                collision[CBV_id] = {
+                    'other_actor_id': collision_event['other_actor_id'],
+                    'normal_impulse': collision_event['normal_impulse']
+                }
+            else:
+                collision[CBV_id] = None
         BVs_record['CBVs_collision'] = collision
 
     # BVs info from ego's view
@@ -481,6 +487,7 @@ def get_CBV_candidates(ego_vehicle, goal_waypoint, CBV_reach_goal, search_radius
         del candidates[key]
 
     return list(candidates.values())
+
 
 def get_min_distance_across_bboxes(veh1, veh2):
     veh1_bbox = veh1.bounding_box

@@ -32,7 +32,7 @@ def get_onestep_ttc(ego_loc, ego_vel, BV_loc, BV_vel):
     magnitude_squared = v_rel_x ** 2 + v_rel_y ** 2
 
     # Prevent division by zero
-    if magnitude_squared == 0 and dot_product >= 0:
+    if magnitude_squared == 0:
         return None
 
     # Calculate TTC
@@ -52,7 +52,7 @@ def get_sequence_ttc(sequence):
         assert len(BVs_vel) == len(BVs_loc), 'length of BVs info should be the same'
         for i in range(len(BVs_vel)):
             ttc = get_onestep_ttc(ego_loc, ego_vel, BVs_loc[i], BVs_vel[i])
-            ttc_list.append(ttc) if ttc is not None and ttc <= 5 else None
+            ttc_list.append(ttc) if ttc is not None and ttc <= 10 else None
 
     return ttc_list
 

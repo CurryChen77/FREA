@@ -76,6 +76,7 @@ def plot_metric(result, name):
             print(f">> {algorithm} in {scenario_name}: {percentage}")
     print('>> ' + '-' * 20, str(name), '-' * 20)
 
+
 def main(args):
     ROOT_DIR = args.ROOT_DIR
     base_dir = osp.join(ROOT_DIR, 'eval_analysis/processed_data')
@@ -87,61 +88,65 @@ def main(args):
     TTC_data = {}
     feasibility_data = {}
     unfeasible_rate = {}
-    collision = {}
+    collision_rate = {}
+    collision_impulse = {}
 
     for algorithm in algorithm_files:
-        split_name = algorithm.split('_')
-        ego = split_name.pop(0)
-        seed = split_name.pop(-1)
-        select = split_name.pop(-1)
-        cbv = '_'.join(split_name) if len(split_name) > 1 else split_name[0]
-        algorithm_path = osp.join(base_dir, algorithm)
-        if osp.isdir(algorithm_path):
-            scenario_map_files = os.listdir(algorithm_path)
-            # the specific ego and CBV method
-            algorithm_title = f"Ego:{ego} CBV:{cbv}"
+        if osp.isdir(osp.join(base_dir, algorithm)):
+            split_name = algorithm.split('_')
+            ego = split_name.pop(0)
+            seed = split_name.pop(-1)
+            select = split_name.pop(-1)
+            cbv = '_'.join(split_name) if len(split_name) > 1 else split_name[0]
+            algorithm_path = osp.join(base_dir, algorithm)
+            if osp.isdir(algorithm_path):
+                scenario_map_files = os.listdir(algorithm_path)
+                # the specific ego and CBV method
+                algorithm_title = f"Ego:{ego} CBV:{cbv}"
 
-            PET_data[algorithm_title] = {}
-            ego_min_dis_data[algorithm_title] = {}
-            near_rate[algorithm_title] = {}
-            BVs_forward_speed_data[algorithm_title] = {}
-            TTC_data[algorithm_title] = {}
-            feasibility_data[algorithm_title] = {}
-            unfeasible_rate[algorithm_title] = {}
-            collision[algorithm_title] = {}
+                PET_data[algorithm_title] = {}
+                ego_min_dis_data[algorithm_title] = {}
+                near_rate[algorithm_title] = {}
+                BVs_forward_speed_data[algorithm_title] = {}
+                TTC_data[algorithm_title] = {}
+                feasibility_data[algorithm_title] = {}
+                unfeasible_rate[algorithm_title] = {}
+                collision_rate[algorithm_title] = {}
+                collision_impulse[algorithm_title] = {}
 
-            for scenario_map in scenario_map_files:
-                scenario_map_path = osp.join(algorithm_path, scenario_map)
-                if osp.isdir(scenario_map_path):
-                    files = os.listdir(scenario_map_path)
-                    for file in files:
-                        # processing PET data
-                        if file == 'PET.npy' and 'PET' in args.data:
-                            file_path = os.path.join(scenario_map_path, file)
-                            PET_data[algorithm_title][scenario_map] = np.load(file_path)
-                        if file == 'Ego_min_dis.pkl' and 'Ego_min_dis' in args.data:
-                            file_path = os.path.join(scenario_map_path, file)
-                            with open(file_path, 'rb') as pickle_file:
-                                all_ego_min_dis_data = pickle.load(pickle_file)
-                            ego_min_dis_data[algorithm_title][scenario_map] = all_ego_min_dis_data['ego_min_dis']
-                            near_rate[algorithm_title][scenario_map] = all_ego_min_dis_data['near_rate']
-                        if file == 'BVs_forward_speed.npy' and 'BVs_forward_speed' in args.data:
-                            file_path = os.path.join(scenario_map_path, file)
-                            BVs_forward_speed_data[algorithm_title][scenario_map] = np.load(file_path)
-                        if file == 'TTC.npy' and 'TTC' in args.data:
-                            file_path = os.path.join(scenario_map_path, file)
-                            TTC_data[algorithm_title][scenario_map] = np.load(file_path)
-                        if file == 'Feasibility.pkl' and 'Feasibility' in args.data:
-                            file_path = os.path.join(scenario_map_path, file)
-                            with open(file_path, 'rb') as pickle_file:
-                                all_feasibility_data = pickle.load(pickle_file)
-                            feasibility_data[algorithm_title][scenario_map] = all_feasibility_data['feasibility_value']
-                            unfeasible_rate[algorithm_title][scenario_map] = all_feasibility_data['unfeasible_rate']
-                        if file == 'Collision.pkl' and 'Collision' in args.data:
-                            file_path = os.path.join(scenario_map_path, file)
-                            with open(file_path, 'rb') as pickle_file:
-                                all_collision_data = pickle.load(pickle_file)
-                            collision[algorithm_title][scenario_map] = all_collision_data['collision_rate']
+                for scenario_map in scenario_map_files:
+                    scenario_map_path = osp.join(algorithm_path, scenario_map)
+                    if osp.isdir(scenario_map_path):
+                        files = os.listdir(scenario_map_path)
+                        for file in files:
+                            # processing PET data
+                            if file == 'PET.npy' and 'PET' in args.data:
+                                file_path = os.path.join(scenario_map_path, file)
+                                PET_data[algorithm_title][scenario_map] = np.load(file_path)
+                            if file == 'Ego_min_dis.pkl' and 'Ego_min_dis' in args.data:
+                                file_path = os.path.join(scenario_map_path, file)
+                                with open(file_path, 'rb') as pickle_file:
+                                    all_ego_min_dis_data = pickle.load(pickle_file)
+                                ego_min_dis_data[algorithm_title][scenario_map] = all_ego_min_dis_data['ego_min_dis']
+                                near_rate[algorithm_title][scenario_map] = all_ego_min_dis_data['near_rate']
+                            if file == 'BVs_forward_speed.npy' and 'BVs_forward_speed' in args.data:
+                                file_path = os.path.join(scenario_map_path, file)
+                                BVs_forward_speed_data[algorithm_title][scenario_map] = np.load(file_path)
+                            if file == 'TTC.npy' and 'TTC' in args.data:
+                                file_path = os.path.join(scenario_map_path, file)
+                                TTC_data[algorithm_title][scenario_map] = np.load(file_path)
+                            if file == 'Feasibility.pkl' and 'Feasibility' in args.data:
+                                file_path = os.path.join(scenario_map_path, file)
+                                with open(file_path, 'rb') as pickle_file:
+                                    all_feasibility_data = pickle.load(pickle_file)
+                                feasibility_data[algorithm_title][scenario_map] = all_feasibility_data['feasibility_value']
+                                unfeasible_rate[algorithm_title][scenario_map] = all_feasibility_data['unfeasible_rate']
+                            if file == 'Collision.pkl' and 'Collision' in args.data:
+                                file_path = os.path.join(scenario_map_path, file)
+                                with open(file_path, 'rb') as pickle_file:
+                                    all_collision_data = pickle.load(pickle_file)
+                                collision_rate[algorithm_title][scenario_map] = all_collision_data['collision_rate']
+                                collision_impulse[algorithm_title][scenario_map] = all_collision_data['collision_impulse']
 
     # draw PET data
     if 'PET' in args.data:
@@ -158,14 +163,16 @@ def main(args):
         draw_data(BVs_forward_speed_data, 'BV forward Speed', ROOT_DIR, bins=BVs_forward_speed_bins)
     # draw TTC
     if 'TTC' in args.data:
-        TTC_bins = np.linspace(0, 5, 20)
+        TTC_bins = np.linspace(0, 7.5, 100)
         draw_data(TTC_data, 'Time to collision', ROOT_DIR, bins=TTC_bins)
     if 'Feasibility' in args.data:
         plot_metric(unfeasible_rate, 'unfeasible_rate')
         feasibility_bins = np.linspace(-4, 5, 15)
         draw_data(feasibility_data, 'Feasibility Value', ROOT_DIR, bins=feasibility_bins)
     if 'Collision' in args.data:
-        plot_metric(collision, 'collision_rate')
+        plot_metric(collision_rate, 'collision_rate')
+        collision_impulse_bins = np.linspace(0, 20, 20)
+        draw_data(collision_impulse, 'Collision_impulse', ROOT_DIR, bins=collision_impulse_bins)
 
 
 if __name__ == '__main__':

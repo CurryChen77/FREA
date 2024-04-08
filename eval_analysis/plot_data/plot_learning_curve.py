@@ -46,7 +46,9 @@ def extract_tb_data(path_to_events_file):
 
 
 def smooth(data, sm=1):
-    ''' 平滑数据 '''
+    """
+        smooth the input data
+    """
     if sm > 1:
         z = np.ones_like(data)
         y = np.ones(sm) * 1.0
@@ -56,7 +58,7 @@ def smooth(data, sm=1):
         return data
 
 
-def read_df(df_path):
+def read_df(df_path, label='Scenario_average_reward_per_step'):
     if os.path.exists(df_path):
         df = pd.read_csv(df_path)
         print('>> ' + '-' * 20, 'Reading learning curve data', '-' * 20)
@@ -73,7 +75,7 @@ def read_df(df_path):
                 scene = path_elements[-1]
                 seed = int(seed)
                 path_to_event_files = [os.path.join(root, f) for f in event_files]
-                combined_events_data = extract_and_combine_events(path_to_event_files, label='Scenario_average_reward_per_step')
+                combined_events_data = extract_and_combine_events(path_to_event_files, label=label)
                 for step, value in combined_events_data:
                     dataframes.append(pd.DataFrame({
                         'step': [step],
@@ -93,7 +95,7 @@ def read_df(df_path):
 def main(args):
     # read the learning curve data
     df_path = osp.join(args.ROOT_DIR, 'eval_analysis/processed_data/learning_curve.csv')
-    df = read_df(df_path)
+    df = read_df(df_path, args.label)
 
     sns.set(style="darkgrid")
 
@@ -141,6 +143,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
+    parser.add_argument('--label', '-l', type=str, default='Scenario_average_reward_per_step', choices=['Scenario_episode_reward', 'Scenario_average_reward_per_step'])
     args = parser.parse_args()
 
     main(args)
