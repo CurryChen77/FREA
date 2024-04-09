@@ -270,7 +270,7 @@ class CollisionTest(Criterion):
         if self.test_status == "FAILURE":
             # remove the self.terminate_on_failure
             collision_vehicle_id = self.last_id
-            collision_normal_impulse = [self.collision_impulse.x, self.collision_impulse.y, self.collision_impulse.z]
+            collision_normal_impulse = [self.collision_impulse.x, self.collision_impulse.y, self.collision_impulse.z] if self.collision_impulse is not None else None
             new_status = Status.FAILURE
             self.test_status = "RUNNING"  # refresh the status
 

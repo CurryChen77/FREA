@@ -145,6 +145,23 @@ def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, b
     return BVs_record
 
 
+def draw_trajectory(world, ego, CBVs, CBV_reach_goal, time, life_time=4):
+    ego_color = carla.Color(200, 0, 0, 0)  # red
+    CBV_color = carla.Color(100, 0, 250, 0)  # purple
+    BV_color = carla.Color(0, 250, 100, 0)  # blue
+    size = 0.3 if time % 15 == 0 else 0.1
+    all_actor = CarlaDataProvider.get_actors()
+    for actor_id, actor in all_actor.items():
+        if actor_id == ego.id:
+            color = ego_color
+        elif actor_id in CBVs.keys() or actor_id in CBV_reach_goal.keys():
+            color = CBV_color
+        else:
+            color = BV_color
+        actor_loc = CarlaDataProvider.get_location(actor)
+        world.debug.draw_point(actor_loc + carla.Location(z=2), size=size, color=color, life_time=life_time)
+
+
 def get_ego_min_dis(ego, ego_nearby_vehicles, search_radius=25, bbox=True):
     ego_min_dis = search_radius
     if ego_nearby_vehicles:
@@ -196,7 +213,7 @@ def get_CBV_bv_reward(CBV, search_radius, CBV_nearby_vehicles, tou=1):
     return min_dis, min_dis_reward
 
 
-def get_locations_nearby_spawn_points(location_lists, radius_list, closest_dis, global_route_lane_road_ids, intensity=0.6, low_limit=12, upper_limit=18):
+def get_locations_nearby_spawn_points(location_lists, radius_list, closest_dis, global_route_lane_road_ids, intensity=0.6, low_limit=5, upper_limit=18):
     CarlaDataProvider.generate_spawn_points()  # get all the possible spawn points in this map
 
     ego_locations = [ego.get_location() for ego in CarlaDataProvider.egos]

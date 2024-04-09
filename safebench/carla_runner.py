@@ -75,8 +75,8 @@ class CarlaRunner:
             'traffic_intensity': 0.6,  # the default traffic intensity
             'goal_point_radius': 2,  # the default goal point radius
             'auto_ego': scenario_config['auto_ego'],
-            'spectator': agent_config['spectator'],  # whether to put spectator on the world
             'viz_route': agent_config['viz_route'],  # whether to visualize the route
+            'viz_trajectory': True,  # whether to visualize the trajectory
             'ego_agent_learnable': agent_config['learnable'],  # whether the ego agent is a learnable method
             'scenario_agent_learnable': scenario_config['learnable'],  # whether the scenario agent is a learnable method
             'agent_obs_type': agent_config['obs_type'],  # default 0 (only 4 dimensions states )
@@ -88,8 +88,8 @@ class CarlaRunner:
             'disable_lidar': True,  # show bird-eye view lidar or not
             'enable_sem': agent_config['enable_sem'],  # whether to enable the sem visualization
             'display_size': 256,  # screen size of one bird-eye view window
-            'obs_range': 36,  # observation range (meter)
-            'd_behind': 12,  # distance behind the ego vehicle (meter)
+            'obs_range': 48,  # observation range (meter)
+            'd_behind': 16,  # distance behind the ego vehicle (meter)
             'max_past_step': 1,  # the number of past steps to draw
             'continuous_accel_range': [-3.0, 3.0],  # continuous acceleration range
             'continuous_steer_range': [-0.3, 0.3],  # continuous steering angle range

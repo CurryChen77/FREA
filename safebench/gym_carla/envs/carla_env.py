@@ -26,7 +26,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
     update_goal_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, \
-    process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs, get_BVs_record, check_interaction, check_CBV_BV_stuck
+    process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs, get_BVs_record, check_interaction, check_CBV_BV_stuck, draw_trajectory
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -59,7 +59,6 @@ class CarlaEnv(gym.Env):
         self.ego_agent_learnable = env_params['ego_agent_learnable']
         self.scenario_agent_learnable = env_params['scenario_agent_learnable']
         self.scenario_agent_reward_shaping = env_params['scenario_reward_shaping']
-        self.spectator = env_params['spectator']
         self.mode = env_params['mode']
 
         self.lidar_sensor = None
@@ -95,6 +94,7 @@ class CarlaEnv(gym.Env):
         # for birdeye view and front view visualization
         self.ego_agent_learnable = env_params['ego_agent_learnable']
         self.viz_route = env_params['viz_route']
+        self.viz_trajectory = env_params['viz_trajectory']
         self.display_size = env_params['display_size']
         self.obs_range = env_params['obs_range']
         self.d_behind = env_params['d_behind']
@@ -129,7 +129,8 @@ class CarlaEnv(gym.Env):
             self.camera_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
             self.BGR_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
             # self.camera_trans = carla.Transform(carla.Location(x=0.8, z=1.7))  # for ego view
-            self.camera_trans = carla.Transform(carla.Location(x=-2., y=0., z=12.),carla.Rotation(pitch=-50.0))  # for third-person view
+            # self.camera_trans = carla.Transform(carla.Location(x=-2., y=0., z=12.),carla.Rotation(pitch=-50.0))  # for third-person view
+            self.camera_trans = carla.Transform(carla.Location(x=8., y=0., z=16),carla.Rotation(pitch=-90.0))  # god view
             self.camera_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.rgb')
             # Modify the attributes of the blueprint to set image resolution and field of view.
             self.camera_bp.set_attribute('image_size_x', str(self.obs_size))
@@ -141,7 +142,8 @@ class CarlaEnv(gym.Env):
             # sem camera sensor
             if self.enable_sem:
                 self.sem_img = np.zeros((self.obs_size, self.obs_size, 2), dtype=np.uint8)
-                self.sem_trans = carla.Transform(carla.Location(x=-2., y=0, z=12.), carla.Rotation(pitch=-50.0))  # for third-person view
+                # self.sem_trans = carla.Transform(carla.Location(x=-2., y=0, z=12.), carla.Rotation(pitch=-50.0))  # for third-person view
+                self.sem_trans = carla.Transform(carla.Location(x=8., y=0, z=16.), carla.Rotation(pitch=-90.0))  # god view
                 self.sem_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.semantic_segmentation')
                 self.sem_bp.set_attribute('image_size_x', str(self.obs_size))
                 self.sem_bp.set_attribute('image_size_y', str(self.obs_size))
@@ -310,12 +312,9 @@ class CarlaEnv(gym.Env):
                 ego_self.sem_img = array
 
     def visualize_ego_route_CBV(self):
-        # Visualize the controlled bv
-        if self.CBVs and self.spectator:
-            for CBV in self.CBVs.values():
-                CBV_location = CarlaDataProvider.get_location(CBV)
-                self.world.debug.draw_point(CBV_location + carla.Location(z=4),
-                                            size=0.1, color=carla.Color(0, 0, 255, 0), life_time=0.11)
+        # visualize the past trajectory of all the actor on the map
+        if self.viz_trajectory and self.mode == 'eval':
+            draw_trajectory(self.world, self.ego_vehicle, self.CBVs, self.CBV_reach_goal, self.time_step)
 
         # if the ego agent is learnable and need to viz the route, then draw the target waypoints
         if self.viz_route:

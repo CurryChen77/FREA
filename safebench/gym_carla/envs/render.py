@@ -483,21 +483,21 @@ class BirdeyeRender(object):
                 corners = [world_to_pixel(p) for p in corners]
                 color_value = max(0.8 - 0.8/lp*(i+1), 0)
                 if ID == self.hero_id or ID in self.heros_in_all_envs:
-                    color = pygame.Color(255, math.floor(color_value*255), math.floor(color_value*255))  # red
+                    color = pygame.Color(255, 0, 0)  # red
                 elif ID in self.CBV_in_all_envs:
                     color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255))  # purple
                 else:
                     if actor_type == 'vehicle':
-                        color = pygame.Color(math.floor(color_value*255), 255, math.floor(color_value*255)) # green
+                        color = pygame.Color(0, 238, 255)  # sky blue
                     elif actor_type == 'walker':
                         color = pygame.Color(255, 255, math.floor(color_value*255))  # yellow
                 pygame.draw.polygon(surface, color, corners)
 
     def render_waypoints(self, surface, waypoints, world_to_pixel):
         if self.red_light:
-            color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255)) # purple
+            color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255))  # purple
         else:
-            color = pygame.Color(0,0,255) # blue
+            color = pygame.Color(255, 195, 0)  # origin
         corners = []
         for p in waypoints:
             corners.append(carla.Location(x=p[0], y=p[1]))
