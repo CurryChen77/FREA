@@ -100,7 +100,7 @@ class FPPOLag(PPO):
             feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
 
             # final advantage
-            advantages = (reward_advantages - torch.mul(penalty, feasibility_advantages)) / (1 + penalty)
+            advantages = (reward_advantages + torch.mul(penalty, feasibility_advantages)) / (1 + penalty)
 
             del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, penalty, undones
 
