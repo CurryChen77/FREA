@@ -316,7 +316,7 @@ class CarlaEnv(gym.Env):
     def visualize_actors(self):
         # visualize the past trajectory of all the actor on the map
         if self.eval_mode == 'render':
-            draw_trajectory(self.world, self.ego_vehicle, self.CBVs, self.CBV_reach_goal, self.time_step)
+            draw_trajectory(self.world, self.CBVs, self.CBV_reach_goal, self.time_step)
 
             # if the ego agent is learnable and need to viz the route, then draw the target waypoints
             if self.viz_route:

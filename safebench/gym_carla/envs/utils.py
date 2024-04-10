@@ -159,14 +159,16 @@ def get_records(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox
     return records
 
 
-def draw_trajectory(world, ego, CBVs, CBV_reach_goal, time, life_time=4):
+def draw_trajectory(world, CBVs, CBV_reach_goal, time, life_time=4):
     ego_color = carla.Color(200, 0, 0, 0)  # red
     CBV_color = carla.Color(100, 0, 250, 0)  # purple
     BV_color = carla.Color(0, 250, 100, 0)  # blue
     size = 0.3 if time % 15 == 0 else 0.1
     all_actor = CarlaDataProvider.get_actors()
+    egos = CarlaDataProvider.get_ego_vehicles()
+    egos_id = [ego.id for ego in egos]
     for actor_id, actor in all_actor.items():
-        if actor_id == ego.id:
+        if actor_id in egos_id:
             color = ego_color
         elif actor_id in CBVs.keys() or actor_id in CBV_reach_goal.keys():
             color = CBV_color
