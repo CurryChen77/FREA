@@ -42,13 +42,15 @@ def draw_data(All_data, data_name, ROOT_DIR, bins):
         fig, axs = plt.subplots(nrows=num_scenarios, ncols=max(num_algorithm-1, 1), squeeze=False)
         # plot the baseline
         for algorithm, scenario in datas.items():
-            baseline_name = algorithm if algorithm.endswith('standard') else None
+            if algorithm.endswith('standard'):
+                baseline_name = algorithm
+                break
         # pop out the baseline data
         baseline = datas.pop(baseline_name, None) if baseline_name is not None else None
         for i in range(max(num_algorithm-1, 1)):
             for row, (scenario_name, data) in enumerate(baseline.items()):
                 # sns.kdeplot(data, color=color_list[0], ax=axs[row, i], alpha=0.8, label=baseline_name, fill=True, linewidth=1)
-                axs[row, i].hist(data, density=False, bins=bins, alpha=0.75, label=baseline_name, color=color_list[0])
+                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=baseline_name, color=color_list[0])
                 axs[row, i].set_title(scenario_name, fontsize=10)
                 axs[row, i].set_xlabel(f'{data_name}')
                 axs[row, i].set_ylabel('Frequency')
@@ -58,7 +60,7 @@ def draw_data(All_data, data_name, ROOT_DIR, bins):
         for i, (algorithm, scenario) in enumerate(datas.items()):
             for row, (scenario_name, data) in enumerate(scenario.items()):
                 # sns.kdeplot(data, color=color_list[i+1], ax=axs[row, i], alpha=0.7, label=algorithm, fill=True, linewidth=1)
-                axs[row, i].hist(data, density=False, bins=bins, alpha=0.75, label=algorithm, color=color_list[i+1])
+                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=algorithm, color=color_list[i+1])
                 axs[row, i].legend(fontsize=8, loc='best')
 
         plt.tight_layout()
@@ -81,7 +83,8 @@ def main(args):
     ROOT_DIR = args.ROOT_DIR
     base_dir = osp.join(ROOT_DIR, 'eval_analysis/processed_data')
     algorithm_files = os.listdir(base_dir)
-    PET_data = {}
+    PET_all_data = {}
+    PET_avoidable_data = {}
     ego_min_dis_data = {}
     near_rate = {}
     BVs_forward_speed_data = {}
@@ -104,7 +107,8 @@ def main(args):
                 # the specific ego and CBV method
                 algorithm_title = f"Ego:{ego} CBV:{cbv}"
 
-                PET_data[algorithm_title] = {}
+                PET_all_data[algorithm_title] = {}
+                PET_avoidable_data[algorithm_title] = {}
                 ego_min_dis_data[algorithm_title] = {}
                 near_rate[algorithm_title] = {}
                 BVs_forward_speed_data[algorithm_title] = {}
@@ -120,9 +124,12 @@ def main(args):
                         files = os.listdir(scenario_map_path)
                         for file in files:
                             # processing PET data
-                            if file == 'PET.npy' and 'PET' in args.data:
+                            if file == 'PET.pkl' and 'PET' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
-                                PET_data[algorithm_title][scenario_map] = np.load(file_path)
+                                with open(file_path, 'rb') as pickle_file:
+                                    all_pet_data = pickle.load(pickle_file)
+                                PET_all_data[algorithm_title][scenario_map] = all_pet_data['all_pet']
+                                PET_avoidable_data[algorithm_title][scenario_map] = all_pet_data['avoidable_pet']
                             if file == 'Ego_min_dis.pkl' and 'Ego_min_dis' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
                                 with open(file_path, 'rb') as pickle_file:
@@ -151,7 +158,8 @@ def main(args):
     # draw PET data
     if 'PET' in args.data:
         PET_bins = np.linspace(0, 5, 30)
-        draw_data(PET_data, 'Post encroachment time', ROOT_DIR, bins=PET_bins)
+        draw_data(PET_all_data, 'Post encroachment time', ROOT_DIR, bins=PET_bins)
+        draw_data(PET_avoidable_data, 'Post encroachment time (avoidable)', ROOT_DIR, bins=PET_bins)
     # draw Ego min distance
     if 'Ego_min_dis' in args.data:
         plot_metric(near_rate, 'near_rate')

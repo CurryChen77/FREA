@@ -27,7 +27,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
     update_goal_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, get_distance_across_centers, \
-    process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs, get_BVs_record, check_interaction, check_CBV_BV_stuck, draw_trajectory
+    process_ego_action, get_ego_min_dis, get_feasibility_Qs_Vs, check_interaction, check_CBV_BV_stuck, draw_trajectory, get_records
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -118,7 +118,7 @@ class CarlaEnv(gym.Env):
         self.obs_size = int(self.obs_range / self.lidar_bin)
 
     def _create_sensors(self):
-        if self.mode == 'eval':
+        if self.eval_mode == 'render':
             if not self.disable_lidar:
                 # lidar sensor
                 self.lidar_trans = carla.Transform(carla.Location(x=0.0, z=self.lidar_height))
@@ -279,7 +279,7 @@ class CarlaEnv(gym.Env):
         return self._get_obs(), self._get_info(next_info=False, reset=True)
 
     def _attach_sensor(self):
-        if self.mode == 'eval':
+        if self.eval_mode == 'render':
             self_weakref = weakref.ref(self)  # weak reference of self
             # Add lidar sensor
             if not self.disable_lidar:
@@ -312,7 +312,7 @@ class CarlaEnv(gym.Env):
                 array = array[:, :, 2]  # from PlanT
                 ego_self.sem_img = array
 
-    def visualize_ego_route_CBV(self):
+    def visualize_actors(self):
         # visualize the past trajectory of all the actor on the map
         if self.eval_mode == 'render':
             draw_trajectory(self.world, self.ego_vehicle, self.CBVs, self.CBV_reach_goal, self.time_step)
@@ -381,9 +381,9 @@ class CarlaEnv(gym.Env):
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         extra_status = {}
-        if self.eval_mode == 'store_data':
+        if self.eval_mode == 'analysis':
             # update the BVs record when evaluating
-            extra_status.update(get_BVs_record(self.ego_vehicle, self.CBVs_collision, self.ego_nearby_vehicles, self.search_radius))
+            extra_status.update(get_records(self.ego_vehicle, self.CBVs_collision, self.ego_nearby_vehicles, self.search_radius))
         if self.use_feasibility:
             feasibility_Q_V = get_feasibility_Qs_Vs(self.feasibility_policy, self.feasibility_dict['ego_obs'], self.feasibility_dict['ego_action'])
             self.feasibility_dict.update(feasibility_Q_V)
@@ -405,7 +405,7 @@ class CarlaEnv(gym.Env):
 
         updated_CBVs_info = self._get_info(next_info=False)  # info of new CBV
 
-        self.visualize_ego_route_CBV()  # visualize the controlled bv and the waypoints in clients side after tick
+        self.visualize_actors()  # visualize the controlled bv and the waypoints in clients side after tick
 
         # Update timesteps
         self.time_step += 1

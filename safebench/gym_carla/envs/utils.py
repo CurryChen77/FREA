@@ -84,8 +84,21 @@ def get_feasibility_Qs_Vs(feasibility_policy, ego_obs, ego_action):
     }
 
 
-def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox=True, BV_num=3):
-    BVs_record = {
+def get_records(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox=True, BV_num=3):
+    # ego's info
+    ego_vel = CarlaDataProvider.get_velocity(ego)
+    ego_tra = CarlaDataProvider.get_transform(ego)
+    ego_loc = ego_tra.location
+    ego_yaw = ego_tra.rotation.yaw / 180 * np.pi
+    ego_acc = ego.get_acceleration()
+    ego_extent = ego.bounding_box.extent
+    # total record
+    records = {
+        'ego_vel': [ego_vel.x, ego_vel.y],
+        'ego_loc': [ego_loc.x, ego_loc.y],
+        'ego_yaw': ego_yaw,
+        'ego_extent': [ego_extent.x * 2., ego_extent.y * 2.],
+        'ego_acc': [ego_acc.x, ego_acc.y],
         'CBVs_collision': {},
         'BVs_loc': [],
         'BVs_vel': [],
@@ -95,6 +108,7 @@ def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, b
         'BVs_id': [],
         'ego_min_dis': search_radius
     }
+    # CBV's info
     if len(CBVs_collision) > 0:
         collision = {}
         for CBV_id, collision_event in CBVs_collision.items():
@@ -106,9 +120,9 @@ def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, b
                 }
             else:
                 collision[CBV_id] = None
-        BVs_record['CBVs_collision'] = collision
+        records['CBVs_collision'] = collision
 
-    # BVs info from ego's view
+    # BVs info
     if ego_nearby_vehicles:
         BVs_ego_dis = []
         BVs_id = []
@@ -134,15 +148,15 @@ def get_BVs_record(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, b
         BVs_abs_loc = np.array(BVs_abs_loc, dtype=np.float32)
         BVs_extent = np.array(BVs_extent, dtype=np.float32)
         BVs_vel = np.array(BVs_vel, dtype=np.float32)
-        BVs_record['BVs_loc'] = BVs_abs_loc
-        BVs_record['BVs_vel'] = BVs_vel
-        BVs_record['BVs_yaw'] = BVs_yaw
-        BVs_record['BVs_extent'] = BVs_extent
-        BVs_record['BVs_ego_dis'] = BVs_ego_dis
-        BVs_record['BVs_id'] = BVs_id
-        BVs_record['ego_min_dis'] = min(BVs_ego_dis)
+        records['BVs_loc'] = BVs_abs_loc
+        records['BVs_vel'] = BVs_vel
+        records['BVs_yaw'] = BVs_yaw
+        records['BVs_extent'] = BVs_extent
+        records['BVs_ego_dis'] = BVs_ego_dis
+        records['BVs_id'] = BVs_id
+        records['ego_min_dis'] = min(BVs_ego_dis)
 
-    return BVs_record
+    return records
 
 
 def draw_trajectory(world, ego, CBVs, CBV_reach_goal, time, life_time=4):

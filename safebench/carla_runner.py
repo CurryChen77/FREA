@@ -74,7 +74,7 @@ class CarlaRunner:
             'mode': self.mode,  # the mode of the script
             'eval_mode': self.eval_mode,  # the mode of the evaluation
             'search_radius': 25,  # the default search radius
-            'traffic_intensity': 0.6,  # the default traffic intensity
+            'traffic_intensity': 0.3 if self.mode == 'eval' else 0.6,  # the default traffic intensity
             'goal_point_radius': 2,  # the default goal point radius
             'auto_ego': scenario_config['auto_ego'],
             'viz_route': self.viz_route,  # whether to visualize the route
@@ -151,9 +151,12 @@ class CarlaRunner:
             self.feasibility_data_path = feasibility_config['data_path']
             self.logger.save_config(feasibility_config)
         elif self.mode == 'eval':
-            self.save_freq = scenario_config['save_freq']
-            self.logger.log('>> Evaluation Mode, skip config saving', 'yellow')
-            self.logger.create_eval_dir(load_existing_results=True, scenario_id=self.scenario_config['scenario_id'])
+            if self.eval_mode == 'analysis':
+                self.save_freq = scenario_config['save_freq']
+                self.logger.log('>> Evaluation Mode, analyzing result', 'yellow')
+                self.logger.create_eval_dir(load_existing_results=True, scenario_id=self.scenario_config['scenario_id'])
+            else:
+                self.logger.log('>> Evaluation Mode, rendering result', 'yellow')
         else:
             raise NotImplementedError(f"Unsupported mode: {self.mode}.")
 
@@ -208,7 +211,7 @@ class CarlaRunner:
         self.logger.log(">> Initializing pygame birdeye renderer")
         pygame.init()
         flag = pygame.HWSURFACE | pygame.DOUBLEBUF
-        flag = flag | pygame.HIDDEN
+        # flag = flag | pygame.HIDDEN  # not showing the pygame window on the screen
 
         # [bird-eye view, Lidar, front view] or [bird-eye view, front view]
         if self.env_params['disable_lidar']:
@@ -370,14 +373,14 @@ class CarlaRunner:
                 self.logger.log('\t Env id ' + str(s_i) + ': ' + str(np.mean(score_list[s_i])), 'yellow')
 
             # calculate evaluation results
-            score_function = get_route_scores
-            all_running_results = self.logger.add_eval_results(map_name=self.current_map, records=self.env.running_results)  # running results is growing as the evaluation goes
-            all_scores = score_function(all_running_results, self.use_feasibility, self.scenario_agent_learnable)  # the current statistical scores from the start to the current evaluation scenario
-            self.logger.add_eval_results(map_name=self.current_map, scores=all_scores)
-            self.logger.print_eval_results(map_name=self.current_map)  # the finial eval results represent the statistical score during the whole process of evaluation
-            if len(self.env.running_results) % self.save_freq == 0:
-                self.logger.save_eval_results(map_name=self.current_map)
-        self.logger.save_eval_results(map_name=self.current_map)
+            if self.eval_mode == 'analysis':
+                score_function = get_route_scores
+                all_running_results = self.logger.add_eval_results(map_name=self.current_map, records=self.env.running_results)  # running results is growing as the evaluation goes
+                all_scores = score_function(all_running_results, self.use_feasibility, self.scenario_agent_learnable)  # the current statistical scores from the start to the current evaluation scenario
+                self.logger.add_eval_results(map_name=self.current_map, scores=all_scores)
+                self.logger.print_eval_results(map_name=self.current_map)  # the finial eval results represent the statistical score during the whole process of evaluation
+                if len(self.env.running_results) % self.save_freq == 0 or len(data_loader) == 0:
+                    self.logger.save_eval_results(map_name=self.current_map)
 
     def collect_feasibility_data(self, data_loader, file_name):
         # general buffer for both agent and scenario
