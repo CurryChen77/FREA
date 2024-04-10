@@ -37,9 +37,13 @@ def draw_data(All_data, data_name, ROOT_DIR, bins):
     for ego_type, datas in All_data_per_ego.items():
         num_algorithm = len(datas.keys())
         num_scenarios = max(len(scenarios) for scenarios in datas.values())
-        color_list = sns.color_palette("coolwarm", n_colors=num_algorithm)
+        color_list = sns.color_palette("flare", n_colors=num_algorithm-1)
         baseline_name = None
-        fig, axs = plt.subplots(nrows=num_scenarios, ncols=max(num_algorithm-1, 1), squeeze=False)
+        subplots_height = 4
+        aspect_ratio = 0.8
+        num_cols = max(num_algorithm-1, 1)
+        figsize = (subplots_height * aspect_ratio * num_cols, subplots_height)
+        fig, axs = plt.subplots(nrows=num_scenarios, ncols=num_cols, figsize=figsize, squeeze=False)
         # plot the baseline
         for algorithm, scenario in datas.items():
             if algorithm.endswith('standard'):
@@ -50,18 +54,18 @@ def draw_data(All_data, data_name, ROOT_DIR, bins):
         for i in range(max(num_algorithm-1, 1)):
             for row, (scenario_name, data) in enumerate(baseline.items()):
                 # sns.kdeplot(data, color=color_list[0], ax=axs[row, i], alpha=0.8, label=baseline_name, fill=True, linewidth=1)
-                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=baseline_name, color=color_list[0])
+                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=baseline_name, color=(144/255, 190/255, 224/255))
                 axs[row, i].set_title(scenario_name, fontsize=10)
                 axs[row, i].set_xlabel(f'{data_name}')
                 axs[row, i].set_ylabel('Frequency')
-                axs[row, i].legend(fontsize=8, loc='best')
+                axs[row, i].legend(fontsize=7, loc='best')
 
         # plot the rest algorithm
         for i, (algorithm, scenario) in enumerate(datas.items()):
             for row, (scenario_name, data) in enumerate(scenario.items()):
                 # sns.kdeplot(data, color=color_list[i+1], ax=axs[row, i], alpha=0.7, label=algorithm, fill=True, linewidth=1)
-                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=algorithm, color=color_list[i+1])
-                axs[row, i].legend(fontsize=8, loc='best')
+                axs[row, i].hist(data, density=True, bins=bins, alpha=0.6, label=algorithm, color=color_list[i])
+                axs[row, i].legend(fontsize=7, loc='best')
 
         plt.tight_layout()
         data_save_name = data_name.replace(' ', "_")
@@ -163,23 +167,23 @@ def main(args):
     # draw Ego min distance
     if 'Ego_min_dis' in args.data:
         plot_metric(near_rate, 'near_rate')
-        ego_min_dis_bins = np.linspace(0, 10, 50)
+        ego_min_dis_bins = np.linspace(0, 10, 25)
         draw_data(ego_min_dis_data, 'Ego min distance', ROOT_DIR, bins=ego_min_dis_bins)
     # draw BVs forward speed
     if 'BVs_forward_speed' in args.data:
-        BVs_forward_speed_bins = np.linspace(0, 10, 30)
+        BVs_forward_speed_bins = np.linspace(0, 10, 25)
         draw_data(BVs_forward_speed_data, 'BV forward Speed', ROOT_DIR, bins=BVs_forward_speed_bins)
     # draw TTC
     if 'TTC' in args.data:
-        TTC_bins = np.linspace(0, 7.5, 100)
+        TTC_bins = np.linspace(0, 7.5, 25)
         draw_data(TTC_data, 'Time to collision', ROOT_DIR, bins=TTC_bins)
     if 'Feasibility' in args.data:
         plot_metric(unfeasible_rate, 'unfeasible_rate')
-        feasibility_bins = np.linspace(-4, 5, 15)
+        feasibility_bins = np.linspace(-3, 5, 20)
         draw_data(feasibility_data, 'Feasibility Value', ROOT_DIR, bins=feasibility_bins)
     if 'Collision' in args.data:
         plot_metric(collision_rate, 'collision_rate')
-        collision_impulse_bins = np.linspace(0, 20, 20)
+        collision_impulse_bins = np.linspace(0, 20, 10)
         draw_data(collision_impulse, 'Collision_impulse', ROOT_DIR, bins=collision_impulse_bins)
 
 

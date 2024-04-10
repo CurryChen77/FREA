@@ -71,7 +71,7 @@ def process_common_data_from_one_pkl(pkl_path, save_folder):
             if step['ego_min_dis'] < 25:
                 total_step += 1
                 ego_min_dis['ego_min_dis'].append(step['ego_min_dis'])
-                if step['ego_min_dis'] < 0.2:
+                if step['ego_min_dis'] < 1:
                     near_count += 1
                 for vel in step['BVs_vel']:
                     abs_vel = math.sqrt(vel[0] ** 2 + vel[1] ** 2)
