@@ -27,9 +27,9 @@ if __name__ == '__main__':
     parser.add_argument('--CBV_selection', '-CBV', type=str, default='rule-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--viz_route', '-vr', action='store_true')
-    parser.add_argument('--enable_sem', action='store_true')
-    parser.add_argument('--use_feasibility', '-fe', action='store_true')
+    parser.add_argument('--use_feasibility', '-fe', type=bool, default=True)
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'collect_feasibility_data'])
+    parser.add_argument('--eval_mode', '-em', type=str, default='store_data', choices=['store_data', 'render'])
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='expert.yaml')
     parser.add_argument('--scenario_cfg', nargs='*', type=str, default='standard_eval.yaml')
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
@@ -40,7 +40,6 @@ if __name__ == '__main__':
 
     parser.add_argument('--num_scenario', '-ns', type=int, default=2, help='num of scenarios we run in one episode')
     parser.add_argument('--save_video', action='store_true')
-    parser.add_argument('--render', '-r', action='store_true', default=False)
     parser.add_argument('--spectator', '-sp', action='store_true', default=False)
     parser.add_argument('--frame_skip', '-fs', type=int, default=1, help='skip of frame in each step')
     parser.add_argument('--port', type=int, default=2000, help='port to communicate with carla')
@@ -70,10 +69,16 @@ if __name__ == '__main__':
             feasibility_config = load_config(feasibility_config_path)
             feasibility_config.update(args_dict)
 
-            # only render when evaluation
+            # eval_mode only works when evaluating
             if args.mode != 'eval':
-                args.render = False
-                args.enable_sem = False
+                args.eval_mode = None
+                args.save_video = False
+
+            # only save video when the eval mode is 'render'
+            if args.eval_mode != 'render':
+                args.save_video = False
+            if args.eval_mode != 'store_data':
+                args.use_feasibility = False
 
             # main entry with a selected mode
             agent_config.update(args_dict)

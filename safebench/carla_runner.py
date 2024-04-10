@@ -52,7 +52,8 @@ class CarlaRunner:
         self.mode = scenario_config['mode']
         self.save_video = scenario_config['save_video']
 
-        self.render = scenario_config['render']
+        self.eval_mode = scenario_config['eval_mode']
+        self.viz_route = scenario_config['viz_route']
         self.num_scenario = scenario_config['num_scenario']  # default 2
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.CBV_selection = scenario_config['CBV_selection']
@@ -71,22 +72,22 @@ class CarlaRunner:
 
         self.env_params = {
             'mode': self.mode,  # the mode of the script
+            'eval_mode': self.eval_mode,  # the mode of the evaluation
             'search_radius': 25,  # the default search radius
             'traffic_intensity': 0.6,  # the default traffic intensity
             'goal_point_radius': 2,  # the default goal point radius
             'auto_ego': scenario_config['auto_ego'],
-            'viz_route': agent_config['viz_route'],  # whether to visualize the route
-            'viz_trajectory': True,  # whether to visualize the trajectory
+            'viz_route': self.viz_route,  # whether to visualize the route
             'ego_agent_learnable': agent_config['learnable'],  # whether the ego agent is a learnable method
             'scenario_agent_learnable': scenario_config['learnable'],  # whether the scenario agent is a learnable method
             'agent_obs_type': agent_config['obs_type'],  # default 0 (only 4 dimensions states )
             'CBV_selection': self.CBV_selection,  # the method using for selection the controlled bv
             'scenario_reward_shaping': scenario_config['reward_shaping'],  # whether the scenario agent got a reward shaping
             'ROOT_DIR': scenario_config['ROOT_DIR'],
-            'signalized_junction': False,  # whether signal controls the junction
+            'signalized_junction': False,  # whether the signal controls the junction
             'warm_up_steps': 4,  # number of ticks after spawning the vehicles
             'disable_lidar': True,  # show bird-eye view lidar or not
-            'enable_sem': agent_config['enable_sem'],  # whether to enable the sem visualization
+            'enable_sem': False,  # whether to enable the semantic camera
             'display_size': 256,  # screen size of one bird-eye view window
             'obs_range': 48,  # observation range (meter)
             'd_behind': 16,  # distance behind the ego vehicle (meter)
@@ -188,7 +189,7 @@ class CarlaRunner:
         self.feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=self.logger) if self.use_feasibility else None
 
         if self.save_video:
-            assert self.mode == 'eval', "only allow video saving in eval mode"
+            assert self.eval_mode == 'render', "only allow video saving in eval mode"
             self.logger.init_video_recorder()
 
     def _init_world(self, town):
@@ -207,8 +208,7 @@ class CarlaRunner:
         self.logger.log(">> Initializing pygame birdeye renderer")
         pygame.init()
         flag = pygame.HWSURFACE | pygame.DOUBLEBUF
-        if not self.render:
-            flag = flag | pygame.HIDDEN
+        flag = flag | pygame.HIDDEN
 
         # [bird-eye view, Lidar, front view] or [bird-eye view, front view]
         if self.env_params['disable_lidar']:
@@ -431,7 +431,8 @@ class CarlaRunner:
             # initialize map and render
             self.current_map = m_i  # record the current running map name
             self._init_world(m_i)
-            self._init_renderer() if self.mode == 'eval' and self.render else None
+            if self.eval_mode == 'render':
+                self._init_renderer()
 
             # create scenarios within the vectorized wrapper
             self.env = VectorWrapper(

@@ -27,12 +27,12 @@ class VectorWrapper():
         self.world = world
         self.num_scenario = scenario_config['num_scenario']  # default 2
         self.ROOT_DIR = scenario_config['ROOT_DIR']
-        self.frame_skip = scenario_config['frame_skip']  
-        self.render = scenario_config['render']
+        self.frame_skip = scenario_config['frame_skip']
         self.spectator = scenario_config['spectator']
         self.agent_state_encoder = agent_state_encoder
         self.birdeye_render = birdeye_render
         self.mode = env_params['mode']
+        self.eval_mode = env_params['eval_mode']
 
         self.env_list = []
         for i in range(self.num_scenario):
@@ -176,7 +176,7 @@ class VectorWrapper():
         transition_infos = np.array(transition_info_list)
 
         # update pygame window
-        if self.render and self.birdeye_render:
+        if self.eval_mode == 'render' and self.birdeye_render:
             pygame.display.flip()
         return self.obs_postprocess(train_obs_list), self.obs_postprocess(transition_obs_list), rewards, dones, train_infos, transition_infos
 

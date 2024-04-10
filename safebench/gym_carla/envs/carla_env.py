@@ -8,6 +8,7 @@
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
 import copy
+import time
 import weakref
 
 import numpy as np
@@ -60,6 +61,7 @@ class CarlaEnv(gym.Env):
         self.scenario_agent_learnable = env_params['scenario_agent_learnable']
         self.scenario_agent_reward_shaping = env_params['scenario_reward_shaping']
         self.mode = env_params['mode']
+        self.eval_mode = env_params['eval_mode']
 
         self.lidar_sensor = None
         self.camera_sensor = None
@@ -94,7 +96,6 @@ class CarlaEnv(gym.Env):
         # for birdeye view and front view visualization
         self.ego_agent_learnable = env_params['ego_agent_learnable']
         self.viz_route = env_params['viz_route']
-        self.viz_trajectory = env_params['viz_trajectory']
         self.display_size = env_params['display_size']
         self.obs_range = env_params['obs_range']
         self.d_behind = env_params['d_behind']
@@ -256,7 +257,7 @@ class CarlaEnv(gym.Env):
         self.reset_step += 1
 
         # find ego nearby vehicles
-        if self.mode == 'collect_feasibility_data' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
+        if self.mode == 'collect_feasibility_data' or self.mode == 'eval' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # set controlled bv
@@ -313,13 +314,13 @@ class CarlaEnv(gym.Env):
 
     def visualize_ego_route_CBV(self):
         # visualize the past trajectory of all the actor on the map
-        if self.viz_trajectory and self.mode == 'eval':
+        if self.eval_mode == 'render':
             draw_trajectory(self.world, self.ego_vehicle, self.CBVs, self.CBV_reach_goal, self.time_step)
 
-        # if the ego agent is learnable and need to viz the route, then draw the target waypoints
-        if self.viz_route:
-            waypoint_route = np.array([[node[0], node[1]] for node in self.waypoints])
-            draw_route(self.world, self.ego_vehicle, waypoint_route)
+            # if the ego agent is learnable and need to viz the route, then draw the target waypoints
+            if self.viz_route:
+                waypoint_route = np.array([[node[0], node[1]] for node in self.waypoints])
+                draw_route(self.world, self.ego_vehicle, waypoint_route)
 
     def step_before_tick(self, ego_action, scenario_action):
         if self.world:
@@ -380,8 +381,9 @@ class CarlaEnv(gym.Env):
             self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         extra_status = {}
-        # update the BVs record when evaluating
-        extra_status.update(get_BVs_record(self.ego_vehicle, self.CBVs_collision, self.ego_nearby_vehicles, self.search_radius)) if self.mode == 'eval' else None
+        if self.eval_mode == 'store_data':
+            # update the BVs record when evaluating
+            extra_status.update(get_BVs_record(self.ego_vehicle, self.CBVs_collision, self.ego_nearby_vehicles, self.search_radius))
         if self.use_feasibility:
             feasibility_Q_V = get_feasibility_Qs_Vs(self.feasibility_policy, self.feasibility_dict['ego_obs'], self.feasibility_dict['ego_action'])
             self.feasibility_dict.update(feasibility_Q_V)
