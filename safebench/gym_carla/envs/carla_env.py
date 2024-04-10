@@ -54,6 +54,7 @@ class CarlaEnv(gym.Env):
         self.total_step = 0
         self.env_id = None
         self.ego_vehicle = None
+        self.ego_nearby_vehicles = []
         self.env_params = env_params
         self.auto_ego = env_params['auto_ego']
         self.enable_sem = env_params['enable_sem']
@@ -446,7 +447,6 @@ class CarlaEnv(gym.Env):
                 CBVs_feasibility_Vs, CBVs_feasibility_Qs = self._get_feasibility()
                 info['CBVs_feasibility_Vs'] = CBVs_feasibility_Vs
                 info['CBVs_feasibility_Qs'] = CBVs_feasibility_Qs
-                self.feasibility_dict = {}  # reset the ego action obs pair into empty dict
 
             # if CBV collide with other vehicles, then terminate
             info['CBVs_terminated'] = self._get_CBVs_terminated()
@@ -636,11 +636,10 @@ class CarlaEnv(gym.Env):
             CBVs_reward[CBV_id] = delta_dis + 15 * collision_punish + 15 * terminal_reward
 
         if self.use_feasibility and self.scenario_agent_reward_shaping:
-            CBVs_id_set = set(self.CBVs.keys())
-            closest_CBV_id = next((vehicle.id for vehicle in self.ego_nearby_vehicles if vehicle.id in CBVs_id_set), None)
-            if closest_CBV_id is not None:
-                feasibility_reward = -1 if self.feasibility_dict['feasibility_V'] > 0 else 0
-                CBVs_reward[closest_CBV_id] += feasibility_reward  # update the closest CBVs reward
+            if len(self.ego_nearby_vehicles) >= 1:
+                closest_BV_id = self.ego_nearby_vehicles[0].id
+                if closest_BV_id in self.CBVs and self.feasibility_dict['feasibility_V'] > 0:
+                    CBVs_reward[closest_BV_id] -= 1  # update the closest CBVs reward
             self.feasibility_dict = {}  # reset the ego action obs pair into empty dict
 
         return CBVs_reward
@@ -650,23 +649,16 @@ class CarlaEnv(gym.Env):
             only the closest CBV from ego will get the actual feasibility value
             the rest CBV will not be affected by the feasibility value
         """
-        CBVs_feasibility_Vs = {}
-        CBVs_feasibility_Qs = {}
+        CBVs_feasibility_Vs = {CBV_id: -1.0 for CBV_id in self.CBVs}
+        CBVs_feasibility_Qs = {CBV_id: -1.0 for CBV_id in self.CBVs}
 
-        closest_dis = self.search_radius
-        closest_CBV_id = None
-        for CBV_id, CBV in self.CBVs.items():
-            dis = get_distance_across_centers(CBV, self.ego_vehicle)
-            if dis < closest_dis:
-                closest_dis = dis
-                closest_CBV_id = CBV_id
-            CBVs_feasibility_Vs[CBV_id] = -1.0  # safe feasibility V
-            CBVs_feasibility_Qs[CBV_id] = -1.0  # safe feasibility Q
-
-        if closest_CBV_id is not None:
-            # ego's feasibility value only affects the closest CBV
-            CBVs_feasibility_Vs[closest_CBV_id] = self.feasibility_dict['feasibility_V']
-            CBVs_feasibility_Qs[closest_CBV_id] = self.feasibility_dict['feasibility_Q']
+        # only when the closest BV is also in the CBV list, then add feasibility info
+        if len(self.ego_nearby_vehicles) >= 1:
+            closest_BV_id = self.ego_nearby_vehicles[0].id
+            if closest_BV_id in self.CBVs and self.feasibility_dict['feasibility_V'] > 0:
+                CBVs_feasibility_Vs[closest_BV_id] = self.feasibility_dict['feasibility_V']
+                CBVs_feasibility_Qs[closest_BV_id] = self.feasibility_dict['feasibility_Q']
+        self.feasibility_dict = {}  # reset the ego action obs pair into empty dict
 
         return CBVs_feasibility_Vs, CBVs_feasibility_Qs
 

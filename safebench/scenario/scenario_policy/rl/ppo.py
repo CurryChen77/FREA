@@ -143,7 +143,7 @@ class PPO(BasePolicy):
 
         advantage = torch.zeros_like(feasibility_V[0])  # last advantage value by GAE (Generalized Advantage Estimate)
 
-        deltas = feasibility_Q - feasibility_V
+        deltas = feasibility_V - feasibility_Q  # in feasibility, the lower, the better
 
         for t in range(horizon_len - 1, -1, -1):
             advantages[t] = advantage = deltas[t] + undones[t] * self.gamma * self.lambda_gae_adv * advantage

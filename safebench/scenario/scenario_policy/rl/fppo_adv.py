@@ -50,7 +50,7 @@ class FPPOAdv(PPO):
             del rewards, values, next_values, unterminated
 
             # the advantage of the feasibility
-            feasibility_advantages = -1 * self.get_feasibility_advantage_GAE(feasibility_Vs, feasibility_Qs, undones)
+            feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_Vs, feasibility_Qs, undones)
 
             # condition
             unsafe_condition = torch.where(feasibility_Vs > 0.0, 1.0, 0.0)
