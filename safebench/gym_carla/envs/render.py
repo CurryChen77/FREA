@@ -464,11 +464,11 @@ class BirdeyeRender(object):
         color = COLOR_SKY_BLUE_0
 
         all_actors = CarlaDataProvider.get_scenario_actors()
-        CBV_ids = set()
-        ego_ids = set()
+        all_CBV_ids = set()
+        all_ego_ids = set()
         for ego_id, scenario_actors in all_actors.items():
-            ego_ids.add(ego_id)
-            CBV_ids.update(actor.id for actor in scenario_actors['CBVs'])
+            all_ego_ids.add(ego_id)
+            all_CBV_ids.update(scenario_actors['CBVs'].keys())
 
         for i in range(max(0, lp - num), lp):
             for ID, poly in actor_polygons[i].items():
@@ -478,9 +478,9 @@ class BirdeyeRender(object):
                 corners.append(carla.Location(x=poly[0][0], y=poly[0][1]))
                 corners = [world_to_pixel(p) for p in corners]
                 color_value = max(0.8 - 0.8 / lp * (i + 1), 0)
-                if ID in ego_ids:
+                if ID in all_ego_ids:
                     color = pygame.Color(255, 0, 0)  # red
-                elif ID in CBV_ids:
+                elif ID in all_CBV_ids:
                     color = pygame.Color(math.floor(0.5 * 255), 0, math.floor(0.5 * 255))  # purple
                 else:
                     if actor_type == 'vehicle':

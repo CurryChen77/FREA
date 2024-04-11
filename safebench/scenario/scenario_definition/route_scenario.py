@@ -61,7 +61,6 @@ class RouteScenario():
         self.global_route_waypoints, self.global_route_lane_road_ids = self._global_route_to_waypoints()
         self.next_intersection_loc = CarlaDataProvider.get_next_intersection_location(self.route[0][0].location)
         self.unactivated_actors = []
-        self.CBVs = {}
         self.CBVs_nearby_vehicles = {}
         self.criteria = self._create_criteria()
         self.scenario_instance = AdvBehaviorSingle(self.world, self.ego_vehicle, env_params)  # create the scenario instance
@@ -187,7 +186,7 @@ class RouteScenario():
         # collision with other objects
         if running_status['collision'][0] == Status.FAILURE:
             ego_collision = True
-            if running_status['collision'][1] is not None and running_status['collision'][1] not in self.CBVs.keys():
+            if running_status['collision'][1] is not None and running_status['collision'][1] not in CarlaDataProvider.get_CBVs_by_ego(self.ego_vehicle):
                 ego_stop = True
                 self.logger.log(f'>> Scenario stops due to collision with normal object', color='yellow')
 
@@ -247,7 +246,7 @@ class RouteScenario():
             rest row are other bv's relative state [x, y, bbox_x, bbox_y, yaw, forward speed]
         '''
         CBVs_obs = {}
-        for CBV_id, CBV in self.CBVs.items():
+        for CBV_id, CBV in CarlaDataProvider.get_CBVs_by_ego(self.ego_vehicle).items():
             actors_info = []
             # the basic information about the CBV (center vehicle)
             CBV_transform = CarlaDataProvider.get_transform(CBV)

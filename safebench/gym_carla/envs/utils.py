@@ -169,19 +169,20 @@ def draw_trajectory(world, ego, time, life_time=4):
     ego_loc = CarlaDataProvider.get_location(ego)
     world.debug.draw_point(ego_loc + carla.Location(z=2), size=size, color=ego_color, life_time=life_time)
     # draw BVs trajectory
-    for actor in scenario_actor['BVs']:
+    for actor in scenario_actor['BVs'].values():
         actor_loc = CarlaDataProvider.get_location(actor)
         world.debug.draw_point(actor_loc + carla.Location(z=2), size=size, color=BV_color, life_time=life_time)
 
     # draw CBVs trajectory
-    for actor in scenario_actor['CBVs']:
+    for actor in scenario_actor['CBVs'].values():
         actor_loc = CarlaDataProvider.get_location(actor)
         world.debug.draw_point(actor_loc + carla.Location(z=2), size=size, color=CBV_color, life_time=life_time)
 
     # draw CBVs reach goal trajectory
-    for actor in scenario_actor['CBVs_reach_goal']:
+    for actor in scenario_actor['CBVs_reach_goal'].values():
         actor_loc = CarlaDataProvider.get_location(actor)
         world.debug.draw_point(actor_loc + carla.Location(z=2), size=size, color=CBV_color, life_time=life_time)
+
 
 def get_ego_min_dis(ego, ego_nearby_vehicles, search_radius=25, bbox=True):
     ego_min_dis = search_radius
@@ -194,7 +195,7 @@ def get_ego_min_dis(ego, ego_nearby_vehicles, search_radius=25, bbox=True):
     return ego_min_dis
 
 
-def update_goal_CBV_dis(ego, CBVs, goal_waypoint):
+def update_goal_CBV_dis(ego, goal_waypoint):
     """
         if the CBV has changed, then reset the corresponding initial distance
     """
@@ -202,7 +203,7 @@ def update_goal_CBV_dis(ego, CBVs, goal_waypoint):
     # reset the ego CBV distance dict
     CarlaDataProvider.goal_CBV_dis[ego_id] = {}
 
-    for CBV_id, CBV in CBVs.items():
+    for CBV_id, CBV in CarlaDataProvider.get_CBVs_by_ego(ego).items():
         CBV_loc = CarlaDataProvider.get_location(CBV)
         CarlaDataProvider.goal_CBV_dis[ego_id][CBV_id] = CBV_loc.distance(goal_waypoint.transform.location)
 
@@ -444,11 +445,11 @@ def get_relative_info(actor, center_yaw, center_matrix):
     return actor_info
 
 
-def check_CBV_BV_stuck(CBV, CBV_reach_goal, max_distance=10, angle=10):
+def check_CBV_BV_stuck(CBV, ego, max_distance=10, angle=10):
     CBV_BV_stuck = False
 
     CBV_trans = CarlaDataProvider.get_transform(CBV)
-    for old_CBV in CBV_reach_goal.values():
+    for old_CBV in CarlaDataProvider.get_CBVs_reach_goal_by_ego(ego).values():
         old_CBV_trans = CarlaDataProvider.get_transform(old_CBV)
         if is_within_distance_ahead(CBV_trans, old_CBV_trans, max_distance, angle):
             CBV_BV_stuck = True
@@ -477,7 +478,7 @@ def check_interaction(ego, CBV, ego_length, delta_forward_angle=90, ego_fov=180)
     return interaction
 
 
-def get_CBV_candidates(ego_vehicle, goal_waypoint, CBV_reach_goal, search_radius, ego_length):
+def get_CBV_candidates(ego_vehicle, goal_waypoint, search_radius, ego_length):
     """
         the foundation for the CBV selection, selecting the candidates nearby vehicles based on specific traffic rules
         ego_vehicle: the ego vehicle
@@ -493,7 +494,8 @@ def get_CBV_candidates(ego_vehicle, goal_waypoint, CBV_reach_goal, search_radius
     candidates = {key: value for key, value in all_actors.items()}
     # 1. remove the ego vehicle and the already reached goal CBV
     candidates.pop(ego_vehicle.id, None)
-    [candidates.pop(CBV_id, None) for CBV_id in CBV_reach_goal]
+    for CBV_reach_goal_id in CarlaDataProvider.get_CBVs_reach_goal_by_ego(ego_vehicle).keys():
+        candidates.pop(CBV_reach_goal_id, None)
 
     key_to_remove = []
     for vehicle_id, vehicle in candidates.items():
@@ -517,7 +519,7 @@ def get_CBV_candidates(ego_vehicle, goal_waypoint, CBV_reach_goal, search_radius
             key_to_remove.append(vehicle_id)
             continue
 
-        if check_CBV_BV_stuck(vehicle, CBV_reach_goal, max_distance=12, angle=15):
+        if check_CBV_BV_stuck(vehicle, ego_vehicle, max_distance=12, angle=15):
             key_to_remove.append(vehicle_id)
             continue
 

@@ -349,7 +349,6 @@ class CarlaDataProvider(object):
         # CarlaDataProvider.get_world().debug.draw_point(next_intersection_location + carla.Location(z=2.0), size=0.3, color=carla.Color(0, 0, 255, 0), life_time=-1)
         return next_intersection_location
 
-
     @staticmethod
     def get_next_traffic_light(actor, use_cached_location=True, use_transform=False):
         """
@@ -408,11 +407,12 @@ class CarlaDataProvider(object):
         CarlaDataProvider._ego_vehicle_route[ego.id] = route
         CarlaDataProvider.egos.append(ego)
         CarlaDataProvider.goal_CBV_dis[ego.id] = {}  # create an empty dictionary for each ego car
-        CarlaDataProvider.scenario_actors[ego.id] = {'BVs': set(), 'CBVs': set(), 'CBVs_reach_goal': set()}  # create an empty dictionary for each scenario to record all BVs
+        CarlaDataProvider.scenario_actors[ego.id] = {'BVs': {}, 'CBVs': {}, 'CBVs_reach_goal': {}}  # create an empty dictionary for each scenario to record all BVs
 
     @staticmethod
     def set_scenario_actors(ego, actors):
-        CarlaDataProvider.scenario_actors[ego.id]['BVs'].update(actors)
+        for actor in actors:
+            CarlaDataProvider.scenario_actors[ego.id]['BVs'][actor.id] = actor
 
     @staticmethod
     def get_scenario_actors():
@@ -423,23 +423,31 @@ class CarlaDataProvider(object):
         return CarlaDataProvider.scenario_actors[ego.id]
 
     @staticmethod
+    def get_CBVs_by_ego(ego):
+        return CarlaDataProvider.scenario_actors[ego.id]['CBVs']
+
+    @staticmethod
+    def get_CBVs_reach_goal_by_ego(ego):
+        return CarlaDataProvider.scenario_actors[ego.id]['CBVs_reach_goal']
+
+    @staticmethod
     def add_CBV(ego, actor):
-        CarlaDataProvider.scenario_actors[ego.id]['BVs'].discard(actor)
-        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].add(actor)
+        CarlaDataProvider.scenario_actors[ego.id]['BVs'].pop(actor.id, None)
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs'][actor.id] = actor
 
     @staticmethod
     def CBV_reach_goal(ego, actor):
-        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].discard(actor)
-        CarlaDataProvider.scenario_actors[ego.id]['CBVs_reach_goal'].add(actor)
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].pop(actor.id, None)
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs_reach_goal'][actor.id] = actor
 
     @staticmethod
     def CBV_back_to_BV(ego, actor):
-        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].discard(actor)
-        CarlaDataProvider.scenario_actors[ego.id]['BVs'].add(actor)
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].pop(actor.id, None)
+        CarlaDataProvider.scenario_actors[ego.id]['BVs'][actor.id] = actor
 
     @staticmethod
     def CBV_terminate(ego, actor):
-        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].discard(actor)
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].pop(actor.id, None)
 
     @staticmethod
     def get_ego_vehicles():

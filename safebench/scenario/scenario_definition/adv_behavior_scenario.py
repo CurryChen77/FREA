@@ -83,10 +83,10 @@ class AdvBehaviorSingle(BasicScenario):
                 traffic_light.set_green_time(self.timeout)
         self.last_ego_waypoint = ego_waypoint
 
-    def update_behavior(self, CBVs, scenario_actions):
+    def update_behavior(self, scenario_actions):
         if scenario_actions is not None:
             # apply scenario action for each CBV
-            for CBV_id, CBV in CBVs.items():
+            for CBV_id, CBV in CarlaDataProvider.get_CBVs_by_ego(self.ego_vehicle).items():
                 scenario_action = scenario_actions[CBV_id]
                 act = self.convert_actions(scenario_action)
                 CBV.apply_control(act)  # apply the control of the CBV on the next tick

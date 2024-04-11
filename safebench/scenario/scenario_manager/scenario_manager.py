@@ -24,14 +24,12 @@ class ScenarioManager(object):
         self.ego_collision = False
         self.ego_truncated = False
         self.running = False
-        self.CBVs = None
         self._reset()
 
     def _reset(self):
         #self.scenario = None
         self.route_scenario = None
         self.ego_vehicle = None
-        self.CBVs = None
         self.running = False
         self.ego_collision = False
         self.ego_truncated = False
@@ -49,9 +47,7 @@ class ScenarioManager(object):
         self.ego_vehicle = scenario.ego_vehicle
         self.scenario_instance = scenario.scenario_instance  # the adv behavior single scenario instance
 
-    def update_CBV_nearby_vehicles(self, CBVs, CBVs_nearby_vehicles):
-        self.CBVs = CBVs
-        self.route_scenario.CBVs = CBVs
+    def update_CBV_nearby_vehicles(self, CBVs_nearby_vehicles):
         self.route_scenario.CBVs_nearby_vehicles = CBVs_nearby_vehicles
 
     def run_scenario(self):
@@ -79,5 +75,5 @@ class ScenarioManager(object):
             self._timestamp_last_run = timestamp.elapsed_seconds
             GameTime.on_carla_tick(timestamp)
             # update the scenario instance receiving the scenario action
-            self.scenario_instance.update_behavior(self.CBVs, scenario_action)
+            self.scenario_instance.update_behavior(scenario_action)
             self.route_scenario.activate_background_actors() if len(self.route_scenario.unactivated_actors) > 0 else None

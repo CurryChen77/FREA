@@ -76,7 +76,6 @@ class CarlaEnv(gym.Env):
         self.gps_route = None
         self.route = None
         self.CBVs_collision = {}
-        self.CBV_reach_goal = {}
         self.ego_collide = False
         self.search_radius = env_params['search_radius']
         self.agent_obs_type = env_params['agent_obs_type']
@@ -204,7 +203,7 @@ class CarlaEnv(gym.Env):
             # select the candidates of CBVs
             CBV_candidates = get_CBV_candidates(
                 self.ego_vehicle, self.goal_waypoint,
-                self.CBV_reach_goal, self.search_radius, self.ego_length
+                self.search_radius, self.ego_length
             )
             if CBV_candidates:
                 # selecting the CBV
@@ -222,7 +221,7 @@ class CarlaEnv(gym.Env):
 
                 if CBV:
                     # if CBV not in the CBVs list, put the new one in
-                    if CBV.id not in self.CBVs.keys():
+                    if CBV.id not in self.CBVs:
                         self.CBVs[CBV.id] = CBV
                         CBV.set_autopilot(enabled=False)  # prepared to be controlled
                         self.register_CBV_sensor(CBV)
@@ -230,7 +229,7 @@ class CarlaEnv(gym.Env):
 
                     # update the nearby vehicles around the CBV
                     self.CBVs_nearby_vehicles[CBV.id] = get_nearby_vehicles(CBV, self.search_radius)
-        self.scenario_manager.update_CBV_nearby_vehicles(self.CBVs, self.CBVs_nearby_vehicles)
+        self.scenario_manager.update_CBV_nearby_vehicles(self.CBVs_nearby_vehicles)
 
     def reset(self, config, env_id):
         self.config = config
@@ -331,7 +330,7 @@ class CarlaEnv(gym.Env):
                 self.scenario_manager.get_update(timestamp, scenario_action)
 
                 # if CBV has changed, update the ego CBV distance
-                update_goal_CBV_dis(self.ego_vehicle, self.CBVs, self.goal_waypoint)
+                update_goal_CBV_dis(self.ego_vehicle, self.goal_waypoint)
 
                 # Calculate acceleration and steering
                 if not self.auto_ego:
@@ -626,7 +625,7 @@ class CarlaEnv(gym.Env):
             # terminal reward (reach the goal)
             if CBV_goal_dis < self.goal_point_radius:
                 terminal_reward = 1
-                self.CBV_reach_goal[CBV_id] = CBV
+                CarlaDataProvider.CBV_reach_goal(self.ego_vehicle, CBV)
             else:
                 terminal_reward = 0
 
@@ -662,12 +661,12 @@ class CarlaEnv(gym.Env):
 
     def _get_CBVs_terminated(self):
         CBVs_terminated = {}
-        for CBV_id in self.CBVs.keys():
+        for CBV_id in self.CBVs:
             # if CBV collide with the other vehicles, then CBV terminated
             if self.CBVs_collision[CBV_id] is not None:
                 CBVs_terminated[CBV_id] = True
             # if CBV reach the goal, then CBV terminated
-            elif CBV_id in self.CBV_reach_goal.keys():
+            elif CBV_id in CarlaDataProvider.get_CBVs_reach_goal_by_ego(self.ego_vehicle).keys():
                 CBVs_terminated[CBV_id] = True
             else:
                 CBVs_terminated[CBV_id] = False
@@ -682,7 +681,7 @@ class CarlaEnv(gym.Env):
             elif not check_interaction(self.ego_vehicle, CBV, self.ego_length, delta_forward_angle=100, ego_fov=200):
                 # loose condition to check truncated
                 CBVs_truncated[CBV_id] = True
-            elif check_CBV_BV_stuck(CBV, self.CBV_reach_goal, max_distance=8, angle=10):
+            elif check_CBV_BV_stuck(CBV, self.ego_vehicle, max_distance=8, angle=10):
                 # the CBV already reached the goal stuck the current CBV
                 CBVs_truncated[CBV_id] = True
             else:
@@ -762,8 +761,7 @@ class CarlaEnv(gym.Env):
                 if CBV is not None:
                     # remove sensor
                     self._remove_CBV_sensor(CBV_id)
-                    if CBV_id in self.CBV_reach_goal.keys():
-                        CarlaDataProvider.CBV_reach_goal(self.ego_vehicle, CBV)
+                    if CBV_id in CarlaDataProvider.get_CBVs_reach_goal_by_ego(self.ego_vehicle).keys():
                         # set the goal reaching CBV free
                         CBV.set_autopilot(enabled=True)
                     else:
@@ -783,7 +781,6 @@ class CarlaEnv(gym.Env):
         self.goal_waypoint = None
         self.ego_collide = False
         self.CBVs_collision = {}
-        self.CBV_reach_goal = {}
         self.feasibility_dict = {} if self.use_feasibility else None
 
     def clean_up(self):
