@@ -139,7 +139,7 @@ def process_pet_from_one_pkl(pkl_path, save_folder):
     # save the PET data
     pet['all_pet'] = pet_list_all
     pet['avoidable_pet'] = pet_list_avoidable
-    # save BVs forward speed
+    # save Vehicle forward speed
     with open(osp.join(save_folder, "PET.pkl"), 'wb') as pickle_file:
         pickle.dump(pet, pickle_file)
 

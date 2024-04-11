@@ -53,7 +53,7 @@ def process_collision_from_one_pkl(pkl_path, algorithm, save_folder):
 
         collision['collision_rate'] = num_collision / collision_attacker
         collision['collision_impulse'] = collision_impulse
-    # save BVs forward speed
+    # save Vehicle forward speed
     with open(osp.join(save_folder, "Collision.pkl"), 'wb') as pickle_file:
         pickle.dump(collision, pickle_file)
 
@@ -62,33 +62,40 @@ def process_common_data_from_one_pkl(pkl_path, save_folder):
     total_step = 0
     unfeasible_count = 0
     near_count = 0
-    BVs_forward_speed = []
-    ego_min_dis = {'ego_min_dis': []}
+    avoidable_near_count = 0
+    Vehicle_forward_speed = []
+    min_dis = {'min_dis': [], 'avoidable_min_dis': []}
     feasibility = {'feasibility_value': []}
     data = joblib.load(pkl_path)
     for sequence in tqdm(data.values()):
         for step in sequence:
             if step['ego_min_dis'] < 25:
                 total_step += 1
-                ego_min_dis['ego_min_dis'].append(step['ego_min_dis'])
-                if step['ego_min_dis'] < 1:
-                    near_count += 1
+
+                min_dis['min_dis'].append(step['ego_min_dis'])
+                near_count += 1 if step['ego_min_dis'] < 1 else 0
+
                 for vel in step['BVs_vel']:
                     abs_vel = math.sqrt(vel[0] ** 2 + vel[1] ** 2)
-                    BVs_forward_speed.append(abs_vel) if abs_vel > 0.1 else None
+                    Vehicle_forward_speed.append(abs_vel) if abs_vel > 0.1 else None
+
                 if 'feasibility_V' in step:
                     feasibility['feasibility_value'].append(step['feasibility_V'])
                     if step['feasibility_V'] > 0:
                         unfeasible_count += 1
+                    else:
+                        min_dis['avoidable_min_dis'].append(step['ego_min_dis'])
+                        avoidable_near_count += 1 if step['ego_min_dis'] < 1 else 0
 
     feasibility['unfeasible_rate'] = unfeasible_count / total_step
-    ego_min_dis['near_rate'] = near_count / total_step
+    min_dis['near_rate'] = near_count / total_step
+    min_dis['avoidable_near_rate'] = avoidable_near_count / total_step
 
     # save ego min dis
-    with open(osp.join(save_folder, "Ego_min_dis.pkl"), 'wb') as pickle_file:
-        pickle.dump(ego_min_dis, pickle_file)
-    # save BVs forward speed
-    np.save(osp.join(save_folder, "BVs_forward_speed.npy"), BVs_forward_speed)
+    with open(osp.join(save_folder, "Min_dis.pkl"), 'wb') as pickle_file:
+        pickle.dump(min_dis, pickle_file)
+    # save Vehicle forward speed
+    np.save(osp.join(save_folder, "Vehicle_forward_speed.npy"), Vehicle_forward_speed)
     # save feasibility
     with open(osp.join(save_folder, "Feasibility.pkl"), 'wb') as pickle_file:
         pickle.dump(feasibility, pickle_file)

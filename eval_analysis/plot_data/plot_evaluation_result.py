@@ -89,9 +89,11 @@ def main(args):
     algorithm_files = os.listdir(base_dir)
     PET_all_data = {}
     PET_avoidable_data = {}
-    ego_min_dis_data = {}
+    min_dis_data = {}
+    avoidable_min_dis_data = {}
     near_rate = {}
-    BVs_forward_speed_data = {}
+    avoid_near_rate = {}
+    Vehicle_forward_speed_data = {}
     TTC_data = {}
     feasibility_data = {}
     unfeasible_rate = {}
@@ -113,9 +115,11 @@ def main(args):
 
                 PET_all_data[algorithm_title] = {}
                 PET_avoidable_data[algorithm_title] = {}
-                ego_min_dis_data[algorithm_title] = {}
+                min_dis_data[algorithm_title] = {}
+                avoidable_min_dis_data[algorithm_title] = {}
                 near_rate[algorithm_title] = {}
-                BVs_forward_speed_data[algorithm_title] = {}
+                avoid_near_rate[algorithm_title] = {}
+                Vehicle_forward_speed_data[algorithm_title] = {}
                 TTC_data[algorithm_title] = {}
                 feasibility_data[algorithm_title] = {}
                 unfeasible_rate[algorithm_title] = {}
@@ -134,15 +138,17 @@ def main(args):
                                     all_pet_data = pickle.load(pickle_file)
                                 PET_all_data[algorithm_title][scenario_map] = all_pet_data['all_pet']
                                 PET_avoidable_data[algorithm_title][scenario_map] = all_pet_data['avoidable_pet']
-                            if file == 'Ego_min_dis.pkl' and 'Ego_min_dis' in args.data:
+                            if file == 'Min_dis.pkl' and 'Min_dis' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
                                 with open(file_path, 'rb') as pickle_file:
-                                    all_ego_min_dis_data = pickle.load(pickle_file)
-                                ego_min_dis_data[algorithm_title][scenario_map] = all_ego_min_dis_data['ego_min_dis']
-                                near_rate[algorithm_title][scenario_map] = all_ego_min_dis_data['near_rate']
-                            if file == 'BVs_forward_speed.npy' and 'BVs_forward_speed' in args.data:
+                                    all_min_dis_data = pickle.load(pickle_file)
+                                min_dis_data[algorithm_title][scenario_map] = all_min_dis_data['min_dis']
+                                avoidable_min_dis_data[algorithm_title][scenario_map] = all_min_dis_data['avoidable_min_dis']
+                                near_rate[algorithm_title][scenario_map] = all_min_dis_data['near_rate']
+                                avoid_near_rate[algorithm_title][scenario_map] = all_min_dis_data['avoidable_near_rate']
+                            if file == 'Vehicle_forward_speed.npy' and 'Vehicle_forward_speed' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
-                                BVs_forward_speed_data[algorithm_title][scenario_map] = np.load(file_path)
+                                Vehicle_forward_speed_data[algorithm_title][scenario_map] = np.load(file_path)
                             if file == 'TTC.npy' and 'TTC' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
                                 TTC_data[algorithm_title][scenario_map] = np.load(file_path)
@@ -165,14 +171,16 @@ def main(args):
         draw_data(PET_all_data, 'Post encroachment time', ROOT_DIR, bins=PET_bins)
         draw_data(PET_avoidable_data, 'Post encroachment time (avoidable)', ROOT_DIR, bins=PET_bins)
     # draw Ego min distance
-    if 'Ego_min_dis' in args.data:
+    if 'Min_dis' in args.data:
         plot_metric(near_rate, 'near_rate')
-        ego_min_dis_bins = np.linspace(0, 10, 25)
-        draw_data(ego_min_dis_data, 'Ego min distance', ROOT_DIR, bins=ego_min_dis_bins)
-    # draw BVs forward speed
-    if 'BVs_forward_speed' in args.data:
-        BVs_forward_speed_bins = np.linspace(0, 10, 25)
-        draw_data(BVs_forward_speed_data, 'BV forward Speed', ROOT_DIR, bins=BVs_forward_speed_bins)
+        plot_metric(avoid_near_rate, 'avoidable_near_rate')
+        min_dis_bins = np.linspace(0, 10, 25)
+        draw_data(min_dis_data, 'Min distance', ROOT_DIR, bins=min_dis_bins)
+        draw_data(avoidable_min_dis_data, 'Avoidable Min distance', ROOT_DIR, bins=min_dis_bins)
+    # draw Vehicle forward speed
+    if 'Vehicle_forward_speed' in args.data:
+        Vehicle_forward_speed_bins = np.linspace(0, 10, 25)
+        draw_data(Vehicle_forward_speed_data, 'Vehicle forward Speed', ROOT_DIR, bins=Vehicle_forward_speed_bins)
     # draw TTC
     if 'TTC' in args.data:
         TTC_bins = np.linspace(0, 7.5, 25)
@@ -192,7 +200,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--metric', '-m', action='store_true')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
-    parser.add_argument('--data', '-d', nargs='*', type=str, default=['Feasibility', 'Ego_min_dis', 'BVs_forward_speed', 'PET', 'TTC', 'Collision'])
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['Feasibility', 'Min_dis', 'Vehicle_forward_speed', 'PET', 'TTC', 'Collision'])
     args = parser.parse_args()
 
     main(args)
