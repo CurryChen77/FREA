@@ -790,7 +790,7 @@ class RunningRedLightTest(Criterion):
         """
         super(RunningRedLightTest, self).__init__(name, actor, 0, terminate_on_failure=terminate_on_failure)
         self._actor = actor
-        self._world = actor.get_world()
+        self._world = CarlaDataProvider.get_world()
         self._map = CarlaDataProvider.get_map()
         self._list_traffic_lights = []
         self._last_red_light_id = None

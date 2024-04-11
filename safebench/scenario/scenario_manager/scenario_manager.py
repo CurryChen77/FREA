@@ -10,7 +10,6 @@
 
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 from safebench.scenario.scenario_manager.timer import GameTime
-from safebench.scenario.tools.scenario_utils import calculate_distance_locations
 
 
 class ScenarioManager(object):
@@ -81,4 +80,4 @@ class ScenarioManager(object):
             GameTime.on_carla_tick(timestamp)
             # update the scenario instance receiving the scenario action
             self.scenario_instance.update_behavior(self.CBVs, scenario_action)
-            self.route_scenario.activate_background_actors()
+            self.route_scenario.activate_background_actors() if len(self.route_scenario.unactivated_actors) > 0 else None

@@ -159,24 +159,29 @@ def get_records(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox
     return records
 
 
-def draw_trajectory(world, CBVs, CBV_reach_goal, time, life_time=4):
+def draw_trajectory(world, ego, time, life_time=4):
     ego_color = carla.Color(200, 0, 0, 0)  # red
     CBV_color = carla.Color(100, 0, 250, 0)  # purple
     BV_color = carla.Color(0, 250, 100, 0)  # blue
     size = 0.3 if time % 15 == 0 else 0.1
-    all_actor = CarlaDataProvider.get_actors()
-    egos = CarlaDataProvider.get_ego_vehicles()
-    egos_id = [ego.id for ego in egos]
-    for actor_id, actor in all_actor.items():
-        if actor_id in egos_id:
-            color = ego_color
-        elif actor_id in CBVs.keys() or actor_id in CBV_reach_goal.keys():
-            color = CBV_color
-        else:
-            color = BV_color
+    scenario_actor = CarlaDataProvider.get_scenario_actors_by_ego(ego)
+    # draw ego trajectory
+    ego_loc = CarlaDataProvider.get_location(ego)
+    world.debug.draw_point(ego_loc + carla.Location(z=2), size=size, color=ego_color, life_time=life_time)
+    # draw BVs trajectory
+    for actor in scenario_actor['BVs']:
         actor_loc = CarlaDataProvider.get_location(actor)
-        world.debug.draw_point(actor_loc + carla.Location(z=2), size=size, color=color, life_time=life_time)
+        world.debug.draw_point(actor_loc + carla.Location(z=2), size=size, color=BV_color, life_time=life_time)
 
+    # draw CBVs trajectory
+    for actor in scenario_actor['CBVs']:
+        actor_loc = CarlaDataProvider.get_location(actor)
+        world.debug.draw_point(actor_loc + carla.Location(z=2), size=size, color=CBV_color, life_time=life_time)
+
+    # draw CBVs reach goal trajectory
+    for actor in scenario_actor['CBVs_reach_goal']:
+        actor_loc = CarlaDataProvider.get_location(actor)
+        world.debug.draw_point(actor_loc + carla.Location(z=2), size=size, color=CBV_color, life_time=life_time)
 
 def get_ego_min_dis(ego, ego_nearby_vehicles, search_radius=25, bbox=True):
     ego_min_dis = search_radius
@@ -523,13 +528,8 @@ def get_CBV_candidates(ego_vehicle, goal_waypoint, CBV_reach_goal, search_radius
 
 
 def get_min_distance_across_bboxes(veh1, veh2):
-    veh1_bbox = veh1.bounding_box
-    veh2_bbox = veh2.bounding_box
-    veh1_transform = CarlaDataProvider.get_transform(veh1)
-    veh2_transform = CarlaDataProvider.get_transform(veh2)
-
-    box2origin_veh1, size_veh1 = compute_box2origin(veh1_bbox, veh1_transform)
-    box2origin_veh2, size_veh2 = compute_box2origin(veh2_bbox, veh2_transform)
+    box2origin_veh1, size_veh1 = compute_box2origin(veh1.bounding_box, CarlaDataProvider.get_transform(veh1))
+    box2origin_veh2, size_veh2 = compute_box2origin(veh2.bounding_box, CarlaDataProvider.get_transform(veh2))
     # min distance
     box_collider_veh1 = colliders.Box(box2origin_veh1, size_veh1)
     box_collider_veh2 = colliders.Box(box2origin_veh2, size_veh2)

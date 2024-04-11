@@ -14,6 +14,7 @@ import carla
 import numpy as np
 
 from safebench.gym_carla.envs.misc import distance_vehicle, is_within_distance_ahead, compute_magnitude_angle
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 
 
 class RoadOption(Enum):
@@ -30,7 +31,7 @@ class RoadOption(Enum):
 class RoutePlanner():
     def __init__(self, vehicle, buffer_size, init_waypoints):
         self._vehicle = vehicle
-        self._world = self._vehicle.get_world()
+        self._world = CarlaDataProvider.get_world()
         self._map = self._world.get_map()
 
         self._sampling_radius = 2

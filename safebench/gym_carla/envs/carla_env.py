@@ -226,9 +226,7 @@ class CarlaEnv(gym.Env):
                         self.CBVs[CBV.id] = CBV
                         CBV.set_autopilot(enabled=False)  # prepared to be controlled
                         self.register_CBV_sensor(CBV)
-                        # update the CBV for BEV visualization
-                        if self.birdeye_render:
-                            self.birdeye_render.set_CBV(CBV.id)
+                        CarlaDataProvider.add_CBV(self.ego_vehicle, CBV)
 
                     # update the nearby vehicles around the CBV
                     self.CBVs_nearby_vehicles[CBV.id] = get_nearby_vehicles(CBV, self.search_radius)
@@ -267,7 +265,7 @@ class CarlaEnv(gym.Env):
         # Get actors' polygon list (for visualization)
         if self.birdeye_render:
             self.vehicle_polygons = [self._get_actor_polygons('vehicle.*')]
-            self.walker_polygons = [self._get_actor_polygons('walker.*')]
+            # self.walker_polygons = [self._get_actor_polygons('walker.*')]
 
         # applying setting can tick the world and get data from sensors
         # removing this block will cause error: AttributeError: 'NoneType' object has no attribute 'raw_data'
@@ -316,7 +314,7 @@ class CarlaEnv(gym.Env):
     def visualize_actors(self):
         # visualize the past trajectory of all the actor on the map
         if self.eval_mode == 'render':
-            draw_trajectory(self.world, self.CBVs, self.CBV_reach_goal, self.time_step)
+            draw_trajectory(self.world, self.ego_vehicle, self.time_step)
 
             # if the ego agent is learnable and need to viz the route, then draw the target waypoints
             if self.viz_route:
@@ -365,10 +363,10 @@ class CarlaEnv(gym.Env):
             self.vehicle_polygons.append(vehicle_poly_dict)
             while len(self.vehicle_polygons) > self.max_past_step:
                 self.vehicle_polygons.pop(0)
-            walker_poly_dict = self._get_actor_polygons('walker.*')
-            self.walker_polygons.append(walker_poly_dict)
-            while len(self.walker_polygons) > self.max_past_step:
-                self.walker_polygons.pop(0)
+            # walker_poly_dict = self._get_actor_polygons('walker.*')
+            # self.walker_polygons.append(walker_poly_dict)
+            # while len(self.walker_polygons) > self.max_past_step:
+            #     self.walker_polygons.pop(0)
 
         # After tick, update all the actors' velocity map, location map and transform map
         CarlaDataProvider.on_carla_tick()
@@ -487,7 +485,7 @@ class CarlaEnv(gym.Env):
             # set ego information for birdeye_render
             self.birdeye_render.set_hero(self.ego_vehicle, self.ego_vehicle.id)
             self.birdeye_render.vehicle_polygons = self.vehicle_polygons
-            self.birdeye_render.walker_polygons = self.walker_polygons
+            # self.birdeye_render.walker_polygons = self.walker_polygons
             self.birdeye_render.waypoints = self.waypoints
 
             # render birdeye image with the birdeye_render
@@ -754,8 +752,7 @@ class CarlaEnv(gym.Env):
                     # remove the truncated CBV from existing CBV lists
                     CBV.set_autopilot(enabled=True)  # set the original CBV to normal bvs
                     self.CBVs_nearby_vehicles.pop(CBV_id)
-                    if self.birdeye_render:
-                        self.birdeye_render.remove_old_CBV(CBV_id)
+                    CarlaDataProvider.CBV_back_to_BV(self.ego_vehicle, CBV)
 
         # clean the terminated CBV
         CBVs_terminated = info['CBVs_terminated']
@@ -766,15 +763,15 @@ class CarlaEnv(gym.Env):
                     # remove sensor
                     self._remove_CBV_sensor(CBV_id)
                     if CBV_id in self.CBV_reach_goal.keys():
+                        CarlaDataProvider.CBV_reach_goal(self.ego_vehicle, CBV)
                         # set the goal reaching CBV free
                         CBV.set_autopilot(enabled=True)
                     else:
+                        CarlaDataProvider.CBV_terminate(self.ego_vehicle, CBV)
                         # clean the CBV from the environment
                         if CarlaDataProvider.actor_id_exists(CBV_id):
                             CarlaDataProvider.remove_actor_by_id(CBV_id)
                     self.CBVs_nearby_vehicles.pop(CBV_id)
-                    if self.birdeye_render:
-                        self.birdeye_render.remove_old_CBV(CBV_id)
 
     def _reset_variables(self):
         self.CBVs = {}

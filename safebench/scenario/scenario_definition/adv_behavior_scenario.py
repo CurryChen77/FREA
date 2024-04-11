@@ -25,15 +25,12 @@ class AdvBehaviorSingle(BasicScenario):
 
     def __init__(self, world, ego_vehicle, env_params, timeout=100):
         super(AdvBehaviorSingle, self).__init__("AdvBehaviorSingle", None, world)
-        self.ego_vehicle = ego_vehicle
         self.timeout = timeout
-        self._map = CarlaDataProvider.get_map()
-        self.last_tick_affected_by_traffic = self.ego_vehicle
-
-        self.CBV_traffic_light = None
-        self.last_ego_waypoint = self._map.get_waypoint(self.ego_vehicle.get_location())
+        self.ego_vehicle = ego_vehicle
         self.signalized_junction = env_params['signalized_junction']
         if self.signalized_junction:
+            self._map = CarlaDataProvider.get_map()
+            self.last_ego_waypoint = self._map.get_waypoint(self.ego_vehicle.get_location())
             self.traffic_light = CarlaDataProvider.get_next_traffic_light(self.ego_vehicle, False)
             if self.traffic_light is None:
                 print(">> No traffic light for the given location of the ego vehicle found")
@@ -94,7 +91,7 @@ class AdvBehaviorSingle(BasicScenario):
                 act = self.convert_actions(scenario_action)
                 CBV.apply_control(act)  # apply the control of the CBV on the next tick
 
-        if self.signalized_junction:  # if the junction is controlled by the signal, the traffic need to be updated
+        if self.signalized_junction:  # if the signal controls the junction, the traffic need to be updated
             self.update_traffic_light()
 
     def clean_up(self):

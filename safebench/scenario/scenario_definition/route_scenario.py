@@ -96,7 +96,7 @@ class RouteScenario():
         CarlaDataProvider.set_ego_vehicle_route(ego_vehicle, convert_transform_to_location(route))
         CarlaDataProvider.set_scenario_config(self.config)
 
-        # Timeout of scenario in seconds
+        # Timeout of a scenario in seconds
         self.timeout = self._estimate_route_timeout(route) if timeout is None else timeout
         return route, ego_vehicle, gps_route
 
@@ -162,8 +162,8 @@ class RouteScenario():
         if new_actors is None:
             raise Exception("Error: Unable to add the background activity, all spawn points were occupied")
         self.logger.log(f'>> successfully spawning {len(new_actors)} Autopilot vehicles', color='green')
-        for _actor in new_actors:
-            self.unactivated_actors.append(_actor)
+        self.unactivated_actors.extend(new_actors)
+        CarlaDataProvider.set_scenario_actors(self.ego_vehicle, new_actors)
 
     def activate_background_actors(self, activate_threshold=50):
         ego_location = CarlaDataProvider.get_location(self.ego_vehicle)

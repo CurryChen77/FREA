@@ -10,10 +10,9 @@
 
 import math
 import weakref
-
+from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
 import carla
 import pygame
-
 
 # Colors
 COLOR_BUTTER_0 = pygame.Color(252, 233, 79)
@@ -52,7 +51,6 @@ COLOR_ALUMINIUM_4 = pygame.Color(85, 87, 83)
 COLOR_ALUMINIUM_4_5 = pygame.Color(66, 62, 64)
 COLOR_ALUMINIUM_5 = pygame.Color(46, 52, 54)
 
-
 COLOR_WHITE = pygame.Color(255, 255, 255)
 COLOR_BLACK = pygame.Color(0, 0, 0)
 
@@ -65,7 +63,7 @@ class Util(object):
 
     @staticmethod
     def length(v):
-        return math.sqrt(v.x**2 + v.y**2 + v.z**2)
+        return math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2)
 
     @staticmethod
     def get_bounding_box(actor):
@@ -382,8 +380,6 @@ class BirdeyeRender(object):
         self.hero_actor = None
         self.hero_id = None
         self.hero_transform = None
-        self.heros_in_all_envs = []
-        self.CBV_in_all_envs = []
 
         # the actors and map information
         self.vehicle_polygons = []
@@ -422,13 +418,6 @@ class BirdeyeRender(object):
     def set_hero(self, hero_actor, hero_id):
         self.hero_actor = hero_actor
         self.hero_id = hero_id
-        self.heros_in_all_envs.append(hero_id)
-
-    def set_CBV(self, CBV_id):
-        self.CBV_in_all_envs.append(CBV_id)
-
-    def remove_old_CBV(self, CBV_id):
-        self.CBV_in_all_envs.remove(CBV_id)
 
     def tick(self, clock):
         actors = self.world.get_actors()
@@ -461,9 +450,9 @@ class BirdeyeRender(object):
             location = self.hero_transform.location
             vehicle_list = [x[0] for x in vehicles if x[0].id != self.hero_actor.id]
 
-            def distance(v): 
+            def distance(v):
                 return location.distance(v.get_location())
-            
+
             for n, vehicle in enumerate(sorted(vehicle_list, key=distance)):
                 if n > 15:
                     break
@@ -474,40 +463,48 @@ class BirdeyeRender(object):
         lp = len(actor_polygons)
         color = COLOR_SKY_BLUE_0
 
-        for i in range(max(0,lp-num), lp):
+        all_actors = CarlaDataProvider.get_scenario_actors()
+        CBV_ids = set()
+        ego_ids = set()
+        for ego_id, scenario_actors in all_actors.items():
+            ego_ids.add(ego_id)
+            CBV_ids.update(actor.id for actor in scenario_actors['CBVs'])
+
+        for i in range(max(0, lp - num), lp):
             for ID, poly in actor_polygons[i].items():
                 corners = []
                 for p in poly:
                     corners.append(carla.Location(x=p[0], y=p[1]))
                 corners.append(carla.Location(x=poly[0][0], y=poly[0][1]))
                 corners = [world_to_pixel(p) for p in corners]
-                color_value = max(0.8 - 0.8/lp*(i+1), 0)
-                if ID == self.hero_id or ID in self.heros_in_all_envs:
+                color_value = max(0.8 - 0.8 / lp * (i + 1), 0)
+                if ID in ego_ids:
                     color = pygame.Color(255, 0, 0)  # red
-                elif ID in self.CBV_in_all_envs:
-                    color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255))  # purple
+                elif ID in CBV_ids:
+                    color = pygame.Color(math.floor(0.5 * 255), 0, math.floor(0.5 * 255))  # purple
                 else:
                     if actor_type == 'vehicle':
                         color = pygame.Color(0, 238, 255)  # sky blue
                     elif actor_type == 'walker':
-                        color = pygame.Color(255, 255, math.floor(color_value*255))  # yellow
+                        color = pygame.Color(255, 255, math.floor(color_value * 255))  # yellow
                 pygame.draw.polygon(surface, color, corners)
 
     def render_waypoints(self, surface, waypoints, world_to_pixel):
         if self.red_light:
-            color = pygame.Color(math.floor(0.5*255), 0, math.floor(0.5*255))  # purple
+            color = pygame.Color(math.floor(0.5 * 255), 0, math.floor(0.5 * 255))  # purple
         else:
-            color = pygame.Color(255, 195, 0)  # origin
+            color = pygame.Color(254, 129, 125)  # origin
         corners = []
         for p in waypoints:
             corners.append(carla.Location(x=p[0], y=p[1]))
         corners = [world_to_pixel(p) for p in corners]
-        route_width = 10
+        route_width = 5
         pygame.draw.lines(surface, color, False, corners, route_width)
 
     def render_actors(self, surface, vehicles, walkers):
         self._render_hist_actors(surface, vehicles, 'vehicle', self.map_image.world_to_pixel, 10)
-        self._render_hist_actors(surface, walkers, 'walker', self.map_image.world_to_pixel, 10)
+        # temporarily got no warker
+        # self._render_hist_actors(surface, walkers, 'walker', self.map_image.world_to_pixel, 10)
 
     def clip_surfaces(self, clipping_rect):
         self.actors_surface.set_clip(clipping_rect)
@@ -530,7 +527,7 @@ class BirdeyeRender(object):
 
         # Blit surfaces
         if render_types is None:
-            surfaces = [(self.map_image.surface, (0, 0)), (self.actors_surface, (0, 0)), (self.waypoints_surface, (0, 0)),]
+            surfaces = [(self.map_image.surface, (0, 0)), (self.actors_surface, (0, 0)), (self.waypoints_surface, (0, 0)), ]
         else:
             surfaces = []
             if 'roadmap' in render_types:
@@ -564,5 +561,4 @@ class BirdeyeRender(object):
             raise ValueError('hero_actor is None')
 
     def clean_up(self):
-        self.CBV_in_all_envs = []
-        self.heros_in_all_envs = []
+        pass

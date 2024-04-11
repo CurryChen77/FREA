@@ -33,6 +33,7 @@ class CarlaDataProvider(object):
     _sync_flag = False
     _spawn_points = None
     goal_CBV_dis = {}
+    scenario_actors = {}
     _spawn_index = 0
     _ego_desired_speed = 6  # m/s
     _blueprint_library = None
@@ -407,6 +408,38 @@ class CarlaDataProvider(object):
         CarlaDataProvider._ego_vehicle_route[ego.id] = route
         CarlaDataProvider.egos.append(ego)
         CarlaDataProvider.goal_CBV_dis[ego.id] = {}  # create an empty dictionary for each ego car
+        CarlaDataProvider.scenario_actors[ego.id] = {'BVs': set(), 'CBVs': set(), 'CBVs_reach_goal': set()}  # create an empty dictionary for each scenario to record all BVs
+
+    @staticmethod
+    def set_scenario_actors(ego, actors):
+        CarlaDataProvider.scenario_actors[ego.id]['BVs'].update(actors)
+
+    @staticmethod
+    def get_scenario_actors():
+        return CarlaDataProvider.scenario_actors
+
+    @staticmethod
+    def get_scenario_actors_by_ego(ego):
+        return CarlaDataProvider.scenario_actors[ego.id]
+
+    @staticmethod
+    def add_CBV(ego, actor):
+        CarlaDataProvider.scenario_actors[ego.id]['BVs'].discard(actor)
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].add(actor)
+
+    @staticmethod
+    def CBV_reach_goal(ego, actor):
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].discard(actor)
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs_reach_goal'].add(actor)
+
+    @staticmethod
+    def CBV_back_to_BV(ego, actor):
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].discard(actor)
+        CarlaDataProvider.scenario_actors[ego.id]['BVs'].add(actor)
+
+    @staticmethod
+    def CBV_terminate(ego, actor):
+        CarlaDataProvider.scenario_actors[ego.id]['CBVs'].discard(actor)
 
     @staticmethod
     def get_ego_vehicles():
@@ -849,6 +882,7 @@ class CarlaDataProvider(object):
         CarlaDataProvider._ego_desired_speed = 6
         CarlaDataProvider.goal_CBV_dis.clear()
         CarlaDataProvider._carla_actor_pool = {}
+        CarlaDataProvider.scenario_actors = {}
         CarlaDataProvider._spawn_points = None
         CarlaDataProvider._spawn_index = 0
         CarlaDataProvider._random_seed += 1  # change the random seed used for spawning initial actors
@@ -888,6 +922,7 @@ class CarlaDataProvider(object):
         CarlaDataProvider._ego_desired_speed = 6
         CarlaDataProvider.goal_CBV_dis.clear()
         CarlaDataProvider._carla_actor_pool = {}
+        CarlaDataProvider.scenario_actors = {}
         CarlaDataProvider._client = None
         CarlaDataProvider._spawn_points = None
         CarlaDataProvider._spawn_index = 0
