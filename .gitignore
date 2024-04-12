@@ -159,5 +159,7 @@ docs/
 /safebench/scenario/scenario_definition/scenic/
 /safebench/scenario/scenario_definition/standard/
 /safebench/feasibility/data/
+/safebench/feasibility/figures/
+/safebench/feasibility/processed_data/
 */figures/
 */processed_data
