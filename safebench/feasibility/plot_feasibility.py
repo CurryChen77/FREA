@@ -7,6 +7,7 @@
 @Date    ：2024/1/25
 """
 import os
+import re
 
 import matplotlib
 import numpy as np
@@ -347,33 +348,39 @@ def plot_multi_feasibility_region(args):
     plt.show()
 
 
-def read_df(df_path, label, ROOT_DIR):
+def read_df(df_path, ROOT_DIR):
     if os.path.exists(df_path):
         df = pd.read_csv(df_path)
         print('>> ' + '-' * 20, 'Reading learning curve data', '-' * 20)
 
     else:
         dataframes = []
-        root_dir = osp.join(ROOT_DIR, 'safebench/feasibility/train_log/')
+        pattern = r"run-min_dis_threshold_([0-9.]+)_seed(\d+)_Scenario(\d+)_Town(\d+)-tag-(.+)\.csv"
+        root_dir = osp.join(ROOT_DIR, 'safebench/feasibility/processed_data/')
         # walk through all the dir in the root directory
         for root, dirs, files in os.walk(root_dir):
-            event_files = [f for f in files if f.startswith('events.out.tfevents')]
-            if event_files:
-                path_elements = root.split(os.sep)
-                min_dis_threshold, seed = path_elements[-2].split('_seed')
-                scene = path_elements[-1]
-                seed = int(seed)
-                path_to_event_files = [os.path.join(root, f) for f in event_files]
-                # TODO load from csv file
-                combined_events_data = extract_and_combine_events(path_to_event_files, label=label)
-                for step, value in combined_events_data:
+            file_names = [f for f in files if f.startswith('run-')]
+            for file_name in file_names:
+                match = re.search(pattern, file_name)
+                if match:
+                    min_dis_threshold = float(match.group(1))
+                    seed = int(match.group(2))
+                    scenario = f"Scenario{match.group(3)}_Town{match.group(4)}"
+                    label = match.group(5)
+                    file_path = os.path.join(root, file_name)
+                    data = pd.read_csv(file_path)
+
                     dataframes.append(pd.DataFrame({
-                        'step': [step],
-                        'value': [value],
-                        'seed': [seed],
-                        'min_dis_threshold': [min_dis_threshold],
-                        'scene': [scene]
-                    }))
+                        'step': data['Step'],
+                        'value': data['Value'],
+                        'seed': np.repeat(seed, len(data)),
+                        'min_dis_threshold': np.repeat(min_dis_threshold, len(data)),
+                        'scene': np.repeat(scenario, len(data)),
+                        'label': np.repeat(label, len(data))
+                }))
+                else:
+                    print("no matching")
+
         # merge all the dataframes
         df = pd.concat(dataframes, ignore_index=True)
         df.to_csv(osp.join(args.ROOT_DIR, 'safebench/feasibility/processed_data/learning_curve.csv'), index=False)
@@ -382,51 +389,56 @@ def read_df(df_path, label, ROOT_DIR):
     return df
 
 
-def plot_learning_curve(args, label):
+def plot_learning_curve(args):
     # read the learning curve data
     df_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/processed_data/learning_curve.csv')
-    df = read_df(df_path, label, args.ROOT_DIR)
+    all_df = read_df(df_path, args.ROOT_DIR)
 
     sns.set(style="darkgrid")
+    labels = all_df['label'].drop_duplicates()
 
-    # create subplot
-    scenes = df['scene'].drop_duplicates()
-    num_plots = len(scenes)
-    subplots_height = 5
-    aspect_ratio = 1.2
-    figsize = (subplots_height * aspect_ratio * num_plots, subplots_height)
-    fig, axs = plt.subplots(1, num_plots, figsize=figsize, squeeze=False)  # make sure axs are always 2D
+    for label in labels:
+        # Filter dataframe for current label
+        df = all_df[all_df['label'] == label]
 
-    for index, scene in enumerate(scenes):
-        ax = axs[0, index]
-        scene_df = df[df['scene'] == scene]
+        # create subplot
+        scenes = df['scene'].drop_duplicates()
+        num_plots = len(scenes)
+        subplots_height = 5
+        aspect_ratio = 1.2
+        figsize = (subplots_height * aspect_ratio * num_plots, subplots_height)
+        fig, axs = plt.subplots(1, num_plots, figsize=figsize, squeeze=False)  # make sure axs are always 2D
 
-        # handel algorithm in each scene
-        for algorithm, alg_df in scene_df.groupby('min_dis_threshold'):
-            smoothed_dfs = []
-            for seed, seed_df in alg_df.groupby('seed'):
-                seed_df = seed_df.sort_values('step')
-                seed_df['smoothed_value'] = smooth(seed_df['value'].values, sm=200)
-                smoothed_dfs.append(seed_df)
+        for index, scene in enumerate(scenes):
+            ax = axs[0, index]
+            scene_df = df[df['scene'] == scene]
 
-            # merge the smoothed data
-            smoothed_df = pd.concat(smoothed_dfs)
-            # plot the mean value and the trust region
-            sns.lineplot(ax=ax, data=smoothed_df, x='step', y='smoothed_value',
-                         estimator='mean', errorbar=('ci', 95), label=algorithm,
-                         err_kws={"alpha": 0.2, "linewidth": 0.1})  # error_kws: the parameter for the trust region
+            # handel algorithm in each scene
+            for algorithm, alg_df in scene_df.groupby('min_dis_threshold'):
+                smoothed_dfs = []
+                for seed, seed_df in alg_df.groupby('seed'):
+                    seed_df = seed_df.sort_values('step')
+                    seed_df['smoothed_value'] = smooth(seed_df['value'].values, sm=200)
+                    smoothed_dfs.append(seed_df)
 
-        handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles=handles[0:], labels=labels[0:], title="min_dis_threshold", loc="best", fontsize=8, title_fontsize=10)
+                # merge the smoothed data
+                smoothed_df = pd.concat(smoothed_dfs)
+                # plot the mean value and the trust region
+                sns.lineplot(ax=ax, data=smoothed_df, x='step', y='smoothed_value',
+                             estimator='mean', errorbar=('ci', 95), label=algorithm,
+                             err_kws={"alpha": 0.2, "linewidth": 0.1})  # error_kws: the parameter for the trust region
 
-        ax.set_title(f'{scene}')
-        ax.set_xlabel('Step')
-        ax.set_ylabel('Step Average Reward')
+            handles, labels = ax.get_legend_handles_labels()
+            ax.legend(handles=handles[0:], labels=labels[0:], title="min_dis_threshold", loc="best", fontsize=8, title_fontsize=10)
 
-    plt.tight_layout()
-    save_dir = osp.join(args.ROOT_DIR, 'safebench/feasibility/figures/Learning_curve.png')
-    plt.savefig(save_dir, dpi=600)
-    plt.show()
+            ax.set_title(f'{scene}')
+            ax.set_xlabel('Step')
+            ax.set_ylabel(label)
+
+        plt.tight_layout()
+        save_dir = osp.join(args.ROOT_DIR, f'safebench/feasibility/figures/{label}_learning_curve.png')
+        plt.savefig(save_dir, dpi=600)
+        plt.show()
 
 
 if __name__ == '__main__':
@@ -460,6 +472,6 @@ if __name__ == '__main__':
 
     # 3. plot the learning curve of the feasibility
     if args.mode == 'learning_curve':
-        plot_learning_curve(args, label='HJR_Vh_loss')
+        plot_learning_curve(args)
 
 
