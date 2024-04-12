@@ -6,10 +6,14 @@
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2024/1/25
 """
+import os
+
 import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
+import os
 
 from matplotlib import colors
 import os.path as osp
@@ -22,6 +26,7 @@ from safebench.gym_carla.envs.utils import linear_map
 from safebench.util.logger import Logger
 from safebench.util.run_util import load_config
 from safebench.util.torch_util import set_torch_variable, set_seed, CUDA, CPU
+from eval_analysis.plot_data.plot_learning_curve import smooth, extract_and_combine_events
 
 
 def calculate_collision_rate(done, collision):
@@ -342,6 +347,88 @@ def plot_multi_feasibility_region(args):
     plt.show()
 
 
+def read_df(df_path, label, ROOT_DIR):
+    if os.path.exists(df_path):
+        df = pd.read_csv(df_path)
+        print('>> ' + '-' * 20, 'Reading learning curve data', '-' * 20)
+
+    else:
+        dataframes = []
+        root_dir = osp.join(ROOT_DIR, 'safebench/feasibility/train_log/')
+        # walk through all the dir in the root directory
+        for root, dirs, files in os.walk(root_dir):
+            event_files = [f for f in files if f.startswith('events.out.tfevents')]
+            if event_files:
+                path_elements = root.split(os.sep)
+                min_dis_threshold, seed = path_elements[-2].split('_seed')
+                scene = path_elements[-1]
+                seed = int(seed)
+                path_to_event_files = [os.path.join(root, f) for f in event_files]
+                # TODO load from csv file
+                combined_events_data = extract_and_combine_events(path_to_event_files, label=label)
+                for step, value in combined_events_data:
+                    dataframes.append(pd.DataFrame({
+                        'step': [step],
+                        'value': [value],
+                        'seed': [seed],
+                        'min_dis_threshold': [min_dis_threshold],
+                        'scene': [scene]
+                    }))
+        # merge all the dataframes
+        df = pd.concat(dataframes, ignore_index=True)
+        df.to_csv(osp.join(args.ROOT_DIR, 'safebench/feasibility/processed_data/learning_curve.csv'), index=False)
+        print('>> ' + '-' * 20, 'Saving learning curve data', '-' * 20)
+
+    return df
+
+
+def plot_learning_curve(args, label):
+    # read the learning curve data
+    df_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/processed_data/learning_curve.csv')
+    df = read_df(df_path, label, args.ROOT_DIR)
+
+    sns.set(style="darkgrid")
+
+    # create subplot
+    scenes = df['scene'].drop_duplicates()
+    num_plots = len(scenes)
+    subplots_height = 5
+    aspect_ratio = 1.2
+    figsize = (subplots_height * aspect_ratio * num_plots, subplots_height)
+    fig, axs = plt.subplots(1, num_plots, figsize=figsize, squeeze=False)  # make sure axs are always 2D
+
+    for index, scene in enumerate(scenes):
+        ax = axs[0, index]
+        scene_df = df[df['scene'] == scene]
+
+        # handel algorithm in each scene
+        for algorithm, alg_df in scene_df.groupby('min_dis_threshold'):
+            smoothed_dfs = []
+            for seed, seed_df in alg_df.groupby('seed'):
+                seed_df = seed_df.sort_values('step')
+                seed_df['smoothed_value'] = smooth(seed_df['value'].values, sm=200)
+                smoothed_dfs.append(seed_df)
+
+            # merge the smoothed data
+            smoothed_df = pd.concat(smoothed_dfs)
+            # plot the mean value and the trust region
+            sns.lineplot(ax=ax, data=smoothed_df, x='step', y='smoothed_value',
+                         estimator='mean', errorbar=('ci', 95), label=algorithm,
+                         err_kws={"alpha": 0.2, "linewidth": 0.1})  # error_kws: the parameter for the trust region
+
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles=handles[0:], labels=labels[0:], title="min_dis_threshold", loc="best", fontsize=8, title_fontsize=10)
+
+        ax.set_title(f'{scene}')
+        ax.set_xlabel('Step')
+        ax.set_ylabel('Step Average Reward')
+
+    plt.tight_layout()
+    save_dir = osp.join(args.ROOT_DIR, 'safebench/feasibility/figures/Learning_curve.png')
+    plt.savefig(save_dir, dpi=600)
+    plt.show()
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
@@ -350,7 +437,7 @@ if __name__ == '__main__':
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
     parser.add_argument('--min_dis_threshold', '-dis', type=str, default='0.1')
-    parser.add_argument('--mode', type=str, default='region', choices=['region', 'data'])
+    parser.add_argument('--mode', '-m', type=str, default='region', choices=['region', 'data', 'learning_curve'])
     parser.add_argument('--actor_num', type=int, default=3)
     parser.add_argument('--spatial_interval', type=int, default=80)
     parser.add_argument('--x_range', type=tuple, default=(-22, 22))
@@ -371,5 +458,8 @@ if __name__ == '__main__':
     if args.mode == 'region':
         plot_multi_feasibility_region(args)
 
+    # 3. plot the learning curve of the feasibility
+    if args.mode == 'learning_curve':
+        plot_learning_curve(args, label='HJR_Vh_loss')
 
 

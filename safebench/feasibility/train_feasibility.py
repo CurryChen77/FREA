@@ -21,7 +21,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_route', type=str, default='safebench/feasibility/data')
-    parser.add_argument('--map_list', '-maps', nargs='+', default=['Town05', 'Town01', 'Town02'])
+    parser.add_argument('--map_list', '-maps', nargs='+', default=['Town05', 'Town02'])
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
@@ -52,7 +52,7 @@ if __name__ == '__main__':
         assert osp.exists(data_file_path), f"file {args.data_filename} don't exists"
 
         # set the logger
-        log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + str(min_dis_threshold), scenario_map_name)
+        log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + str(min_dis_threshold), scenario_map_name + '_seed' + str(args.seed))
         log_exp_name = scenario_map_name
         logger = Logger(log_path, log_exp_name)
 

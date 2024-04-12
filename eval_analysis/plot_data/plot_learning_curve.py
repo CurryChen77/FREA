@@ -58,14 +58,14 @@ def smooth(data, sm=1):
         return data
 
 
-def read_df(df_path, label='Scenario_average_reward_per_step'):
+def read_df(df_path, ROOT_DIR, label='Scenario_average_reward_per_step'):
     if os.path.exists(df_path):
         df = pd.read_csv(df_path)
         print('>> ' + '-' * 20, 'Reading learning curve data', '-' * 20)
 
     else:
         dataframes = []
-        root_dir = osp.join(args.ROOT_DIR, 'log/train_scenario')
+        root_dir = osp.join(ROOT_DIR, 'log/train_scenario')
         # walk through all the dir in the root directory
         for root, dirs, files in os.walk(root_dir):
             event_files = [f for f in files if f.startswith('events.out.tfevents')]
@@ -86,7 +86,7 @@ def read_df(df_path, label='Scenario_average_reward_per_step'):
                     }))
         # merge all the dataframes
         df = pd.concat(dataframes, ignore_index=True)
-        df.to_csv(osp.join(args.ROOT_DIR, 'eval_analysis/processed_data/learning_curve.csv'), index=False)
+        df.to_csv(osp.join(ROOT_DIR, 'eval_analysis/processed_data/learning_curve.csv'), index=False)
         print('>> ' + '-' * 20, 'Saving learning curve data', '-' * 20)
 
     return df
@@ -95,7 +95,7 @@ def read_df(df_path, label='Scenario_average_reward_per_step'):
 def main(args):
     # read the learning curve data
     df_path = osp.join(args.ROOT_DIR, 'eval_analysis/processed_data/learning_curve.csv')
-    df = read_df(df_path, args.label)
+    df = read_df(df_path, args.ROOT_DIR, args.label)
 
     sns.set(style="darkgrid")
 
