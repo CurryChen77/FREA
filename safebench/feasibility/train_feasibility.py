@@ -52,7 +52,7 @@ if __name__ == '__main__':
         assert osp.exists(data_file_path), f"file {args.data_filename} don't exists"
 
         # set the logger
-        log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + str(min_dis_threshold), scenario_map_name + '_seed' + str(args.seed))
+        log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + str(min_dis_threshold) + '_seed' + str(args.seed), scenario_map_name)
         log_exp_name = scenario_map_name
         logger = Logger(log_path, log_exp_name)
 
