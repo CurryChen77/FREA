@@ -1,11 +1,10 @@
-
 type: "HJR"
 data_path: 'safebench/feasibility/data'
 model_path: 'safebench/feasibility/model_ckpt'
 scenario_id: 9
 
 min_dis_threshold: 0.1
-M: 18  # if min_dis_threshold == 0.5, then M == 14; if min_dis_threshold == 0.1, then M == 18
+M: 20  # if min_dis_threshold == 0.5, then M == 12; if min_dis_threshold == 0.1, then M == 20
 
 obs_type: "ego_obs"  # "ego_infos" contains ego and the meaningful surrounding vehicle information
 feasibility_state_dim: 18  # (3 vehicle) * 6 dimensions state
@@ -18,7 +17,7 @@ acc_range: [-3.0, 3.0]
 steer_range: [-0.3, 0.3]
 
 
-train_episode: 2000000
+train_episode: 1000000
 save_freq: 100000
 buffer_capacity: 100000
 

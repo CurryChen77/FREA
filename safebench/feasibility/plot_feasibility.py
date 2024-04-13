@@ -91,7 +91,8 @@ def plot_feasibility_data_distribution(args):
     axs[0, 0].set_ylabel('Y Coordinate')
     fig.colorbar(x_y_img, ax=axs[0, 0])
 
-    sns.kdeplot(ego_min_dis, color=color_palette[len(color_palette) // 2], ax=axs[0, 1], alpha=0.6, fill=True, linewidth=1.2)
+    axs[0, 1].hist(ego_min_dis, density=True, bins=30, alpha=0.7, color=color_palette[len(color_palette) // 2])
+    # sns.kdeplot(ego_min_dis, color=color_palette[len(color_palette) // 2], ax=axs[0, 1], alpha=0.6, fill=True, linewidth=1.2)
     axs[0, 1].set_title('Closest dis between Ego and BVs', fontsize=12)
     axs[0, 1].set_xlabel('Closest distance')
     axs[0, 1].set_ylabel('Frequency')
@@ -265,7 +266,7 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
 def plot_multi_feasibility_region(args):
     set_torch_variable(args.device)
     torch.set_num_threads(args.threads)
-    seed = args.seed
+    seed = args.plot_seed
     set_seed(seed)
     args_dict = vars(args)
 
@@ -456,7 +457,8 @@ if __name__ == '__main__':
     parser.add_argument('--y_range', type=tuple, default=(-7, 7))
     parser.add_argument('--width', type=float, default=4.9)
     parser.add_argument('--height', type=float, default=2.12)
-    parser.add_argument('--seed', '-s', type=int, default=77)
+    parser.add_argument('--seed', '-s', type=int, default=0)
+    parser.add_argument('--plot_seed', '-ps', type=int, default=77)
     parser.add_argument('--threads', type=int, default=4)
     parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
