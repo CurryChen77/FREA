@@ -390,11 +390,15 @@ def read_df(df_path, ROOT_DIR):
     return df
 
 
+def format_label(label):
+    parts = label.split('_')
+    return f"${{{parts[1][0]}}}_{{{parts[1][1:]}}}$ {parts[2]}"
+
+
 def plot_learning_curve(args):
     # read the learning curve data
     df_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/processed_data/learning_curve.csv')
     all_df = read_df(df_path, args.ROOT_DIR)
-
     sns.set(style="darkgrid")
     labels = all_df['label'].drop_duplicates()
 
@@ -408,6 +412,7 @@ def plot_learning_curve(args):
         subplots_height = 5
         aspect_ratio = 1.2
         figsize = (subplots_height * aspect_ratio * num_plots, subplots_height)
+        plt.rcParams['font.family'] = 'Times New Roman'
         fig, axs = plt.subplots(1, num_plots, figsize=figsize, squeeze=False)  # make sure axs are always 2D
 
         for index, scene in enumerate(scenes):
@@ -426,15 +431,15 @@ def plot_learning_curve(args):
                 smoothed_df = pd.concat(smoothed_dfs)
                 # plot the mean value and the trust region
                 sns.lineplot(ax=ax, data=smoothed_df, x='step', y='smoothed_value',
-                             estimator='mean', errorbar=('ci', 95), label=algorithm,
+                             estimator='mean', errorbar=('ci', 95), label='min distance:' + str(algorithm) + ' meter',
                              err_kws={"alpha": 0.2, "linewidth": 0.1})  # error_kws: the parameter for the trust region
 
             handles, labels = ax.get_legend_handles_labels()
-            ax.legend(handles=handles[0:], labels=labels[0:], title="min_dis_threshold", loc="best", fontsize=8, title_fontsize=10)
+            ax.legend(handles=handles[0:], labels=labels[0:], title="Collision_distance_threshold", loc="best", fontsize=9, title_fontsize=10)
 
             ax.set_title(f'{scene}')
             ax.set_xlabel('Step')
-            ax.set_ylabel(label)
+            ax.set_ylabel(format_label(label))
 
         plt.tight_layout()
         save_dir = osp.join(args.ROOT_DIR, f'safebench/feasibility/figures/{label}_learning_curve.png')
