@@ -4,7 +4,7 @@ model_path: 'safebench/feasibility/model_ckpt'
 scenario_id: 9
 
 min_dis_threshold: 0.1
-M: 20  # if min_dis_threshold == 0.5, then M == 12; if min_dis_threshold == 0.1, then M == 20
+M: 20  # if min_dis_threshold == 0.5, then M == 14; if min_dis_threshold == 0.1, then M == 20
 
 obs_type: "ego_obs"  # "ego_infos" contains ego and the meaningful surrounding vehicle information
 feasibility_state_dim: 18  # (3 vehicle) * 6 dimensions state

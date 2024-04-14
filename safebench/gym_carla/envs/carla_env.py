@@ -619,8 +619,8 @@ class CarlaEnv(gym.Env):
             # encourage CBV to get closer to the goal point
             delta_dis, CBV_goal_dis = get_CBV_ego_reward(self.ego_vehicle, CBV, self.goal_waypoint)  # [-1, 1]
 
-            # CBV collision punish (collide with another vehicle)
-            collision_punish = -1 if self.CBVs_collision[CBV_id] is not None else 0
+            # CBV collision punish (collide with another vehicle, don't avoid ego vehicle collision)
+            collision_punish = -1 if self.CBVs_collision[CBV_id] is not None and self.CBVs_collision[CBV_id]['other_actor_id'] != self.ego_vehicle.id else 0
 
             # terminal reward (reach the goal)
             if CBV_goal_dis < self.goal_point_radius:

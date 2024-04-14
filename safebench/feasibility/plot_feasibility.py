@@ -286,7 +286,7 @@ def plot_multi_feasibility_region(args):
     min_dis_threshold = args_dict['min_dis_threshold']
 
     # set the logger
-    log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + min_dis_threshold, scenario_map)
+    log_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/train_log', 'min_dis_threshold_' + min_dis_threshold + '_seed' + str(args.seed), scenario_map)
     log_exp_name = scenario_map
     logger = Logger(log_path, log_exp_name)
 
