@@ -4,6 +4,7 @@ policy_type: 'fppo_rs'
 learnable: True
 feasibility: True
 reward_shaping: True
+reward_punish: -1
 
 route_dir: 'safebench/scenario/scenario_data/route'
 scenario_id: 9  # default null -> save and load an "all" model for all scenarios, 9 -> save and load one model for the "9" scenario

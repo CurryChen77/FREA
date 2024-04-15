@@ -58,6 +58,7 @@ class CarlaRunner:
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.CBV_selection = scenario_config['CBV_selection']
         self.scenario_agent_learnable = scenario_config['learnable']
+        self.scenario_agent_reward_shaping = scenario_config['reward_shaping']
         self.scenario_id = scenario_config['scenario_id']
         # if the scenario agent need feasibility or need feasibility for eval
         self.use_feasibility = scenario_config['feasibility'] or scenario_config['use_feasibility']
@@ -82,7 +83,7 @@ class CarlaRunner:
             'scenario_agent_learnable': scenario_config['learnable'],  # whether the scenario agent is a learnable method
             'agent_obs_type': agent_config['obs_type'],  # default 0 (only 4 dimensions states )
             'CBV_selection': self.CBV_selection,  # the method using for selection the controlled bv
-            'scenario_reward_shaping': scenario_config['reward_shaping'],  # whether the scenario agent got a reward shaping
+            'scenario_reward_shaping': self.scenario_agent_reward_shaping,  # whether the scenario agent got a reward shaping
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'signalized_junction': False,  # whether the signal controls the junction
             'warm_up_steps': 4,  # number of ticks after spawning the vehicles
@@ -444,7 +445,7 @@ class CarlaRunner:
                 self.world,
                 self.birdeye_render,
                 self.display,
-                self.feasibility_policy,
+                self.use_feasibility,
                 self.agent_state_encoder,
                 self.logger,
             )
@@ -486,6 +487,8 @@ class CarlaRunner:
                     # loading the feasibility policy model
                     self.feasibility_policy.load_model(map_name=self.current_map)
                     self.feasibility_policy.set_mode('eval')
+                    # pass the feasibility net to the scenario policy
+                    self.scenario_policy.set_feasibility_policy(self.feasibility_policy)
                     assert self.feasibility_policy.continue_episode != 0, 'The scenario policy need well-trained feasibility network'
                 if self.agent_state_encoder:
                     self.agent_state_encoder.load_ckpt()

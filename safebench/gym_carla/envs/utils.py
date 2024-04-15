@@ -40,6 +40,16 @@ def get_actor_off_road(actor):
     return off_road
 
 
+def get_closest_CBV_flag(ego_nearby_vehicles, CBVs):
+    CBVs_closest_flag = {}
+    closest_BV_id = None
+    if len(ego_nearby_vehicles) >= 1:
+        closest_BV_id = ego_nearby_vehicles[0].id
+    for CBV_id, CBV in CBVs.items():
+        CBVs_closest_flag[CBV_id] = (CBV_id == closest_BV_id)
+    return CBVs_closest_flag
+
+
 def process_ego_action(ego_action, acc_range, steering_range):
     # the learnable agent action
     throttle = ego_action[0]  # continuous action: throttle
@@ -73,14 +83,45 @@ def process_ego_action(ego_action, acc_range, steering_range):
     return [throttle, steer, brake]
 
 
-def get_feasibility_Qs_Vs(feasibility_policy, ego_obs, ego_action):
+def get_feasibility_V(feasibility_policy, ego_obs):
     ego_obs = CUDA(torch.FloatTensor(ego_obs)).unsqueeze(0)
-    ego_action = CUDA(torch.FloatTensor(ego_action)).unsqueeze(0)
-    Q = feasibility_policy.get_feasibility_Qs(ego_obs, ego_action).squeeze(0)
     V = feasibility_policy.get_feasibility_Vs(ego_obs).squeeze(0)
+    return CPU(V).item()
+
+
+def get_ego_obs(ego_vehicle, ego_nearby_vehicles, desired_nearby_vehicle=3, waypoints=None):
+    '''
+        safety network input state:
+        all the rows are other bv's relative state
+    '''
+    infos = []
+    # the basic information about the ego (center vehicle)
+    ego_transform = CarlaDataProvider.get_transform(ego_vehicle)
+    ego_matrix = np.array(ego_transform.get_matrix())
+    ego_yaw = ego_transform.rotation.yaw / 180 * np.pi
+    ego_extent = ego_vehicle.bounding_box.extent
+    # the relative CBV info
+    ego_info = get_relative_info(actor=ego_vehicle, center_yaw=ego_yaw, center_matrix=ego_matrix)
+    infos.append(ego_info)
+    for actor in ego_nearby_vehicles:
+        if len(infos) < desired_nearby_vehicle:
+            actor_info = get_relative_info(actor=actor, center_yaw=ego_yaw, center_matrix=ego_matrix)
+            infos.append(actor_info)
+        else:
+            break
+    while len(infos) < desired_nearby_vehicle:  # if no enough nearby vehicles, padding with 0
+        infos.append([0] * len(ego_info))
+
+    # route information
+    if waypoints is not None:
+        route_info = get_relative_route_info(waypoints, center_yaw=ego_yaw, center_matrix=ego_matrix, center_extent=ego_extent)
+        infos.append(route_info)
+
+    # get the info of the ego vehicle and the other actors
+    infos = np.array(infos, dtype=np.float32)
+
     return {
-        'feasibility_Q': CPU(Q).item(),
-        'feasibility_V': CPU(V).item()
+        'ego_obs': infos
     }
 
 
@@ -108,6 +149,8 @@ def get_records(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox
         'BVs_id': [],
         'ego_min_dis': search_radius
     }
+    # get the ego obs for feasibility calculation
+    records.update(get_ego_obs(ego_vehicle=ego, ego_nearby_vehicles=ego_nearby_vehicles))
     # CBV's info
     if len(CBVs_collision) > 0:
         collision = {}

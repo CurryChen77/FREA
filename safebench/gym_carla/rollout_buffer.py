@@ -38,13 +38,13 @@ class RolloutBuffer:
             self.obs_shape = tuple(scenario_config['scenario_state_shape'])
             self.action_dim = scenario_config['scenario_action_dim']
             self.state_dim = scenario_config['scenario_state_dim']
+            self.ego_learnable = True if agent_config['learnable'] else False
+            self.ego_onpolicy = True if agent_config['learnable'] and agent_config['onpolicy'] else False
             # if the scenario agent needs the feasibility
-            self.use_feasibility = scenario_config['feasibility'] and not scenario_config['reward_shaping']
+            self.use_feasibility = scenario_config['feasibility']
             if self.use_feasibility:
                 self.feasibility_obs_shape = tuple(feasibility_config['state_shape'])
                 self.feasibility_action_dim = feasibility_config['agent_action_dim']
-                self.feasibility_state_dim = feasibility_config['feasibility_state_dim']
-                self.feasibility_policy_type = feasibility_config['obs_type']
             self.scenario_pos = 0
             self.scenario_full = False
         elif self.mode == 'train_agent':
@@ -87,9 +87,11 @@ class RolloutBuffer:
             self.buffer_dones = np.zeros(self.buffer_capacity, dtype=np.float32)
             self.buffer_terminated = np.zeros((self.buffer_capacity), dtype=np.float32)
             if self.use_feasibility:
-                self.buffer_feasibility_Qs = np.zeros((self.buffer_capacity), dtype=np.float32)
-                self.buffer_feasibility_Vs = np.zeros((self.buffer_capacity), dtype=np.float32)
-                self.temp_buffer.update({'feasibility_Qs': {}, 'feasibility_Vs': {}})
+                self.buffer_ego_actions = np.zeros((self.buffer_capacity, self.feasibility_action_dim), dtype=np.float32)
+                self.buffer_closest_CBV_flag = np.zeros(self.buffer_capacity, dtype=np.float32)
+                self.buffer_ego_obs = np.zeros((self.buffer_capacity, *self.feasibility_obs_shape), dtype=np.float32)
+                self.buffer_ego_next_obs = np.zeros((self.buffer_capacity, *self.feasibility_obs_shape), dtype=np.float32)
+                self.temp_buffer.update({'ego_actions': {}, 'ego_obs': {}, 'ego_next_obs': {}, 'closest_CBV_flag': {}})
         elif self.mode == 'train_agent':
             self.agent_pos = [0] * self.num_scenario
             self.agent_full = [False] * self.num_scenario
@@ -117,14 +119,25 @@ class RolloutBuffer:
         # the processed data for normal scenario training
         processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones, processed_terminated = [], [], [], [], [], [], []
         # the processed data for feasibility
-        processed_feasibility_Qs, processed_feasibility_Vs = [], []
-        all_scenario_actions, all_scenario_log_probs = data_list[1]  # scenario actions are in the datalist[1]
+        processed_ego_actions, processed_ego_obs, processed_ego_next_obs, processed_closest_CBV_flag = [], [], [], []
+        # process the ego actions
+        if self.ego_onpolicy:
+            all_ego_actions, _ = data_list[0]  # ego actions are in datalist[0]
+        else:
+            all_ego_actions = data_list[0]
+
+        # get the scenario actions
+        all_scenario_actions, all_scenario_log_probs = data_list[1]
 
         assert len(all_scenario_actions) == len(additional_dict[0]) == len(additional_dict[1]), "the length of info and next_info should be the same"
         # Traverse all the step data in all scenarios
-        for actions, log_probs, infos, next_infos in zip(all_scenario_actions, all_scenario_log_probs, additional_dict[0], additional_dict[1]):
+        for ego_action, actions, log_probs, infos, next_infos in zip(all_ego_actions, all_scenario_actions, all_scenario_log_probs, additional_dict[0], additional_dict[1]):
             assert len(actions) == len(next_infos['CBVs_obs']) == len(infos['CBVs_obs']) \
                 == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "length of the trajectory should be the same"
+            # if learnable ego agent, need to process the action
+            if self.use_feasibility and self.ego_learnable:
+                ego_action = process_ego_action(ego_action, acc_range=[-3.0, 3.0], steering_range=[-0.3, 0.3])
+
             # Traverse all the CBVs in one scenario
             for CBV_id in actions.keys():
                 # if the first CBV in the history, create an empty list for all the trajectory
@@ -137,8 +150,10 @@ class RolloutBuffer:
                     self.temp_buffer['dones'][CBV_id] = []
                     self.temp_buffer['terminated'][CBV_id] = []
                     if self.use_feasibility:
-                        self.temp_buffer['feasibility_Qs'][CBV_id] = []
-                        self.temp_buffer['feasibility_Vs'][CBV_id] = []
+                        self.temp_buffer['ego_obs'][CBV_id] = []
+                        self.temp_buffer['ego_next_obs'][CBV_id] = []
+                        self.temp_buffer['ego_actions'][CBV_id] = []
+                        self.temp_buffer['closest_CBV_flag'][CBV_id] = []
 
                 # add one-step trajectory in to the corresponding CBV dict
                 self.temp_buffer['actions'][CBV_id].append(actions[CBV_id])
@@ -147,9 +162,10 @@ class RolloutBuffer:
                 self.temp_buffer['next_obs'][CBV_id].append(next_infos['CBVs_obs'][CBV_id])
                 self.temp_buffer['rewards'][CBV_id].append(next_infos['CBVs_reward'][CBV_id])
                 if self.use_feasibility:
-                    # for all the CBV in the scenario, all the feasibility action, feasibility obs, feasibility next obs should be the same
-                    self.temp_buffer['feasibility_Qs'][CBV_id].append(next_infos['CBVs_feasibility_Qs'][CBV_id])
-                    self.temp_buffer['feasibility_Vs'][CBV_id].append(next_infos['CBVs_feasibility_Vs'][CBV_id])
+                    self.temp_buffer['ego_obs'][CBV_id].append(infos['ego_obs'])
+                    self.temp_buffer['ego_actions'][CBV_id].append(ego_action)
+                    self.temp_buffer['ego_next_obs'][CBV_id].append(next_infos['ego_obs'])
+                    self.temp_buffer['closest_CBV_flag'][CBV_id].append(infos['closest_CBV_flag'][CBV_id])
 
                 if next_infos['CBVs_terminated'][CBV_id] or next_infos['CBVs_truncated'][CBV_id]:
                     self.temp_buffer['dones'][CBV_id].append(True)
@@ -163,14 +179,16 @@ class RolloutBuffer:
                     processed_dones.extend(self.temp_buffer['dones'].pop(CBV_id))
                     processed_terminated.extend(self.temp_buffer['terminated'].pop(CBV_id))
                     if self.use_feasibility:
-                        processed_feasibility_Qs.extend(self.temp_buffer['feasibility_Qs'].pop(CBV_id))
-                        processed_feasibility_Vs.extend(self.temp_buffer['feasibility_Vs'].pop(CBV_id))
+                        processed_ego_actions.extend(self.temp_buffer['ego_actions'].pop(CBV_id))
+                        processed_ego_obs.extend(self.temp_buffer['ego_obs'].pop(CBV_id))
+                        processed_ego_next_obs.extend(self.temp_buffer['ego_next_obs'].pop(CBV_id))
+                        processed_closest_CBV_flag.extend(self.temp_buffer['closest_CBV_flag'].pop(CBV_id))
                 else:
                     self.temp_buffer['dones'][CBV_id].append(False)
                     self.temp_buffer['terminated'][CBV_id].append(False)
 
         return processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones, processed_terminated, \
-            processed_feasibility_Qs, processed_feasibility_Vs
+            processed_ego_actions, processed_ego_obs, processed_ego_next_obs, processed_closest_CBV_flag
 
     def store(self, data_list, additional_dict):
         """
@@ -180,7 +198,7 @@ class RolloutBuffer:
         # store for scenario training
         if self.mode == 'train_scenario':
             scenario_actions, scenario_log_probs, obs, next_obs, rewards, dones, terminated,\
-                feasibility_Qs, feasibility_Vs = self.process_CBV_data(data_list, additional_dict)
+                ego_actions, ego_obs, ego_next_obs, closest_CBV_flag = self.process_CBV_data(data_list, additional_dict)
 
             length = len(dones)
             if length > 10:  # remove the too short CBV trajectory
@@ -196,8 +214,10 @@ class RolloutBuffer:
                             self.buffer_dones[self.scenario_pos] = np.array(dones[i])
                             self.buffer_terminated[self.scenario_pos] = np.array(terminated[i])
                             if self.use_feasibility:
-                                self.buffer_feasibility_Qs[self.scenario_pos] = np.array(feasibility_Qs[i])
-                                self.buffer_feasibility_Vs[self.scenario_pos] = np.array(feasibility_Vs[i])
+                                self.buffer_ego_actions[self.scenario_pos] = np.array(ego_actions[i])
+                                self.buffer_ego_obs[self.scenario_pos] = np.array(ego_obs[i])
+                                self.buffer_ego_next_obs[self.scenario_pos] = np.array(ego_next_obs[i])
+                                self.buffer_closest_CBV_flag[self.scenario_pos] = np.array(closest_CBV_flag[i])
                             self.scenario_pos += 1
                         else:
                             break
@@ -212,8 +232,10 @@ class RolloutBuffer:
                     self.buffer_dones[self.scenario_pos:self.scenario_pos+length] = np.array(dones)
                     self.buffer_terminated[self.scenario_pos:self.scenario_pos+length] = np.array(terminated)
                     if self.use_feasibility:
-                        self.buffer_feasibility_Qs[self.scenario_pos:self.scenario_pos + length] = np.array(feasibility_Qs)
-                        self.buffer_feasibility_Vs[self.scenario_pos:self.scenario_pos + length] = np.array(feasibility_Vs)
+                        self.buffer_ego_obs[self.scenario_pos:self.scenario_pos + length] = np.array(ego_obs)
+                        self.buffer_ego_next_obs[self.scenario_pos:self.scenario_pos + length] = np.array(ego_next_obs)
+                        self.buffer_ego_actions[self.scenario_pos:self.scenario_pos + length] = np.array(ego_actions)
+                        self.buffer_closest_CBV_flag[self.scenario_pos:self.scenario_pos + length] = np.array(closest_CBV_flag)
                     self.scenario_pos += length
 
             # get the buffer length
@@ -301,8 +323,10 @@ class RolloutBuffer:
             }
             if self.use_feasibility:
                 batch.update({
-                    'feasibility_Qs': self.buffer_feasibility_Qs[:upper_bound],
-                    'feasibility_Vs': self.buffer_feasibility_Vs[:upper_bound]
+                    'ego_obs': self.buffer_ego_obs[:upper_bound],
+                    'ego_next_obs': self.buffer_ego_next_obs[:upper_bound],
+                    'ego_actions': self.buffer_ego_actions[:upper_bound],
+                    'closest_CBV_flag': self.buffer_closest_CBV_flag[:upper_bound]
                 })
         elif self.mode == 'train_agent':
             index = 0

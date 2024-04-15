@@ -131,24 +131,6 @@ class PPO(BasePolicy):
             advantages[t] = advantage = delta + undones[t] * self.gamma * self.lambda_gae_adv * advantage
         return advantages
 
-    def get_feasibility_advantage_GAE(self, feasibility_V, feasibility_Q, undones):
-        """
-            unterminated: if the CBV collide with an object, then it is terminated
-            undone: if the CBV is stuck or collide or max step will cause 'done'
-            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/elegantrl/agents/AgentPPO.py
-        """
-        advantages = torch.empty_like(feasibility_V)  # advantage value
-
-        horizon_len = feasibility_V.shape[0]
-
-        advantage = torch.zeros_like(feasibility_V[0])  # last advantage value by GAE (Generalized Advantage Estimate)
-
-        deltas = feasibility_V - feasibility_Q  # in feasibility, the lower, the better
-
-        for t in range(horizon_len - 1, -1, -1):
-            advantages[t] = advantage = deltas[t] + undones[t] * self.gamma * self.lambda_gae_adv * advantage
-        return advantages
-
     def train(self, buffer, writer, e_i):
         """
             from https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/elegantrl/agents/AgentPPO.py

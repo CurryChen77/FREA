@@ -22,6 +22,40 @@ class FPPOAdv(PPO):
     def __init__(self, config, logger):
         super(FPPOAdv, self).__init__(config, logger)
 
+    def set_feasibility_policy(self, feasibility_policy):
+        self.feability_policy = feasibility_policy
+
+    def get_feasibility_advantage_GAE(self, feasibility_V, feasibility_Q, undones):
+        """
+            unterminated: if the CBV collide with an object, then it is terminated
+            undone: if the CBV is stuck or collide or max step will cause 'done'
+            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/elegantrl/agents/AgentPPO.py
+        """
+        advantages = torch.empty_like(feasibility_V)  # advantage value
+
+        horizon_len = feasibility_V.shape[0]
+
+        advantage = torch.zeros_like(feasibility_V[0])  # last advantage value by GAE (Generalized Advantage Estimate)
+
+        deltas = feasibility_V - feasibility_Q  # in feasibility, the lower, the better
+
+        for t in range(horizon_len - 1, -1, -1):
+            advantages[t] = advantage = deltas[t] + undones[t] * self.gamma * self.lambda_gae_adv * advantage
+        return advantages
+
+    def get_feasibility_Vs_Qs(self, closest_CBV_flag, ego_actions, ego_obs):
+        feasibility_Vs = torch.full_like(closest_CBV_flag, -1.0)
+        feasibility_Qs = torch.full_like(closest_CBV_flag, -1.0)
+        # only consider the CBV is the closest BV from ego
+        indices = torch.where(closest_CBV_flag > 0.5)[0]
+        if indices.numel() > 0:
+            action_inputs = ego_actions[indices]
+            obs_inputs = ego_obs[indices]
+
+            feasibility_Vs[indices] = self.feability_policy.get_feasibility_Vs(obs_inputs).squeeze()
+            feasibility_Qs[indices] = self.feability_policy.get_feasibility_Qs(obs_inputs, action_inputs).squeeze()
+        return feasibility_Vs, feasibility_Qs
+
     def train(self, buffer, writer, e_i):
         with torch.no_grad():
             # learning rate decay
@@ -36,9 +70,12 @@ class FPPOAdv(PPO):
             rewards = CUDA(torch.FloatTensor(batch['rewards']))
             undones = CUDA(torch.FloatTensor(1-batch['dones']))
             unterminated = CUDA(torch.FloatTensor(1-batch['terminated']))
-            feasibility_Qs = CUDA(torch.FloatTensor(batch['feasibility_Qs']))
-            feasibility_Vs = CUDA(torch.FloatTensor(batch['feasibility_Vs']))
             buffer_size = states.shape[0]
+            # feasibility
+            closest_CBV_flag = CUDA(torch.FloatTensor(batch['closest_CBV_flag']))
+            ego_actions = CUDA(torch.FloatTensor(batch['ego_actions']))
+            ego_obs = CUDA(torch.FloatTensor(batch['ego_obs']))
+            feasibility_Vs, feasibility_Qs = self.get_feasibility_Vs_Qs(closest_CBV_flag, ego_actions, ego_obs)
 
             # the values of the reward
             values = self.value(states)
@@ -47,7 +84,7 @@ class FPPOAdv(PPO):
             reward_advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
 
             reward_sums = reward_advantages + values
-            del rewards, values, next_values, unterminated
+            del rewards, values, next_values, unterminated, closest_CBV_flag, ego_obs, ego_actions
 
             # the advantage of the feasibility
             feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_Vs, feasibility_Qs, undones)
