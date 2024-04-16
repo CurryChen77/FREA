@@ -14,6 +14,22 @@ from safebench.util.torch_util import CUDA, CPU
 from safebench.scenario.scenario_policy.rl.ppo import PPO
 
 
+def process_feasibility_rewards(feasibility_next_V, clamp_range, map_range):
+    clamp_min, clamp_max = clamp_range
+    map_min, map_max = map_range
+    print("feasibility next V", feasibility_next_V)
+    mask = feasibility_next_V > 0
+
+    output = torch.zeros_like(feasibility_next_V)
+
+    clamped_and_mapped_V = ((torch.clamp(feasibility_next_V[mask], min=clamp_min, max=clamp_max) - clamp_min) / (clamp_max - clamp_min)) * (map_max - map_min) + map_min
+
+    output[mask] = clamped_and_mapped_V
+    print("processed reward", output)
+
+    return output
+
+
 class FPPORs(PPO):
     name = 'fppo_rs'
     type = 'onpolicy'
@@ -25,14 +41,14 @@ class FPPORs(PPO):
     def set_feasibility_policy(self, feasibility_policy):
         self.feability_policy = feasibility_policy
 
-    def get_feasibility_rewards(self, closest_CBV_flag, ego_obs, reward_punish=-1.0):
+    def get_feasibility_rewards(self, closest_CBV_flag, ego_next_obs):
         feasibility_rewards = torch.full_like(closest_CBV_flag, 0.0)
         # only consider the CBV is the closest BV from ego
         indices = torch.where(closest_CBV_flag > 0.5)[0]
         if indices.numel() > 0:
-            obs_inputs = ego_obs[indices]
-            feasibility_Vs = self.feability_policy.get_feasibility_Vs(obs_inputs).squeeze()
-            feasibility_rewards[indices] = torch.where(feasibility_Vs > 0, reward_punish, 0.0)
+            obs_inputs = ego_next_obs[indices]
+            feasibility_next_V = self.feability_policy.get_feasibility_Vs(obs_inputs).squeeze()
+            feasibility_rewards[indices] = -1 * process_feasibility_rewards(feasibility_next_V, clamp_range=(0, 8), map_range=(1, 2))
         return feasibility_rewards
 
     def train(self, buffer, writer, e_i):
@@ -56,8 +72,8 @@ class FPPORs(PPO):
             buffer_size = states.shape[0]
             # feasibility
             closest_CBV_flag = CUDA(torch.FloatTensor(batch['closest_CBV_flag']))
-            ego_obs = CUDA(torch.FloatTensor(batch['ego_obs']))
-            feasibility_rewards = self.get_feasibility_rewards(closest_CBV_flag, ego_obs, reward_punish=self.reward_punish)
+            ego_next_obs = CUDA(torch.FloatTensor(batch['ego_next_obs']))
+            feasibility_rewards = self.get_feasibility_rewards(closest_CBV_flag, ego_next_obs)
 
             rewards += feasibility_rewards
 
@@ -66,11 +82,11 @@ class FPPORs(PPO):
 
             advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
             reward_sums = advantages + values
-            del rewards, undones, values, next_values, unterminated, feasibility_rewards, closest_CBV_flag, ego_obs
+            del rewards, undones, values, next_values, unterminated, feasibility_rewards, closest_CBV_flag, ego_next_obs
 
             advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
 
-        # start to train, use gradient descent without batch size
+        # start to train, use gradient descent without the batch size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
         assert update_times >= 1
 

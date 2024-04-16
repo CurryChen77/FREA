@@ -25,7 +25,7 @@ class FPPOAdv(PPO):
     def set_feasibility_policy(self, feasibility_policy):
         self.feability_policy = feasibility_policy
 
-    def get_feasibility_advantage_GAE(self, feasibility_V, feasibility_Q, undones):
+    def get_feasibility_advantage_GAE(self, feasibility_V, feasibility_next_V, undones):
         """
             unterminated: if the CBV collide with an object, then it is terminated
             undone: if the CBV is stuck or collide or max step will cause 'done'
@@ -37,24 +37,27 @@ class FPPOAdv(PPO):
 
         advantage = torch.zeros_like(feasibility_V[0])  # last advantage value by GAE (Generalized Advantage Estimate)
 
-        deltas = feasibility_V - feasibility_Q  # in feasibility, the lower, the better
+        deltas = feasibility_V - feasibility_next_V  # feasibility_V > feasibility_next_V means the next state is much safer
 
         for t in range(horizon_len - 1, -1, -1):
             advantages[t] = advantage = deltas[t] + undones[t] * self.gamma * self.lambda_gae_adv * advantage
         return advantages
 
-    def get_feasibility_Vs_Qs(self, closest_CBV_flag, ego_actions, ego_obs):
-        feasibility_Vs = torch.full_like(closest_CBV_flag, -1.0)
-        feasibility_Qs = torch.full_like(closest_CBV_flag, -1.0)
+    def get_feasibility_Vs(self, closest_CBV_flag, ego_obs, ego_next_obs):
+        feasibility_V = torch.full_like(closest_CBV_flag, -1.0)
+        feasibility_next_V = torch.full_like(closest_CBV_flag, -1.0)
         # only consider the CBV is the closest BV from ego
         indices = torch.where(closest_CBV_flag > 0.5)[0]
         if indices.numel() > 0:
-            action_inputs = ego_actions[indices]
             obs_inputs = ego_obs[indices]
-
-            feasibility_Vs[indices] = self.feability_policy.get_feasibility_Vs(obs_inputs).squeeze()
-            feasibility_Qs[indices] = self.feability_policy.get_feasibility_Qs(obs_inputs, action_inputs).squeeze()
-        return feasibility_Vs, feasibility_Qs
+            next_obs_inputs = ego_next_obs[indices]
+            # calculate the feasibility_V and current state and next state at the same time
+            feasibility = self.feability_policy.get_feasibility_Vs(torch.cat((obs_inputs, next_obs_inputs), dim=0))
+            # the length of each part
+            split_size = len(obs_inputs)
+            feasibility_V[indices] = feasibility[:split_size].squeeze()
+            feasibility_next_V[indices] = feasibility[split_size:].squeeze()
+        return [feasibility_V, feasibility_next_V]
 
     def train(self, buffer, writer, e_i):
         with torch.no_grad():
@@ -73,9 +76,9 @@ class FPPOAdv(PPO):
             buffer_size = states.shape[0]
             # feasibility
             closest_CBV_flag = CUDA(torch.FloatTensor(batch['closest_CBV_flag']))
-            ego_actions = CUDA(torch.FloatTensor(batch['ego_actions']))
             ego_obs = CUDA(torch.FloatTensor(batch['ego_obs']))
-            feasibility_Vs, feasibility_Qs = self.get_feasibility_Vs_Qs(closest_CBV_flag, ego_actions, ego_obs)
+            ego_next_obs = CUDA(torch.FloatTensor(batch['ego_next_obs']))
+            feasibility_V, feasibility_next_V = self.get_feasibility_Vs(closest_CBV_flag, ego_obs, ego_next_obs)
 
             # the values of the reward
             values = self.value(states)
@@ -84,14 +87,14 @@ class FPPOAdv(PPO):
             reward_advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
 
             reward_sums = reward_advantages + values
-            del rewards, values, next_values, unterminated, closest_CBV_flag, ego_obs, ego_actions
+            del rewards, values, next_values, unterminated, closest_CBV_flag, ego_obs
 
             # the advantage of the feasibility
-            feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_Vs, feasibility_Qs, undones)
+            feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_V, feasibility_next_V, undones)
 
             # condition
-            unsafe_condition = torch.where(feasibility_Vs > 0.0, 1.0, 0.0)
-            safe_condition = torch.where(feasibility_Vs <= 0.0, 1.0, 0.0)
+            unsafe_condition = torch.where(feasibility_V > 0.0, 1.0, 0.0)
+            safe_condition = torch.where(feasibility_V <= 0.0, 1.0, 0.0)
 
             # norm the reward advantage
             reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
@@ -101,7 +104,7 @@ class FPPOAdv(PPO):
             # final advantage
             advantages = unsafe_condition * feasibility_advantages + safe_condition * reward_advantages
 
-            del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, unsafe_condition, safe_condition, undones
+            del feasibility_V, feasibility_next_V, feasibility_advantages, reward_advantages, unsafe_condition, safe_condition, undones
 
         # start to train, use gradient descent without batch_size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)

@@ -17,10 +17,10 @@ from fnmatch import fnmatch
 from safebench.util.torch_util import CUDA
 
 from safebench.gym_carla.Lagrange import Lagrange
-from safebench.scenario.scenario_policy.rl.ppo import PPO
+from safebench.scenario.scenario_policy.rl.fppo_adv import FPPOAdv
 
 
-class FPPOLag(PPO):
+class FPPOLag(FPPOAdv):
     name = 'fppo_lag'
     type = 'onpolicy'
 
@@ -31,40 +31,6 @@ class FPPOLag(PPO):
             self.lagrange = Lagrange(**config['lagrange_cfgs'])
         else:
             self.lagrange = config['fix_multiplier']
-
-    def set_feasibility_policy(self, feasibility_policy):
-        self.feability_policy = feasibility_policy
-
-    def get_feasibility_advantage_GAE(self, feasibility_V, feasibility_Q, undones):
-        """
-            unterminated: if the CBV collide with an object, then it is terminated
-            undone: if the CBV is stuck or collide or max step will cause 'done'
-            https://github.com/AI4Finance-Foundation/ElegantRL/blob/master/elegantrl/agents/AgentPPO.py
-        """
-        advantages = torch.empty_like(feasibility_V)  # advantage value
-
-        horizon_len = feasibility_V.shape[0]
-
-        advantage = torch.zeros_like(feasibility_V[0])  # last advantage value by GAE (Generalized Advantage Estimate)
-
-        deltas = feasibility_V - feasibility_Q  # in feasibility, the lower, the better
-
-        for t in range(horizon_len - 1, -1, -1):
-            advantages[t] = advantage = deltas[t] + undones[t] * self.gamma * self.lambda_gae_adv * advantage
-        return advantages
-
-    def get_feasibility_Vs_Qs(self, closest_CBV_flag, ego_actions, ego_obs):
-        feasibility_Vs = torch.full_like(closest_CBV_flag, -1.0)
-        feasibility_Qs = torch.full_like(closest_CBV_flag, -1.0)
-        # only consider the CBV is the closest BV from ego
-        indices = torch.where(closest_CBV_flag > 0.5)[0]
-        if indices.numel() > 0:
-            action_inputs = ego_actions[indices]
-            obs_inputs = ego_obs[indices]
-
-            feasibility_Vs[indices] = self.feability_policy.get_feasibility_Vs(obs_inputs).squeeze()
-            feasibility_Qs[indices] = self.feability_policy.get_feasibility_Qs(obs_inputs, action_inputs).squeeze()
-        return feasibility_Vs, feasibility_Qs
 
     def set_mode(self, mode):
         self.mode = mode
@@ -110,9 +76,9 @@ class FPPOLag(PPO):
 
             # feasibility
             closest_CBV_flag = CUDA(torch.FloatTensor(batch['closest_CBV_flag']))
-            ego_actions = CUDA(torch.FloatTensor(batch['ego_actions']))
             ego_obs = CUDA(torch.FloatTensor(batch['ego_obs']))
-            feasibility_Vs, feasibility_Qs = self.get_feasibility_Vs_Qs(closest_CBV_flag, ego_actions, ego_obs)
+            ego_next_obs = CUDA(torch.FloatTensor(batch['ego_next_obs']))
+            feasibility_V, feasibility_next_V = self.get_feasibility_Vs(closest_CBV_flag, ego_obs, ego_next_obs)
 
             # the values of the reward
             values = self.value(states)
@@ -120,17 +86,17 @@ class FPPOLag(PPO):
             # the advantage of the reward
             reward_advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
             reward_sums = reward_advantages + values
-            del rewards, values, next_values, unterminated, closest_CBV_flag, ego_actions, ego_obs
+            del rewards, values, next_values, unterminated, closest_CBV_flag, ego_obs
 
             # the advantage of the feasibility
-            feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_Vs, feasibility_Qs, undones)
+            feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_V, feasibility_next_V, undones)
 
             # Lagrange multiplier
             if self.mlp_multiplier:
                 penalty = self.lagrange.get_lagrangian_multiplier(states)
-                constraints = torch.clamp(feasibility_Vs, min=-5., max=10)
+                constraints = torch.clamp(feasibility_V, min=-5., max=10)
             else:
-                penalty = torch.mul(feasibility_Vs > 0, self.lagrange)
+                penalty = torch.mul(feasibility_V > 0, self.lagrange)
 
             # norm the reward advantage
             reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
@@ -140,7 +106,7 @@ class FPPOLag(PPO):
             # final advantage
             advantages = (reward_advantages + torch.mul(penalty, feasibility_advantages)) / (1 + penalty)
 
-            del feasibility_Vs, feasibility_Qs, feasibility_advantages, reward_advantages, penalty, undones
+            del feasibility_V, feasibility_next_V, feasibility_advantages, reward_advantages, penalty, undones
 
         # start to train, use gradient descent without batch_size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
