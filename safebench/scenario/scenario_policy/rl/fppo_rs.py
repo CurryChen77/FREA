@@ -17,7 +17,7 @@ from safebench.scenario.scenario_policy.rl.ppo import PPO
 def process_feasibility_rewards(feasibility_next_V, clamp_range, map_range):
     clamp_min, clamp_max = clamp_range
     map_min, map_max = map_range
-    print("feasibility next V", feasibility_next_V)
+
     mask = feasibility_next_V > 0
 
     output = torch.zeros_like(feasibility_next_V)
@@ -25,7 +25,6 @@ def process_feasibility_rewards(feasibility_next_V, clamp_range, map_range):
     clamped_and_mapped_V = ((torch.clamp(feasibility_next_V[mask], min=clamp_min, max=clamp_max) - clamp_min) / (clamp_max - clamp_min)) * (map_max - map_min) + map_min
 
     output[mask] = clamped_and_mapped_V
-    print("processed reward", output)
 
     return output
 
