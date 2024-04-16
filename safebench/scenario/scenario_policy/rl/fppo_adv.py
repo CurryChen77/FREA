@@ -59,6 +59,12 @@ class FPPOAdv(PPO):
             feasibility_next_V[indices] = feasibility[split_size:].squeeze()
         return [feasibility_V, feasibility_next_V]
 
+    def get_surrogate_advantages(self, feasibility_advantages, reward_advantages, feasibility_next_V):
+        constraint_safe_condition = torch.where(feasibility_next_V <= 0.0, 1.0, 0.0)
+        constraint_unsafe_condition = torch.where(feasibility_next_V > 0.0, 1.0, 0.0)
+        surrogate_advantages = constraint_safe_condition * reward_advantages + constraint_unsafe_condition * feasibility_advantages
+        return surrogate_advantages
+
     def train(self, buffer, writer, e_i):
         with torch.no_grad():
             # learning rate decay
@@ -92,17 +98,20 @@ class FPPOAdv(PPO):
             # the advantage of the feasibility
             feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_V, feasibility_next_V, undones)
 
-            # condition
-            unsafe_condition = torch.where(feasibility_V > 0.0, 1.0, 0.0)
-            safe_condition = torch.where(feasibility_V <= 0.0, 1.0, 0.0)
-
             # norm the reward advantage
             reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
             # norm the feasibility advantage
             feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
 
+            # the surrogate_advantages under safe conditions
+            surrogate_advantages = self.get_surrogate_advantages(feasibility_advantages, reward_advantages, feasibility_next_V)
+
+            # condition
+            unsafe_condition = torch.where(feasibility_V > 0.0, 1.0, 0.0)
+            safe_condition = torch.where(feasibility_V <= 0.0, 1.0, 0.0)
+
             # final advantage
-            advantages = unsafe_condition * feasibility_advantages + safe_condition * reward_advantages
+            advantages = unsafe_condition * feasibility_advantages + safe_condition * surrogate_advantages
 
             del feasibility_V, feasibility_next_V, feasibility_advantages, reward_advantages, unsafe_condition, safe_condition, undones
 
