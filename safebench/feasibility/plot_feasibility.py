@@ -319,11 +319,11 @@ def plot_multi_feasibility_region(args):
     ax1 = plot_feasibility_region(ax1, feasibility_policy, ego_obs1, ego_speed=2, spatial_interval=spatial_interval, actor_num=actor_num)
     # figure 2, ego at high speed (6m/s), BVs driving straight
     ax2 = plot_feasibility_region(ax2, feasibility_policy, ego_obs1, ego_speed=6, spatial_interval=spatial_interval, actor_num=actor_num)
-    # figure 3, ego at normal speed (4m/s), BVs driving across
-    ego_obs2 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, -3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
+    # figure 3, ego at normal speed (4m/s), BVs driving toward ego
+    ego_obs2 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, 3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(3, 3))
     ax3 = plot_feasibility_region(ax3, feasibility_policy, ego_obs2, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
     # figure 4, ego at normal speed (4m/s), BVs driving across under different directions
-    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/6, 3.14/6), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(1, 5))
+    ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/6, 3.14/6), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(3, 3))
     ax4 = plot_feasibility_region(ax4, feasibility_policy, ego_obs3, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
 
     for ax in [ax1, ax2, ax3, ax4]:
@@ -457,7 +457,7 @@ if __name__ == '__main__':
     parser.add_argument('--min_dis_threshold', '-dis', type=str, default='0.1')
     parser.add_argument('--mode', '-m', type=str, default='region', choices=['region', 'data', 'learning_curve'])
     parser.add_argument('--actor_num', type=int, default=3)
-    parser.add_argument('--spatial_interval', type=int, default=80)
+    parser.add_argument('--spatial_interval', type=int, default=32)
     parser.add_argument('--x_range', type=tuple, default=(-22, 22))
     parser.add_argument('--y_range', type=tuple, default=(-7, 7))
     parser.add_argument('--width', type=float, default=4.9)
