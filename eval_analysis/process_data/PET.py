@@ -90,55 +90,14 @@ def get_sequence_pet(sequence):
     return pet_list
 
 
-def get_sequence_pet_avoidable(sequence):
-    pet_list = []
-    pet_dict = {}
-
-    x_max, x_min = max(sequence[0]['ego_loc'][0], sequence[-1]['ego_loc'][0]), min(sequence[0]['ego_loc'][0], sequence[-1]['ego_loc'][0])
-    y_max, y_min = max(sequence[0]['ego_loc'][1], sequence[-1]['ego_loc'][1]), min(sequence[0]['ego_loc'][1], sequence[-1]['ego_loc'][1])
-
-    x_list = np.linspace(x_min - 5, x_max + 5, num=2*(int(x_max - x_min)+10))
-    y_list = np.linspace(y_min - 5, y_max + 5, num=2*(int(x_max - x_min)+10))
-
-    for step in sequence:
-        if step['feasibility_V'] < 0:
-            # add ego
-            occupied_index_list = get_occupied_box_index_from_obs(step['ego_loc'], x_list, y_list)
-            for occupied_index in occupied_index_list:
-                if str(occupied_index) in pet_dict:
-                    pet_dict[str(occupied_index)].append([step['current_game_time'], 'ego'])
-                else:
-                    pet_dict[str(occupied_index)] = [[step['current_game_time'], 'ego']]
-            # add all the bv
-            for BV_index, BV_ego_dis in enumerate(step['BVs_ego_dis']):
-                occupied_index_list = get_occupied_box_index_from_obs(
-                    step['BVs_loc'][BV_index], x_list, y_list,
-                )
-                for occupied_index in occupied_index_list:
-                    if str(occupied_index) in pet_dict:
-                        pet_dict[str(occupied_index)].append([step['current_game_time'], step['BVs_id'][BV_index]])
-                    else:
-                        pet_dict[str(occupied_index)] = [[step['current_game_time'], step['BVs_id'][BV_index]]]
-
-    for time_id_list in pet_dict.values():
-        pet_tmp = calculate_position_pet_list(time_id_list)
-        if pet_tmp < 10:
-            pet_list.append(pet_tmp)
-
-    return pet_list
-
-
 def process_pet_from_one_pkl(pkl_path, save_folder):
     pet = {}
     pet_list_all = []
-    pet_list_avoidable = []
     data = joblib.load(pkl_path)
     for sequence in tqdm(data.values()):
         pet_list_all.extend(get_sequence_pet(sequence))
-        pet_list_avoidable.extend(get_sequence_pet_avoidable(sequence))
     # save the PET data
     pet['all_pet'] = pet_list_all
-    pet['avoidable_pet'] = pet_list_avoidable
     # save Vehicle forward speed
     with open(osp.join(save_folder, "PET.pkl"), 'wb') as pickle_file:
         pickle.dump(pet, pickle_file)

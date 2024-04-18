@@ -8,12 +8,32 @@
 """
 import os.path as osp
 import pickle
+import torch
 from collections import Counter
 from tqdm import tqdm
 import joblib
 import numpy as np
 import math
 from safebench.scenario.scenario_definition.atomic_criteria import Status
+from safebench.util.torch_util import CUDA, CPU
+
+
+def process_feasibility_from_one_pkl(pkl_path, feasibility_policy, save_folder):
+
+    ego_obs_list = []
+    data = joblib.load(pkl_path)
+    for sequence in tqdm(data.values()):
+        for step in sequence:
+            if step['ego_min_dis'] < 25:
+                ego_obs_list.append(torch.FloatTensor(step['ego_obs']))
+    ego_obs_tensor = CUDA(torch.stack(ego_obs_list, dim=0))
+    feasibility_Vs = feasibility_policy.get_feasibility_Vs(ego_obs_tensor)
+    unfeasible_rate = (feasibility_Vs > 0).float().mean().item()
+    feasibility = {'feasibility_Vs': CPU(feasibility_Vs), 'unfeasible_rate': unfeasible_rate}
+    # save feasibility
+    with open(osp.join(save_folder, "feasibility.pkl"), 'wb') as pickle_file:
+        pickle.dump(feasibility, pickle_file)
+    return feasibility_Vs
 
 
 def process_collision_from_one_pkl(pkl_path, algorithm, save_folder):
@@ -54,49 +74,36 @@ def process_collision_from_one_pkl(pkl_path, algorithm, save_folder):
         collision['collision_rate'] = num_collision / collision_attacker
         collision['collision_impulse'] = collision_impulse
     # save Vehicle forward speed
-    with open(osp.join(save_folder, "Collision.pkl"), 'wb') as pickle_file:
+    with open(osp.join(save_folder, "collision.pkl"), 'wb') as pickle_file:
         pickle.dump(collision, pickle_file)
 
 
 def process_common_data_from_one_pkl(pkl_path, save_folder):
     total_step = 0
-    unfeasible_count = 0
     near_count = 0
-    avoidable_near_count = 0
     Vehicle_forward_speed = []
-    min_dis = {'min_dis': [], 'avoidable_min_dis': []}
-    feasibility = {'feasibility_value': []}
+    min_dis = []
     data = joblib.load(pkl_path)
     for sequence in tqdm(data.values()):
         for step in sequence:
             if step['ego_min_dis'] < 25:
                 total_step += 1
 
-                min_dis['min_dis'].append(step['ego_min_dis'])
+                min_dis.append(step['ego_min_dis'])
                 near_count += 1 if step['ego_min_dis'] < 1 else 0
 
                 for vel in step['BVs_vel']:
                     abs_vel = math.sqrt(vel[0] ** 2 + vel[1] ** 2)
                     Vehicle_forward_speed.append(abs_vel) if abs_vel > 0.1 else None
 
-                if 'feasibility_V' in step:
-                    feasibility['feasibility_value'].append(step['feasibility_V'])
-                    if step['feasibility_V'] > 0:
-                        unfeasible_count += 1
-                    else:
-                        min_dis['avoidable_min_dis'].append(step['ego_min_dis'])
-                        avoidable_near_count += 1 if step['ego_min_dis'] < 1 else 0
-
-    feasibility['unfeasible_rate'] = unfeasible_count / total_step
-    min_dis['near_rate'] = near_count / total_step
-    min_dis['avoidable_near_rate'] = avoidable_near_count / total_step
-
+    min_dis_data = {
+        'near_rate': near_count / total_step,
+        'min_dis': min_dis
+    }
     # save ego min dis
-    with open(osp.join(save_folder, "Min_dis.pkl"), 'wb') as pickle_file:
-        pickle.dump(min_dis, pickle_file)
+    with open(osp.join(save_folder, "min_dis.pkl"), 'wb') as pickle_file:
+        pickle.dump(min_dis_data, pickle_file)
     # save Vehicle forward speed
-    np.save(osp.join(save_folder, "Vehicle_forward_speed.npy"), Vehicle_forward_speed)
-    # save feasibility
-    with open(osp.join(save_folder, "Feasibility.pkl"), 'wb') as pickle_file:
-        pickle.dump(feasibility, pickle_file)
+    np.save(osp.join(save_folder, "vehicle_forward_speed.npy"), Vehicle_forward_speed)
+
 
