@@ -90,7 +90,6 @@ def main(args):
     PET_all_data = {}
     min_dis_data = {}
     near_rate = {}
-    Vehicle_forward_speed_data = {}
     TTC_data = {}
     feasibility_data = {}
     unfeasible_rate = {}
@@ -113,7 +112,6 @@ def main(args):
                 PET_all_data[algorithm_title] = {}
                 min_dis_data[algorithm_title] = {}
                 near_rate[algorithm_title] = {}
-                Vehicle_forward_speed_data[algorithm_title] = {}
                 TTC_data[algorithm_title] = {}
                 feasibility_data[algorithm_title] = {}
                 unfeasible_rate[algorithm_title] = {}
@@ -137,9 +135,6 @@ def main(args):
                                     all_min_dis_data = pickle.load(pickle_file)
                                 min_dis_data[algorithm_title][scenario_map] = all_min_dis_data['min_dis']
                                 near_rate[algorithm_title][scenario_map] = all_min_dis_data['near_rate']
-                            if file == 'vehicle_forward_speed.npy' and 'vehicle_forward_speed' in args.data:
-                                file_path = os.path.join(scenario_map_path, file)
-                                Vehicle_forward_speed_data[algorithm_title][scenario_map] = np.load(file_path)
                             if file == 'TTC.npy' and 'TTC' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
                                 TTC_data[algorithm_title][scenario_map] = np.load(file_path)
@@ -165,10 +160,6 @@ def main(args):
         plot_metric(near_rate, 'near_rate')
         min_dis_bins = np.linspace(0, 10, 25)
         draw_data(min_dis_data, 'Min distance', ROOT_DIR, bins=min_dis_bins)
-    # draw Vehicle forward speed
-    if 'vehicle_forward_speed' in args.data:
-        Vehicle_forward_speed_bins = np.linspace(0, 10, 25)
-        draw_data(Vehicle_forward_speed_data, 'Vehicle forward Speed', ROOT_DIR, bins=Vehicle_forward_speed_bins)
     # draw TTC
     if 'TTC' in args.data:
         TTC_bins = np.linspace(0, 7.5, 25)
@@ -188,7 +179,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--metric', '-m', action='store_true')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
-    parser.add_argument('--data', '-d', nargs='*', type=str, default=['feasibility', 'min_dis', 'vehicle_forward_speed', 'PET', 'TTC', 'collision'])
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['feasibility', 'min_dis', 'PET', 'TTC', 'collision'])
     args = parser.parse_args()
 
     main(args)

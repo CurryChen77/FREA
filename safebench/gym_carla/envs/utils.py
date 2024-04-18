@@ -138,6 +138,7 @@ def get_records(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox
         'ego_vel': [ego_vel.x, ego_vel.y],
         'ego_loc': [ego_loc.x, ego_loc.y],
         'ego_yaw': ego_yaw,
+        'ego_id': ego.id,
         'ego_extent': [ego_extent.x * 2., ego_extent.y * 2.],
         'ego_acc': [ego_acc.x, ego_acc.y],
         'CBVs_collision': {},
@@ -147,6 +148,7 @@ def get_records(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox
         'BVs_extent': [],
         'BVs_ego_dis': [],
         'BVs_id': [],
+        'CBVs_id': set(CarlaDataProvider.get_CBVs_by_ego(ego).keys()),
         'ego_min_dis': search_radius
     }
     # get the ego obs for feasibility calculation
