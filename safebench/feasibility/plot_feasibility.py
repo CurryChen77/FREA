@@ -371,6 +371,8 @@ def read_df(df_path, ROOT_DIR):
                     file_path = os.path.join(root, file_name)
                     data = pd.read_csv(file_path)
 
+                    # data = data[data['Step'] % 2 == 0]
+
                     dataframes.append(pd.DataFrame({
                         'step': data['Step'],
                         'value': data['Value'],
@@ -408,15 +410,13 @@ def plot_learning_curve(args):
 
         # create subplot
         scenes = df['scene'].drop_duplicates()
-        num_plots = len(scenes)
         subplots_height = 5
         aspect_ratio = 1.2
-        figsize = (subplots_height * aspect_ratio * num_plots, subplots_height)
+        figsize = (subplots_height * aspect_ratio, subplots_height)
         plt.rcParams['font.family'] = 'Times New Roman'
-        fig, axs = plt.subplots(1, num_plots, figsize=figsize, squeeze=False)  # make sure axs are always 2D
+        fig, ax = plt.subplots(figsize=figsize)  # make sure axs are always 2D
 
-        for index, scene in enumerate(scenes):
-            ax = axs[0, index]
+        for scene in scenes:
             scene_df = df[df['scene'] == scene]
 
             # handel algorithm in each scene
@@ -429,19 +429,18 @@ def plot_learning_curve(args):
 
                 # merge the smoothed data
                 smoothed_df = pd.concat(smoothed_dfs)
+                each_label = f'{scene}  min distance:{algorithm} m'
                 # plot the mean value and the trust region
                 sns.lineplot(ax=ax, data=smoothed_df, x='step', y='smoothed_value',
-                             estimator='mean', errorbar=('ci', 95), label='min distance:' + str(algorithm) + ' meter',
+                             estimator='mean', errorbar=('ci', 95), label=each_label,
                              err_kws={"alpha": 0.2, "linewidth": 0.1})  # error_kws: the parameter for the trust region
 
             handles, labels = ax.get_legend_handles_labels()
-            ax.legend(handles=handles[0:], labels=labels[0:], title="Collision_distance_threshold", loc="best", fontsize=9, title_fontsize=10)
+            ax.legend(handles=handles[0:], labels=labels[0:], title="Collision_distance_threshold", loc="best", fontsize=8, title_fontsize=10)
 
-            ax.set_title(f'{scene}')
             ax.set_xlabel('Step')
             ax.set_ylabel(format_label(label))
 
-        plt.tight_layout()
         save_dir = osp.join(args.ROOT_DIR, f'safebench/feasibility/figures/{label}_learning_curve.png')
         plt.savefig(save_dir, dpi=600)
         plt.show()
