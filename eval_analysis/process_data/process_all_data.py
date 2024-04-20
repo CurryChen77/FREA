@@ -13,7 +13,8 @@ import numpy as np
 from safebench.util.run_util import load_config
 from safebench.feasibility import FEASIBILITY_LIST
 from safebench.util.logger import Logger
-from common import process_common_data_from_one_pkl, process_collision_from_one_pkl, process_feasibility_from_one_pkl
+from common import process_common_data_from_one_pkl, process_collision_from_one_pkl
+from feasibility import process_feasibility_from_one_pkl
 from PET import process_pet_from_one_pkl
 from eval_analysis.process_data.TTC import process_ttc_from_one_pkl
 

@@ -13,6 +13,7 @@ from tqdm import tqdm
 import joblib
 import numpy as np
 from safebench.scenario.scenario_definition.atomic_criteria import Status
+from feasibility import get_collision_trajectory
 
 
 def process_collision_from_one_pkl(pkl_path, algorithm, save_folder):
@@ -64,6 +65,7 @@ def process_common_data_from_one_pkl(pkl_path, save_folder):
     min_dis = []
     data = joblib.load(pkl_path)
     for sequence in tqdm(data.values()):
+        get_collision_trajectory(sequence)
         for step in sequence:
             if step['ego_min_dis'] < 25:
                 total_step += 1

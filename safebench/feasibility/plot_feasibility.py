@@ -106,7 +106,7 @@ def plot_feasibility_data_distribution(args):
     fig.colorbar(yaw_speed_img, ax=axs[1, 0])
 
     _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[1, 1].set_title('Ego Vehicle Throttle and Speed', fontsize=12)
+    axs[1, 1].set_title('Ego Vehicle Throttle and Steering angle', fontsize=12)
     axs[1, 1].set_xlabel('Throttle')
     axs[1, 1].set_ylabel('Steering angle')
     axs[1, 1].set_ylim([-0.75, 0.75])
