@@ -413,6 +413,8 @@ class CarlaEnv(gym.Env):
         if self.mode == 'collect_feasibility_data' or self.use_feasibility:
             info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles))
             info['closest_CBV_flag'] = get_closest_CBV_flag(self.ego_nearby_vehicles, self.CBVs)
+            info['ego_min_dis'] = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicles, self.search_radius)
+            info['ego_collide'] = float(self.ego_collide)
 
         # when resetting
         if reset:
@@ -426,11 +428,6 @@ class CarlaEnv(gym.Env):
         elif next_info:
             # the total reward for the CBV training
             info['CBVs_reward'] = self._get_scenario_reward()
-
-            # the cost or the constraint h should be calculated at state (t+1)
-            if self.mode == 'collect_feasibility_data':
-                info['ego_min_dis'] = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicles, self.search_radius)
-                info['ego_collide'] = float(self.ego_collide)
 
             # if CBV collide with other vehicles, then terminate
             info['CBVs_terminated'] = self._get_CBVs_terminated()

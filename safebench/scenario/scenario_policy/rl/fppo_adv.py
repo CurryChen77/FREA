@@ -10,12 +10,14 @@
 
 import torch
 import torch.nn as nn
+from copy import deepcopy
 
 from safebench.util.torch_util import CUDA
 from safebench.scenario.scenario_policy.rl.ppo import PPO
 
 
 class FPPOAdv(PPO):
+    feasibility_min_dis_threshold: float
     name = 'fppo_adv'
     type = 'onpolicy'
 
@@ -24,8 +26,10 @@ class FPPOAdv(PPO):
 
     def set_feasibility_policy(self, feasibility_policy):
         self.feability_policy = feasibility_policy
+        self.feasibility_M = self.feability_policy.M
+        self.feasibility_min_dis_threshold = self.feability_policy.min_dis_threshold
 
-    def get_feasibility_advantage_GAE(self, feasibility_V, feasibility_next_V, undones):
+    def get_feasibility_advantage_GAE(self, feasibility_V, feasibility_next_V, ego_min_dis, next_ego_min_dis, undones):
         """
             unterminated: if the CBV collide with an object, then it is terminated
             undone: if the CBV is stuck or collide or max step will cause 'done'
@@ -37,7 +41,14 @@ class FPPOAdv(PPO):
 
         advantage = torch.zeros_like(feasibility_V[0])  # last advantage value by GAE (Generalized Advantage Estimate)
 
-        deltas = feasibility_V - feasibility_next_V  # feasibility_V > feasibility_next_V means the next state is much safer
+        # h(s') < h(s) <-> next_ego_min_dis > self.feasibility_min_dis_threshold and ego_min_dis <= self.feasibility_min_dis_threshold
+        indices = torch.where((next_ego_min_dis > self.feasibility_min_dis_threshold) & (ego_min_dis <= self.feasibility_min_dis_threshold))[0]
+        # if h(s') < h(s), feasibility_Qh = max(h(s), Vh(s'))
+        # elif h(s') >= h(s), feasibility_Qh = Vh(s')
+        feasibility_Q = deepcopy(feasibility_next_V)
+        feasibility_Q[indices] = torch.maximum(feasibility_next_V[indices], CUDA(torch.tensor(self.feasibility_M)))
+
+        deltas = feasibility_V - feasibility_Q  # feasibility_V > feasibility_Q means the next state is much safer
 
         for t in range(horizon_len - 1, -1, -1):
             advantages[t] = advantage = deltas[t] + undones[t] * self.gamma * self.lambda_gae_adv * advantage
@@ -84,6 +95,8 @@ class FPPOAdv(PPO):
             closest_CBV_flag = CUDA(torch.FloatTensor(batch['closest_CBV_flag']))
             ego_obs = CUDA(torch.FloatTensor(batch['ego_obs']))
             ego_next_obs = CUDA(torch.FloatTensor(batch['ego_next_obs']))
+            ego_min_dis = CUDA(torch.FloatTensor(batch['ego_min_dis']))
+            next_ego_min_dis = CUDA(torch.FloatTensor(batch['next_ego_min_dis']))
             feasibility_V, feasibility_next_V = self.get_feasibility_Vs(closest_CBV_flag, ego_obs, ego_next_obs)
 
             # the values of the reward
@@ -96,7 +109,7 @@ class FPPOAdv(PPO):
             del rewards, values, next_values, unterminated, closest_CBV_flag, ego_obs
 
             # the advantage of the feasibility
-            feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_V, feasibility_next_V, undones)
+            feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_V, feasibility_next_V, ego_min_dis, next_ego_min_dis, undones)
 
             # norm the reward advantage
             reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
