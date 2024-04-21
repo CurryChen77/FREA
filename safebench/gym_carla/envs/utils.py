@@ -125,7 +125,7 @@ def get_ego_obs(ego_vehicle, ego_nearby_vehicles, desired_nearby_vehicle=3, wayp
     }
 
 
-def get_records(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox=True, BV_num=3):
+def get_records(ego, CBVs_collision, ego_nearby_vehicles, goal_waypoint, goal_point_radius=2, search_radius=25, bbox=True, BV_num=3):
     # ego's info
     ego_vel = CarlaDataProvider.get_velocity(ego)
     ego_tra = CarlaDataProvider.get_transform(ego)
@@ -149,8 +149,9 @@ def get_records(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox
         'BVs_ego_dis': [],
         'BVs_id': [],
         'CBVs_id': set(CarlaDataProvider.get_CBVs_by_ego(ego).keys()),
-        'CBVs_reached_goal_ids': set(CarlaDataProvider.get_CBVs_reach_goal_by_ego(ego).keys()),
-        'ego_min_dis': search_radius
+        'goal_waypoint_loc': [goal_waypoint.transform.location.x, goal_waypoint.transform.location.y],
+        'goal_radius': goal_point_radius,
+        'ego_min_dis': search_radius,
     }
     # get the ego obs for feasibility calculation
     records.update(get_ego_obs(ego_vehicle=ego, ego_nearby_vehicles=ego_nearby_vehicles))

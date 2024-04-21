@@ -13,10 +13,8 @@ import numpy as np
 from safebench.util.run_util import load_config
 from safebench.feasibility import FEASIBILITY_LIST
 from safebench.util.logger import Logger
-from common import process_common_data_from_one_pkl, process_collision_from_one_pkl
-from feasibility import process_feasibility_from_one_pkl
-from PET import process_pet_from_one_pkl
-from eval_analysis.process_data.TTC import process_ttc_from_one_pkl
+from miss_trajectory import process_miss_trajectory_from_one_pkl
+from collision_trajectory import process_collision_trajectory_from_one_pkl
 
 
 def get_feasibility_policy(feasibility_config, algorithm, scenario_map, ROOT_DIR):
@@ -51,21 +49,13 @@ def main(args_dict):
                         save_folder = osp.join(ROOT_DIR, "eval_analysis", "processed_data", algorithm, scenario_map)
                         os.makedirs(save_folder, exist_ok=True)
                         feasibility_policy = get_feasibility_policy(feasibility_config, algorithm, scenario_map, ROOT_DIR)
-                        if 'feasibility' in args_dict['data']:
-                            print('>> Processing Feasibility')
-                            feasibility_Vs = process_feasibility_from_one_pkl(pkl_path, feasibility_policy, save_folder)
-                        if 'PET' in args_dict['data']:
-                            print('>> Processing PET')
-                            process_pet_from_one_pkl(pkl_path, save_folder)
-                        if 'common' in args_dict['data']:
-                            print('>> Processing common data')
-                            process_common_data_from_one_pkl(pkl_path, save_folder)
-                        if 'TTC' in args_dict['data']:
-                            print('>> Processing TTC data')
-                            process_ttc_from_one_pkl(pkl_path, save_folder)
-                        if 'collision' in args_dict['data']:
-                            print('>> Processing Collision data')
-                            process_collision_from_one_pkl(pkl_path, algorithm, save_folder)
+                        # collision trajectory for avoidable eval; miss trajectory for near-miss eval
+                        if 'collision_traj' in args_dict['data'] and 'standard' not in algorithm:
+                            print('>> Processing collision trajectory information')
+                            process_collision_trajectory_from_one_pkl(pkl_path, feasibility_policy, save_folder)
+                        if 'miss_traj' in args_dict['data']:
+                            print('>> Processing miss trajectory information')
+                            process_miss_trajectory_from_one_pkl(pkl_path, save_folder)
                         print('>> ' + '-' * 40)
 
 
@@ -74,7 +64,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
-    parser.add_argument('--data', '-d', nargs='*', type=str, default=['common', 'PET', 'TTC', 'collision', 'feasibility'])
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj'])
     parser.add_argument('--feasibility_cfg_path', nargs='*', type=str, default='safebench/feasibility/config/HJR.yaml')
     parser.add_argument('--seed', '-s', type=int, default=0)
     args = parser.parse_args()

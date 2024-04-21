@@ -378,7 +378,10 @@ class CarlaEnv(gym.Env):
         extra_status = {}
         if self.eval_mode == 'analysis':
             # update the BVs record when evaluating
-            extra_status.update(get_records(self.ego_vehicle, self.CBVs_collision, self.ego_nearby_vehicles, self.search_radius))
+            extra_status.update(
+                get_records(self.ego_vehicle, self.CBVs_collision, self.ego_nearby_vehicles,
+                            self.goal_waypoint, self.goal_point_radius, self.search_radius)
+            )
 
         # update the running status and check whether terminate or not
         self.scenario_manager.update_running_status(extra_status)
