@@ -149,6 +149,7 @@ def get_records(ego, CBVs_collision, ego_nearby_vehicles, search_radius=25, bbox
         'BVs_ego_dis': [],
         'BVs_id': [],
         'CBVs_id': set(CarlaDataProvider.get_CBVs_by_ego(ego).keys()),
+        'CBVs_reached_goal_ids': set(CarlaDataProvider.get_CBVs_reach_goal_by_ego(ego).keys()),
         'ego_min_dis': search_radius
     }
     # get the ego obs for feasibility calculation

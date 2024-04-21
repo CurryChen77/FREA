@@ -13,10 +13,84 @@ from tqdm import tqdm
 import joblib
 import numpy as np
 from safebench.scenario.scenario_definition.atomic_criteria import Status
-from feasibility import get_collision_trajectory
+
+
+def trajectory_infos(trajectory, index, sequence, CBV_id):
+    """
+        record the necessary information for trajectory
+    """
+    # reverse from the current step for each CBV ego collision event
+    trajectory[CBV_id] = {
+        'loc': [],
+        'vel': [],
+        'yaw': [],
+        'time': [],
+        'ego_dis': [],
+        'ego_obs': [],
+    }
+    for i in range(index, -1, -1):
+        if CBV_id in sequence[i]['CBVs_id_set'] and CBV_id in sequence[i]['BVs_id_set']:
+            BV_index = sequence[i]['BVs_id'].index(CBV_id)
+            trajectory[CBV_id]['loc'].append(sequence[i]['BVs_loc'][BV_index])
+            trajectory[CBV_id]['vel'].append(sequence[i]['BVs_vel'][BV_index])
+            trajectory[CBV_id]['yaw'].append(sequence[i]['BVs_yaw'][BV_index])
+            trajectory[CBV_id]['time'].append(sequence[i]['current_game_time'])
+            trajectory[CBV_id]['ego_dis'].append(sequence[i]['BVs_ego_dis'][BV_index])
+            if sequence[i]['BVs_id'][0] in sequence[i]['CBVs_id_set']:
+                trajectory[CBV_id]['ego_obs'].append(sequence[i]['ego_obs'])
+            else:
+                trajectory[CBV_id]['ego_obs'].append(None)
+        else:
+            break
+
+
+def get_collision_trajectory(sequence):
+    """
+        convert each sequence trajectory to potential collision trajectory
+        sequence: a complete trajectory for one small route scenario
+    """
+    # convert id list to set
+    for step in sequence:
+        step['CBVs_id_set'] = set(step['CBVs_id'])
+        step['BVs_id_set'] = set(step['BVs_id'])
+
+    collision_trajectories = {}
+    for index, step in enumerate(sequence):
+        for CBV_id, collision_event in step['CBVs_collision'].items():
+            if collision_event is not None and collision_event['other_actor_id'] == step['ego_id']:
+                if CBV_id not in collision_trajectories:
+                    collision_trajectories[CBV_id] = []
+                    # only count the first time CBV_id appear in the CBVs_collision
+                    trajectory_infos(collision_trajectories, index, sequence, CBV_id)
+    return collision_trajectories
+
+
+def get_goal_reached_trajectory(sequence):
+    """
+        get all the CBV trajectories that reach the goal
+    """
+    # convert id list to set
+    for step in sequence:
+        step['CBVs_id_set'] = set(step['CBVs_id'])
+        step['BVs_id_set'] = set(step['BVs_id'])
+        step['CBVs_reached_goal_id_set'] = set(step['CBVs_reached_goal_ids'])
+
+    goal_reached_trajectories = {}
+    for index, step in enumerate(sequence):
+        for CBV_id in step['CBVs_reached_goal_id_set']:
+            # only count the first time of CBV reach goal
+            if CBV_id not in goal_reached_trajectories:
+                goal_reached_trajectories[CBV_id] = []
+                # only get info for the first time CBV_id appear in CBV_reach_goal_ids
+                trajectory_infos(goal_reached_trajectories, index-1, sequence, CBV_id)
+    return goal_reached_trajectories
 
 
 def process_collision_from_one_pkl(pkl_path, algorithm, save_folder):
+    """
+        collision rate:
+        the collision num / route scenario num (for PPO-based CBV, the collision rate may > 1)
+    """
     data = joblib.load(pkl_path)
     collision = {}
     collision_impulse = []
@@ -35,24 +109,19 @@ def process_collision_from_one_pkl(pkl_path, algorithm, save_folder):
     else:
         # learnable scenario agent
         num_collision = 0
-        collision_attacker = 0
+        num_scenario = 0
         for sequence in tqdm(data.values()):
-            collision_count = Counter()
-            all_count = Counter()
-
+            num_scenario += 1
             for step in sequence:
                 for CBV_id, collision_event in step['CBVs_collision'].items():
                     if collision_event is not None and collision_event['other_actor_id'] == step['ego_id']:
                         # only count the collision with ego vehicle
-                        collision_count[CBV_id] += 1
                         step_collision_impulse = collision_event['normal_impulse']
                         collision_impulse.append(np.sqrt(np.sum(np.square(np.array(step_collision_impulse) / 1000))))  # kN*s
-                    all_count[CBV_id] += 1
+                        num_collision += 1
+                        break
 
-            num_collision += len(collision_count)
-            collision_attacker += len(all_count)
-
-        collision['collision_rate'] = num_collision / collision_attacker
+        collision['collision_rate'] = num_collision / num_scenario
         collision['collision_impulse'] = collision_impulse
     # save Vehicle forward speed
     with open(osp.join(save_folder, "collision.pkl"), 'wb') as pickle_file:
