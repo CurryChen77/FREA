@@ -53,34 +53,42 @@ def calculate_position_pet_list(time_id_list):
     return min_pet
 
 
-def get_sequence_pet(sequence):
+def get_trajectory_pet(trajectory):
+    """
+        trajectory
+        'ego': {'time': [], 'loc': []}
+        'CBV_id': {'time': [], 'loc': [], 'ego_dis': []}
+    """
     pet_list = []
     pet_dict = {}
 
-    x_max, x_min = max(sequence[0]['ego_loc'][0], sequence[-1]['ego_loc'][0]), min(sequence[0]['ego_loc'][0], sequence[-1]['ego_loc'][0])
-    y_max, y_min = max(sequence[0]['ego_loc'][1], sequence[-1]['ego_loc'][1]), min(sequence[0]['ego_loc'][1], sequence[-1]['ego_loc'][1])
+    x_max, x_min = max(trajectory['ego']['loc'][0][0], trajectory['ego']['loc'][0][-1]), min(trajectory['ego']['loc'][0][0], trajectory['ego']['loc'][0][-1])
+    y_max, y_min = max(trajectory['ego']['loc'][1][0], trajectory['ego']['loc'][1][-1]), min(trajectory['ego']['loc'][1][0], trajectory['ego']['loc'][1][-1])
 
     x_list = np.linspace(x_min - 5, x_max + 5, num=2*(int(x_max - x_min)+10))
     y_list = np.linspace(y_min - 5, y_max + 5, num=2*(int(x_max - x_min)+10))
 
-    for step in sequence:
-        # add ego
-        occupied_index_list = get_occupied_box_index_from_obs(step['ego_loc'], x_list, y_list)
+    # add ego
+    for i, ego_loc in enumerate(trajectory['ego']['loc']):
+        occupied_index_list = get_occupied_box_index_from_obs(ego_loc, x_list, y_list)
         for occupied_index in occupied_index_list:
             if str(occupied_index) in pet_dict:
-                pet_dict[str(occupied_index)].append([step['current_game_time'], 'ego'])
+                pet_dict[str(occupied_index)].append([trajectory['ego']['time'][i], 'ego'])
             else:
-                pet_dict[str(occupied_index)] = [[step['current_game_time'], 'ego']]
-        # add all the bv
-        for BV_index, BV_ego_dis in enumerate(step['BVs_ego_dis']):
+                pet_dict[str(occupied_index)] = [[trajectory['ego']['time'][i], 'ego']]
+    # got all the BV_id in the trajectory
+    BV_ids = [key for key in trajectory if key != 'ego']
+    # add each BV trajectory
+    for BV_id in BV_ids:
+        for i, BV_loc in enumerate(trajectory[BV_id]['loc']):
             occupied_index_list = get_occupied_box_index_from_obs(
-                step['BVs_loc'][BV_index], x_list, y_list,
+                BV_loc, x_list, y_list,
             )
             for occupied_index in occupied_index_list:
                 if str(occupied_index) in pet_dict:
-                    pet_dict[str(occupied_index)].append([step['current_game_time'], step['BVs_id'][BV_index]])
+                    pet_dict[str(occupied_index)].append([trajectory[BV_id]['time'][i], BV_id])
                 else:
-                    pet_dict[str(occupied_index)] = [[step['current_game_time'], step['BVs_id'][BV_index]]]
+                    pet_dict[str(occupied_index)] = [[trajectory[BV_id]['time'][i], BV_id]]
 
     for time_id_list in pet_dict.values():
         pet_tmp = calculate_position_pet_list(time_id_list)
@@ -88,17 +96,4 @@ def get_sequence_pet(sequence):
             pet_list.append(pet_tmp)
 
     return pet_list
-
-
-def process_pet_from_one_pkl(pkl_path, save_folder):
-    pet = {}
-    pet_list_all = []
-    data = joblib.load(pkl_path)
-    for sequence in tqdm(data.values()):
-        pet_list_all.extend(get_sequence_pet(sequence))
-    # save the PET data
-    pet['all_pet'] = pet_list_all
-    # save Vehicle forward speed
-    with open(osp.join(save_folder, "PET.pkl"), 'wb') as pickle_file:
-        pickle.dump(pet, pickle_file)
 

@@ -10,6 +10,7 @@ import os
 import os.path as osp
 import numpy as np
 
+from eval_analysis.process_data.all_trajectory import process_all_trajectory_from_one_pkl
 from safebench.util.run_util import load_config
 from safebench.feasibility import FEASIBILITY_LIST
 from safebench.util.logger import Logger
@@ -52,10 +53,13 @@ def main(args_dict):
                         # collision trajectory for avoidable eval; miss trajectory for near-miss eval
                         if 'collision_traj' in args_dict['data'] and 'standard' not in algorithm:
                             print('>> Processing collision trajectory information')
-                            process_collision_trajectory_from_one_pkl(pkl_path, feasibility_policy, save_folder)
+                            process_collision_trajectory_from_one_pkl(pkl_path, save_folder)
+                        if 'all_traj' in args_dict['data']:
+                            print('>> Processing all trajectory information')
+                            process_all_trajectory_from_one_pkl(pkl_path, feasibility_policy, save_folder)
                         if 'miss_traj' in args_dict['data']:
                             print('>> Processing miss trajectory information')
-                            process_miss_trajectory_from_one_pkl(pkl_path, save_folder)
+                            process_miss_trajectory_from_one_pkl(pkl_path, algorithm, save_folder)
                         print('>> ' + '-' * 40)
 
 
@@ -64,7 +68,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
-    parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj'])
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj', 'all_traj'])
     parser.add_argument('--feasibility_cfg_path', nargs='*', type=str, default='safebench/feasibility/config/HJR.yaml')
     parser.add_argument('--seed', '-s', type=int, default=0)
     args = parser.parse_args()

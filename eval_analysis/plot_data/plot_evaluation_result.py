@@ -88,9 +88,7 @@ def main(args):
     base_dir = osp.join(ROOT_DIR, 'eval_analysis/processed_data')
     algorithm_files = os.listdir(base_dir)
     PET_all_data = {}
-    min_dis_data = {}
-    near_rate = {}
-    TTC_data = {}
+    ego_dis_data = {}
     feasibility = {}
     unfeasible_rate = {}
     collision_ratio = {}
@@ -111,12 +109,10 @@ def main(args):
                 algorithm_title = f"Ego:{ego} CBV:{cbv}"
 
                 PET_all_data[algorithm_title] = {}
-                min_dis_data[algorithm_title] = {}
-                near_rate[algorithm_title] = {}
-                TTC_data[algorithm_title] = {}
+                ego_dis_data[algorithm_title] = {}
+                feasibility[algorithm_title] = {}
+                unfeasible_rate[algorithm_title] = {}
                 if cbv != 'standard':
-                    feasibility[algorithm_title] = {}
-                    unfeasible_rate[algorithm_title] = {}
                     collision_ratio[algorithm_title] = {}
                     collision_vel[algorithm_title] = {}
                     collision_impulse[algorithm_title] = {}
@@ -126,43 +122,58 @@ def main(args):
                     if osp.isdir(scenario_map_path):
                         files = os.listdir(scenario_map_path)
                         for file in files:
-                            # processing PET data
-                            if file == 'collision_info.pkl' and 'collision_traj' in args.data:
+                            if file == 'collision_traj_info.pkl' and 'collision_traj' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
                                 with open(file_path, 'rb') as pickle_file:
                                     all_collision_data = pickle.load(pickle_file)
                                 collision_ratio[algorithm_title][scenario_map] = all_collision_data['collision_ratio']
                                 collision_impulse[algorithm_title][scenario_map] = all_collision_data['collision_impulse']
-                                feasibility[algorithm_title][scenario_map] = all_collision_data['feasibility_Vs']
-                                unfeasible_rate[algorithm_title][scenario_map] = all_collision_data['unfeasible_rate']
                                 collision_vel[algorithm_title][scenario_map] = all_collision_data['collision_vel']
-                            if file == 'miss_info.pkl' and 'miss_traj' in args.data:
+                            if file == 'all_traj_info.pkl' and 'all_traj' in args.data:
+                                file_path = os.path.join(scenario_map_path, file)
+                                with open(file_path, 'rb') as pickle_file:
+                                    all_data = pickle.load(pickle_file)
+                                feasibility[algorithm_title][scenario_map] = all_data['feasibility_Vs']
+                                unfeasible_rate[algorithm_title][scenario_map] = all_data['unfeasible_rate']
+                            if file == 'miss_traj_info.pkl' and 'miss_traj' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
                                 with open(file_path, 'rb') as pickle_file:
                                     all_miss_data = pickle.load(pickle_file)
+                                PET_all_data[algorithm_title][scenario_map] = all_miss_data['PET']
+                                ego_dis_data[algorithm_title][scenario_map] = all_miss_data['ego_dis']
 
     if 'collision_traj' in args.data:
-        plot_metric(unfeasible_rate, 'unfeasible_rate')
+        # collision ratio info
         plot_metric(collision_ratio, 'collision_ratio')
-
-        feasibility_bins = np.linspace(-3, 5, 20)
-        draw_data(feasibility, 'Collision feasibility', ROOT_DIR, bins=feasibility_bins, baseline_CBV='ppo')
-
+        # collision impulse info
         collision_impulse_bins = np.linspace(0, 20, 10)
         draw_data(collision_impulse, 'Collision impulse', ROOT_DIR, bins=collision_impulse_bins, baseline_CBV='ppo')
-
+        # collision velocity info
         collision_vel_bins = np.linspace(0, 10, 20)
         draw_data(collision_vel, 'Collision velocity', ROOT_DIR, bins=collision_vel_bins, baseline_CBV='ppo')
 
+    if 'all_traj' in args.data:
+        # unfeasible rate
+        plot_metric(unfeasible_rate, 'unfeasible_rate')
+        # feasibility distribution
+        feasibility_bins = np.linspace(-3, 5, 20)
+        draw_data(feasibility, 'Feasibility', ROOT_DIR, bins=feasibility_bins)
+
     if 'miss_traj' in args.data:
-        pass
+        # PET distribution
+        PET_bins = np.linspace(0, 5, 20)
+        draw_data(PET_all_data, 'PET', ROOT_DIR, bins=PET_bins)
+
+        # ego distance distribution
+        ego_dis_bins = np.linspace(0, 10, 30)
+        draw_data(ego_dis_data, 'Ego distance', ROOT_DIR, bins=ego_dis_bins)
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
-    parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj'])
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj', 'all_traj'])
     args = parser.parse_args()
 
     main(args)
