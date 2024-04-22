@@ -27,7 +27,7 @@ from safebench.gym_carla.envs.utils import linear_map
 from safebench.util.logger import Logger
 from safebench.util.run_util import load_config
 from safebench.util.torch_util import set_torch_variable, set_seed, CUDA, CPU
-from eval_analysis.plot_data.plot_learning_curve import smooth, extract_and_combine_events
+from eval_analysis.plot_data.plot_learning_curve import smooth
 
 
 def calculate_collision_rate(done, collision):
