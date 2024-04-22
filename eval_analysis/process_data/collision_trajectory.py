@@ -50,12 +50,13 @@ def process_collision_trajectory_from_one_pkl(pkl_path, feasibility_policy, save
     for sequence in tqdm(data.values()):
         scenario_num += 1
         ego_obs, CBV_vel, collision_impulse, collision_count = get_CBV_collision_feasibility(sequence)
-        ego_obs_list.extend(torch.FloatTensor(ego_obs))
+        ego_obs_list.extend(ego_obs)
         collision_vel_list.extend(CBV_vel)
         collision_impulse_list.extend(collision_impulse)
         collision_num += collision_count
 
-    ego_obs_tensor = CUDA(torch.stack(ego_obs_list, dim=0))
+    ego_obs_tensor = [torch.FloatTensor(ego_obs) for ego_obs in ego_obs_list]
+    ego_obs_tensor = CUDA(torch.stack(ego_obs_tensor, dim=0))
     feasibility_Vs = feasibility_policy.get_feasibility_Vs(ego_obs_tensor)
     unfeasible_rate = (feasibility_Vs > 0).float().mean().item()
     collision_ratio = collision_num / scenario_num

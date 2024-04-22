@@ -31,7 +31,7 @@ def classified_data_by_ego(data):
     return classified_by_ego
 
 
-def draw_data(All_data, data_name, ROOT_DIR, bins):
+def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard'):
     matplotlib.rcParams['font.family'] = 'Times New Roman'
     All_data_per_ego = classified_data_by_ego(All_data)
     for ego_type, datas in All_data_per_ego.items():
@@ -46,7 +46,7 @@ def draw_data(All_data, data_name, ROOT_DIR, bins):
         fig, axs = plt.subplots(nrows=num_scenarios, ncols=num_cols, figsize=figsize, squeeze=False)
         # plot the baseline
         for algorithm, scenario in datas.items():
-            if algorithm.endswith('standard'):
+            if algorithm.endswith(baseline_CBV):
                 baseline_name = algorithm
                 break
         # pop out the baseline data
@@ -114,11 +114,12 @@ def main(args):
                 min_dis_data[algorithm_title] = {}
                 near_rate[algorithm_title] = {}
                 TTC_data[algorithm_title] = {}
-                feasibility[algorithm_title] = {}
-                unfeasible_rate[algorithm_title] = {}
-                collision_ratio[algorithm_title] = {}
-                collision_vel[algorithm_title] = {}
-                collision_impulse[algorithm_title] = {}
+                if cbv != 'standard':
+                    feasibility[algorithm_title] = {}
+                    unfeasible_rate[algorithm_title] = {}
+                    collision_ratio[algorithm_title] = {}
+                    collision_vel[algorithm_title] = {}
+                    collision_impulse[algorithm_title] = {}
 
                 for scenario_map in scenario_map_files:
                     scenario_map_path = osp.join(algorithm_path, scenario_map)
@@ -145,13 +146,13 @@ def main(args):
         plot_metric(collision_ratio, 'collision_ratio')
 
         feasibility_bins = np.linspace(-3, 5, 20)
-        draw_data(feasibility, 'Feasibility Value', ROOT_DIR, bins=feasibility_bins)
+        draw_data(feasibility, 'Collision feasibility', ROOT_DIR, bins=feasibility_bins, baseline_CBV='ppo')
 
         collision_impulse_bins = np.linspace(0, 20, 10)
-        draw_data(collision_impulse, 'Collision impulse', ROOT_DIR, bins=collision_impulse_bins)
+        draw_data(collision_impulse, 'Collision impulse', ROOT_DIR, bins=collision_impulse_bins, baseline_CBV='ppo')
 
         collision_vel_bins = np.linspace(0, 10, 20)
-        draw_data(collision_vel, 'Collision Velocity', ROOT_DIR, bins=collision_vel_bins)
+        draw_data(collision_vel, 'Collision velocity', ROOT_DIR, bins=collision_vel_bins, baseline_CBV='ppo')
 
     if 'miss_traj' in args.data:
         pass
@@ -160,7 +161,6 @@ def main(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--metric', '-m', action='store_true')
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
     parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj'])
     args = parser.parse_args()
