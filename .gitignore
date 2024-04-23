@@ -163,3 +163,4 @@ docs/
 /safebench/feasibility/processed_data/
 */figures/
 */processed_data
+*/train_result
