@@ -20,13 +20,60 @@ def find_nearest(array, value):
     return idx, array[idx]
 
 
-def get_occupied_box_index_from_obs(loc, x_list, y_list):
+def rotate_point(cx, cy, angle, px, py):
+    # rotate (px, py) from (cx, cy) with an angle
+    s = np.sin(angle)
+    c = np.cos(angle)
+    px -= cx
+    py -= cy
+    xnew = px * c - py * s
+    ynew = px * s + py * c
+    px = xnew + cx
+    py = ynew + cy
+    return px, py
+
+
+def get_all_grid_indices_within_corners(corner_indices):
+    # all corners indices
+    x_indices, y_indices = zip(*corner_indices)
+
+    # find the min and max indice
+    min_x, max_x = min(x_indices), max(x_indices)
+    min_y, max_y = min(y_indices), max(y_indices)
+
+    if max_x <= min_x + 1:
+        x_range = range(min_x, max_x)
+    else:
+        x_range = range(min_x + 1, max_x)
+
+    if max_y <= min_y + 1:
+        y_range = range(min_y, max_y)
+    else:
+        y_range = range(min_y + 1, max_y)
+
+    # get all the combination of the x, y indices with in the range
+    occupied_indices = [(xi, yi) for xi in x_range for yi in y_range]
+
+    return occupied_indices
+
+
+def get_occupied_box_index_from_obs(loc, x_list, y_list, extent, yaw):
     x, y = loc
-    x_id, near_x = find_nearest(x_list, x)
-    y_id, near_y = find_nearest(y_list, y)
-    width_id_range = range(-4, 5)
-    length_id_range = range(-4, 5)
-    surrounding_index = [[x_id + dx, y_id + dy] for dy in width_id_range for dx in length_id_range]
+    extent_x = extent[0] / 2
+    extent_y = extent[1] / 2
+
+    corners = [
+        (x - extent_x, y - extent_y),
+        (x - extent_x, y + extent_y),
+        (x + extent_x, y - extent_y),
+        (x + extent_x, y + extent_y),
+    ]
+    # get the rotated corners positions
+    rotated_corners = [rotate_point(x, y, yaw, cx, cy) for cx, cy in corners]
+    # get the rotated corners indices
+    corner_indices = [[find_nearest(x_list, cx)[0], find_nearest(y_list, cy)[0]] for cx, cy in rotated_corners]
+    # get all the indices with in the rotated corners
+    surrounding_index = get_all_grid_indices_within_corners(corner_indices)
     return surrounding_index
 
 
@@ -61,16 +108,20 @@ def get_trajectory_pet(trajectory):
     """
     pet_list = []
     pet_dict = {}
+    x_min = min(trajectory['ego']['loc'], key=lambda item: item[0])[0]
+    x_max = max(trajectory['ego']['loc'], key=lambda item: item[0])[0]
+    y_min = min(trajectory['ego']['loc'], key=lambda item: item[1])[1]
+    y_max = max(trajectory['ego']['loc'], key=lambda item: item[1])[1]
 
-    x_max, x_min = max(trajectory['ego']['loc'][0][0], trajectory['ego']['loc'][0][-1]), min(trajectory['ego']['loc'][0][0], trajectory['ego']['loc'][0][-1])
-    y_max, y_min = max(trajectory['ego']['loc'][1][0], trajectory['ego']['loc'][1][-1]), min(trajectory['ego']['loc'][1][0], trajectory['ego']['loc'][1][-1])
-
-    x_list = np.linspace(x_min - 5, x_max + 5, num=2*(int(x_max - x_min)+10))
-    y_list = np.linspace(y_min - 5, y_max + 5, num=2*(int(x_max - x_min)+10))
+    step = 0.5
+    x_list = np.arange(x_min - 5, x_max + 5 + step, step)
+    y_list = np.arange(y_min - 5, y_max + 5 + step, step)
 
     # add ego
     for i, ego_loc in enumerate(trajectory['ego']['loc']):
-        occupied_index_list = get_occupied_box_index_from_obs(ego_loc, x_list, y_list)
+        occupied_index_list = get_occupied_box_index_from_obs(
+            ego_loc, x_list, y_list, trajectory['ego']['extent'][i], trajectory['ego']['yaw'][i]
+        )
         for occupied_index in occupied_index_list:
             if str(occupied_index) in pet_dict:
                 pet_dict[str(occupied_index)].append([trajectory['ego']['time'][i], 'ego'])
@@ -82,7 +133,7 @@ def get_trajectory_pet(trajectory):
     for BV_id in BV_ids:
         for i, BV_loc in enumerate(trajectory[BV_id]['loc']):
             occupied_index_list = get_occupied_box_index_from_obs(
-                BV_loc, x_list, y_list,
+                BV_loc, x_list, y_list, trajectory[BV_id]['extent'][i], trajectory['ego']['yaw'][i]
             )
             for occupied_index in occupied_index_list:
                 if str(occupied_index) in pet_dict:

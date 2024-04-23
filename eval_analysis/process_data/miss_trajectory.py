@@ -35,12 +35,16 @@ def get_standard_closest_BV_trajectory(sequence):
     closest_BV_trajectories = {'ego': {
         'time': [],
         'loc': [],
+        'extent': [],
+        'yaw': [],
     }}
     BV_closest_index = {}
     for index, step in enumerate(sequence):
         # store the ego info every step
         closest_BV_trajectories['ego']['time'].append(step['current_game_time'])
         closest_BV_trajectories['ego']['loc'].append(step['ego_loc'])
+        closest_BV_trajectories['ego']['extent'].append(step['ego_extent'])
+        closest_BV_trajectories['ego']['yaw'].append(step['ego_yaw'])
         for BV_id in step['BVs_id']:
             BV_index = step['BVs_id'].index(BV_id)
             BV_dis = step['BVs_ego_dis'][BV_index]
@@ -59,6 +63,8 @@ def get_standard_closest_BV_trajectory(sequence):
             'time': [],
             'loc': [],
             'ego_dis': [],
+            'extent': [],
+            'yaw': [],
         }
         # reverse the trajectory
         for i in range(index, -1, -1):
@@ -68,6 +74,8 @@ def get_standard_closest_BV_trajectory(sequence):
                     closest_BV_trajectories[BV_id]['time'].append(sequence[i]['current_game_time'])
                     closest_BV_trajectories[BV_id]['loc'].append(sequence[i]['BVs_loc'][BV_current_index])
                     closest_BV_trajectories[BV_id]['ego_dis'].append(sequence[i]['BVs_ego_dis'][BV_current_index])
+                    closest_BV_trajectories[BV_id]['extent'].append(sequence[i]['BVs_extent'][BV_current_index])
+                    closest_BV_trajectories[BV_id]['yaw'].append(sequence[i]['BVs_yaw'][BV_current_index])
             else:
                 break
     return closest_BV_trajectories
@@ -92,11 +100,15 @@ def get_CBV_goal_reached_trajectory(sequence):
     goal_reached_trajectories = {'ego': {
         'time': [],
         'loc': [],
+        'extent': [],
+        'yaw': [],
     }}
     for index, step in enumerate(sequence):
         # store the ego info every step
         goal_reached_trajectories['ego']['time'].append(step['current_game_time'])
         goal_reached_trajectories['ego']['loc'].append(step['ego_loc'])
+        goal_reached_trajectories['ego']['extent'].append(step['ego_extent'])
+        goal_reached_trajectories['ego']['yaw'].append(step['ego_yaw'])
         for CBV_id in step['CBVs_id']:
             if CBV_id in step['BVs_id_set']:
                 BV_index = step['BVs_id'].index(CBV_id)
@@ -107,6 +119,8 @@ def get_CBV_goal_reached_trajectory(sequence):
                         'time': [],
                         'loc': [],
                         'ego_dis': [],
+                        'extent': [],
+                        'yaw': [],
                     }
                     # reverse the trajectory
                     for i in range(index, -1, -1):
@@ -116,6 +130,8 @@ def get_CBV_goal_reached_trajectory(sequence):
                                 goal_reached_trajectories[CBV_id]['time'].append(sequence[i]['current_game_time'])
                                 goal_reached_trajectories[CBV_id]['loc'].append(sequence[i]['BVs_loc'][BV_current_index])
                                 goal_reached_trajectories[CBV_id]['ego_dis'].append(sequence[i]['BVs_ego_dis'][BV_current_index])
+                                goal_reached_trajectories[CBV_id]['extent'].append(sequence[i]['BVs_extent'][BV_current_index])
+                                goal_reached_trajectories[CBV_id]['yaw'].append(sequence[i]['BVs_yaw'][BV_current_index])
                         else:
                             break
     return goal_reached_trajectories

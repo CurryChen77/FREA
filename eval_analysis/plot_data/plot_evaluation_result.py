@@ -161,7 +161,7 @@ def main(args):
 
     if 'miss_traj' in args.data:
         # PET distribution
-        PET_bins = np.linspace(0, 5, 20)
+        PET_bins = np.linspace(0, 3, 30)
         draw_data(PET_all_data, 'PET', ROOT_DIR, bins=PET_bins)
 
         # ego distance distribution
