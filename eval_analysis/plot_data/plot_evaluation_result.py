@@ -31,7 +31,7 @@ def classified_data_by_ego(data):
     return classified_by_ego
 
 
-def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard'):
+def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', density=True):
     matplotlib.rcParams['font.family'] = 'Times New Roman'
     All_data_per_ego = classified_data_by_ego(All_data)
     for ego_type, datas in All_data_per_ego.items():
@@ -54,7 +54,7 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard'):
         for i in range(max(num_algorithm-1, 1)):
             for row, (scenario_name, data) in enumerate(baseline.items()):
                 # sns.kdeplot(data, color=color_list[0], ax=axs[row, i], alpha=0.8, label=baseline_name, fill=True, linewidth=1)
-                axs[row, i].hist(data, density=True, bins=bins, alpha=0.75, label=baseline_name, color=(144/255, 190/255, 224/255))
+                axs[row, i].hist(data, density=density, bins=bins, alpha=0.75, label=baseline_name, color=(144/255, 190/255, 224/255))
                 axs[row, i].set_title(scenario_name, fontsize=10)
                 axs[row, i].set_xlabel(f'{data_name}')
                 axs[row, i].set_ylabel('Frequency')
@@ -64,7 +64,7 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard'):
         for i, (algorithm, scenario) in enumerate(datas.items()):
             for row, (scenario_name, data) in enumerate(scenario.items()):
                 # sns.kdeplot(data, color=color_list[i+1], ax=axs[row, i], alpha=0.7, label=algorithm, fill=True, linewidth=1)
-                axs[row, i].hist(data, density=True, bins=bins, alpha=0.6, label=algorithm, color=color_list[i])
+                axs[row, i].hist(data, density=density, bins=bins, alpha=0.6, label=algorithm, color=color_list[i])
                 axs[row, i].legend(fontsize=7, loc='best')
 
         plt.tight_layout()

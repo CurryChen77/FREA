@@ -37,16 +37,16 @@ def get_all_grid_indices_within_corners(corner_indices):
     # all corners indices
     x_indices, y_indices = zip(*corner_indices)
 
-    # find the min and max indice
+    # find the min and max indices
     min_x, max_x = min(x_indices), max(x_indices)
     min_y, max_y = min(y_indices), max(y_indices)
 
-    if max_x <= min_x + 1:
+    if min_x <= max_x < min_x + 1:
         x_range = range(min_x, max_x)
     else:
         x_range = range(min_x + 1, max_x)
 
-    if max_y <= min_y + 1:
+    if min_y <= max_y < min_y + 1:
         y_range = range(min_y, max_y)
     else:
         y_range = range(min_y + 1, max_y)
@@ -114,8 +114,8 @@ def get_trajectory_pet(trajectory):
     y_max = max(trajectory['ego']['loc'], key=lambda item: item[1])[1]
 
     step = 0.5
-    x_list = np.arange(x_min - 5, x_max + 5 + step, step)
-    y_list = np.arange(y_min - 5, y_max + 5 + step, step)
+    x_list = np.arange(x_min - 7, x_max + 7 + step, step)
+    y_list = np.arange(y_min - 7, y_max + 7 + step, step)
 
     # add ego
     for i, ego_loc in enumerate(trajectory['ego']['loc']):
@@ -129,6 +129,7 @@ def get_trajectory_pet(trajectory):
                 pet_dict[str(occupied_index)] = [[trajectory['ego']['time'][i], 'ego']]
     # got all the BV_id in the trajectory
     BV_ids = [key for key in trajectory if key != 'ego']
+
     # add each BV trajectory
     for BV_id in BV_ids:
         for i, BV_loc in enumerate(trajectory[BV_id]['loc']):

@@ -120,8 +120,8 @@ class FPPOAdv(PPO):
             surrogate_advantages = self.get_surrogate_advantages(feasibility_advantages, reward_advantages, feasibility_next_V)
 
             # condition
-            unsafe_condition = torch.where(feasibility_V > 0.0, 1.0, 0.0)
-            safe_condition = torch.where(feasibility_V <= 0.0, 1.0, 0.0)
+            safe_condition = torch.where(feasibility_V <= 0.0, 1.0, 0.0) * torch.where(feasibility_next_V <= 0.0, 1.0, 0.0)
+            unsafe_condition = 1 - safe_condition
 
             # final advantage
             advantages = unsafe_condition * feasibility_advantages + safe_condition * surrogate_advantages
