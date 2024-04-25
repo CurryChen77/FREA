@@ -14,6 +14,7 @@ import joblib
 import numpy as np
 
 from eval_analysis.process_data.PET import get_trajectory_pet
+from eval_analysis.process_data.TTC import get_trajectory_ttc
 
 
 def get_ego_dis(trajectory):
@@ -37,6 +38,7 @@ def get_standard_closest_BV_trajectory(sequence):
         'loc': [],
         'extent': [],
         'yaw': [],
+        'vel': [],
     }}
     BV_closest_index = {}
     for index, step in enumerate(sequence):
@@ -45,6 +47,7 @@ def get_standard_closest_BV_trajectory(sequence):
         closest_BV_trajectories['ego']['loc'].append(step['ego_loc'])
         closest_BV_trajectories['ego']['extent'].append(step['ego_extent'])
         closest_BV_trajectories['ego']['yaw'].append(step['ego_yaw'])
+        closest_BV_trajectories['ego']['vel'].append(step['ego_vel'])
         for BV_id in step['BVs_id']:
             BV_index = step['BVs_id'].index(BV_id)
             BV_dis = step['BVs_ego_dis'][BV_index]
@@ -65,6 +68,7 @@ def get_standard_closest_BV_trajectory(sequence):
             'ego_dis': [],
             'extent': [],
             'yaw': [],
+            'vel': [],
         }
         # reverse the trajectory
         for i in range(index, -1, -1):
@@ -76,6 +80,7 @@ def get_standard_closest_BV_trajectory(sequence):
                     closest_BV_trajectories[BV_id]['ego_dis'].append(sequence[i]['BVs_ego_dis'][BV_current_index])
                     closest_BV_trajectories[BV_id]['extent'].append(sequence[i]['BVs_extent'][BV_current_index])
                     closest_BV_trajectories[BV_id]['yaw'].append(sequence[i]['BVs_yaw'][BV_current_index])
+                    closest_BV_trajectories[BV_id]['vel'].append(sequence[i]['BVs_vel'][BV_current_index])
             else:
                 break
     return closest_BV_trajectories
@@ -102,6 +107,7 @@ def get_CBV_goal_reached_trajectory(sequence):
         'loc': [],
         'extent': [],
         'yaw': [],
+        'vel': [],
     }}
     for index, step in enumerate(sequence):
         # store the ego info every step
@@ -109,6 +115,7 @@ def get_CBV_goal_reached_trajectory(sequence):
         goal_reached_trajectories['ego']['loc'].append(step['ego_loc'])
         goal_reached_trajectories['ego']['extent'].append(step['ego_extent'])
         goal_reached_trajectories['ego']['yaw'].append(step['ego_yaw'])
+        goal_reached_trajectories['ego']['vel'].append(step['ego_vel'])
         for CBV_id in step['CBVs_id']:
             if CBV_id in step['BVs_id_set']:
                 BV_index = step['BVs_id'].index(CBV_id)
@@ -121,6 +128,7 @@ def get_CBV_goal_reached_trajectory(sequence):
                         'ego_dis': [],
                         'extent': [],
                         'yaw': [],
+                        'vel': [],
                     }
                     # reverse the trajectory
                     for i in range(index, -1, -1):
@@ -132,6 +140,7 @@ def get_CBV_goal_reached_trajectory(sequence):
                                 goal_reached_trajectories[CBV_id]['ego_dis'].append(sequence[i]['BVs_ego_dis'][BV_current_index])
                                 goal_reached_trajectories[CBV_id]['extent'].append(sequence[i]['BVs_extent'][BV_current_index])
                                 goal_reached_trajectories[CBV_id]['yaw'].append(sequence[i]['BVs_yaw'][BV_current_index])
+                                goal_reached_trajectories[CBV_id]['vel'].append(sequence[i]['BVs_vel'][BV_current_index])
                         else:
                             break
     return goal_reached_trajectories
@@ -146,14 +155,17 @@ def process_miss_trajectory_from_one_pkl(pkl_path, algorithm, save_folder):
 
     PET = []
     ego_dis = []
+    TTC = []
     for sequence in tqdm(data.values()):
         trajectory = trajectory_function(sequence)
         PET.extend(get_trajectory_pet(trajectory))
         ego_dis.extend(get_ego_dis(trajectory))
+        TTC.extend(get_trajectory_ttc(trajectory))
 
     miss_traj_info = {
         'PET': PET,
         'ego_dis': ego_dis,
+        'TTC': TTC,
     }
 
     # save ego min dis

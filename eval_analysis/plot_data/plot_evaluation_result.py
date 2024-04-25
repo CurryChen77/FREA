@@ -68,7 +68,9 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', dens
                 axs[row, i].legend(fontsize=7, loc='best')
 
         plt.tight_layout()
-        data_save_name = data_name.replace(' ', "_")
+        clean_string = re.sub(r'\(.*?\)', '', data_name)
+        clean_string = clean_string.strip()
+        data_save_name = clean_string.replace(' ', '_')
         save_dir = osp.join(ROOT_DIR, f'eval_analysis/figures/{data_save_name}.png')
         plt.savefig(save_dir, dpi=600)
         plt.show()
@@ -88,6 +90,7 @@ def main(args):
     base_dir = osp.join(ROOT_DIR, 'eval_analysis/processed_data')
     algorithm_files = os.listdir(base_dir)
     PET_all_data = {}
+    TTC_all_data = {}
     ego_dis_data = {}
     feasibility = {}
     unfeasible_rate = {}
@@ -109,6 +112,7 @@ def main(args):
                 algorithm_title = f"Ego:{ego} CBV:{cbv}"
 
                 PET_all_data[algorithm_title] = {}
+                TTC_all_data[algorithm_title] = {}
                 ego_dis_data[algorithm_title] = {}
                 feasibility[algorithm_title] = {}
                 unfeasible_rate[algorithm_title] = {}
@@ -140,33 +144,38 @@ def main(args):
                                 with open(file_path, 'rb') as pickle_file:
                                     all_miss_data = pickle.load(pickle_file)
                                 PET_all_data[algorithm_title][scenario_map] = all_miss_data['PET']
+                                TTC_all_data[algorithm_title][scenario_map] = all_miss_data['TTC']
                                 ego_dis_data[algorithm_title][scenario_map] = all_miss_data['ego_dis']
 
     if 'collision_traj' in args.data:
         # collision ratio info
-        plot_metric(collision_ratio, 'collision_ratio')
+        plot_metric(collision_ratio, 'collision ratio')
         # collision impulse info
         collision_impulse_bins = np.linspace(0, 20, 10)
-        draw_data(collision_impulse, 'Collision impulse', ROOT_DIR, bins=collision_impulse_bins, baseline_CBV='ppo')
+        draw_data(collision_impulse, 'Collision impulse (kN·s)', ROOT_DIR, bins=collision_impulse_bins, baseline_CBV='ppo')
         # collision velocity info
         collision_vel_bins = np.linspace(0, 10, 20)
-        draw_data(collision_vel, 'Collision velocity', ROOT_DIR, bins=collision_vel_bins, baseline_CBV='ppo')
+        draw_data(collision_vel, 'Collision velocity (m/s)', ROOT_DIR, bins=collision_vel_bins, baseline_CBV='ppo')
 
     if 'all_traj' in args.data:
         # unfeasible rate
         plot_metric(unfeasible_rate, 'unfeasible_rate')
         # feasibility distribution
         feasibility_bins = np.linspace(-3, 5, 20)
-        draw_data(feasibility, 'Feasibility', ROOT_DIR, bins=feasibility_bins)
+        draw_data(feasibility, 'Feasibility value', ROOT_DIR, bins=feasibility_bins)
 
     if 'miss_traj' in args.data:
         # PET distribution
         PET_bins = np.linspace(0, 3, 30)
-        draw_data(PET_all_data, 'PET', ROOT_DIR, bins=PET_bins)
+        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins)
+
+        # TTC distribution
+        TTC_bins = np.linspace(0, 5, 20)
+        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins)
 
         # ego distance distribution
         ego_dis_bins = np.linspace(0, 10, 30)
-        draw_data(ego_dis_data, 'Ego distance', ROOT_DIR, bins=ego_dis_bins)
+        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins)
 
 
 if __name__ == '__main__':
