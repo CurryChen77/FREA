@@ -28,7 +28,6 @@ def process_all_trajectory_from_one_pkl(pkl_path, feasibility_policy, save_folde
     for sequence in tqdm(data.values()):
         ego_obs = get_all_feasibility(sequence)
         ego_obs_list.extend(ego_obs)
-
     ego_obs_tensor = [torch.FloatTensor(ego_obs) for ego_obs in ego_obs_list]
     ego_obs_tensor = CUDA(torch.stack(ego_obs_tensor, dim=0))
     feasibility_Vs = feasibility_policy.get_feasibility_Vs(ego_obs_tensor)
