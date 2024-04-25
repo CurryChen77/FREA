@@ -13,6 +13,7 @@ import seaborn as sns
 import os.path as osp
 import os
 from collections import defaultdict
+from collections import OrderedDict
 import re
 import matplotlib
 from matplotlib import pyplot as plt
@@ -39,10 +40,13 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', dens
         num_scenarios = max(len(scenarios) for scenarios in datas.values())
         color_list = sns.color_palette("flare", n_colors=num_algorithm-1)
         baseline_name = None
-        subplots_height = 4
+        subplots_height = 5
         aspect_ratio = 0.8
         num_cols = max(num_algorithm-1, 1)
         figsize = (subplots_height * aspect_ratio * num_cols, subplots_height)
+        all_handles = []
+        all_labels = []
+
         fig, axs = plt.subplots(nrows=num_scenarios, ncols=num_cols, figsize=figsize, squeeze=False)
         # plot the baseline
         for algorithm, scenario in datas.items():
@@ -55,19 +59,38 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', dens
             for row, (scenario_name, data) in enumerate(baseline.items()):
                 # sns.kdeplot(data, color=color_list[0], ax=axs[row, i], alpha=0.8, label=baseline_name, fill=True, linewidth=1)
                 axs[row, i].hist(data, density=density, bins=bins, alpha=0.75, label=baseline_name, color=(144/255, 190/255, 224/255))
-                axs[row, i].set_title(scenario_name, fontsize=10)
-                axs[row, i].set_xlabel(f'{data_name}')
-                axs[row, i].set_ylabel('Frequency')
-                axs[row, i].legend(fontsize=7, loc='best')
+                handles, labels = axs[row, i].get_legend_handles_labels()
+                all_handles.extend(handles)
+                all_labels.extend(labels)
+
+        # rearrange the data order
+        desired_order = ['standard', 'ppo', 'fppo_rs', 'fppo_adv']
+        ordered_data = OrderedDict()
+        for order_key in desired_order:
+            for key in datas:
+                if key.endswith(order_key):
+                    ordered_data[key] = datas[key]
+                    break
 
         # plot the rest algorithm
-        for i, (algorithm, scenario) in enumerate(datas.items()):
+        for i, (algorithm, scenario) in enumerate(ordered_data.items()):
             for row, (scenario_name, data) in enumerate(scenario.items()):
                 # sns.kdeplot(data, color=color_list[i+1], ax=axs[row, i], alpha=0.7, label=algorithm, fill=True, linewidth=1)
                 axs[row, i].hist(data, density=density, bins=bins, alpha=0.6, label=algorithm, color=color_list[i])
-                axs[row, i].legend(fontsize=7, loc='best')
+                axs[row, i].set_title(scenario_name, fontsize=12)
+                axs[row, i].set_xlabel(f'{data_name}')
+                axs[row, i].set_ylabel('Frequency')
+                handles, labels = axs[row, i].get_legend_handles_labels()
+                all_handles.extend(handles)
+                all_labels.extend(labels)
 
-        plt.tight_layout()
+        unique_handles_labels = dict(zip(all_labels, all_handles))
+        unique_labels, unique_handles = zip(*unique_handles_labels.items())
+        fig.legend(handles=unique_handles, labels=unique_labels, loc='lower center', ncol=num_algorithm, fontsize=12)
+
+        fig.tight_layout()
+        fig.subplots_adjust(bottom=0.2)
+
         clean_string = re.sub(r'\(.*?\)', '', data_name)
         clean_string = clean_string.strip()
         data_save_name = clean_string.replace(' ', '_')
@@ -162,20 +185,20 @@ def main(args):
         plot_metric(unfeasible_rate, 'unfeasible_rate')
         # feasibility distribution
         feasibility_bins = np.linspace(-3, 5, 20)
-        draw_data(feasibility, 'Feasibility value', ROOT_DIR, bins=feasibility_bins)
+        draw_data(feasibility, 'Feasibility value', ROOT_DIR, bins=feasibility_bins, baseline_CBV='standard')
 
     if 'miss_traj' in args.data:
         # PET distribution
         PET_bins = np.linspace(0, 3, 30)
-        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins)
+        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins, baseline_CBV='standard')
 
         # TTC distribution
         TTC_bins = np.linspace(0, 5, 20)
-        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins)
+        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins, baseline_CBV='standard')
 
         # ego distance distribution
         ego_dis_bins = np.linspace(0, 10, 30)
-        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins)
+        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins, baseline_CBV='standard')
 
 
 if __name__ == '__main__':
