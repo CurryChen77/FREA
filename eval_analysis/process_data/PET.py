@@ -26,11 +26,10 @@ def rotate_point(cx, cy, angle, px, py):
     c = np.cos(angle)
     px -= cx
     py -= cy
-    xnew = px * c - py * s
-    ynew = px * s + py * c
-    px = xnew + cx
-    py = ynew + cy
-    return px, py
+    # in the left-hand system
+    xnew = px * c + py * s
+    ynew = - px * s + py * c
+    return xnew + cx, ynew + cy
 
 
 def get_all_grid_indices_within_corners(corner_indices):
