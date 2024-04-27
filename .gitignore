@@ -161,6 +161,5 @@ docs/
 /safebench/feasibility/data/
 /safebench/feasibility/figures/
 /safebench/feasibility/processed_data/
-*/figures/
 */processed_data
 */train_result
