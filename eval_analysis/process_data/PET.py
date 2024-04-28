@@ -133,7 +133,7 @@ def get_trajectory_pet(trajectory):
     for BV_id in BV_ids:
         for i, BV_loc in enumerate(trajectory[BV_id]['loc']):
             occupied_index_list = get_occupied_box_index_from_obs(
-                BV_loc, x_list, y_list, trajectory[BV_id]['extent'][i], trajectory['ego']['yaw'][i]
+                BV_loc, x_list, y_list, trajectory[BV_id]['extent'][i], trajectory[BV_id]['yaw'][i]
             )
             for occupied_index in occupied_index_list:
                 if str(occupied_index) in pet_dict:

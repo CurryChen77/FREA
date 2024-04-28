@@ -51,7 +51,7 @@ def get_standard_closest_BV_trajectory(sequence):
         for BV_id in step['BVs_id']:
             BV_index = step['BVs_id'].index(BV_id)
             BV_dis = step['BVs_ego_dis'][BV_index]
-            if BV_dis < 5:
+            if BV_dis < 10:
                 # first add the closest index
                 if BV_id not in BV_closest_index:
                     BV_closest_index[BV_id] = [index, BV_dis]
@@ -74,7 +74,7 @@ def get_standard_closest_BV_trajectory(sequence):
         for i in range(index, -1, -1):
             if BV_id in sequence[i]['BVs_id_set']:
                 BV_current_index = sequence[i]['BVs_id'].index(BV_id)
-                if sequence[i]['BVs_ego_dis'][BV_current_index] < 15:
+                if sequence[i]['BVs_ego_dis'][BV_current_index] < 25:
                     closest_BV_trajectories[BV_id]['time'].append(sequence[i]['current_game_time'])
                     closest_BV_trajectories[BV_id]['loc'].append(sequence[i]['BVs_loc'][BV_current_index])
                     closest_BV_trajectories[BV_id]['ego_dis'].append(sequence[i]['BVs_ego_dis'][BV_current_index])
@@ -134,7 +134,7 @@ def get_CBV_goal_reached_trajectory(sequence):
                     for i in range(index, -1, -1):
                         if CBV_id in sequence[i]['CBVs_id_set'] and CBV_id in sequence[i]['BVs_id_set']:
                             BV_current_index = sequence[i]['BVs_id'].index(CBV_id)
-                            if sequence[i]['BVs_ego_dis'][BV_current_index] < 15:
+                            if sequence[i]['BVs_ego_dis'][BV_current_index] < 25:
                                 goal_reached_trajectories[CBV_id]['time'].append(sequence[i]['current_game_time'])
                                 goal_reached_trajectories[CBV_id]['loc'].append(sequence[i]['BVs_loc'][BV_current_index])
                                 goal_reached_trajectories[CBV_id]['ego_dis'].append(sequence[i]['BVs_ego_dis'][BV_current_index])
