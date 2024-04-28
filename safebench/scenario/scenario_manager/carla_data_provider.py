@@ -40,7 +40,7 @@ class CarlaDataProvider(object):
     _ego_vehicle_route = {}
     egos = []
     _traffic_manager_port = 8000
-    _random_seed = 2
+    _random_seed = 1
     _rng = random.RandomState(_random_seed)
 
     @staticmethod
@@ -200,6 +200,13 @@ class CarlaDataProvider(object):
             return random seed
         """
         return CarlaDataProvider._rng
+
+    @staticmethod
+    def set_random_seed(random_seed):
+        """
+            set random seed
+        """
+        CarlaDataProvider._rng = random_seed
 
     @staticmethod
     def is_sync_mode():

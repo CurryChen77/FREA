@@ -546,9 +546,11 @@ class CarlaRunner:
         policy.load_model(map_name=self.current_map)
         if policy.continue_episode == 0:
             start_episode = 1
+            CarlaDataProvider.set_random_seed(start_episode)
             self.logger.log('>> Previous checkpoint not found. Training from scratch.')
         else:
             start_episode = policy.continue_episode + 1
+            CarlaDataProvider.set_random_seed(start_episode)
             self.logger.log('>> Continue training from previous checkpoint.')
         return start_episode
 
