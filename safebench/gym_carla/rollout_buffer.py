@@ -89,11 +89,15 @@ class RolloutBuffer:
             if self.use_feasibility:
                 self.buffer_ego_actions = np.zeros((self.buffer_capacity, self.feasibility_action_dim), dtype=np.float32)
                 self.buffer_closest_CBV_flag = np.zeros(self.buffer_capacity, dtype=np.float32)
+                self.buffer_next_closest_CBV_flag = np.zeros(self.buffer_capacity, dtype=np.float32)
                 self.buffer_ego_min_dis = np.zeros(self.buffer_capacity, dtype=np.float32)
                 self.buffer_next_ego_min_dis = np.zeros(self.buffer_capacity, dtype=np.float32)
                 self.buffer_ego_obs = np.zeros((self.buffer_capacity, *self.feasibility_obs_shape), dtype=np.float32)
                 self.buffer_ego_next_obs = np.zeros((self.buffer_capacity, *self.feasibility_obs_shape), dtype=np.float32)
-                self.temp_buffer.update({'ego_actions': {}, 'ego_obs': {}, 'ego_next_obs': {}, 'closest_CBV_flag': {}, 'ego_min_dis': {}, 'next_ego_min_dis': {}})
+                self.temp_buffer.update({
+                    'ego_actions': {}, 'ego_obs': {}, 'ego_next_obs': {},
+                    'closest_CBV_flag': {}, 'next_closest_CBV_flag': {},
+                    'ego_min_dis': {}, 'next_ego_min_dis': {}})
         elif self.mode == 'train_agent':
             self.agent_pos = [0] * self.num_scenario
             self.agent_full = [False] * self.num_scenario
@@ -121,7 +125,8 @@ class RolloutBuffer:
         # the processed data for normal scenario training
         processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones, processed_terminated = [], [], [], [], [], [], []
         # the processed data for feasibility
-        processed_ego_actions, processed_ego_obs, processed_ego_next_obs, processed_closest_CBV_flag, processed_ego_min_dis, processed_next_ego_min_dis = [], [], [], [], [], []
+        processed_ego_actions, processed_ego_obs, processed_ego_next_obs = [], [], []
+        processed_closest_CBV_flag, processed_next_closest_CBV_flag, processed_ego_min_dis, processed_next_ego_min_dis = [], [], [], []
         # process the ego actions
         if self.ego_onpolicy:
             all_ego_actions, _ = data_list[0]  # ego actions are in datalist[0]
@@ -135,7 +140,7 @@ class RolloutBuffer:
         # Traverse all the step data in all scenarios
         for ego_action, actions, log_probs, infos, next_infos in zip(all_ego_actions, all_scenario_actions, all_scenario_log_probs, additional_dict[0], additional_dict[1]):
             assert len(actions) == len(next_infos['CBVs_obs']) == len(infos['CBVs_obs']) \
-                == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "length of the trajectory should be the same"
+                   == len(next_infos['CBVs_reward']) == len(next_infos['CBVs_truncated']), "length of the trajectory should be the same"
             # if learnable ego agent, need to process the action
             if self.use_feasibility and self.ego_learnable:
                 ego_action = process_ego_action(ego_action, acc_range=[-3.0, 3.0], steering_range=[-0.3, 0.3])
@@ -156,6 +161,7 @@ class RolloutBuffer:
                         self.temp_buffer['ego_next_obs'][CBV_id] = []
                         self.temp_buffer['ego_actions'][CBV_id] = []
                         self.temp_buffer['closest_CBV_flag'][CBV_id] = []
+                        self.temp_buffer['next_closest_CBV_flag'][CBV_id] = []
                         self.temp_buffer['ego_min_dis'][CBV_id] = []
                         self.temp_buffer['next_ego_min_dis'][CBV_id] = []
 
@@ -170,6 +176,7 @@ class RolloutBuffer:
                     self.temp_buffer['ego_actions'][CBV_id].append(ego_action)
                     self.temp_buffer['ego_next_obs'][CBV_id].append(next_infos['ego_obs'])
                     self.temp_buffer['closest_CBV_flag'][CBV_id].append(infos['closest_CBV_flag'][CBV_id])
+                    self.temp_buffer['next_closest_CBV_flag'][CBV_id].append(next_infos['closest_CBV_flag'][CBV_id])
                     self.temp_buffer['ego_min_dis'][CBV_id].append(infos['ego_min_dis'])
                     self.temp_buffer['next_ego_min_dis'][CBV_id].append(next_infos['ego_min_dis'])
 
@@ -189,6 +196,7 @@ class RolloutBuffer:
                         processed_ego_obs.extend(self.temp_buffer['ego_obs'].pop(CBV_id))
                         processed_ego_next_obs.extend(self.temp_buffer['ego_next_obs'].pop(CBV_id))
                         processed_closest_CBV_flag.extend(self.temp_buffer['closest_CBV_flag'].pop(CBV_id))
+                        processed_next_closest_CBV_flag.extend(self.temp_buffer['next_closest_CBV_flag'].pop(CBV_id))
                         processed_ego_min_dis.extend(self.temp_buffer['ego_min_dis'].pop(CBV_id))
                         processed_next_ego_min_dis.extend(self.temp_buffer['next_ego_min_dis'].pop(CBV_id))
                 else:
@@ -196,7 +204,7 @@ class RolloutBuffer:
                     self.temp_buffer['terminated'][CBV_id].append(False)
 
         return processed_actions, processed_log_probs, processed_obs, processed_next_obs, processed_rewards, processed_dones, processed_terminated, \
-            processed_ego_actions, processed_ego_obs, processed_ego_next_obs, processed_closest_CBV_flag, processed_ego_min_dis, processed_next_ego_min_dis
+            processed_ego_actions, processed_ego_obs, processed_ego_next_obs, processed_closest_CBV_flag, processed_next_closest_CBV_flag, processed_ego_min_dis, processed_next_ego_min_dis
 
     def store(self, data_list, additional_dict):
         """
@@ -205,8 +213,8 @@ class RolloutBuffer:
         """
         # store for scenario training
         if self.mode == 'train_scenario':
-            scenario_actions, scenario_log_probs, obs, next_obs, rewards, dones, terminated,\
-                ego_actions, ego_obs, ego_next_obs, closest_CBV_flag, ego_min_dis, next_ego_min_dis = self.process_CBV_data(data_list, additional_dict)
+            (scenario_actions, scenario_log_probs, obs, next_obs, rewards, dones, terminated, ego_actions, ego_obs, ego_next_obs,
+             closest_CBV_flag, next_closest_CBV_flag, ego_min_dis, next_ego_min_dis) = self.process_CBV_data(data_list, additional_dict)
 
             length = len(dones)
             if length > 10:  # remove the too short CBV trajectory
@@ -226,6 +234,7 @@ class RolloutBuffer:
                                 self.buffer_ego_obs[self.scenario_pos] = np.array(ego_obs[i])
                                 self.buffer_ego_next_obs[self.scenario_pos] = np.array(ego_next_obs[i])
                                 self.buffer_closest_CBV_flag[self.scenario_pos] = np.array(closest_CBV_flag[i])
+                                self.buffer_next_closest_CBV_flag[self.scenario_pos] = np.array(next_closest_CBV_flag[i])
                                 self.buffer_ego_min_dis[self.scenario_pos] = np.array(ego_min_dis[i])
                                 self.buffer_next_ego_min_dis[self.scenario_pos] = np.array(next_ego_min_dis[i])
                             self.scenario_pos += 1
@@ -234,18 +243,19 @@ class RolloutBuffer:
                     self.scenario_full = True
                 else:
                     # the buffer still can hold the whole trajectory
-                    self.buffer_actions[self.scenario_pos:self.scenario_pos+length, :] = np.array(scenario_actions)
-                    self.buffer_log_probs[self.scenario_pos:self.scenario_pos+length] = np.array(scenario_log_probs)
-                    self.buffer_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(obs)  # CBV_obs
-                    self.buffer_next_obs[self.scenario_pos:self.scenario_pos+length, :] = np.array(next_obs)  # CBV next obs from next info
-                    self.buffer_rewards[self.scenario_pos:self.scenario_pos+length] = np.array(rewards)  # CBV reward
-                    self.buffer_dones[self.scenario_pos:self.scenario_pos+length] = np.array(dones)
-                    self.buffer_terminated[self.scenario_pos:self.scenario_pos+length] = np.array(terminated)
+                    self.buffer_actions[self.scenario_pos:self.scenario_pos + length, :] = np.array(scenario_actions)
+                    self.buffer_log_probs[self.scenario_pos:self.scenario_pos + length] = np.array(scenario_log_probs)
+                    self.buffer_obs[self.scenario_pos:self.scenario_pos + length, :] = np.array(obs)  # CBV_obs
+                    self.buffer_next_obs[self.scenario_pos:self.scenario_pos + length, :] = np.array(next_obs)  # CBV next obs from next info
+                    self.buffer_rewards[self.scenario_pos:self.scenario_pos + length] = np.array(rewards)  # CBV reward
+                    self.buffer_dones[self.scenario_pos:self.scenario_pos + length] = np.array(dones)
+                    self.buffer_terminated[self.scenario_pos:self.scenario_pos + length] = np.array(terminated)
                     if self.use_feasibility:
                         self.buffer_ego_obs[self.scenario_pos:self.scenario_pos + length] = np.array(ego_obs)
                         self.buffer_ego_next_obs[self.scenario_pos:self.scenario_pos + length] = np.array(ego_next_obs)
                         self.buffer_ego_actions[self.scenario_pos:self.scenario_pos + length] = np.array(ego_actions)
                         self.buffer_closest_CBV_flag[self.scenario_pos:self.scenario_pos + length] = np.array(closest_CBV_flag)
+                        self.buffer_next_closest_CBV_flag[self.scenario_pos:self.scenario_pos + length] = np.array(next_closest_CBV_flag)
                         self.buffer_ego_min_dis[self.scenario_pos:self.scenario_pos + length] = np.array(ego_min_dis)
                         self.buffer_next_ego_min_dis[self.scenario_pos:self.scenario_pos + length] = np.array(next_ego_min_dis)
                     self.scenario_pos += length
@@ -263,7 +273,8 @@ class RolloutBuffer:
             all_next_infos = additional_dict[1]
 
             assert len(all_agent_actions) == len(all_obs) == len(all_next_obs) == len(all_rewards) == len(all_dones), "the length of trajectory should be the same"
-            for ego_actions, ego_log_probs, obs, next_obs, rewards, dones, next_infos in zip(all_agent_actions, all_agent_log_probs, all_obs, all_next_obs, all_rewards, all_dones, all_next_infos):
+            for ego_actions, ego_log_probs, obs, next_obs, rewards, dones, next_infos in zip(all_agent_actions, all_agent_log_probs, all_obs, all_next_obs, all_rewards, all_dones,
+                                                                                             all_next_infos):
                 scenario_id = next_infos['scenario_id'] if self.store_scenario_id is None else self.store_scenario_id
                 if not self.agent_full[scenario_id]:
                     self.buffer_actions[self.agent_pos[scenario_id], scenario_id, :] = np.array(ego_actions)
@@ -339,6 +350,7 @@ class RolloutBuffer:
                     'ego_next_obs': self.buffer_ego_next_obs[:upper_bound],
                     'ego_actions': self.buffer_ego_actions[:upper_bound],
                     'closest_CBV_flag': self.buffer_closest_CBV_flag[:upper_bound],
+                    'next_closest_CBV_flag': self.buffer_next_closest_CBV_flag[:upper_bound],
                     'ego_min_dis': self.buffer_ego_min_dis[:upper_bound],
                     'next_ego_min_dis': self.buffer_next_ego_min_dis[:upper_bound]
                 })
@@ -352,12 +364,12 @@ class RolloutBuffer:
             dones = np.zeros(self.buffer_len, dtype=np.float32)
             for scenario_id in range(self.num_scenario):
                 upper_bound = self.buffer_capacity // 2 if self.agent_full[scenario_id] else self.agent_pos[scenario_id]
-                actions[index:index+upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
-                log_probs[index:index+upper_bound] = self.buffer_log_probs[:upper_bound, scenario_id]
-                obs[index:index+upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
-                next_obs[index:index+upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]
-                rewards[index:index+upper_bound] = self.buffer_rewards[:upper_bound, scenario_id]
-                dones[index:index+upper_bound] = self.buffer_dones[:upper_bound, scenario_id]
+                actions[index:index + upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
+                log_probs[index:index + upper_bound] = self.buffer_log_probs[:upper_bound, scenario_id]
+                obs[index:index + upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
+                next_obs[index:index + upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]
+                rewards[index:index + upper_bound] = self.buffer_rewards[:upper_bound, scenario_id]
+                dones[index:index + upper_bound] = self.buffer_dones[:upper_bound, scenario_id]
                 index += upper_bound
 
             batch = {
@@ -394,12 +406,12 @@ class RolloutBuffer:
 
         for scenario_id in range(self.num_scenario):
             upper_bound = self.buffer_capacity // 2 if self.feasibility_full[scenario_id] else self.feasibility_pos[scenario_id]
-            actions[index:index+upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
-            obs[index:index+upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
-            next_obs[index:index+upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]
-            ego_min_dis[index:index+upper_bound] = self.buffer_ego_min_dis[:upper_bound, scenario_id]
-            ego_collide[index:index+upper_bound] = self.buffer_ego_collide[:upper_bound, scenario_id]
-            dones[index:index+upper_bound] = self.buffer_dones[:upper_bound, scenario_id]
+            actions[index:index + upper_bound] = self.buffer_actions[:upper_bound, scenario_id, :]
+            obs[index:index + upper_bound, ...] = self.buffer_obs[:upper_bound, scenario_id, ...]
+            next_obs[index:index + upper_bound, ...] = self.buffer_next_obs[:upper_bound, scenario_id, ...]
+            ego_min_dis[index:index + upper_bound] = self.buffer_ego_min_dis[:upper_bound, scenario_id]
+            ego_collide[index:index + upper_bound] = self.buffer_ego_collide[:upper_bound, scenario_id]
+            dones[index:index + upper_bound] = self.buffer_dones[:upper_bound, scenario_id]
             index += upper_bound
 
         with h5py.File(file_path, 'w') as file:
@@ -411,5 +423,3 @@ class RolloutBuffer:
             file.create_dataset('ego_min_dis', shape=self.buffer_len, dtype=np.float32, data=ego_min_dis, compression='gzip')
             file.create_dataset('ego_collide', shape=self.buffer_len, dtype=np.float32, data=ego_collide, compression='gzip')
             file.create_dataset('dones', shape=self.buffer_len, dtype=np.float32, data=dones, compression='gzip')
-
-

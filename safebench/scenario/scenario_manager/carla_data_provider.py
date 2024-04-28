@@ -206,7 +206,8 @@ class CarlaDataProvider(object):
         """
             set random seed
         """
-        CarlaDataProvider._rng = random_seed
+        CarlaDataProvider._random_seed = random_seed
+        CarlaDataProvider._rng = random.RandomState(random_seed)
 
     @staticmethod
     def is_sync_mode():

@@ -54,20 +54,20 @@ class FPPOAdv(PPO):
             advantages[t] = advantage = deltas[t] + undones[t] * self.gamma * self.lambda_gae_adv * advantage
         return advantages
 
-    def get_feasibility_Vs(self, closest_CBV_flag, ego_obs, ego_next_obs):
+    def get_feasibility_Vs(self, closest_CBV_flag, next_closest_CBV_flag, ego_obs, ego_next_obs):
         feasibility_V = torch.full_like(closest_CBV_flag, -1.0)
         feasibility_next_V = torch.full_like(closest_CBV_flag, -1.0)
         # only consider the CBV is the closest BV from ego
         indices = torch.where(closest_CBV_flag > 0.5)[0]
+        next_indices = torch.where(next_closest_CBV_flag > 0.5)[0]
+
         if indices.numel() > 0:
-            obs_inputs = ego_obs[indices]
-            next_obs_inputs = ego_next_obs[indices]
-            # calculate the feasibility_V and current state and next state at the same time
-            feasibility = self.feability_policy.get_feasibility_Vs(torch.cat((obs_inputs, next_obs_inputs), dim=0))
-            # the length of each part
-            split_size = len(obs_inputs)
-            feasibility_V[indices] = feasibility[:split_size].squeeze()
-            feasibility_next_V[indices] = feasibility[split_size:].squeeze()
+            # calculate the feasibility_V at the current state
+            feasibility_V[indices] = self.feability_policy.get_feasibility_Vs(ego_obs[indices])
+        if next_indices.numel() > 0:
+            # calculate the feasibility_V at the next state
+            feasibility_next_V[next_indices] = self.feability_policy.get_feasibility_Vs(ego_next_obs[next_indices])
+
         return [feasibility_V, feasibility_next_V]
 
     def get_surrogate_advantages(self, feasibility_advantages, reward_advantages, feasibility_next_V):
@@ -75,6 +75,15 @@ class FPPOAdv(PPO):
         constraint_unsafe_condition = torch.where(feasibility_next_V > 0.0, 1.0, 0.0)
         surrogate_advantages = constraint_safe_condition * reward_advantages + constraint_unsafe_condition * feasibility_advantages
         return surrogate_advantages
+
+    def norm_feasibility_advantages(self, feasibility_advantages):
+        nonzero_indices = torch.nonzero(feasibility_advantages != 0).squeeze()
+
+        mean = feasibility_advantages[nonzero_indices].mean()
+        std = feasibility_advantages[nonzero_indices].std(dim=0)
+
+        feasibility_advantages[nonzero_indices] = (feasibility_advantages[nonzero_indices] - mean) / (std + 1e-5)
+        return feasibility_advantages
 
     def train(self, buffer, writer, e_i):
         with torch.no_grad():
@@ -93,11 +102,12 @@ class FPPOAdv(PPO):
             buffer_size = states.shape[0]
             # feasibility
             closest_CBV_flag = CUDA(torch.FloatTensor(batch['closest_CBV_flag']))
+            next_closest_CBV_flag = CUDA(torch.FloatTensor(batch['next_closest_CBV_flag']))
             ego_obs = CUDA(torch.FloatTensor(batch['ego_obs']))
             ego_next_obs = CUDA(torch.FloatTensor(batch['ego_next_obs']))
             ego_min_dis = CUDA(torch.FloatTensor(batch['ego_min_dis']))
             next_ego_min_dis = CUDA(torch.FloatTensor(batch['next_ego_min_dis']))
-            feasibility_V, feasibility_next_V = self.get_feasibility_Vs(closest_CBV_flag, ego_obs, ego_next_obs)
+            feasibility_V, feasibility_next_V = self.get_feasibility_Vs(closest_CBV_flag, next_closest_CBV_flag, ego_obs, ego_next_obs)
 
             # the values of the reward
             values = self.value(states)
@@ -106,15 +116,16 @@ class FPPOAdv(PPO):
             reward_advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
 
             reward_sums = reward_advantages + values
-            del rewards, values, next_values, unterminated, closest_CBV_flag, ego_obs
+            del rewards, values, next_values, unterminated, closest_CBV_flag, ego_obs, next_closest_CBV_flag
 
             # the advantage of the feasibility
             feasibility_advantages = self.get_feasibility_advantage_GAE(feasibility_V, feasibility_next_V, ego_min_dis, next_ego_min_dis, undones)
 
             # norm the reward advantage
             reward_advantages = (reward_advantages - reward_advantages.mean()) / (reward_advantages.std(dim=0) + 1e-5)
+
             # norm the feasibility advantage
-            feasibility_advantages = (feasibility_advantages - feasibility_advantages.mean()) / (feasibility_advantages.std(dim=0) + 1e-5)
+            feasibility_advantages = self.norm_feasibility_advantages(feasibility_advantages)
 
             # the surrogate_advantages under safe conditions
             surrogate_advantages = self.get_surrogate_advantages(feasibility_advantages, reward_advantages, feasibility_next_V)
