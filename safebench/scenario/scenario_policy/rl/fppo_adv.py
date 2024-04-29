@@ -134,6 +134,8 @@ class FPPOAdv(PPO):
             safe_condition = torch.where(feasibility_V <= 0.0, 1.0, 0.0)
             unsafe_condition = torch.where(feasibility_V > 0.0, 1.0, 0.0)
 
+            writer.add_scalar("unsafe ratio", torch.sum(unsafe_condition)/unsafe_condition.numel(), e_i)
+
             # final advantage
             advantages = unsafe_condition * feasibility_advantages + safe_condition * surrogate_advantages
 
