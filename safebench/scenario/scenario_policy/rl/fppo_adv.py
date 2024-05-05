@@ -56,25 +56,33 @@ class FPPOAdv(PPO):
 
     def get_feasibility_Vs(self, closest_CBV_flag, next_closest_CBV_flag, ego_obs, ego_next_obs):
         feasibility_V = torch.full_like(closest_CBV_flag, -1.0)
-        feasibility_next_V = torch.full_like(closest_CBV_flag, -1.0)
+        feasibility_next_V = torch.full_like(next_closest_CBV_flag, -1.0)
         # only consider the CBV is the closest BV from ego
-        indices = torch.where(closest_CBV_flag > 0.5)[0]
-        next_indices = torch.where(next_closest_CBV_flag > 0.5)[0]
+        indices = (closest_CBV_flag > 0.5) & (next_closest_CBV_flag > 0.5)
 
         if indices.numel() > 0:
-            # calculate the feasibility_V at the current state
-            feasibility_V[indices] = self.feability_policy.get_feasibility_Vs(ego_obs[indices])
-        if next_indices.numel() > 0:
-            # calculate the feasibility_V at the next state
-            feasibility_next_V[next_indices] = self.feability_policy.get_feasibility_Vs(ego_next_obs[next_indices])
+            # calculate the feasibility_V
+            feasibility_all_V = self.feability_policy.get_feasibility_Vs(torch.cat((ego_obs[indices], ego_next_obs[indices]), dim=0))
+            feasibility_V[indices] = feasibility_all_V[:len(indices)].squeeze()
+            feasibility_next_V[indices] = feasibility_all_V[len(indices):].squeeze()
 
         return [feasibility_V, feasibility_next_V]
 
-    def get_surrogate_advantages(self, feasibility_advantages, reward_advantages, feasibility_next_V):
-        constraint_safe_condition = torch.where(feasibility_next_V <= 0.0, 1.0, 0.0)
-        constraint_unsafe_condition = torch.where(feasibility_next_V > 0.0, 1.0, 0.0)
-        surrogate_advantages = constraint_safe_condition * reward_advantages + constraint_unsafe_condition * feasibility_advantages
-        return surrogate_advantages
+    def get_surrogate_advantages(self, feasibility_advantages, reward_advantages, feasibility_V, feasibility_next_V):
+        # current safe condition
+        safe_condition = torch.where(feasibility_V <= 0.0, 1.0, 0.0)
+        unsafe_condition = torch.where(feasibility_V > 0.0, 1.0, 0.0)
+        # next safe condition
+        next_safe_condition = torch.where(feasibility_next_V <= 0.0, 1.0, 0.0)
+        next_unsafe_condition = torch.where(feasibility_next_V > 0.0, 1.0, 0.0)
+
+        # final advantage
+        advantages = unsafe_condition * feasibility_advantages + \
+                    safe_condition * (next_safe_condition * reward_advantages + next_unsafe_condition * feasibility_advantages)
+
+        del safe_condition, unsafe_condition, next_safe_condition, next_unsafe_condition
+
+        return advantages
 
     def norm_feasibility_advantages(self, feasibility_advantages):
         nonzero_indices = torch.nonzero(feasibility_advantages != 0).squeeze()
@@ -127,19 +135,10 @@ class FPPOAdv(PPO):
             # norm the feasibility advantage
             feasibility_advantages = self.norm_feasibility_advantages(feasibility_advantages)
 
-            # the surrogate_advantages under safe conditions
-            surrogate_advantages = self.get_surrogate_advantages(feasibility_advantages, reward_advantages, feasibility_next_V)
+            # the surrogate_advantages combining safe and unsafe conditions
+            advantages = self.get_surrogate_advantages(feasibility_advantages, reward_advantages, feasibility_V, feasibility_next_V)
 
-            # condition
-            safe_condition = torch.where(feasibility_V <= 0.0, 1.0, 0.0)
-            unsafe_condition = torch.where(feasibility_V > 0.0, 1.0, 0.0)
-
-            writer.add_scalar("unsafe ratio", torch.sum(unsafe_condition)/unsafe_condition.numel(), e_i)
-
-            # final advantage
-            advantages = unsafe_condition * feasibility_advantages + safe_condition * surrogate_advantages
-
-            del feasibility_V, feasibility_next_V, feasibility_advantages, reward_advantages, unsafe_condition, safe_condition, undones
+            del feasibility_V, feasibility_next_V, feasibility_advantages, reward_advantages, undones
 
         # start to train, use gradient descent without batch_size
         update_times = int(buffer_size * self.train_repeat_times / self.batch_size)
