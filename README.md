@@ -1,4 +1,4 @@
-# RESA: Reasonable Evaluation via Safety Assurance
+# FREA: Feasibility-Guided Safety-Critical Scenarios Generation with Reasonable Adversarial Behavior
 
 # Content
 

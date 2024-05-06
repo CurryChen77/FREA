@@ -63,8 +63,8 @@ class FPPOAdv(PPO):
         if indices.numel() > 0:
             # calculate the feasibility_V
             feasibility_all_V = self.feability_policy.get_feasibility_Vs(torch.cat((ego_obs[indices], ego_next_obs[indices]), dim=0))
-            feasibility_V[indices] = feasibility_all_V[:len(indices)].squeeze()
-            feasibility_next_V[indices] = feasibility_all_V[len(indices):].squeeze()
+            feasibility_V[indices] = feasibility_all_V[:len(ego_obs[indices])]
+            feasibility_next_V[indices] = feasibility_all_V[len(ego_next_obs[indices]):]
 
         return [feasibility_V, feasibility_next_V]
 
