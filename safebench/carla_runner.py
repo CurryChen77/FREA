@@ -58,10 +58,9 @@ class CarlaRunner:
         self.fixed_delta_seconds = scenario_config['fixed_delta_seconds']
         self.CBV_selection = scenario_config['CBV_selection']
         self.scenario_agent_learnable = scenario_config['learnable']
-        self.scenario_agent_reward_shaping = scenario_config['reward_shaping']
         self.scenario_id = scenario_config['scenario_id']
-        # if the scenario agent need feasibility or need feasibility for eval
-        self.use_feasibility = scenario_config['feasibility'] or scenario_config['use_feasibility']
+        # if the scenario agent need feasibility
+        self.use_feasibility = scenario_config['feasibility']
         self.scenario_policy_type = scenario_config['policy_type']
         self.agent_policy_type = agent_config['policy_type']
 
@@ -83,7 +82,6 @@ class CarlaRunner:
             'scenario_agent_learnable': scenario_config['learnable'],  # whether the scenario agent is a learnable method
             'agent_obs_type': agent_config['obs_type'],  # default 0 (only 4 dimensions states )
             'CBV_selection': self.CBV_selection,  # the method using for selection the controlled bv
-            'scenario_reward_shaping': self.scenario_agent_reward_shaping,  # whether the scenario agent got a reward shaping
             'ROOT_DIR': scenario_config['ROOT_DIR'],
             'signalized_junction': False,  # whether the signal controls the junction
             'warm_up_steps': 4,  # number of ticks after spawning the vehicles

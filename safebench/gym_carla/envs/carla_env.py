@@ -27,7 +27,7 @@ from safebench.gym_carla.envs.misc import (
 from safebench.agent.agent_utils.explainability_utils import get_masked_viz_3rd_person
 from safebench.gym_carla.envs.utils import get_CBV_candidates, get_nearby_vehicles, find_closest_vehicle, \
     update_goal_CBV_dis, get_CBV_ego_reward, calculate_abs_velocity, \
-    process_ego_action, get_ego_min_dis, check_interaction, check_CBV_BV_stuck, draw_trajectory, get_records, get_closest_CBV_flag
+    process_ego_action, get_ego_min_dis, check_interaction, check_CBV_BV_stuck, draw_trajectory, get_records, get_closest_CBV_flag, get_min_distance_across_bboxes
 from safebench.scenario.scenario_definition.route_scenario import RouteScenario
 from safebench.scenario.scenario_manager.scenario_manager import ScenarioManager
 from safebench.scenario.scenario_manager.carla_data_provider import CarlaDataProvider
@@ -60,7 +60,6 @@ class CarlaEnv(gym.Env):
         self.enable_sem = env_params['enable_sem']
         self.ego_agent_learnable = env_params['ego_agent_learnable']
         self.scenario_agent_learnable = env_params['scenario_agent_learnable']
-        self.scenario_agent_reward_shaping = env_params['scenario_reward_shaping']
         self.mode = env_params['mode']
         self.eval_mode = env_params['eval_mode']
 
@@ -253,8 +252,7 @@ class CarlaEnv(gym.Env):
         self.reset_step += 1
 
         # find ego nearby vehicles
-        if self.mode == 'collect_feasibility_data' or self.mode == 'eval' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
-            self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+        self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         # set controlled bv
         self.CBVs_selection()
@@ -372,8 +370,7 @@ class CarlaEnv(gym.Env):
         self.waypoints, self.goal_waypoint, self.red_light_state = self.routeplanner.run_step()
 
         # find ego nearby vehicles
-        if self.mode == 'collect_feasibility_data' or self.mode == 'eval' or self.use_feasibility or self.agent_obs_type == 'ego_obs':
-            self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
+        self.ego_nearby_vehicles = get_nearby_vehicles(self.ego_vehicle, self.search_radius)
 
         extra_status = {}
         if self.eval_mode == 'analysis':
@@ -413,11 +410,18 @@ class CarlaEnv(gym.Env):
         info.update(self.scenario_manager.route_scenario.update_info(goal_waypoint=self.goal_waypoint))
 
         # the feasibility needs the ego info (without route info)
-        if self.mode == 'collect_feasibility_data' or self.use_feasibility:
+        if self.mode == 'collect_feasibility_data':
             info.update(self.scenario_manager.route_scenario.update_ego_info(self.ego_nearby_vehicles))
-            info['closest_CBV_flag'] = get_closest_CBV_flag(self.ego_nearby_vehicles, self.CBVs)
             info['ego_min_dis'] = get_ego_min_dis(self.ego_vehicle, self.ego_nearby_vehicles, self.search_radius)
             info['ego_collide'] = float(self.ego_collide)
+
+        # the feasibility-guided method need CBV-related ego_obs
+        if self.use_feasibility:
+            info['ego_CBV_obs'] = {}
+            info['ego_CBV_dis'] = {}
+            for CBV_id, CBV in self.CBVs.items():
+                info['ego_CBV_obs'][CBV_id] = self.scenario_manager.route_scenario.update_ego_info(ego_nearby_vehicles=[CBV])['ego_obs']
+                info['ego_CBV_dis'][CBV_id] = get_min_distance_across_bboxes(self.ego_vehicle, CBV)
 
         # when resetting
         if reset:

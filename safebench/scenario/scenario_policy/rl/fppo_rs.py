@@ -40,15 +40,10 @@ class FPPORs(PPO):
     def set_feasibility_policy(self, feasibility_policy):
         self.feability_policy = feasibility_policy
 
-    def get_feasibility_rewards(self, next_closest_CBV_flag, ego_next_obs):
-        feasibility_rewards = torch.full_like(next_closest_CBV_flag, 0.0)
-        # only consider the CBV is the closest BV from ego
-        indices = torch.where(next_closest_CBV_flag > 0.5)[0]
-        if indices.numel() > 0:
-            obs_inputs = ego_next_obs[indices]
-            feasibility_next_V = self.feability_policy.get_feasibility_Vs(obs_inputs).squeeze()
-            feasibility_rewards[indices] = -1 * process_feasibility_rewards(feasibility_next_V, clamp_range=(0, 8), map_range=(1, 2))
-        return feasibility_rewards
+    def get_feasibility_rewards(self, ego_CBV_next_obs):
+        feasibility_next_V = self.feability_policy.get_feasibility_Vs(ego_CBV_next_obs).squeeze()
+        feasibility_rewards = -1 * process_feasibility_rewards(feasibility_next_V, clamp_range=(0, 8), map_range=(1, 2))
+        return feasibility_rewards, feasibility_next_V
 
     def train(self, buffer, writer, e_i):
         """
@@ -70,9 +65,9 @@ class FPPORs(PPO):
             unterminated = CUDA(torch.FloatTensor(1-batch['terminated']))
             buffer_size = states.shape[0]
             # feasibility
-            next_closest_CBV_flag = CUDA(torch.FloatTensor(batch['next_closest_CBV_flag']))
-            ego_next_obs = CUDA(torch.FloatTensor(batch['ego_next_obs']))
-            feasibility_rewards = self.get_feasibility_rewards(next_closest_CBV_flag, ego_next_obs)
+            ego_CBV_next_obs = CUDA(torch.FloatTensor(batch['ego_CBV_next_obs']))
+            feasibility_rewards, feasibility_next_V = self.get_feasibility_rewards(ego_CBV_next_obs)
+            writer.add_scalar("unsafe ratio", (feasibility_next_V > 0).float().mean().item(), e_i)
 
             rewards += feasibility_rewards
 
@@ -81,7 +76,7 @@ class FPPORs(PPO):
 
             advantages = self.get_advantages_GAE(rewards, undones, values, next_values, unterminated)
             reward_sums = advantages + values
-            del rewards, undones, values, next_values, unterminated, feasibility_rewards, next_closest_CBV_flag, ego_next_obs
+            del rewards, undones, values, next_values, unterminated, feasibility_rewards, ego_CBV_next_obs, feasibility_next_V
 
             advantages = (advantages - advantages.mean()) / (advantages.std(dim=0) + 1e-5)
 

@@ -27,7 +27,6 @@ if __name__ == '__main__':
     parser.add_argument('--CBV_selection', '-CBV', type=str, default='rule-based', choices=['rule-based', 'attention-based'])
     parser.add_argument('--auto_ego', action='store_true')
     parser.add_argument('--viz_route', '-vr', action='store_true')
-    parser.add_argument('--use_feasibility', '-fe', type=bool, default=True)
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'collect_feasibility_data'])
     parser.add_argument('--eval_mode', '-em', type=str, default='analysis', choices=['analysis', 'render'])
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='expert.yaml')
@@ -77,8 +76,6 @@ if __name__ == '__main__':
             # only save video when the eval mode is 'render'
             if args.eval_mode != 'render':
                 args.save_video = False
-            if args.eval_mode != 'analysis':
-                args.use_feasibility = False
 
             # main entry with a selected mode
             agent_config.update(args_dict)

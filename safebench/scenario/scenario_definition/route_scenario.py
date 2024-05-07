@@ -206,7 +206,7 @@ class RouteScenario():
             ego_truncated = True
             self.logger.log('>> Scenario stops due to stuck', color='yellow')
 
-        # stop at max step
+        # stop at a max step
         if len(running_record) >= self.max_running_step: 
             ego_stop = True
             ego_truncated = True
