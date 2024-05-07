@@ -55,11 +55,12 @@ class FPPOAdv(PPO):
         return advantages
 
     def get_feasibility_Vs(self, ego_CBV_obs, ego_CBV_next_obs):
-
+        assert len(ego_CBV_obs) == len(ego_CBV_next_obs)
+        length = len(ego_CBV_obs)
         # calculate the feasibility_V
         feasibility_all_V = self.feability_policy.get_feasibility_Vs(torch.cat((ego_CBV_obs, ego_CBV_next_obs), dim=0))
-        feasibility_V = feasibility_all_V[:len(ego_CBV_obs)]
-        feasibility_next_V = feasibility_all_V[len(ego_CBV_next_obs):]
+        feasibility_V = feasibility_all_V[:length]
+        feasibility_next_V = feasibility_all_V[length:]
 
         return [feasibility_V, feasibility_next_V]
 

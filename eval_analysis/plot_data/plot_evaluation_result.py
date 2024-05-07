@@ -23,7 +23,7 @@ def classified_data_by_ego(data):
     classified_by_ego = defaultdict(dict)
 
     for key, value in data.items():
-        match = re.search(r"Ego:(\w+)", key)
+        match = re.search(r"AV:(\w+)", key)
         if match:
             ego = match.group(1)  # extract ego
             classified_by_ego[ego][key] = value
@@ -115,7 +115,6 @@ def main(args):
     PET_all_data = {}
     TTC_all_data = {}
     ego_dis_data = {}
-    feasibility = {}
     unfeasible_rate = {}
     collision_ratio = {}
     collision_vel = {}
@@ -132,12 +131,11 @@ def main(args):
             if osp.isdir(algorithm_path):
                 scenario_map_files = os.listdir(algorithm_path)
                 # the specific ego and CBV method
-                algorithm_title = f"Ego:{ego} CBV:{cbv}"
+                algorithm_title = f"AV:{ego} CBV:{cbv}"
 
                 PET_all_data[algorithm_title] = {}
                 TTC_all_data[algorithm_title] = {}
                 ego_dis_data[algorithm_title] = {}
-                feasibility[algorithm_title] = {}
                 unfeasible_rate[algorithm_title] = {}
                 if cbv != 'standard':
                     collision_ratio[algorithm_title] = {}
@@ -160,7 +158,6 @@ def main(args):
                                 file_path = os.path.join(scenario_map_path, file)
                                 with open(file_path, 'rb') as pickle_file:
                                     all_data = pickle.load(pickle_file)
-                                feasibility[algorithm_title][scenario_map] = all_data['feasibility_Vs']
                                 unfeasible_rate[algorithm_title][scenario_map] = all_data['unfeasible_rate']
                             if file == 'miss_traj_info.pkl' and 'miss_traj' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
@@ -183,9 +180,6 @@ def main(args):
     if 'all_traj' in args.data:
         # unfeasible rate
         plot_metric(unfeasible_rate, 'unfeasible_rate')
-        # feasibility distribution
-        feasibility_bins = np.linspace(-3, 5, 20)
-        draw_data(feasibility, 'Feasibility value', ROOT_DIR, bins=feasibility_bins, baseline_CBV='standard')
 
     if 'miss_traj' in args.data:
         # PET distribution

@@ -23,7 +23,7 @@ train_episode:
   Town02: 2000
 
 save_freq: 50
-buffer_capacity: 512
+buffer_capacity: 2048
 
 clip_epsilon: 0.2
 gamma: 0.98
