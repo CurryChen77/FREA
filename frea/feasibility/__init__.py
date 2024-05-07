@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：setup.py
+@File    ：__init__.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
 
-from setuptools import setup, find_packages
+# collect policy models from scenarios
+from frea.feasibility.HJ_Reachability import HJR
 
-setup(name='frea',
-      packages=["frea"],
-      include_package_data=True,
-      version='1.0.0',
-      install_requires=['gym', 'pygame'])
+
+FEASIBILITY_LIST = {
+    'HJR': HJR
+}

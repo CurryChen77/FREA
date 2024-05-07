@@ -1,0 +1,14 @@
+obs_type: "plant"
+attention_score: AllLayer
+topk: 4 #1
+viz_attn_map: False
+
+pretrained_model_path: 'frea/agent/model_ckpt/PlanT_state_encoder/checkpoints/state_encoder.ckpt'
+
+training:
+  max_NextRouteBBs: 2 # max 10 prevents really high ids if route is long
+
+
+network:
+  hf_checkpoint: "frea/agent/model_ckpt/PlanT_state_encoder/checkpoints/bert-medium"
+  embd_pdrop: 0.1

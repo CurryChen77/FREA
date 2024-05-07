@@ -13,9 +13,9 @@ import os.path as osp
 
 import torch 
 
-from safebench.util.run_util import load_config
-from safebench.util.torch_util import set_seed, set_torch_variable
-from safebench.carla_runner import CarlaRunner
+from frea.util.run_util import load_config
+from frea.util.torch_util import set_seed, set_torch_variable
+from frea.carla_runner import CarlaRunner
 
 
 if __name__ == '__main__':
@@ -56,15 +56,15 @@ if __name__ == '__main__':
             set_seed(args.seed)
 
             # load agent config
-            agent_config_path = osp.join(args.ROOT_DIR, 'safebench/agent/config', agent_cfg)
+            agent_config_path = osp.join(args.ROOT_DIR, 'frea/agent/config', agent_cfg)
             agent_config = load_config(agent_config_path)
 
             # load scenario config
-            scenario_config_path = osp.join(args.ROOT_DIR, 'safebench/scenario/config', scenario_cfg)
+            scenario_config_path = osp.join(args.ROOT_DIR, 'frea/scenario/config', scenario_cfg)
             scenario_config = load_config(scenario_config_path)
 
             # load feasibility config
-            feasibility_config_path = osp.join(args.ROOT_DIR, 'safebench/feasibility/config', args.feasibility_cfg)
+            feasibility_config_path = osp.join(args.ROOT_DIR, 'frea/feasibility/config', args.feasibility_cfg)
             feasibility_config = load_config(feasibility_config_path)
             feasibility_config.update(args_dict)
 

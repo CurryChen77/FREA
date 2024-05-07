@@ -30,8 +30,8 @@ RUN wget https://phoenixnap.dl.sourceforge.net/project/turbovnc/3.0.3/turbovnc_3
     && dpkg -i turbovnc*.deb \
     && rm -f turbovnc*.deb
 
-RUN useradd -ms /bin/bash safebench \
-    && usermod -aG sudo safebench \
+RUN useradd -ms /bin/bash frea \
+    && usermod -aG sudo frea \
     && echo "safebench:safe" | chpasswd
 
 USER safebench

@@ -11,7 +11,7 @@ import pickle
 import torch
 from tqdm import tqdm
 import joblib
-from safebench.util.torch_util import CUDA, CPU
+from frea.util.torch_util import CUDA, CPU
 
 
 def get_all_feasibility(sequence):

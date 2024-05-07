@@ -1,0 +1,62 @@
+policy_type: 'plant'
+learnable: False
+onpolicy: False
+model_path: ''
+model_type: 'agent'
+results_folder_path: ''
+obs_type: 'ego_state'
+ego_state_dim: 3
+ego_action_dim: 3
+
+
+train_episode: 200
+
+save_freq: 10
+buffer_capacity: 10000
+buffer_start_training: 100
+
+
+# model_ckpt_load_path needs to be adapted depending on the experiment
+model_ckpt_load_path: "frea/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt"
+exec_model_ckpt_load_path: "frea/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt"
+
+exec_or_inter: 'exec'
+lrDecay_epoch: 46
+gpus: 1
+viz: 0
+viz_attn_map: False
+# Explain-ability
+attention_score: AllLayer
+topk: 5 #1
+
+training:
+  max_epochs: 50
+  batch_size: 32
+  learning_rate: 1e-4
+  betas: [0.9, 0.95]
+  grad_norm_clip: 1.0
+  weight_decay: 0.1 # only applied on matmul weights
+  ckpt_path: log/
+  num_workers: 12 # for DataLoader
+  pred_len: 4
+  seq_len: 1
+  max_NextRouteBBs: 2 # max 10 prevents really high ids if route is long
+  input_ego: False
+  remove_velocity: None # input
+  route_only_wp: False # True
+  remove_back: False
+  pretraining_path: none
+
+pre_training:
+  pretraining: forecast #none
+  multitask: True
+  forecastLoss_weight: 1
+  future_timestep: 1
+  quantize: True
+  precision_pos: 7 # 7: 0.5meters
+  precision_speed: 4 # 4: 3.75km/h
+  precision_angle: 5 # 5: 11.25degrees
+
+network:
+  hf_checkpoint: "frea/agent/model_ckpt/PlanT_medium/checkpoints/bert-medium"
+  embd_pdrop: 0.1

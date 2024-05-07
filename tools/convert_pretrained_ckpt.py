@@ -7,8 +7,8 @@
 @Date    ：2023/10/26
 """
 import torch
-from safebench.agent.agent_utils.agent_state_encoder import EncoderModel
-from safebench.util.run_util import load_config
+from frea.agent.agent_utils.agent_state_encoder import EncoderModel
+from frea.util.run_util import load_config
 from pytorch_lightning.utilities.cloud_io import load as pl_load
 import os.path as osp
 import argparse
@@ -47,11 +47,11 @@ def update_plant_pretrain_model(model_path, updated_pretrain_model_path):
 def main(args):
     strict = True
     ROOT_DIR = osp.abspath(osp.dirname(osp.dirname(osp.realpath(__file__))))
-    config_path = osp.join(ROOT_DIR, 'safebench/feasibility/config/HJR.yaml')
+    config_path = osp.join(ROOT_DIR, 'frea/feasibility/config/HJR.yaml')
     config = load_config(config_path)
-    model_path = osp.join(ROOT_DIR, 'safebench/agent/model_ckpt/PlanT_state_encoder/checkpoints/epoch=047.ckpt')
+    model_path = osp.join(ROOT_DIR, 'frea/agent/model_ckpt/PlanT_state_encoder/checkpoints/epoch=047.ckpt')
     updated_model_path = osp.join(ROOT_DIR, config['pretrained_model_path'])  # for the state encoder
-    updated_pretrain_model_path = osp.join(ROOT_DIR, 'safebench/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt')  # for PlanT
+    updated_pretrain_model_path = osp.join(ROOT_DIR, 'frea/agent/model_ckpt/PlanT_medium/checkpoints/PlanT_pretrain.ckpt')  # for PlanT
 
     if args.Transfer_OriginCKPT_to_StateEncoderCKPT:
         update_state_encoder(model_path, updated_model_path)

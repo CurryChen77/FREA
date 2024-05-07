@@ -1,0 +1,36 @@
+scenario_type_dir: 'frea/scenario/config/scenario_type'
+scenario_type: 'Scenario9_Town05_Town02_10x.json'
+policy_type: 'fppo_adv'
+learnable: True
+feasibility: True
+reward_shaping: False
+
+route_dir: 'frea/scenario/scenario_data/route'
+scenario_id: 9  # default null -> save and load an "all" model for all scenarios, 9 -> save and load one model for the "9" scenario
+route_id: null
+
+# for scenario id 9
+scenario_state_dim: 24 # 4*6 - (actor number + goal_waypoint) * actor info dim
+scenario_state_shape: [4, 6]
+scenario_action_dim: 2
+
+# for PPO policy model
+model_path: 'frea/scenario/scenario_data/model_ckpt/fppo_adv'
+model_type: 'cbv'
+dims: [256, 256]
+train_episode:
+  Town05: 2000
+  Town02: 2000
+
+save_freq: 50
+buffer_capacity: 512
+
+clip_epsilon: 0.2
+gamma: 0.98
+train_repeat_times: 4
+
+policy_lr: 3.0e-4
+value_lr: 3.0e-4
+batch_size: 256
+lambda_gae_adv: 0.98
+lambda_entropy: 0.01

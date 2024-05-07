@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-@File    ：setup.py
+@File    ：__init__.py
 @Author  ：Keyu Chen
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2023/10/4
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
 
-from setuptools import setup, find_packages
+from gym.envs.registration import register
 
-setup(name='frea',
-      packages=["frea"],
-      include_package_data=True,
-      version='1.0.0',
-      install_requires=['gym', 'pygame'])
+register(
+    id='carla-v0',
+    entry_point='frea.gym_carla.envs:CarlaEnv',
+)

@@ -23,7 +23,7 @@ if __name__ == '__main__':
     main(args)
 
     # TODO: remove them in the final version
-    root = '/home/kinova/Documents/Carla/SafeBench_v2/SafeBench_v2-main/safebench/scenario'
+    root = '/home/kinova/Documents/Carla/SafeBench_v2/SafeBench_v2-main/frea/scenario'
     scenario_type_file = os.path.join(root, 'config/scenario_type_new_map/safebench_scenario_1x.json')
     assert os.path.isfile(scenario_type_file)
     shutil.copy2('scenario_data/route_new_map/standard.json', scenario_type_file)
