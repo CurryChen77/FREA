@@ -2,12 +2,11 @@
 
 # Content
 
-* [Eval](#Eval)
-
-* [Train Agent](#Train-Agent)
-* [Train Scenario](#Train-Scenario)
-* [Collect_feasibility_data](#Collect-feasibility-data)
-* [Visualization](#Visualization)
+1. [Eval](#Eval)
+2. [Train Agent](#Train-Agent)
+3. [Train Scenario](#Train-Scenario)
+4. [Collect_feasibility_data](#Collect-feasibility-data)
+5. [Visualization](#Visualization)
 
 ## Eval
 

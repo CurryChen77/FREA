@@ -99,13 +99,16 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', dens
         plt.show()
 
 
-def plot_metric(result, name):
-    print('>> ' + '-' * 20, str(name), '-' * 20)
+def plot_metric(result, name, activate_per=True):
+    print('>> ' + '-' * 10, str(name), '-' * 10)
     for algorithm, scenario_data in result.items():
         for scenario_name, data in scenario_data.items():
-            percentage = round(data * 100, 2)
+            if activate_per:
+                percentage = round(data * 100, 2)
+            else:
+                percentage = round(data, 2)
             print(f">> {algorithm} in {scenario_name}: {percentage}")
-    print('>> ' + '-' * 20, str(name), '-' * 20)
+    print('>> ' + '-' * 10, str(name), '-' * 10)
 
 
 def main(args):
@@ -115,7 +118,10 @@ def main(args):
     PET_all_data = {}
     TTC_all_data = {}
     ego_dis_data = {}
-    unfeasible_rate = {}
+    unfeasible_ratio = {}
+    feasibility_Vs = {}
+    fea_boundary_dis = {}
+    fea_boundary_dis_mean = {}
     collision_ratio = {}
     collision_vel = {}
     collision_impulse = {}
@@ -136,11 +142,14 @@ def main(args):
                 PET_all_data[algorithm_title] = {}
                 TTC_all_data[algorithm_title] = {}
                 ego_dis_data[algorithm_title] = {}
-                unfeasible_rate[algorithm_title] = {}
                 if cbv != 'standard':
                     collision_ratio[algorithm_title] = {}
                     collision_vel[algorithm_title] = {}
                     collision_impulse[algorithm_title] = {}
+                    unfeasible_ratio[algorithm_title] = {}
+                    feasibility_Vs[algorithm_title] = {}
+                    fea_boundary_dis[algorithm_title] = {}
+                    fea_boundary_dis_mean[algorithm_title] = {}
 
                 for scenario_map in scenario_map_files:
                     scenario_map_path = osp.join(algorithm_path, scenario_map)
@@ -154,11 +163,8 @@ def main(args):
                                 collision_ratio[algorithm_title][scenario_map] = all_collision_data['collision_ratio']
                                 collision_impulse[algorithm_title][scenario_map] = all_collision_data['collision_impulse']
                                 collision_vel[algorithm_title][scenario_map] = all_collision_data['collision_vel']
-                            if file == 'all_traj_info.pkl' and 'all_traj' in args.data:
-                                file_path = os.path.join(scenario_map_path, file)
-                                with open(file_path, 'rb') as pickle_file:
-                                    all_data = pickle.load(pickle_file)
-                                unfeasible_rate[algorithm_title][scenario_map] = all_data['unfeasible_rate']
+                                fea_boundary_dis[algorithm_title][scenario_map] = all_collision_data['fea_boundary_dis']
+                                fea_boundary_dis_mean[algorithm_title][scenario_map] = all_collision_data['fea_boundary_dis_mean']
                             if file == 'miss_traj_info.pkl' and 'miss_traj' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
                                 with open(file_path, 'rb') as pickle_file:
@@ -166,6 +172,9 @@ def main(args):
                                 PET_all_data[algorithm_title][scenario_map] = all_miss_data['PET']
                                 TTC_all_data[algorithm_title][scenario_map] = all_miss_data['TTC']
                                 ego_dis_data[algorithm_title][scenario_map] = all_miss_data['ego_dis']
+                                if cbv != 'standard':
+                                    unfeasible_ratio[algorithm_title][scenario_map] = all_miss_data['unfeasible_ratio']
+                                    feasibility_Vs[algorithm_title][scenario_map] = all_miss_data['feasibility_Vs']
 
     if 'collision_traj' in args.data:
         # collision ratio info
@@ -176,23 +185,27 @@ def main(args):
         # collision velocity info
         collision_vel_bins = np.linspace(0, 10, 20)
         draw_data(collision_vel, 'Collision velocity (m/s)', ROOT_DIR, bins=collision_vel_bins, baseline_CBV='ppo')
-
-    if 'all_traj' in args.data:
-        # unfeasible rate
-        plot_metric(unfeasible_rate, 'unfeasible_rate')
+        # feasibility_boundary_dis
+        plot_metric(fea_boundary_dis_mean, 'feasibility boundary mean distance (m)', activate_per=False)
+        fea_boundary_dis_bins = np.linspace(0, 20, 10)
+        draw_data(fea_boundary_dis, 'feasibility boundary distance (m)', ROOT_DIR, bins=fea_boundary_dis_bins, baseline_CBV='ppo')
 
     if 'miss_traj' in args.data:
         # PET distribution
         PET_bins = np.linspace(0, 3, 30)
-        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins, baseline_CBV='standard')
+        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins, baseline_CBV='standard', density=False)
 
         # TTC distribution
         TTC_bins = np.linspace(0, 5, 20)
-        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins, baseline_CBV='standard')
+        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins, baseline_CBV='standard', density=False)
 
         # ego distance distribution
         ego_dis_bins = np.linspace(0, 10, 30)
-        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins, baseline_CBV='standard')
+        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins, baseline_CBV='standard', density=False)
+
+        plot_metric(unfeasible_ratio, 'near-miss unfeasible ratio')
+        fea_bins = np.linspace(0, 10, 20)
+        draw_data(feasibility_Vs, 'Near-miss Feasibility Values', ROOT_DIR, bins=fea_bins, baseline_CBV='ppo', density=False)
 
 
 if __name__ == '__main__':

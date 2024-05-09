@@ -134,27 +134,13 @@ def get_records(ego, CBVs_collision, ego_nearby_vehicles, goal_waypoint, goal_po
     ego_acc = ego.get_acceleration()
     ego_extent = ego.bounding_box.extent
     # total record
-    records = {
-        'ego_vel': [ego_vel.x, ego_vel.y],
-        'ego_loc': [ego_loc.x, ego_loc.y],
-        'ego_yaw': ego_yaw,
-        'ego_id': ego.id,
-        'ego_extent': [ego_extent.x * 2., ego_extent.y * 2.],
-        'ego_acc': [ego_acc.x, ego_acc.y],
-        'CBVs_collision': {},
-        'BVs_loc': [],
-        'BVs_vel': [],
-        'BVs_yaw': [],
-        'BVs_extent': [],
-        'BVs_ego_dis': [],
-        'BVs_id': [],
-        'CBVs_id': set(CarlaDataProvider.get_CBVs_by_ego(ego).keys()),
-        'goal_waypoint_loc': [goal_waypoint.transform.location.x, goal_waypoint.transform.location.y],
-        'goal_radius': goal_point_radius,
-        'ego_min_dis': search_radius,
-    }
-    # get the ego obs for feasibility calculation
-    records.update(get_ego_obs(ego_vehicle=ego, ego_nearby_vehicles=ego_nearby_vehicles))
+    records = {'ego_vel': [ego_vel.x, ego_vel.y], 'ego_loc': [ego_loc.x, ego_loc.y], 'ego_yaw': ego_yaw, 'ego_id': ego.id, 'ego_extent': [ego_extent.x * 2., ego_extent.y * 2.],
+               'ego_acc': [ego_acc.x, ego_acc.y], 'CBVs_collision': {}, 'BVs_loc': [], 'BVs_vel': [], 'BVs_yaw': [], 'BVs_extent': [], 'BVs_ego_dis': [], 'BVs_id': [],
+               'CBVs_id': set(CarlaDataProvider.get_CBVs_by_ego(ego).keys()), 'goal_waypoint_loc': [goal_waypoint.transform.location.x, goal_waypoint.transform.location.y],
+               'goal_radius': goal_point_radius, 'ego_min_dis': search_radius, 'ego_CBV_obs': {}}
+    # get the ego CBV obs for feasibility calculation
+    for CBV_id, CBV in CarlaDataProvider.get_CBVs_by_ego(ego).items():
+        records['ego_CBV_obs'][CBV_id] = get_ego_obs(ego_vehicle=ego, ego_nearby_vehicles=[CBV])['ego_obs']
     # CBV's info
     if len(CBVs_collision) > 0:
         collision = {}

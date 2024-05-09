@@ -15,6 +15,7 @@ import numpy as np
 
 from eval_analysis.process_data.PET import get_trajectory_pet
 from eval_analysis.process_data.TTC import get_trajectory_ttc
+from eval_analysis.process_data.feasibility import get_overall_unfeasible_ratio
 
 
 def get_ego_dis(trajectory):
@@ -51,7 +52,11 @@ def get_standard_closest_BV_trajectory(sequence):
         for BV_id in step['BVs_id']:
             BV_index = step['BVs_id'].index(BV_id)
             BV_dis = step['BVs_ego_dis'][BV_index]
-            if BV_dis < 10:
+            ego_BV_diff_yaw = step['ego_yaw'] - step['BVs_yaw'][BV_index]
+            if ego_BV_diff_yaw > math.pi:
+                ego_BV_diff_yaw = 2 * math.pi - ego_BV_diff_yaw
+            # TODO: reasonable select the standard trajectory
+            if BV_dis < 10 and ego_BV_diff_yaw > math.radians(10):
                 # first add the closest index
                 if BV_id not in BV_closest_index:
                     BV_closest_index[BV_id] = [index, BV_dis]
@@ -129,6 +134,7 @@ def get_CBV_goal_reached_trajectory(sequence):
                         'extent': [],
                         'yaw': [],
                         'vel': [],
+                        'ego_CBV_obs': [],
                     }
                     # reverse the trajectory
                     for i in range(index, -1, -1):
@@ -141,12 +147,13 @@ def get_CBV_goal_reached_trajectory(sequence):
                                 goal_reached_trajectories[CBV_id]['extent'].append(sequence[i]['BVs_extent'][BV_current_index])
                                 goal_reached_trajectories[CBV_id]['yaw'].append(sequence[i]['BVs_yaw'][BV_current_index])
                                 goal_reached_trajectories[CBV_id]['vel'].append(sequence[i]['BVs_vel'][BV_current_index])
+                                goal_reached_trajectories[CBV_id]['ego_CBV_obs'].append(sequence[i]['ego_CBV_obs'][CBV_id])
                         else:
                             break
     return goal_reached_trajectories
 
 
-def process_miss_trajectory_from_one_pkl(pkl_path, algorithm, save_folder):
+def process_miss_trajectory_from_one_pkl(pkl_path, algorithm, save_folder, feasibility_policy):
     data = joblib.load(pkl_path)
     if 'standard' in algorithm:
         trajectory_function = get_standard_closest_BV_trajectory
@@ -156,17 +163,28 @@ def process_miss_trajectory_from_one_pkl(pkl_path, algorithm, save_folder):
     PET = []
     ego_dis = []
     TTC = []
+    trajectories = []
     for sequence in tqdm(data.values()):
         trajectory = trajectory_function(sequence)
+        # get PET per trajectory
         PET.extend(get_trajectory_pet(trajectory))
+        # get ego dis per trajectory
         ego_dis.extend(get_ego_dis(trajectory))
+        # get TTC per trajectory
         TTC.extend(get_trajectory_ttc(trajectory))
+        trajectories.append(trajectory)
 
     miss_traj_info = {
         'PET': PET,
         'ego_dis': ego_dis,
         'TTC': TTC,
     }
+
+    if 'standard' not in algorithm:
+        # get overall unfeasible_ratio
+        unfeasible_ratio, feasibility_Vs = get_overall_unfeasible_ratio(trajectories, feasibility_policy)
+        miss_traj_info['unfeasible_ratio'] = unfeasible_ratio
+        miss_traj_info['feasibility_Vs'] = feasibility_Vs
 
     # save ego min dis
     with open(osp.join(save_folder, "miss_traj_info.pkl"), 'wb') as pickle_file:
