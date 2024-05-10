@@ -61,21 +61,21 @@ def plot_feasibility_data_distribution(args):
     ego_min_dis = dataset.dataset_dict['ego_min_dis']
     ego_collision_percentage = calculate_collision_rate(dataset.dataset_dict['dones'], dataset.dataset_dict['ego_collide']) * 100
 
-    # x, y position of the closest point
-    x_coords = obs[:, 1, 0].flatten()
-    y_coords = obs[:, 1, 1].flatten()
+    # x, y position of the BV
+    x_coords = obs[:, :, 0].flatten()
+    y_coords = obs[:, :, 1].flatten()
     both_zero_positions = np.logical_and(abs(x_coords) < 0.001, abs(y_coords) < 0.001)
     non_zero_x = x_coords[~both_zero_positions]
     non_zero_y = y_coords[~both_zero_positions]
 
-    # relative yaw, speed of the closest point
-    yaw = obs[:, 1, 4].flatten()
-    speed = obs[:, 1, 5].flatten()
+    # relative yaw, speed of the BV
+    yaw = obs[:, :, 4].flatten()
+    speed = obs[:, :, 5].flatten()
     both_zero_positions = abs(yaw) < 0.001
     non_zero_yaw = yaw[~both_zero_positions]
     non_zero_speed = speed[~both_zero_positions]
 
-    # throttle and speed
+    # AV throttle and speed
     throttle = action[:, 0]
     steering_angle = action[:, 1]
 
@@ -86,29 +86,25 @@ def plot_feasibility_data_distribution(args):
     cmap = ListedColormap(color_palette)
 
     _, _, _, x_y_img = axs[0, 0].hist2d(non_zero_x, non_zero_y, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[0, 0].set_title('Closest Vehicle Position (x, y)', fontsize=12)
-    axs[0, 0].set_xlabel('X Coordinate')
-    axs[0, 0].set_ylabel('Y Coordinate')
+    axs[0, 0].set_xlabel('Relative X Coordinate of BVs', fontsize=12)
+    axs[0, 0].set_ylabel('Relative Y Coordinate of BVs', fontsize=12)
     fig.colorbar(x_y_img, ax=axs[0, 0])
 
     axs[0, 1].hist(ego_min_dis, density=True, bins=30, alpha=0.7, color=color_palette[len(color_palette) // 2])
     # sns.kdeplot(ego_min_dis, color=color_palette[len(color_palette) // 2], ax=axs[0, 1], alpha=0.6, fill=True, linewidth=1.2)
-    axs[0, 1].set_title('Closest dis between Ego and BVs', fontsize=12)
-    axs[0, 1].set_xlabel('Closest distance')
-    axs[0, 1].set_ylabel('Frequency')
-    text = 'Ego episode collision rate: {:.2f}%'.format(ego_collision_percentage)
+    axs[0, 1].set_xlabel('Closest Distance between AV and BVs', fontsize=12)
+    axs[0, 1].set_ylabel('Frequency', fontsize=12)
+    text = 'AV Collision Rate: {:.2f}%'.format(ego_collision_percentage)
     axs[0, 1].legend(labels=[text], loc='upper right', fontsize=12, labelcolor='red')
 
     _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[1, 0].set_title('Closest Vehicle yaw and Speed', fontsize=12)
-    axs[1, 0].set_xlabel('Relative yaw')
-    axs[1, 0].set_ylabel('Speed')
+    axs[1, 0].set_xlabel('Relative Yaw of BVs', fontsize=12)
+    axs[1, 0].set_ylabel('Absolute Speed of BVs', fontsize=12)
     fig.colorbar(yaw_speed_img, ax=axs[1, 0])
 
     _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[1, 1].set_title('Ego Vehicle Throttle and Steering angle', fontsize=12)
-    axs[1, 1].set_xlabel('Throttle')
-    axs[1, 1].set_ylabel('Steering angle')
+    axs[1, 1].set_xlabel('AV Throttle', fontsize=12)
+    axs[1, 1].set_ylabel('AV Steering Angle', fontsize=12)
     axs[1, 1].set_ylim([-0.75, 0.75])
     fig.colorbar(throttle_steering_angle_img, ax=axs[1, 1])
 
