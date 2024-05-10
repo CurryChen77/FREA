@@ -35,6 +35,7 @@ def classified_data_by_ego(data):
 def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', density=True):
     matplotlib.rcParams['font.family'] = 'Times New Roman'
     All_data_per_ego = classified_data_by_ego(All_data)
+    y_label = 'Probability Density' if density else 'Frequency'
     for ego_type, datas in All_data_per_ego.items():
         num_algorithm = len(datas.keys())
         num_scenarios = max(len(scenarios) for scenarios in datas.values())
@@ -79,7 +80,7 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', dens
                 axs[row, i].hist(data, density=density, bins=bins, alpha=0.6, label=algorithm, color=color_list[i])
                 axs[row, i].set_title(scenario_name, fontsize=12)
                 axs[row, i].set_xlabel(f'{data_name}')
-                axs[row, i].set_ylabel('Frequency')
+                axs[row, i].set_ylabel(y_label)
                 handles, labels = axs[row, i].get_legend_handles_labels()
                 all_handles.extend(handles)
                 all_labels.extend(labels)
@@ -193,26 +194,26 @@ def main(args):
     if 'miss_traj' in args.data:
         # PET distribution
         PET_bins = np.linspace(0, 3, 30)
-        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins, baseline_CBV='standard', density=False)
+        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins, baseline_CBV='standard')
 
         # TTC distribution
         TTC_bins = np.linspace(0, 5, 20)
-        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins, baseline_CBV='standard', density=False)
+        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins, baseline_CBV='standard')
 
         # ego distance distribution
         ego_dis_bins = np.linspace(0, 10, 30)
-        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins, baseline_CBV='standard', density=False)
+        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins, baseline_CBV='standard')
 
         plot_metric(unfeasible_ratio, 'near-miss unfeasible ratio')
         fea_bins = np.linspace(0, 10, 20)
-        draw_data(feasibility_Vs, 'Near-miss Feasibility Values', ROOT_DIR, bins=fea_bins, baseline_CBV='ppo', density=False)
+        draw_data(feasibility_Vs, 'Near-miss Feasibility Values', ROOT_DIR, bins=fea_bins, baseline_CBV='ppo')
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
-    parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj', 'all_traj'])
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj'])
     args = parser.parse_args()
 
     main(args)

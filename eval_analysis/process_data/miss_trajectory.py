@@ -26,7 +26,7 @@ def get_ego_dis(trajectory):
     return ego_dis
 
 
-def get_standard_closest_BV_trajectory(sequence):
+def get_all_BV_trajectory(sequence):
     """
         get all the closest BV trajectories
     """
@@ -34,61 +34,43 @@ def get_standard_closest_BV_trajectory(sequence):
     for step in sequence:
         step['BVs_id_set'] = set(step['BVs_id'])
 
-    closest_BV_trajectories = {'ego': {
+    all_trajectories = {'ego': {
         'time': [],
         'loc': [],
         'extent': [],
         'yaw': [],
         'vel': [],
     }}
-    BV_closest_index = {}
-    for index, step in enumerate(sequence):
+    for step in sequence:
         # store the ego info every step
-        closest_BV_trajectories['ego']['time'].append(step['current_game_time'])
-        closest_BV_trajectories['ego']['loc'].append(step['ego_loc'])
-        closest_BV_trajectories['ego']['extent'].append(step['ego_extent'])
-        closest_BV_trajectories['ego']['yaw'].append(step['ego_yaw'])
-        closest_BV_trajectories['ego']['vel'].append(step['ego_vel'])
+        all_trajectories['ego']['time'].append(step['current_game_time'])
+        all_trajectories['ego']['loc'].append(step['ego_loc'])
+        all_trajectories['ego']['extent'].append(step['ego_extent'])
+        all_trajectories['ego']['yaw'].append(step['ego_yaw'])
+        all_trajectories['ego']['vel'].append(step['ego_vel'])
         for BV_id in step['BVs_id']:
             BV_index = step['BVs_id'].index(BV_id)
-            BV_dis = step['BVs_ego_dis'][BV_index]
-            ego_BV_diff_yaw = step['ego_yaw'] - step['BVs_yaw'][BV_index]
-            if ego_BV_diff_yaw > math.pi:
-                ego_BV_diff_yaw = 2 * math.pi - ego_BV_diff_yaw
-            # TODO: reasonable select the standard trajectory
-            if BV_dis < 10 and ego_BV_diff_yaw > math.radians(10):
-                # first add the closest index
-                if BV_id not in BV_closest_index:
-                    BV_closest_index[BV_id] = [index, BV_dis]
-                # update the closest index
-                elif BV_id in BV_closest_index and BV_dis < BV_closest_index[BV_id][1]:
-                    BV_closest_index[BV_id] = [index, BV_dis]
-
-    for BV_id, index_list in BV_closest_index.items():
-        index = index_list[0]
-        # create a new key for CBV reach goal
-        closest_BV_trajectories[BV_id] = {
-            'time': [],
-            'loc': [],
-            'ego_dis': [],
-            'extent': [],
-            'yaw': [],
-            'vel': [],
-        }
-        # reverse the trajectory
-        for i in range(index, -1, -1):
-            if BV_id in sequence[i]['BVs_id_set']:
-                BV_current_index = sequence[i]['BVs_id'].index(BV_id)
-                if sequence[i]['BVs_ego_dis'][BV_current_index] < 25:
-                    closest_BV_trajectories[BV_id]['time'].append(sequence[i]['current_game_time'])
-                    closest_BV_trajectories[BV_id]['loc'].append(sequence[i]['BVs_loc'][BV_current_index])
-                    closest_BV_trajectories[BV_id]['ego_dis'].append(sequence[i]['BVs_ego_dis'][BV_current_index])
-                    closest_BV_trajectories[BV_id]['extent'].append(sequence[i]['BVs_extent'][BV_current_index])
-                    closest_BV_trajectories[BV_id]['yaw'].append(sequence[i]['BVs_yaw'][BV_current_index])
-                    closest_BV_trajectories[BV_id]['vel'].append(sequence[i]['BVs_vel'][BV_current_index])
+            if BV_id not in all_trajectories:
+                # initialize trajectory info for a new BV
+                all_trajectories[BV_id] = {
+                    'time': [],
+                    'loc': [],
+                    'ego_dis': [],
+                    'extent': [],
+                    'yaw': [],
+                    'vel': [],
+                }
             else:
-                break
-    return closest_BV_trajectories
+                # only record the BV within search radius
+                if step['BVs_ego_dis'][BV_index] < 25:
+                    all_trajectories[BV_id]['time'].append(step['current_game_time'])
+                    all_trajectories[BV_id]['loc'].append(step['BVs_loc'][BV_index])
+                    all_trajectories[BV_id]['ego_dis'].append(step['BVs_ego_dis'][BV_index])
+                    all_trajectories[BV_id]['extent'].append(step['BVs_extent'][BV_index])
+                    all_trajectories[BV_id]['yaw'].append(step['BVs_yaw'][BV_index])
+                    all_trajectories[BV_id]['vel'].append(step['BVs_vel'][BV_index])
+
+    return all_trajectories
 
 
 def get_CBV_reach_goal(goal_loc, CBV_loc, goal_radius):
@@ -155,24 +137,24 @@ def get_CBV_goal_reached_trajectory(sequence):
 
 def process_miss_trajectory_from_one_pkl(pkl_path, algorithm, save_folder, feasibility_policy):
     data = joblib.load(pkl_path)
-    if 'standard' in algorithm:
-        trajectory_function = get_standard_closest_BV_trajectory
-    else:
-        trajectory_function = get_CBV_goal_reached_trajectory
 
     PET = []
     ego_dis = []
     TTC = []
-    trajectories = []
+    reach_goal_trajectories = []
     for sequence in tqdm(data.values()):
-        trajectory = trajectory_function(sequence)
+        # use all BV trajectories
+        trajectory = get_all_BV_trajectory(sequence)
         # get PET per trajectory
         PET.extend(get_trajectory_pet(trajectory))
         # get ego dis per trajectory
         ego_dis.extend(get_ego_dis(trajectory))
         # get TTC per trajectory
         TTC.extend(get_trajectory_ttc(trajectory))
-        trajectories.append(trajectory)
+
+        # use CBV reach goal trajectory
+        reach_goal_trajectory = get_CBV_goal_reached_trajectory(sequence)
+        reach_goal_trajectories.append(reach_goal_trajectory)
 
     miss_traj_info = {
         'PET': PET,
@@ -182,7 +164,7 @@ def process_miss_trajectory_from_one_pkl(pkl_path, algorithm, save_folder, feasi
 
     if 'standard' not in algorithm:
         # get overall unfeasible_ratio
-        unfeasible_ratio, feasibility_Vs = get_overall_unfeasible_ratio(trajectories, feasibility_policy)
+        unfeasible_ratio, feasibility_Vs = get_overall_unfeasible_ratio(reach_goal_trajectories, feasibility_policy)
         miss_traj_info['unfeasible_ratio'] = unfeasible_ratio
         miss_traj_info['feasibility_Vs'] = feasibility_Vs
 
