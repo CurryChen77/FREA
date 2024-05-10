@@ -51,7 +51,7 @@ def get_CBV_collision_severity(sequence, feasibility_policy):
                 collision_fea_dis[CBV_id] = []
                 for i in range(index, -1, -1):
                     # reverse the whole trajectory of the collision CBV
-                    if CBV_id in sequence[i]['CBVs_id']:
+                    if CBV_id in sequence[i]['CBVs_id'] and CBV_id in sequence[i]['BVs_id']:
                         BV_index = sequence[i]['BVs_id'].index(CBV_id)
                         # record the velocity
                         CBV_vel.append(np.linalg.norm(np.array(sequence[i]['BVs_vel'][BV_index])))

@@ -42,7 +42,7 @@ class FPPORs(PPO):
 
     def get_feasibility_rewards(self, ego_CBV_next_obs):
         feasibility_next_V = self.feability_policy.get_feasibility_Vs(ego_CBV_next_obs).squeeze()
-        feasibility_rewards = -1 * process_feasibility_rewards(feasibility_next_V, clamp_range=(0, 8), map_range=(1, 2))
+        feasibility_rewards = -1 * process_feasibility_rewards(feasibility_next_V, clamp_range=(0, 8), map_range=(0, 1))
         return feasibility_rewards, feasibility_next_V
 
     def train(self, buffer, writer, e_i):
