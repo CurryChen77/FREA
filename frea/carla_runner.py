@@ -87,8 +87,8 @@ class CarlaRunner:
             'warm_up_steps': 4,  # number of ticks after spawning the vehicles
             'disable_lidar': True,  # show bird-eye view lidar or not
             'enable_sem': False,  # whether to enable the semantic camera
-            'display_size': 256,  # screen size of one bird-eye view window
-            'obs_range': 48,  # observation range (meter)
+            'display_size': 512,  # screen size of one bird-eye view window
+            'obs_range': 60,  # observation range (meter)
             'd_behind': 16,  # distance behind the ego vehicle (meter)
             'max_past_step': 1,  # the number of past steps to draw
             'continuous_accel_range': [-3.0, 3.0],  # continuous acceleration range

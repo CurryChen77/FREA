@@ -128,7 +128,7 @@ class CarlaEnv(gym.Env):
             self.BGR_img = np.zeros((self.obs_size, self.obs_size, 3), dtype=np.uint8)
             # self.camera_trans = carla.Transform(carla.Location(x=0.8, z=1.7))  # for ego view
             # self.camera_trans = carla.Transform(carla.Location(x=-2., y=0., z=12.),carla.Rotation(pitch=-50.0))  # for third-person view
-            self.camera_trans = carla.Transform(carla.Location(x=8., y=0., z=16),carla.Rotation(pitch=-90.0))  # god view
+            self.camera_trans = carla.Transform(carla.Location(x=12., y=0., z=20.),carla.Rotation(pitch=-90.0))  # god view
             self.camera_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.rgb')
             # Modify the attributes of the blueprint to set image resolution and field of view.
             self.camera_bp.set_attribute('image_size_x', str(self.obs_size))
@@ -141,7 +141,7 @@ class CarlaEnv(gym.Env):
             if self.enable_sem:
                 self.sem_img = np.zeros((self.obs_size, self.obs_size, 2), dtype=np.uint8)
                 # self.sem_trans = carla.Transform(carla.Location(x=-2., y=0, z=12.), carla.Rotation(pitch=-50.0))  # for third-person view
-                self.sem_trans = carla.Transform(carla.Location(x=8., y=0, z=16.), carla.Rotation(pitch=-90.0))  # god view
+                self.sem_trans = carla.Transform(carla.Location(x=12., y=0, z=20.), carla.Rotation(pitch=-90.0))  # god view
                 self.sem_bp = CarlaDataProvider._blueprint_library.find('sensor.camera.semantic_segmentation')
                 self.sem_bp.set_attribute('image_size_x', str(self.obs_size))
                 self.sem_bp.set_attribute('image_size_y', str(self.obs_size))
