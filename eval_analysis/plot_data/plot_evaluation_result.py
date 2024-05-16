@@ -65,7 +65,7 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', dens
                 all_labels.extend(labels)
 
         # rearrange the data order
-        desired_order = ['standard', 'ppo', 'fppo_rs', 'fppo_adv']
+        desired_order = ['standard', 'ppo', 'fppo-rs', 'fppo-adv']
         ordered_data = OrderedDict()
         for order_key in desired_order:
             for key in datas:
@@ -133,7 +133,7 @@ def main(args):
             ego = split_name.pop(0)
             seed = split_name.pop(-1)
             select = split_name.pop(-1)
-            cbv = '_'.join(split_name) if len(split_name) > 1 else split_name[0]
+            cbv = '-'.join(split_name) if len(split_name) > 1 else split_name[0]
             algorithm_path = osp.join(base_dir, algorithm)
             if osp.isdir(algorithm_path):
                 scenario_map_files = os.listdir(algorithm_path)
