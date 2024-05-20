@@ -86,8 +86,8 @@ def plot_feasibility_data_distribution(args):
     cmap = ListedColormap(color_palette)
 
     _, _, _, x_y_img = axs[0, 0].hist2d(non_zero_x, non_zero_y, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[0, 0].set_xlabel('Relative X Coordinate of BVs (m)', fontsize=12)
-    axs[0, 0].set_ylabel('Relative Y Coordinate of BVs (m)', fontsize=12)
+    axs[0, 0].set_xlabel('Relative X Coordinate of BVs (m)', fontsize=14)
+    axs[0, 0].set_ylabel('Relative Y Coordinate of BVs (m)', fontsize=13)
     cb1 = fig.colorbar(x_y_img, ax=axs[0, 0], pad=0.01)
     cb1.set_ticks([])
     cb1.ax.tick_params(axis='both', which='both', length=0)
@@ -96,14 +96,14 @@ def plot_feasibility_data_distribution(args):
 
     axs[0, 1].hist(ego_min_dis, density=True, bins=30, alpha=0.7, color=color_palette[len(color_palette) // 2])
     # sns.kdeplot(ego_min_dis, color=color_palette[len(color_palette) // 2], ax=axs[0, 1], alpha=0.6, fill=True, linewidth=1.2)
-    axs[0, 1].set_xlabel('Closest Distance between AV and BVs (m)', fontsize=12)
-    axs[0, 1].set_ylabel('Frequency', fontsize=12)
+    axs[0, 1].set_xlabel('Closest Distance between AV and BVs (m)', fontsize=14)
+    axs[0, 1].set_ylabel('Frequency', fontsize=13)
     text = 'AV Collision Rate: {:.2f}%'.format(ego_collision_percentage)
-    axs[0, 1].legend(labels=[text], loc='upper right', fontsize=12, labelcolor='red')
+    axs[0, 1].legend(labels=[text], loc='upper right', fontsize=14, labelcolor='red')
 
     _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[1, 0].set_xlabel('Relative Yaw of BVs (rad)', fontsize=12)
-    axs[1, 0].set_ylabel('Absolute Speed of BVs (m/s)', fontsize=12)
+    axs[1, 0].set_xlabel('Relative Yaw of BVs (rad)', fontsize=14)
+    axs[1, 0].set_ylabel('Absolute Speed of BVs (m/s)', fontsize=13)
     cb2 = fig.colorbar(yaw_speed_img, ax=axs[1, 0], pad=0.01)
     cb2.set_ticks([])
     cb2.ax.tick_params(axis='both', which='both', length=0)
@@ -111,8 +111,8 @@ def plot_feasibility_data_distribution(args):
     cb2.ax.text(1.5, 1, 'High', ha='left', va='top', transform=cb2.ax.transAxes)
 
     _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[1, 1].set_xlabel('AV Throttle', fontsize=12)
-    axs[1, 1].set_ylabel('AV Steering Angle (rad)', fontsize=12)
+    axs[1, 1].set_xlabel('AV Throttle', fontsize=14)
+    axs[1, 1].set_ylabel('AV Steering Angle (rad)', fontsize=13)
     axs[1, 1].set_ylim([-0.75, 0.75])
     cb3 = fig.colorbar(throttle_steering_angle_img, ax=axs[1, 1], pad=0.01)
     cb3.set_ticks([])
@@ -240,7 +240,7 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     cb = plt.colorbar(ct, ax=ax, shrink=0.75, pad=0.01, anchor=(0.0, 0.2))
     cb.ax.tick_params(labelsize=7)
 
-    cb.ax.text(0.5, 1.13, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=9)
+    cb.ax.text(0.5, 1.14, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=12)
     cb.ax.text(0.1, 1.05, r'$\mathrm{(learned)}$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=6)
 
     # plot all the vehicles
@@ -340,10 +340,10 @@ def plot_multi_feasibility_region(args):
     ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/6, 3.14/6), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(3, 3))
     ax4 = plot_feasibility_region(ax4, feasibility_policy, ego_obs3, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
 
-    axs[0, 0].text(0.5, -0.05, r'(a) $V_{av}$ = 2 (m/s)', ha='center', va='top', transform=axs[0, 0].transAxes, fontsize=12)
-    axs[0, 1].text(0.5, -0.05, r'(b) $V_{av}$ = 6 (m/s)', ha='center', va='top', transform=axs[0, 1].transAxes, fontsize=12)
-    axs[1, 0].text(0.5, -0.05, r'(c) $V_{av}$ = 4 (m/s)', ha='center', va='top', transform=axs[1, 0].transAxes, fontsize=12)
-    axs[1, 1].text(0.5, -0.05, r'(d) $V_{av}$ = 4 (m/s)', ha='center', va='top', transform=axs[1, 1].transAxes, fontsize=12)
+    axs[0, 0].text(0.5, -0.05, r'(a) $V_{av}$ = 2 (m/s)', ha='center', va='top', transform=axs[0, 0].transAxes, fontsize=15)
+    axs[0, 1].text(0.5, -0.05, r'(b) $V_{av}$ = 6 (m/s)', ha='center', va='top', transform=axs[0, 1].transAxes, fontsize=15)
+    axs[1, 0].text(0.5, -0.05, r'(c) $V_{av}$ = 4 (m/s)', ha='center', va='top', transform=axs[1, 0].transAxes, fontsize=15)
+    axs[1, 1].text(0.5, -0.05, r'(d) $V_{av}$ = 4 (m/s)', ha='center', va='top', transform=axs[1, 1].transAxes, fontsize=15)
 
     for ax in [ax1, ax2, ax3, ax4]:
         ax.set_xticks(my_x_ticks)

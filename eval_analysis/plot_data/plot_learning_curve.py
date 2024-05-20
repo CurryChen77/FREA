@@ -125,13 +125,13 @@ def main(args):
 
             # ax.legend(handles=handles[0:], labels=labels[0:], title="Algorithm",
             #           loc="best", prop=font_props, title_fontproperties=title_font_props)
-            ax.set_title(f'{scene}', fontfamily='Times New Roman')
-            ax.set_xlabel('Train step', fontfamily='Times New Roman')
-            ax.set_ylabel('Episode Return', fontfamily='Times New Roman')
+            ax.set_title(f'{scene}', fontfamily='Times New Roman', fontsize=16)
+            ax.set_xlabel('Train step', fontfamily='Times New Roman', fontsize=16)
+            ax.set_ylabel('Episode Return', fontfamily='Times New Roman', fontsize=16)
 
         unique_handles_labels = dict(zip(all_labels, all_handles))
         unique_labels, unique_handles = zip(*unique_handles_labels.items())
-        fig.legend(handles=unique_handles, labels=unique_labels, loc='lower center', ncol=num_algo, prop=font_props)
+        fig.legend(handles=unique_handles, labels=unique_labels, loc='lower center', ncol=num_algo, prop=font_props, fontsize=16)
 
         fig.tight_layout()
         fig.subplots_adjust(bottom=0.2)

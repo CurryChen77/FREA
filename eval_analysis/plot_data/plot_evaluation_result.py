@@ -78,16 +78,16 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', dens
             for row, (scenario_name, data) in enumerate(scenario.items()):
                 # sns.kdeplot(data, color=color_list[i+1], ax=axs[row, i], alpha=0.7, label=algorithm, fill=True, linewidth=1)
                 axs[row, i].hist(data, density=density, bins=bins, alpha=0.6, label=algorithm, color=color_list[i])
-                axs[row, i].set_title(scenario_name, fontsize=12)
-                axs[row, i].set_xlabel(f'{data_name}')
-                axs[row, i].set_ylabel(y_label)
+                axs[row, i].set_title(scenario_name, fontsize=14)
+                axs[row, i].set_xlabel(f'{data_name}', fontsize=14)
+                axs[row, i].set_ylabel(y_label, fontsize=13)
                 handles, labels = axs[row, i].get_legend_handles_labels()
                 all_handles.extend(handles)
                 all_labels.extend(labels)
 
         unique_handles_labels = dict(zip(all_labels, all_handles))
         unique_labels, unique_handles = zip(*unique_handles_labels.items())
-        fig.legend(handles=unique_handles, labels=unique_labels, loc='lower center', ncol=num_algorithm, fontsize=12)
+        fig.legend(handles=unique_handles, labels=unique_labels, loc='lower center', ncol=num_algorithm, fontsize=14)
 
         fig.tight_layout()
         fig.subplots_adjust(bottom=0.2)
