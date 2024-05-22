@@ -224,7 +224,7 @@ def process_result(args):
             if osp.isdir(algorithm_path):
                 scenario_map_files = os.listdir(algorithm_path)
                 # the specific ego and CBV method
-                algorithm_title = f"AV:{ego}"
+                algorithm_title = "AV:{:<8} CBV:{:<10}".format(str(ego), str(cbv))
                 for scenario_map in scenario_map_files:
                     scenario_map_path = osp.join(algorithm_path, scenario_map)
                     if osp.isdir(scenario_map_path):
