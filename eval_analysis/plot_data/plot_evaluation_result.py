@@ -112,7 +112,7 @@ def plot_metric(result, name, activate_per=True):
     print('>> ' + '-' * 10, str(name), '-' * 10)
 
 
-def main(args):
+def process_record(args):
     ROOT_DIR = args.ROOT_DIR
     base_dir = osp.join(ROOT_DIR, 'eval_analysis/processed_data')
     algorithm_files = os.listdir(base_dir)
@@ -209,6 +209,45 @@ def main(args):
         draw_data(feasibility_Vs, 'Near-miss Feasibility Values', ROOT_DIR, bins=fea_bins, baseline_CBV='ppo')
 
 
+def process_result(args):
+    ROOT_DIR = args.ROOT_DIR
+    base_dir = osp.join(ROOT_DIR, 'log/eval')
+    algorithm_files = os.listdir(base_dir)
+    for algorithm in algorithm_files:
+        if osp.isdir(osp.join(base_dir, algorithm)):
+            split_name = algorithm.split('_')
+            ego = split_name.pop(0)
+            seed = split_name.pop(-1)
+            select = split_name.pop(-1)
+            cbv = '-'.join(split_name) if len(split_name) > 1 else split_name[0]
+            algorithm_path = osp.join(base_dir, algorithm)
+            if osp.isdir(algorithm_path):
+                scenario_map_files = os.listdir(algorithm_path)
+                # the specific ego and CBV method
+                algorithm_title = f"AV:{ego}"
+                for scenario_map in scenario_map_files:
+                    scenario_map_path = osp.join(algorithm_path, scenario_map)
+                    if osp.isdir(scenario_map_path):
+                        files = os.listdir(scenario_map_path)
+                        for file in files:
+                            if file == 'results.pkl':
+                                file_path = os.path.join(scenario_map_path, file)
+                                with open(file_path, 'rb') as pickle_file:
+                                    all_results = pickle.load(pickle_file)
+                                    plot_results(algorithm_title, all_results, scenario_map)
+
+
+def plot_results(name, results, scenario_map, activate_per=True):
+    print('>>', "{:<8}: {:<17}".format(str(name), str(scenario_map)), end=" ")
+    for key, value in results.items():
+        if activate_per:
+            percentage = round(value * 100, 2)
+        else:
+            percentage = round(value, 2)
+        print("{:<10}: {:<4}".format(key, percentage), end=" ")
+    print('')
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
@@ -216,7 +255,9 @@ if __name__ == '__main__':
     parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj'])
     args = parser.parse_args()
 
-    main(args)
+    # process_record(args)
+
+    process_result(args)
 
 
 

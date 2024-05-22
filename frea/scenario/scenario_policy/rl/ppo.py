@@ -50,7 +50,10 @@ class PPO(BasePolicy):
         self.CBV_selection = config['CBV_selection']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         self.scenario_id = config['scenario_id']
-        self.agent_info = config['agent_policy'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
+        if config['mode'] == 'eval':
+            self.agent_info = config['pretrain_ego'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
+        else:
+            self.agent_info = config['agent_policy'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
 
         self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr, eps=1e-5)  # trick about eps
@@ -228,7 +231,7 @@ class PPO(BasePolicy):
                             episode = cur_episode
         filepath = os.path.join(load_dir, f'model.{self.name}.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading scenario policy {self.name} model from {os.path.basename(filepath)}', 'yellow')
+            self.logger.log(f'>> Loading scenario policy {self.name} model from {self.agent_info}', 'yellow')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy.load_state_dict(checkpoint['policy'])

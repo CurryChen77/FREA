@@ -174,7 +174,8 @@ class RouteScenario():
 
     def get_running_status(self, running_record):
         running_status = {
-            'current_game_time': GameTime.get_time()
+            'current_game_time': GameTime.get_time(),
+            'ego_yaw': CarlaDataProvider.get_transform(self.ego_vehicle).rotation.yaw / 180 * np.pi
         }
 
         for criterion_name, criterion in self.criteria.items():

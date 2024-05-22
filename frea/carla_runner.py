@@ -375,7 +375,7 @@ class CarlaRunner:
             if self.eval_mode == 'analysis':
                 score_function = get_route_scores
                 all_running_results = self.logger.add_eval_results(map_name=self.current_map, records=self.env.running_results)  # running results is growing as the evaluation goes
-                all_scores = score_function(all_running_results, self.use_feasibility, self.scenario_agent_learnable)  # the current statistical scores from the start to the current evaluation scenario
+                all_scores = score_function(all_running_results)  # the current statistical scores from the start to the current evaluation scenario
                 self.logger.add_eval_results(map_name=self.current_map, scores=all_scores)
                 self.logger.print_eval_results(map_name=self.current_map)  # the finial eval results represent the statistical score during the whole process of evaluation
                 if len(self.env.running_results) % self.save_freq == 0 or len(data_loader) == 0:
