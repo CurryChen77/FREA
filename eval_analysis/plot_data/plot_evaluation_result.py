@@ -255,7 +255,7 @@ if __name__ == '__main__':
     parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj'])
     args = parser.parse_args()
 
-    # process_record(args)
+    process_record(args)
 
     process_result(args)
 
