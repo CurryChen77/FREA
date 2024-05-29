@@ -115,7 +115,7 @@ def main(args):
                 split_name = algorithm.split('_')
                 ego = split_name[0]
                 cbv = '-'.join(split_name[1:-1])
-                algo_label = f"Ego:{ego} CBV:{cbv}"
+                algo_label = f"AV:{ego} CBV:{cbv}"
                 # plot the mean value and the trust region
                 sns.lineplot(ax=ax, data=smoothed_df, x='step', y='smoothed_value',
                             estimator='mean', errorbar=('ci', 95),
