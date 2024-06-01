@@ -115,7 +115,19 @@ def main(args):
                 split_name = algorithm.split('_')
                 ego = split_name[0]
                 cbv = '-'.join(split_name[1:-1])
-                algo_label = f"AV:{ego} CBV:{cbv}"
+                if str(ego) == 'expert':
+                    Ego_name = 'Expert'
+                else:
+                    Ego_name = str(ego)
+                if str(cbv) == 'fppo-adv':
+                    CBV_name = 'FREA'
+                elif str(cbv) == 'fppo-rs':
+                    CBV_name = 'FPPO-RS'
+                elif str(cbv) == 'ppo':
+                    CBV_name = 'PPO'
+                else:
+                    CBV_name = 'Standard'
+                algo_label = f"AV:{Ego_name} CBV:{CBV_name}"
                 # plot the mean value and the trust region
                 sns.lineplot(ax=ax, data=smoothed_df, x='step', y='smoothed_value',
                             estimator='mean', errorbar=('ci', 95),

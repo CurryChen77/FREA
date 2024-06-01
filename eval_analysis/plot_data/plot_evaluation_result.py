@@ -32,7 +32,7 @@ def classified_data_by_ego(data):
     return classified_by_ego
 
 
-def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', density=True):
+def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='Standard', density=True):
     matplotlib.rcParams['font.family'] = 'Times New Roman'
     All_data_per_ego = classified_data_by_ego(All_data)
     y_label = 'Probability Density' if density else 'Frequency'
@@ -42,7 +42,7 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', dens
         color_list = sns.color_palette("flare", n_colors=num_algorithm-1)
         baseline_name = None
         subplots_height = 5
-        aspect_ratio = 0.8
+        aspect_ratio = 0.85
         num_cols = max(num_algorithm-1, 1)
         figsize = (subplots_height * aspect_ratio * num_cols, subplots_height)
         all_handles = []
@@ -65,7 +65,7 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='standard', dens
                 all_labels.extend(labels)
 
         # rearrange the data order
-        desired_order = ['standard', 'ppo', 'fppo-rs', 'fppo-adv']
+        desired_order = ['Standard', 'PPO', 'FPPO-RS', 'FREA']
         ordered_data = OrderedDict()
         for order_key in desired_order:
             for key in datas:
@@ -138,7 +138,19 @@ def process_record(args):
             if osp.isdir(algorithm_path):
                 scenario_map_files = os.listdir(algorithm_path)
                 # the specific ego and CBV method
-                algorithm_title = f"AV:{ego} CBV:{cbv}"
+                if str(ego) == 'expert':
+                    Ego_name = 'Expert'
+                else:
+                    Ego_name = str(ego)
+                if str(cbv) == 'fppo-adv':
+                    CBV_name = 'FREA'
+                elif str(cbv) == 'fppo-rs':
+                    CBV_name = 'FPPO-RS'
+                elif str(cbv) == 'ppo':
+                    CBV_name = 'PPO'
+                else:
+                    CBV_name = 'Standard'
+                algorithm_title = f"AV:{Ego_name} CBV:{CBV_name}"
 
                 PET_all_data[algorithm_title] = {}
                 TTC_all_data[algorithm_title] = {}
@@ -182,31 +194,31 @@ def process_record(args):
         plot_metric(collision_ratio, 'collision ratio')
         # collision impulse info
         collision_impulse_bins = np.linspace(0, 20, 10)
-        draw_data(collision_impulse, 'Collision impulse (kN·s)', ROOT_DIR, bins=collision_impulse_bins, baseline_CBV='ppo')
+        draw_data(collision_impulse, 'Collision impulse (kN·s)', ROOT_DIR, bins=collision_impulse_bins, baseline_CBV='PPO')
         # collision velocity info
         collision_vel_bins = np.linspace(0, 10, 20)
-        draw_data(collision_vel, 'Collision velocity (m/s)', ROOT_DIR, bins=collision_vel_bins, baseline_CBV='ppo')
+        draw_data(collision_vel, 'Collision velocity (m/s)', ROOT_DIR, bins=collision_vel_bins, baseline_CBV='PPO')
         # feasibility_boundary_dis
         plot_metric(fea_boundary_dis_mean, 'feasibility boundary mean distance (m)', activate_per=False)
         fea_boundary_dis_bins = np.linspace(0, 20, 10)
-        draw_data(fea_boundary_dis, 'feasibility boundary distance (m)', ROOT_DIR, bins=fea_boundary_dis_bins, baseline_CBV='ppo')
+        draw_data(fea_boundary_dis, 'feasibility boundary distance (m)', ROOT_DIR, bins=fea_boundary_dis_bins, baseline_CBV='PPO')
 
     if 'miss_traj' in args.data:
         # PET distribution
         PET_bins = np.linspace(0, 3, 30)
-        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins, baseline_CBV='standard')
+        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins, baseline_CBV='Standard')
 
         # TTC distribution
         TTC_bins = np.linspace(0, 5, 20)
-        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins, baseline_CBV='standard')
+        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins, baseline_CBV='Standard')
 
         # ego distance distribution
         ego_dis_bins = np.linspace(0, 10, 30)
-        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins, baseline_CBV='standard')
+        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins, baseline_CBV='Standard')
 
         plot_metric(unfeasible_ratio, 'near-miss unfeasible ratio')
         fea_bins = np.linspace(0, 10, 20)
-        draw_data(feasibility_Vs, 'Near-miss Feasibility Values', ROOT_DIR, bins=fea_bins, baseline_CBV='ppo')
+        draw_data(feasibility_Vs, 'Near-miss Feasibility Values', ROOT_DIR, bins=fea_bins, baseline_CBV='PPO')
 
 
 def process_result(args):
@@ -224,7 +236,19 @@ def process_result(args):
             if osp.isdir(algorithm_path):
                 scenario_map_files = os.listdir(algorithm_path)
                 # the specific ego and CBV method
-                algorithm_title = "AV:{:<8} CBV:{:<10}".format(str(ego), str(cbv))
+                if str(ego) == 'expert':
+                    Ego_name = 'Expert'
+                else:
+                    Ego_name = str(ego)
+                if str(cbv) == 'fppo-adv':
+                    CBV_name = 'FREA'
+                elif str(cbv) == 'fppo-rs':
+                    CBV_name = 'FPPO-RS'
+                elif str(cbv) == 'ppo':
+                    CBV_name = 'PPO'
+                else:
+                    CBV_name = 'Standard'
+                algorithm_title = "AV:{:<8} CBV:{:<10}".format(str(Ego_name), CBV_name)
                 for scenario_map in scenario_map_files:
                     scenario_map_path = osp.join(algorithm_path, scenario_map)
                     if osp.isdir(scenario_map_path):
