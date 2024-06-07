@@ -11,7 +11,7 @@
 
 🌟*FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.*🌟
 
-<div style="text-align: center;">   <img style="border: 3px solid gray; width: 100%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
+<div style="text-align: center;">   <img style="border: 3px solid gray; width: 60%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
 
 ## :page_with_curl: Outline
 
@@ -184,11 +184,13 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml 
 
 If you find our paper useful, please kindly cite us via:
 ```
-@article{li2023knowledgedriven,
-  title={Towards Knowledge-driven Autonomous Driving},
-  author={Li, Xin and Bai, Yeqi and Cai, Pinlong and Wen, Licheng and Fu, Daocheng and Zhang, Bo and Yang, Xuemeng and Cai, Xinyu and Ma, Tao and Guo, Jianfei and Gao, Xing and Dou, Min and Shi, Botian and Liu, Yong and He, Liang and Qiao, Yu},
-  journal={arXiv preprint arXiv:2312.04316},
-  year = {2023}
+@article{chen2024frea,
+      title={FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality}, 
+      author={Keyu Chen and Yuheng Lei and Hao Cheng and Haoran Wu and Wenchao Sun and Sifa Zheng},
+      year={2024},
+      eprint={2406.02983},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO}
 }
 ```
 
