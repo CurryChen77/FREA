@@ -1,6 +1,13 @@
 # FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality
 
-<div style="display: flex; justify-content: center;">   <div style="margin: 10px;">     <img style="border: 5px solid #263b50;" src="./eval_analysis/figures/FREA-best1.gif"/>   </div>   <div style="margin: 10px;">     <img style="border: 5px solid #263b50;" src="./eval_analysis/figures/FREA-best2.gif"/>   </div> </div>
+<div style="display: flex; justify-content: space-around; width: 100%; box-sizing: border-box;">
+  <div style="flex: 1; margin: 10px;">
+    <img style="width: 100%; border: 5px solid #263b50;" src="./eval_analysis/figures/FREA-best1.gif"/>
+  </div>
+  <div style="flex: 1; margin: 10px;">
+    <img style="width: 100%; border: 5px solid #263b50;" src="./eval_analysis/figures/FREA-best2.gif"/>
+  </div>
+</div>
 
 [![Static Badge](https://img.shields.io/badge/Arxiv-pdf-2be22f?logo=arxiv)](https://arxiv.org/abs/2406.02983)
 
@@ -11,7 +18,7 @@
 
 🌟*FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.*🌟
 
-<div style="text-align: center;">   <img style="border: 3px solid gray; width: 60%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
+<div style="text-align: center;">   <img style="border: 3px solid gray; width: 100%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
 
 ## :page_with_curl: Outline
 
