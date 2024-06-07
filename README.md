@@ -1,13 +1,15 @@
 # FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality
 
-<div style="display: flex; justify-content: space-around; width: 100%; box-sizing: border-box;">
-  <div style="flex: 1; margin: 10px;">
-    <img style="width: 100%; border: 5px solid #263b50;" src="./eval_analysis/figures/FREA-best1.gif"/>
-  </div>
-  <div style="flex: 1; margin: 10px;">
-    <img style="width: 100%; border: 5px solid #263b50;" src="./eval_analysis/figures/FREA-best2.gif"/>
-  </div>
-</div>
+<table style="border-collapse: collapse; width: 100%; table-layout: fixed;">
+  <tr>
+    <td style="border: 0; padding: 0; width: 50%;">
+      <img src="./eval_analysis/figures/FREA-best1.gif" style="width: 99%; border: 2px solid gray;">
+    </td>
+    <td style="border: 0; padding: 0; width: 50%;">
+      <img src="./eval_analysis/figures/FREA-best2.gif" style="width: 99%; border: 2px solid gray;">
+    </td>
+  </tr>
+</table>
 
 [![Static Badge](https://img.shields.io/badge/Arxiv-pdf-2be22f?logo=arxiv)](https://arxiv.org/abs/2406.02983)
 
