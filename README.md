@@ -18,7 +18,7 @@
 <font color="red">[2024.6.07] <b>New: The code is now released. </b></font></font>
 </pre>
 
-🌟*FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.*🌟
+🌟FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.🌟
 
 <div style="text-align: center;">   <img style="border: 3px solid gray; width: 100%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
 
@@ -26,14 +26,14 @@
 
   - :art: [Setup](#Setup)
   - :books: [Usage](#Usage)
-    - [Collect Off-line Data](#Collect Off-line Data)
-    - [Train optimal feasible value function of AV](#Train optimal feasible value function of AV)
-    - [Train adversarial policy of CBV](#Train adversarial policy of CBV)
+    - [Collect Off-line Data](#Collect-Off-line-Data)
+    - [Train optimal feasible value function of AV](#Train-optimal-feasible-value-function-of-AV)
+    - [Train adversarial policy of CBV](#Train-adversarial-policy-of-CBV)
     - [Evaluation](#Evaluation)
-    - [Results Analysis](# Results Analysis)
+    - [Results Analysis](#Results-Analysis)
     - [Visualization](#Visualization)
-  - :bookmark: [Citation](#bookmark-citation)
-  - :clipboard: [Acknowledgement](#clipboard: Acknowledgement)
+  - :bookmark: [Citation](#citation)
+  - :clipboard: [Acknowledgement](#Acknowledgement)
 
 ## :art: Setup
 
