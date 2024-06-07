@@ -475,7 +475,7 @@ if __name__ == '__main__':
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
     parser.add_argument('--data_filename', type=str, default='merged_data.hdf5')
     parser.add_argument('--min_dis_threshold', '-dis', type=str, default='0.1')
-    parser.add_argument('--mode', '-m', type=str, default='region', choices=['region', 'data', 'learning_curve'])
+    parser.add_argument('--mode', '-m', type=str, default=['region', 'data', 'learning_curve'], nargs='+', choices=['region', 'data', 'learning_curve'])
     parser.add_argument('--actor_num', type=int, default=3)
     parser.add_argument('--spatial_interval', type=int, default=32)
     parser.add_argument('--x_range', type=tuple, default=(-22, 22))
@@ -490,15 +490,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # 1. plot the feasibility data distribution
-    if args.mode == 'data':
+    if 'data' in args.mode:
         plot_feasibility_data_distribution(args)
 
     # 2. plot the well-trained feasibility region
-    if args.mode == 'region':
+    if 'region' in args.mode:
         plot_multi_feasibility_region(args)
 
     # 3. plot the learning curve of the feasibility
-    if args.mode == 'learning_curve':
+    if 'learning_curve' in args.mode:
         plot_learning_curve(args)
 
 

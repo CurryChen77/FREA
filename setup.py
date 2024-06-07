@@ -8,7 +8,7 @@
 @source  ：This project is modified from <https://github.com/trust-ai/SafeBench>
 """
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(name='frea',
       packages=["frea"],

@@ -39,9 +39,10 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-log/
-**/train_log/
-**/model_ckpt/
+log/eval/*
+log/train_scenario/*
+**/train_log/*
+**/model_ckpt/*
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -147,20 +148,9 @@ dmypy.json
 
 */log
 
+docker/
 docs/
-/frea/scenario/scenario_definition/adv_behavior_multiple/
-/frea/scenario/scenario_definition/adv_behavior_single/
-/frea/scenario/scenario_definition/adv_init_state/
-/frea/scenario/scenario_definition/adv_trajectory/
-/frea/scenario/scenario_definition/advsim/
-/frea/scenario/scenario_definition/human/
-/frea/scenario/scenario_definition/object_detection/
-/frea/scenario/scenario_definition/ordinary/
-/frea/scenario/scenario_definition/scenic/
-/frea/scenario/scenario_definition/standard/
-/frea/feasibility/data/
-/frea/feasibility/figures/
-/frea/feasibility/processed_data/
-eval_analysis/figures/
-eval_analysis/processed_data/
-eval_analysis/train_result/
+/frea/feasibility/data/*
+/frea/feasibility/processed_data/*
+eval_analysis/processed_data/*
+eval_analysis/train_result/*

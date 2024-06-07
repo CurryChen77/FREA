@@ -15,7 +15,6 @@ import torch.nn as nn
 import torch.optim as optim
 from fnmatch import fnmatch
 from torch.distributions import Normal
-import nevergrad as ng
 from frea.gym_carla.net import CriticPPO, CriticTwin
 from frea.util.torch_util import CUDA, CPU
 

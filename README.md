@@ -1,240 +1,203 @@
-# FREA: Feasibility-Guided Safety-Critical Scenarios Generation with Reasonable Adversarial Behavior
+# FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality
 
-# Content
+<div style="display: flex; justify-content: center;">   <div style="margin: 10px;">     <img style="border: 5px solid #263b50;" src="./eval_analysis/figures/FREA-best1.gif"/>   </div>   <div style="margin: 10px;">     <img style="border: 5px solid #263b50;" src="./eval_analysis/figures/FREA-best2.gif"/>   </div> </div>
 
-1. [Eval](#Eval)
-2. [Train Agent](#Train-Agent)
-3. [Train Scenario](#Train-Scenario)
-4. [Collect_feasibility_data](#Collect-feasibility-data)
-5. [Visualization](#Visualization)
+[![Static Badge](https://img.shields.io/badge/Arxiv-pdf-2be22f?logo=arxiv)](https://arxiv.org/abs/2406.02983)
 
-## Eval
+<pre name="code" class="html">
+<font color="red">[2024.6.05] <b>New: We release FREA paper on Arxiv. </b></font>
+<font color="red">[2024.6.07] <b>New: The code is now released. </b></font></font>
+</pre>
 
-### Desktop Users
+🌟*FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.*🌟
+
+<div style="text-align: center;">   <img style="border: 3px solid gray; width: 100%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
+
+## :page_with_curl: Outline
+
+  - :art: [Setup](#Setup)
+  - :books: [Usage](#Usage)
+    - [Collect Off-line Data](#Collect Off-line Data)
+    - [Train optimal feasible value function of AV](#Train optimal feasible value function of AV)
+    - [Train adversarial policy of CBV](#Train adversarial policy of CBV)
+    - [Evaluation](#Evaluation)
+    - [Results Analysis](# Results Analysis)
+    - [Visualization](#Visualization)
+  - :bookmark: [Citation](#bookmark-citation)
+  - :clipboard: [Acknowledgement](#clipboard: Acknowledgement)
+
+## :art: Setup
+
+**Recommended system: Ubuntu 20.04 or 22.04**
+
+Step 1: Install [Carla](https://carla.readthedocs.io/en/latest/start_quickstart/) (0.9.13 recommended)
+
+Step 2: Setup conda enviroment
+
+```bash
+conda create -n frea python=3.8
+conda activate frea
+```
+
+Step 3: Clone this git repo in an appropriate folder
+
+```bash
+git@github.com:CurryChen77/FREA.git
+```
+
+Step 4: Enter the repo root folder and install the packages:
+
+```bash
+cd FREA
+pip install -r requirements.txt
+pip install -e .
+```
+
+## :books: Usage
+
+### Collect Off-line Data
 
 ```bash
 # Launch CARLA
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
 # Launch in another terminal
-python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml --mode eval -sp
-
-# Use feasibility to help Eval
-python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml --mode eval -sp -fe 
-
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_train.yaml --mode collect_feasibility_data
 ```
 
-### Remote Users
-
-#### Remote training
+### Train optimal feasible value function of AV
 
 ```bash
-# Launch CARLA with headless mode
-./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
+cd frea/feasibility/
 
-# Another terminal no display pygame
-python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
-
-# Showing the memory usage
-mprof run --python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
+# Train optimal feasible value function of AV
+python train_feasibility.py
 ```
 
-#### Visualize pygame window
+### Train adversarial policy of CBV
 
-```bash
-# Launch CARLA with headless mode
-./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
-
-# Another terminal, Launch on the virtual display
-DISPLAY=:10 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_eval.yaml --mode eval --render
-```
-
-* local open terminal
-
-```bash
-ssh -X username@host
-```
-
-## Train Agent
-
-### Usage
+#### Train FREA
 
 ``````bash
 # Launch CARLA
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-# Launch in another terminal
-python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --mode train_agent
-
-# profile the memory usage
-mprof run python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --mode train_agent
+# Train FREA
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg fppo_adv_train.yaml --mode train_scenario
 ``````
 
-
-### Policy
-
-* **behavior:** Carla default agent (no state)
-
-* **expert:** Carla leader board default rule-based agent (ego state)
-* **plant:**  transformer based planning agent, output ego's future waypoints (ego state)
-* **PPO:** RL-based agent
-
-### state/observation
-
-For learnable agent (PPO......)
-
-* **Ego obs**
-  
-  |           vehicle            |  x   |  y   | extent_x | extent_y | yaw  | velocity |
-  | :--------------------------: | :--: | :--: | :------: | :------: | ---- | :------: |
-  | ego state (relative to ego)  |      |      |          |          |      |          |
-  | BV_1 state (relative to ego) |      |      |          |          |      |          |
-  | BV_2 state (relative to ego) |      |      |          |          |      |          |
-
-### Action
-
-2-dim continues action
-
-* throttle
-* steering
-* brake
-
-## Train Scenario
-
-### Usage
+#### Train FPPO-RS
 
 ```bash
 # Launch CARLA
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-# Launch in another terminal
+# Train FPPO-RS
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg fppo_rs_train.yaml --mode train_scenario
+```
+
+#### Train PPO
+
+```bash
+# Launch CARLA
+./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+
+# Train PPO
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
 ```
 
-### Policy
+### Evaluation
 
-1. PPO
-2. **FPPO (feasibility guided PPO)**
-3. standard (autopilot)
-
-### optional
-
-* Select the CBV method **based on the CBV candidate**
-
-  1. **attention-based** (default, attention weight)
-  2. **rule-based** (nearest)
-
-```bash
-python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml --mode train_scenario  --CBV_selection 'attention-based'  # different method of selecting controlled bv
-```
-
-* Input state
-
-  **Actor info**
-
-  |           vehicle            |  x   |  y   | extent_x | extent_y | yaw  | velocity |
-  | :--------------------------: | :--: | :--: | :------: | :------: | :--: | -------- |
-  | CBV state (relative to CBV)  |      |      |          |          |      |          |
-  | ego state (relative to CBV)  |      |      |          |          |      |          |
-  | BV_1 state (relative to CBV) |      |      |          |          |      |          |
-  
-  **Tips: if no BV then the corresponding state will set to 0**
-  
-* Output action
-
-  2-dim continues action
-
-  acc ~ [-3.0, 3.0]
-
-  steer ~ [-0.3, 0.3]
-
-## Collect feasibility data
-
-### Usage
+#### Evaluation for data analysis (recording results)
 
 ```bash
 # Launch CARLA
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-# Launch in another terminal
-python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode collect_feasibility_data
+# Evaluation FREA
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg FPPO_adv_eval.yaml --mode eval --eval_mode analysis
 ```
 
-### Policy
-
-* HJ-Reachability
-
-### Input state
-
-[yaml file](frea/feasibility/config/HJR.yaml)  ```obs_type: "ego_info" (default)```
-
-## Visualization
-
-### World spectator
+#### Evaluation for video visualization
 
 ```bash
 # Launch CARLA
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-# Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval -sp  # Set world spectator on the first scenario's ego
+# Evaluation FREA
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg FPPO_adv_eval.yaml --mode eval --eval_mode render
 ```
 
-### Ego route
+### Results Analysis
+
+#### Results analysis of the paper
+
+* [Evaluation Results](eval_analysis/plot_data/Eval_result.ipynb)
+* [Learning Curve](eval_analysis/plot_data/Learning_Curve.ipynb)
+* [Feasibility Results](frea/feasibility/feasibility_results.ipynb)
+
+#### Generate your own results analysis
+
+*Make sure the Evaluation has finished and the result are saved in [folder](./log/eval).*
+
+```bash
+# Process the recorded data
+python eval_analysis/process_data/process_all_data.py
+
+# Plot the evaluation result
+python eval_analysis/plot_data/plot_evaluation_result.py
+```
+
+### Visualization
+
+#### World spectator
 
 ```bash
 # Launch CARLA
 ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-# Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --viz_route  # visualization the global route
+# Set world spectator
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml --mode eval -sp
 ```
 
-### State encoder attn map
+#### AV route
 
-[state encoder yaml](frea/agent/config/state_encoder.yaml)   ```viz_attn_map=True (default)```
+```bash
+# Launch CARLA
+./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
 
-### render the whole pygame window
+# Visualize AV route
+python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml --mode eval -viz_route
+```
+
+#### BEV map
 
  ```bash
  # Launch CARLA
  ./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
  
- # Launch in another terminal
- python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render  # show the pygame window
+ # Visualize BEV map
+ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg FPPO_adv_eval.yaml --mode eval --eval_mode render
  ```
 
-### enable the sem camera for visualization
+## :bookmark: Citation
 
-```bash
-# Launch CARLA
-./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
-
-# Launch in another terminal
-python scripts/run.py --agent_cfg behavior.yaml --scenario_cfg standard_eval.yaml --mode eval --render --envable_sem # show the pygame window and enable the 3rd-person view using the semantic segmentation camera
+If you find our paper useful, please kindly cite us via:
+```
+@article{li2023knowledgedriven,
+  title={Towards Knowledge-driven Autonomous Driving},
+  author={Li, Xin and Bai, Yeqi and Cai, Pinlong and Wen, Licheng and Fu, Daocheng and Zhang, Bo and Yang, Xuemeng and Cai, Xinyu and Ma, Tao and Guo, Jianfei and Gao, Xing and Dou, Min and Shi, Botian and Liu, Yong and He, Liang and Qiao, Yu},
+  journal={arXiv preprint arXiv:2312.04316},
+  year = {2023}
+}
 ```
 
-## Metric
+## :clipboard: Acknowledgement
 
-### statistical result:
-
-The evaluation result are the statistical result up to now
-
-* collision rate
-* **unavoidable collision**
-* **near rate**
-* **near miss rate**
-* out of road length
-* distance to route
-* incomplete route
-* running time
-* **final score**
-
-## Tricks
-
-### CBV selection candidate
-
-* Except the ego vehicle
-* Except the BVs which are in the opposite lane side, but on the same road
-* Except the BVs behind the ego vehicle and the abs yaw angle difference > 45 degree
-
+This implementation is based on code from several repositories. We sincerely thank the authors for their awesome work.
+- [SafeBench](https://github.com/trust-ai/SafeBench)
+- [FISOR](https://github.com/ZhengYinan-AIR/FISOR)
+- [PlanT](https://github.com/autonomousvision/plant/tree/1bfb695910d816e70f53521aa263648072edea8e)
+- [ElegantRL](https://github.com/AI4Finance-Foundation/ElegantRL/tree/master)
+- [distance3d](https://github.com/AlexanderFabisch/distance3d)
+- [Two-Dimensional-Time-To-Collision](https://github.com/Yiru-Jiao/Two-Dimensional-Time-To-Collision)
