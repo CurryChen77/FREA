@@ -39,8 +39,8 @@ def compute_box2origin(vehicle_box, vehicle_transform):
     bbox_location = vehicle_box.location
     # the transition vector should be the sum of vehicle_location(global) and bbox_location(local)
     t = np.array([
-        bbox_location.z + vehicle_location.x,
-        bbox_location.z + vehicle_location.y,
+        bbox_location.x + vehicle_location.x,
+        bbox_location.y + vehicle_location.y,
         bbox_location.z + vehicle_location.z])
     r = compute_R(vehicle_transform.rotation)  # the rotation matrix
     extent = vehicle_box.extent

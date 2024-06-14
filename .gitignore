@@ -154,3 +154,4 @@ docs/
 /frea/feasibility/processed_data/*
 eval_analysis/processed_data/*
 eval_analysis/train_result/*
+eval_analysis/King_result/*
