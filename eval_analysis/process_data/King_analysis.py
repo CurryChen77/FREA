@@ -32,16 +32,17 @@ def compute_box2origin_2D(vehicle_location, vehicle_yaw):
     t = np.array([
         vehicle_location[0],
         vehicle_location[1],
-        0
+        0.755
     ])
 
     r = compute_R(vehicle_yaw)
 
-    size = np.array([4.4, 1.8, 0])
+    size = np.array([4.4, 1.8, 1.51])
 
-    box2origin = np.eye(4)
+    box2origin = np.zeros((4, 4))
     box2origin[:3, :3] = r
     box2origin[:3, 3] = t
+    box2origin[3, 3] = 1.0
 
     return box2origin, size
 
@@ -50,7 +51,7 @@ def get_min_distance_across_centers(coords_1, coords_2):
     """
     Get the distance between two point coords -> [x, y]
     """
-    return np.linalg.norm(coords_1 - coords_2)
+    return np.linalg.norm(np.array(coords_1) - np.array(coords_2))
 
 
 def get_min_distance_across_boxes(coords_1, coords_2, yaw1, yaw2):
@@ -67,14 +68,9 @@ def get_ego_BV_min_distance(ego_obs, yaw_list):
     ego_coords = ego_obs[0, :2]  # Assuming the ego coordinates are the first row, and we need first two columns (x, y)
     ego_yaw = yaw_list[0]
 
-    min_dis = np.inf  # Initialize with infinity to find minimum distance
-
-    for i in range(1, len(ego_obs)):  # Start from 1 to skip ego itself
-        BV_coords = ego_obs[i, :2]  # Assuming BV coordinates are in the same format
-        BV_yaw = yaw_list[i]
-        distance = get_min_distance_across_boxes(ego_coords, BV_coords, ego_yaw, BV_yaw)
-        if distance < min_dis:
-            min_dis = distance
+    BV_coords = ego_obs[1, :2]  # Assuming BV coordinates are in the same format
+    BV_yaw = yaw_list[1]
+    min_dis = get_min_distance_across_boxes(ego_coords, BV_coords, ego_yaw, BV_yaw)
 
     return min_dis
 
@@ -163,27 +159,22 @@ def sort_vehicle_infos_by_distance(ego_info, vehicle_infos):
     return sorted_vehicle_infos
 
 
-def form_ego_obs(ego_info, vehicle_infos, desired_nearby_vehicle=3):
+def form_ego_obs(ego_info, vehicle_info, desired_nearby_vehicle=3):
     ego_obs = []
-    abs_yaw = []
     ego_coords, ego_yaw, ego_velocity = ego_info
     ego_rel_info = get_relative_info(ego_coords=ego_coords, vehicle_coords=ego_coords, ego_yaw=ego_yaw, vehicle_yaw=ego_yaw, vehicle_velocity=ego_velocity)
     ego_obs.append(ego_rel_info)
-    abs_yaw.append(ego_yaw)
-    vehicle_infos = sort_vehicle_infos_by_distance(ego_info, vehicle_infos)
-    for vehicle_info in vehicle_infos:
-        if len(ego_obs) < desired_nearby_vehicle:
-            vehicle_coords, vehicle_yaw, vehicle_velocity = vehicle_info
-            vehicle_rel_info = get_relative_info(ego_coords=ego_coords, vehicle_coords=vehicle_coords, ego_yaw=ego_yaw, vehicle_yaw=vehicle_yaw, vehicle_velocity=vehicle_velocity)
-            ego_obs.append(vehicle_rel_info)
-            abs_yaw.append(vehicle_yaw)
-        else:
-            break
+
+    vehicle_coords, vehicle_yaw, vehicle_velocity = vehicle_info
+    vehicle_rel_info = get_relative_info(ego_coords=ego_coords, vehicle_coords=vehicle_coords, ego_yaw=ego_yaw, vehicle_yaw=vehicle_yaw, vehicle_velocity=vehicle_velocity)
+    ego_obs.append(vehicle_rel_info)
+    ego_bv_dis = get_min_distance_across_boxes(ego_coords, vehicle_coords, ego_yaw, vehicle_yaw)
+    # ego_bv_dis = get_min_distance_across_centers(ego_coords, vehicle_coords)
+
     while len(ego_obs) < desired_nearby_vehicle:
         ego_obs.append([0] * len(ego_rel_info))
-        abs_yaw.append(0)
 
-    return np.array(ego_obs, dtype=np.float32), np.array(abs_yaw, dtype=np.float32)
+    return np.array(ego_obs, dtype=np.float32), ego_bv_dis
 
 
 def find_negative_transition(fea_V):
@@ -196,32 +187,44 @@ def find_negative_transition(fea_V):
 
 def get_feasibility_metric(collision_fea_dis, feasibility_policy):
     fea_boundary_dis = []
-    feasibility_Vs_list = []
-    for fea_dis in collision_fea_dis.values():
-        fea_obs = CUDA(torch.stack([torch.FloatTensor(row[0]) for row in fea_dis]))
+    for all_fea_dis in collision_fea_dis.values():
+        fea_obs = CUDA(torch.stack([torch.FloatTensor(row[0]) for row in all_fea_dis]))
         feasibility_Vs = feasibility_policy.get_feasibility_Vs(fea_obs)
-        feasibility_Vs_list.append(feasibility_Vs)
         reversed_fea_V = torch.flip(feasibility_Vs, dims=[0])
         negative_index = find_negative_transition(reversed_fea_V)
         if negative_index:
-            distance = torch.tensor([row[1] for row in fea_dis])
+            distance = torch.tensor([row[1] for row in all_fea_dis])
             reversed_distance = torch.flip(distance, dims=[0])
             fea_boundary_dis.append(reversed_distance[negative_index].item())
-    infeasible_ratio = (torch.stack(feasibility_Vs_list, dim=0) > 0).float().mean().item()
-    return fea_boundary_dis, infeasible_ratio
+    return fea_boundary_dis
 
 
-def get_collision_severity(all_sequence, all_file_abs_yaw_list, feasibility_policy):
+def get_collision_severity(all_sequence, all_file_ego_bv_dis_list, feasibility_policy):
     collision_fea_dis = {}
     for i, sequence in enumerate(all_sequence):
         collision_fea_dis[i] = []
-        for j, ego_obs_state in enumerate(sequence):
-            ego_BV_min_dis = get_ego_BV_min_distance(ego_obs_state, all_file_abs_yaw_list[i][j])
+
+        for step, ego_obs_state in enumerate(sequence):
+            ego_BV_min_dis = all_file_ego_bv_dis_list[i][step]
             collision_fea_dis[i].append([ego_obs_state, ego_BV_min_dis])
 
-    fea_boundary_dis, infeasible_ratio = get_feasibility_metric(collision_fea_dis, feasibility_policy)
+    fea_boundary_dis = get_feasibility_metric(collision_fea_dis, feasibility_policy)
 
-    return fea_boundary_dis, infeasible_ratio
+    return fea_boundary_dis
+
+
+def get_final_closest_BV_index(final_step_state, num_agents):
+    min_dis = 25
+    BV_index = None
+    ego_coords, ego_yaw, ego_velocity = final_step_state['pos'][0], final_step_state['yaw'][0][0], final_step_state['vel'][0]
+    for agent_index in range(1, num_agents + 1):
+        vehicle_coords, vehicle_yaw, vehicle_velocity = final_step_state['pos'][agent_index], final_step_state['yaw'][agent_index][0], final_step_state['vel'][agent_index]
+        ego_bv_dis = get_min_distance_across_boxes(ego_coords, vehicle_coords, ego_yaw, vehicle_yaw)
+        if ego_bv_dis < min_dis:
+            min_dis = ego_bv_dis
+            BV_index = agent_index
+
+    return BV_index
 
 
 def main(args_dict):
@@ -235,52 +238,53 @@ def main(args_dict):
     collision_count = 0
     total_count = 0
     all_file_ego_obs_list = []
-    all_file_abs_yaw_list = []
+    all_file_ego_bv_dis_list = []
 
-    for folder in tqdm(os.listdir(base_dir), desc="Processing folders"):
+    for folder in os.listdir(base_dir):
+        print(f"Processing {folder}")
         folder_path = os.path.join(base_dir, folder)
-        if os.path.isdir(folder_path):
-            record_file_path = os.path.join(folder_path, os.path.basename(folder_path), 'scenario_records.json')
-            result_file_path = os.path.join(folder_path, os.path.basename(folder_path), 'results.json')
+        for agent_folder in tqdm(os.listdir(folder_path)):
+            agent_folder_path = os.path.join(folder_path, agent_folder)
+            if os.path.isdir(agent_folder_path):
+                record_file_path = os.path.join(agent_folder_path, 'scenario_records.json')
+                result_file_path = os.path.join(agent_folder_path, 'results.json')
 
-            if os.path.exists(record_file_path) and os.path.exists(result_file_path):
-                with open(result_file_path, 'r') as file:
-                    result_data = json.load(file)
-                    # only use the final iteration's result
-                    max_iteration = result_data["first_metrics"]["iteration"]
-
-                    num_agents = result_data["meta_data"]["Num_agents"]
+                if os.path.exists(record_file_path) and os.path.exists(result_file_path):
+                    with open(result_file_path, 'r') as file:
+                        result_data = json.load(file)
+                        # only use the final iteration's result
+                        iteration = result_data["first_metrics"]["iteration"]
+                        town = result_data["meta_data"]["town"]
+                        num_agents = result_data["meta_data"]["Num_agents"]
 
                     with open(record_file_path, 'r') as file:
                         record_data = json.load(file)
-
-                    # only evaluate the collision trajectory
-                    for iteration in range(max_iteration):
+                    if town == 'Town05':
                         total_count += 1
-                        adv_collision = result_data["all_iterations"][str(iteration)]["adv_collision"]
-                        if adv_collision:
+                        # only evaluate the collision trajectory
+                        collision = result_data["all_iterations"][str(iteration)]["Collision Metric"]
+                        if collision == 1.0:
                             collision_count += 1
                             sequences_data = record_data["states"][iteration]
+
+                            # find the closest BV index at the final step
+                            agent_index = get_final_closest_BV_index(sequences_data[-1], num_agents)
+
                             ego_obs_list = []
-                            abs_yaw_list = []
-                            for step_state in sequences_data:
+                            ego_bv_dis_list = []
+                            for i, step_state in enumerate(sequences_data):
                                 ego_info = [step_state['pos'][0], step_state['yaw'][0][0], step_state['vel'][0]]
-                                vehicle_infos = []
-                                for agent_index in range(1, num_agents):
-                                    pos = step_state['pos'][agent_index]
-                                    yaw = step_state['yaw'][agent_index][0]
-                                    vel = step_state['vel'][agent_index]
-                                    vehicle_infos.append([pos, yaw, vel])
-                                ego_obs, abs_yaw = form_ego_obs(ego_info, vehicle_infos)
+                                vehicle_info = [step_state['pos'][agent_index], step_state['yaw'][agent_index][0], step_state['vel'][agent_index]]
+                                ego_obs, ego_bv_dis = form_ego_obs(ego_info, vehicle_info)
                                 ego_obs_list.append(ego_obs)
-                                abs_yaw_list.append(abs_yaw)
+                                ego_bv_dis_list.append(ego_bv_dis)
+
                             all_file_ego_obs_list.append(ego_obs_list)
-                            all_file_abs_yaw_list.append(abs_yaw_list)
+                            all_file_ego_bv_dis_list.append(ego_bv_dis_list)
 
     # get the collision severity of the King trajectories
-    fea_boundary_dis, infeasible_ratio = get_collision_severity(all_file_ego_obs_list, all_file_abs_yaw_list, feasibility_policy)
+    fea_boundary_dis = get_collision_severity(all_file_ego_obs_list, all_file_ego_bv_dis_list, feasibility_policy)
     print("Infeasible Distance (m):", np.mean(fea_boundary_dis))
-    print("Infeasible Ratio (%):", round(infeasible_ratio * 100, 2))
     print(f"Collision Rate (%): ", round(collision_count/total_count * 100, 2))
 
 
