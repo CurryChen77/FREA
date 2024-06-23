@@ -321,7 +321,7 @@ def plot_multi_feasibility_region(args):
     # create figure
     fig, axs = plt.subplots(
         nrows=1, ncols=4,
-        figsize=(14, 2),
+        figsize=(18, 2.5),
         sharey=True
     )
     ax1, ax2, ax3, ax4 = axs.flatten()
@@ -351,10 +351,10 @@ def plot_multi_feasibility_region(args):
     rc('text', usetex=True)
     rc('text.latex', preamble=r'\usepackage{amsmath}')
 
-    axs[0].text(0.5, -0.28, r'(a) $V_{\text{AV}}$ = 2 (m/s)', ha='center', va='top', transform=axs[0].transAxes, fontsize=12)
-    axs[1].text(0.5, -0.28, r'(b) $V_{\text{AV}}$ = 6 (m/s)', ha='center', va='top', transform=axs[1].transAxes, fontsize=12)
-    axs[2].text(0.5, -0.28, r'(c) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[2].transAxes, fontsize=12)
-    axs[3].text(0.5, -0.28, r'(d) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[3].transAxes, fontsize=12)
+    axs[0].text(0.5, -0.24, r'(a) $V_{\text{AV}}$ = 2 (m/s)', ha='center', va='top', transform=axs[0].transAxes, fontsize=14)
+    axs[1].text(0.5, -0.24, r'(b) $V_{\text{AV}}$ = 6 (m/s)', ha='center', va='top', transform=axs[1].transAxes, fontsize=14)
+    axs[2].text(0.5, -0.24, r'(c) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[2].transAxes, fontsize=14)
+    axs[3].text(0.5, -0.24, r'(d) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[3].transAxes, fontsize=14)
 
     for ax in [ax1, ax2, ax3, ax4]:
         ax.set_xticks(my_x_ticks)
@@ -381,7 +381,7 @@ def plot_multi_feasibility_region(args):
     cb.locator = MaxNLocator(nbins=5)
     cb.update_ticks()
     cb.ax.tick_params(labelsize=8)
-    cb.ax.text(0.5, 1.11, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=11)
+    cb.ax.text(0.5, 1.11, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=13)
     cb.ax.text(0.1, 1.01, r'$\mathrm{(learned)}$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=6)
     # cb = plt.colorbar(ct, ax=ax, shrink=0.75, pad=0.01, aspect=8, anchor=(0.0, 0.1))
 
@@ -395,7 +395,7 @@ def plot_multi_feasibility_region(args):
         FancyArrowPatch((0, 0), (20, 0), arrowstyle='-|>', color='#969693', label='AV Velocity Vector')
     ]
 
-    fig.legend(handles=legend_elements, loc='lower center', ncol=6, bbox_to_anchor=(0, 0.08, 0.965, 1), handler_map={FancyArrowPatch: HandlerArrow()}, mode='expand')
+    fig.legend(handles=legend_elements, loc='lower center', ncol=6, bbox_to_anchor=(0, 0.08, 0.965, 1), handler_map={FancyArrowPatch: HandlerArrow()}, mode='expand', fontsize=13)
     # fig.tight_layout()
     fig.subplots_adjust(bottom=0.2, top=0.99, left=0.005)
     save_dir = osp.join(args.ROOT_DIR, f'frea/feasibility/figures/feasibility_region_{args.min_dis_threshold}.png')
