@@ -6,9 +6,12 @@
 @mail    : chenkeyu7777@gmail.com
 @Date    ：2024/1/25
 """
-import os
 import re
-
+from matplotlib import rc
+from matplotlib.legend_handler import HandlerPatch
+from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle, Arrow, Patch, FancyArrowPatch
+from matplotlib.ticker import MaxNLocator
 import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,6 +31,15 @@ from frea.util.logger import Logger
 from frea.util.run_util import load_config
 from frea.util.torch_util import set_torch_variable, set_seed, CUDA, CPU
 from eval_analysis.plot_data.plot_learning_curve import smooth
+
+
+class HandlerArrow(HandlerPatch):
+    def create_artists(self, legend, orig_handle,
+                       xdescent, ydescent, width, height, fontsize, trans):
+        arrow = FancyArrowPatch((-10, 3.5), (1.2 * width, 3.5),
+                                arrowstyle='-|>', mutation_scale=12,
+                                color=orig_handle.get_edgecolor(), linewidth=2.5, snap=True, alpha=0.6)
+        return [arrow]
 
 
 def calculate_collision_rate(done, collision):
@@ -81,45 +93,46 @@ def plot_feasibility_data_distribution(args):
 
     matplotlib.rcParams['font.family'] = 'Times New Roman'
 
-    fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+    fig, axs = plt.subplots(1, 4, figsize=(15, 3))
     color_palette = sns.color_palette("Blues")
     cmap = ListedColormap(color_palette)
 
-    _, _, _, x_y_img = axs[0, 0].hist2d(non_zero_x, non_zero_y, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[0, 0].set_xlabel('Relative X Coordinate of BVs (m)', fontsize=14)
-    axs[0, 0].set_ylabel('Relative Y Coordinate of BVs (m)', fontsize=13)
-    cb1 = fig.colorbar(x_y_img, ax=axs[0, 0], pad=0.01)
+    _, _, _, x_y_img = axs[0].hist2d(non_zero_x, non_zero_y, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
+    axs[0].set_xlabel('Relative X Coordinate of BVs (m)', fontsize=12)
+    axs[0].set_ylabel('Relative Y Coordinate of BVs (m)', fontsize=12)
+    cb1 = fig.colorbar(x_y_img, ax=axs[0], pad=0.01)
     cb1.set_ticks([])
     cb1.ax.tick_params(axis='both', which='both', length=0)
     cb1.ax.text(1.5, 0, 'Low', ha='left', va='bottom', transform=cb1.ax.transAxes)
     cb1.ax.text(1.5, 1, 'High', ha='left', va='top', transform=cb1.ax.transAxes)
 
-    axs[0, 1].hist(ego_min_dis, density=True, bins=30, alpha=0.7, color=color_palette[len(color_palette) // 2])
+    axs[1].hist(ego_min_dis, density=True, bins=30, alpha=0.7, color=color_palette[len(color_palette) // 2])
     # sns.kdeplot(ego_min_dis, color=color_palette[len(color_palette) // 2], ax=axs[0, 1], alpha=0.6, fill=True, linewidth=1.2)
-    axs[0, 1].set_xlabel('Closest Distance between AV and BVs (m)', fontsize=14)
-    axs[0, 1].set_ylabel('Frequency', fontsize=13)
+    axs[1].set_xlabel('Closest Distance between AV and BVs (m)', fontsize=12)
+    axs[1].set_ylabel('Frequency', fontsize=12)
     text = 'AV Collision Rate: {:.2f}%'.format(ego_collision_percentage)
-    axs[0, 1].legend(labels=[text], loc='upper right', fontsize=14, labelcolor='red')
+    axs[1].legend(labels=[text], loc='upper right', fontsize=10, labelcolor='red')
 
-    _, _, _, yaw_speed_img = axs[1, 0].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[1, 0].set_xlabel('Relative Yaw of BVs (rad)', fontsize=14)
-    axs[1, 0].set_ylabel('Absolute Speed of BVs (m/s)', fontsize=13)
-    cb2 = fig.colorbar(yaw_speed_img, ax=axs[1, 0], pad=0.01)
+    _, _, _, yaw_speed_img = axs[2].hist2d(non_zero_yaw, non_zero_speed, bins=60, cmap=cmap, norm=LogNorm(), alpha=0.9)
+    axs[2].set_xlabel('Relative Yaw of BVs (rad)', fontsize=12)
+    axs[2].set_ylabel('Absolute Speed of BVs (m/s)', fontsize=12)
+    cb2 = fig.colorbar(yaw_speed_img, ax=axs[2], pad=0.01)
     cb2.set_ticks([])
     cb2.ax.tick_params(axis='both', which='both', length=0)
     cb2.ax.text(1.5, 0, 'Low', ha='left', va='bottom', transform=cb2.ax.transAxes)
     cb2.ax.text(1.5, 1, 'High', ha='left', va='top', transform=cb2.ax.transAxes)
 
-    _, _, _, throttle_steering_angle_img = axs[1, 1].hist2d(throttle, steering_angle, bins=45, cmap=cmap, norm=LogNorm(), alpha=0.9)
-    axs[1, 1].set_xlabel('AV Throttle', fontsize=14)
-    axs[1, 1].set_ylabel('AV Steering Angle (rad)', fontsize=13)
-    axs[1, 1].set_ylim([-0.75, 0.75])
-    cb3 = fig.colorbar(throttle_steering_angle_img, ax=axs[1, 1], pad=0.01)
+    _, _, _, throttle_steering_angle_img = axs[3].hist2d(throttle, steering_angle, bins=45, cmap=cmap, norm=LogNorm(), alpha=0.9)
+    axs[3].set_xlabel('AV Throttle', fontsize=12)
+    axs[3].set_ylabel('AV Steering Angle (rad)', fontsize=12)
+    axs[3].set_ylim([-0.75, 0.75])
+    cb3 = fig.colorbar(throttle_steering_angle_img, ax=axs[3], pad=0.01)
     cb3.set_ticks([])
     cb3.ax.tick_params(axis='both', which='both', length=0)
     cb3.ax.text(1.5, 0, 'Low', ha='left', va='bottom', transform=cb3.ax.transAxes)
     cb3.ax.text(1.5, 1, 'High', ha='left', va='top', transform=cb3.ax.transAxes)
 
+    fig.subplots_adjust(wspace=0.01)
     plt.tight_layout()
     save_dir = osp.join(args.ROOT_DIR, 'frea/feasibility/figures/feasibility_data_distribution.png')
     plt.savefig(save_dir, dpi=600)
@@ -198,7 +211,6 @@ def rearrange_the_actor_order(batch_ego_obs):
 
 
 def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, actor_num=3, x_range=(-25, 25), y_range=(-10, 10)):
-    from matplotlib.patches import Rectangle, Arrow
 
     # the fake ego x, y coordinates
     x = np.linspace(x_range[0], x_range[1], spatial_interval)
@@ -218,6 +230,7 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     # get the corresponding feasibility values
     feasibility_value = CPU(agent.get_feasibility_Vs(CUDA(torch.FloatTensor(batch_ego_obs))))
     array_value = np.asarray(feasibility_value).reshape(x_grid.shape)
+    array_value = np.clip(array_value, a_min=None, a_max=10)
 
     norm = colors.Normalize(vmin=-8, vmax=4)
 
@@ -237,25 +250,20 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
         )
         ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0')
 
-    cb = plt.colorbar(ct, ax=ax, shrink=0.75, pad=0.01, anchor=(0.0, 0.2))
-    cb.ax.tick_params(labelsize=9)
-
-    cb.ax.text(0.5, 1.14, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=14)
-    cb.ax.text(0.1, 1.05, r'$\mathrm{(learned)}$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=7)
-
     # plot all the vehicles
     for i, Vehicle in enumerate(ego_obs):
         # the x,y in Rectangle in the bottom left corner
-        color = 'r' if i == 0 else (0.30, 0.52, 0.74)
-        # the angle of the Rectangle is under right-handed coordinate system, but the yaw angle in carla is left-handed coordinate system
-        rectangle = Rectangle((Vehicle[0]-Vehicle[2] / 2, Vehicle[1]-Vehicle[3] / 2), width=Vehicle[2], height=Vehicle[3], angle=-np.degrees(Vehicle[4]), rotation_point='center', fill=True, alpha=0.5, color=color)
-        angle_rad = Vehicle[4]
-        speed = ego_speed if i == 0 else Vehicle[5]
-        # the angle of the Rectangle is under right-handed coordinate system, but the yaw angle in carla is left-handed coordinate system
-        direction = [np.cos(angle_rad) * speed, - np.sin(angle_rad) * speed]
-        arrow = Arrow(x=Vehicle[0], y=Vehicle[1], dx=direction[0], dy=direction[1], width=1.5)
-        ax.add_patch(rectangle)
-        ax.add_patch(arrow)
+        if i >= 1:
+            color = (0.30, 0.52, 0.74)
+            # the angle of the Rectangle is under right-handed coordinate system, but the yaw angle in carla is left-handed coordinate system
+            rectangle = Rectangle((Vehicle[0]-Vehicle[2] / 2, Vehicle[1]-Vehicle[3] / 2), width=Vehicle[2], height=Vehicle[3], angle=-np.degrees(Vehicle[4]), rotation_point='center', fill=True, alpha=0.5, color=color)
+            angle_rad = Vehicle[4]
+            speed = Vehicle[5]
+            # the angle of the Rectangle is under right-handed coordinate system, but the yaw angle in carla is left-handed coordinate system
+            direction = [np.cos(angle_rad) * speed, - np.sin(angle_rad) * speed]
+            arrow = Arrow(x=Vehicle[0], y=Vehicle[1], dx=direction[0], dy=direction[1], width=1.5)
+            ax.add_patch(rectangle)
+            ax.add_patch(arrow)
     # plot all the arrows
     arrow_xs = np.linspace(x_range[0] + 8, x_range[1] - 8, 3)
     arrow_ys = np.linspace(y_range[0] + 4, y_range[1] - 4, 2)
@@ -271,7 +279,7 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     ax.set_ylim([-9.5, 9.5])
     ax.set_aspect('equal', adjustable='box')
 
-    return ax
+    return ax, ct
 
 
 def plot_multi_feasibility_region(args):
@@ -312,9 +320,9 @@ def plot_multi_feasibility_region(args):
 
     # create figure
     fig, axs = plt.subplots(
-        nrows=2, ncols=2,
-        figsize=(10, 4.2),
-        constrained_layout=True,
+        nrows=1, ncols=4,
+        figsize=(14, 2),
+        sharey=True
     )
     ax1, ax2, ax3, ax4 = axs.flatten()
 
@@ -330,30 +338,33 @@ def plot_multi_feasibility_region(args):
     '''
     # figure 1, ego at low speed (2m/s), BVs driving straight
     ego_obs1 = generate_ego_obs(ego_speed=4, yaw_angle=(0.0, 0.0), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(3, 3))
-    ax1 = plot_feasibility_region(ax1, feasibility_policy, ego_obs1, ego_speed=2, spatial_interval=spatial_interval, actor_num=actor_num)
+    ax1, ct1 = plot_feasibility_region(ax1, feasibility_policy, ego_obs1, ego_speed=2, spatial_interval=spatial_interval, actor_num=actor_num)
     # figure 2, ego at high speed (6m/s), BVs driving straight
-    ax2 = plot_feasibility_region(ax2, feasibility_policy, ego_obs1, ego_speed=6, spatial_interval=spatial_interval, actor_num=actor_num)
+    ax2, ct2 = plot_feasibility_region(ax2, feasibility_policy, ego_obs1, ego_speed=6, spatial_interval=spatial_interval, actor_num=actor_num)
     # figure 3, ego at normal speed (4m/s), BVs driving toward ego
     ego_obs2 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/2, 3.14/2), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(3, 3))
-    ax3 = plot_feasibility_region(ax3, feasibility_policy, ego_obs2, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
+    ax3, ct3 = plot_feasibility_region(ax3, feasibility_policy, ego_obs2, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
     # figure 4, ego at normal speed (4m/s), BVs driving across under different directions
     ego_obs3 = generate_ego_obs(ego_speed=4, yaw_angle=(-3.14/6, 3.14/6), actor_num=actor_num, x_range=x_range, y_range=y_range, width=width, height=height, speed_range=(3, 3))
-    ax4 = plot_feasibility_region(ax4, feasibility_policy, ego_obs3, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
+    ax4, ct4 = plot_feasibility_region(ax4, feasibility_policy, ego_obs3, ego_speed=4, spatial_interval=spatial_interval, actor_num=actor_num)
 
-    axs[0, 0].text(0.5, -0.05, r'(a) $V_{AV}$ = 2 (m/s)', ha='center', va='top', transform=axs[0, 0].transAxes, fontsize=18)
-    axs[0, 1].text(0.5, -0.05, r'(b) $V_{AV}$ = 6 (m/s)', ha='center', va='top', transform=axs[0, 1].transAxes, fontsize=18)
-    axs[1, 0].text(0.5, -0.05, r'(c) $V_{AV}$ = 4 (m/s)', ha='center', va='top', transform=axs[1, 0].transAxes, fontsize=18)
-    axs[1, 1].text(0.5, -0.05, r'(d) $V_{AV}$ = 4 (m/s)', ha='center', va='top', transform=axs[1, 1].transAxes, fontsize=18)
+    rc('text', usetex=True)
+    rc('text.latex', preamble=r'\usepackage{amsmath}')
+
+    axs[0].text(0.5, -0.28, r'(a) $V_{\text{AV}}$ = 2 (m/s)', ha='center', va='top', transform=axs[0].transAxes, fontsize=12)
+    axs[1].text(0.5, -0.28, r'(b) $V_{\text{AV}}$ = 6 (m/s)', ha='center', va='top', transform=axs[1].transAxes, fontsize=12)
+    axs[2].text(0.5, -0.28, r'(c) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[2].transAxes, fontsize=12)
+    axs[3].text(0.5, -0.28, r'(d) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[3].transAxes, fontsize=12)
 
     for ax in [ax1, ax2, ax3, ax4]:
         ax.set_xticks(my_x_ticks)
         ax.set_yticks(my_y_ticks)
         ax.set_xlim((-24, 24))
         ax.set_ylim((-9.5, 9.5))
-        ax.tick_params(labelsize=20)
+        ax.tick_params(labelsize=6)
         ax.set_xlim([-24, 24])
         ax.set_ylim([-9.5, 9.5])
-        ax.tick_params(axis='both', which='both', bottom=False, left=False, labelbottom=False, labelleft=False)
+        ax.tick_params(axis='both', which='both', bottom=False, left=False, labelbottom=False, labelleft=False, labelright=False, labeltop=False)
         ax.spines['bottom'].set_linewidth(0.5)
         ax.spines['left'].set_linewidth(0.5)
         ax.spines['right'].set_linewidth(0.5)
@@ -363,6 +374,30 @@ def plot_multi_feasibility_region(args):
         ax.spines['left'].set_color('white')
         ax.spines['right'].set_color('white')
 
+    # fig.subplots_adjust(right=0.94)
+    fig.subplots_adjust(right=0.96, wspace=0.01)
+    cbar_ax = fig.add_axes([0.965, 0.28, 0.01, 0.5])
+    cb = fig.colorbar(ct4, cax=cbar_ax, shrink=0.22, pad=0.0, aspect=30, anchor=(0.0, 0.1))
+    cb.locator = MaxNLocator(nbins=5)
+    cb.update_ticks()
+    cb.ax.tick_params(labelsize=8)
+    cb.ax.text(0.5, 1.11, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=11)
+    cb.ax.text(0.1, 1.01, r'$\mathrm{(learned)}$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=6)
+    # cb = plt.colorbar(ct, ax=ax, shrink=0.75, pad=0.01, aspect=8, anchor=(0.0, 0.1))
+
+    legend_elements = [
+        Patch(facecolor='#c0fcdc', edgecolor='#c0fcdc', label='Feasible Region (learned)'),
+        Patch(facecolor='#ff7777', edgecolor='#ff7777', label='Infeasible Region (learned)'),
+        Line2D([0], [0], marker='o', color='none', label='Feasibility boundary (learned)',
+               markerfacecolor='none', markeredgecolor='#32ABD6', markersize=10, markeredgewidth=1.5),
+        Rectangle((0, 0), width=4.9, height=2.12, rotation_point='center', label='Background Vehicle (BV)', fill=True, alpha=0.5, color=(0.30, 0.52, 0.74)),
+        FancyArrowPatch((0, 0), (20, 0), arrowstyle='-|>', color=(0.30, 0.52, 0.74), label='BV Velocity Vector'),
+        FancyArrowPatch((0, 0), (20, 0), arrowstyle='-|>', color='#969693', label='AV Velocity Vector')
+    ]
+
+    fig.legend(handles=legend_elements, loc='lower center', ncol=6, bbox_to_anchor=(0, 0.08, 0.965, 1), handler_map={FancyArrowPatch: HandlerArrow()}, mode='expand')
+    # fig.tight_layout()
+    fig.subplots_adjust(bottom=0.2, top=0.99, left=0.005)
     save_dir = osp.join(args.ROOT_DIR, f'frea/feasibility/figures/feasibility_region_{args.min_dis_threshold}.png')
     plt.savefig(save_dir, dpi=600)
     plt.show()
