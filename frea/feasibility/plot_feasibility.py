@@ -386,7 +386,7 @@ def plot_multi_feasibility_region(args):
     # cb = plt.colorbar(ct, ax=ax, shrink=0.75, pad=0.01, aspect=8, anchor=(0.0, 0.1))
 
     legend_elements = [
-        Patch(facecolor='#c0fcdc', edgecolor='#c0fcdc', label='Feasible Region (learned)'),
+        Patch(facecolor='#c0fcdc', edgecolor='#c0fcdc', label='Largest Feasible Region (learned)'),
         Patch(facecolor='#ff7777', edgecolor='#ff7777', label='Infeasible Region (learned)'),
         Line2D([0], [0], marker='o', color='none', label='Feasibility boundary (learned)',
                markerfacecolor='none', markeredgecolor='#32ABD6', markersize=10, markeredgewidth=1.5),
