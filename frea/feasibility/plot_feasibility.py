@@ -320,8 +320,8 @@ def plot_multi_feasibility_region(args):
 
     # create figure
     fig, axs = plt.subplots(
-        nrows=1, ncols=4,
-        figsize=(18, 2.5),
+        nrows=2, ncols=2,
+        figsize=(10, 5),
         sharey=True
     )
     ax1, ax2, ax3, ax4 = axs.flatten()
@@ -351,10 +351,10 @@ def plot_multi_feasibility_region(args):
     rc('text', usetex=True)
     rc('text.latex', preamble=r'\usepackage{amsmath}')
 
-    axs[0].text(0.5, -0.24, r'(a) $V_{\text{AV}}$ = 2 (m/s)', ha='center', va='top', transform=axs[0].transAxes, fontsize=14)
-    axs[1].text(0.5, -0.24, r'(b) $V_{\text{AV}}$ = 6 (m/s)', ha='center', va='top', transform=axs[1].transAxes, fontsize=14)
-    axs[2].text(0.5, -0.24, r'(c) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[2].transAxes, fontsize=14)
-    axs[3].text(0.5, -0.24, r'(d) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[3].transAxes, fontsize=14)
+    axs[0, 0].text(0.5, -0.05, r'(a) $V_{\text{AV}}$ = 2 (m/s)', ha='center', va='top', transform=axs[0, 0].transAxes, fontsize=16)
+    axs[0, 1].text(0.5, -0.05, r'(b) $V_{\text{AV}}$ = 6 (m/s)', ha='center', va='top', transform=axs[0, 1].transAxes, fontsize=16)
+    axs[1, 0].text(0.5, -0.05, r'(c) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[1, 0].transAxes, fontsize=16)
+    axs[1, 1].text(0.5, -0.05, r'(d) $V_{\text{AV}}$ = 4 (m/s)', ha='center', va='top', transform=axs[1, 1].transAxes, fontsize=16)
 
     for ax in [ax1, ax2, ax3, ax4]:
         ax.set_xticks(my_x_ticks)
@@ -375,14 +375,15 @@ def plot_multi_feasibility_region(args):
         ax.spines['right'].set_color('white')
 
     # fig.subplots_adjust(right=0.94)
-    fig.subplots_adjust(right=0.96, wspace=0.01)
-    cbar_ax = fig.add_axes([0.965, 0.28, 0.01, 0.5])
-    cb = fig.colorbar(ct4, cax=cbar_ax, shrink=0.22, pad=0.0, aspect=30, anchor=(0.0, 0.1))
+    fig.subplots_adjust(left=0.005, right=0.93, top=0.85, bottom=0.07, wspace=0.05)
+    cbar_ax = fig.add_axes([0.935, 0.07, 0.025, 0.78])
+    cb = fig.colorbar(ct4, cax=cbar_ax, shrink=0.18, pad=0.0, aspect=30, anchor=(0.0, 0.1))
     cb.locator = MaxNLocator(nbins=5)
     cb.update_ticks()
-    cb.ax.tick_params(labelsize=8)
-    cb.ax.text(0.5, 1.11, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=13)
-    cb.ax.text(0.1, 1.01, r'$\mathrm{(learned)}$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=6)
+    cb.ax.tick_params(labelsize=14)
+    cb.ax.text(0.3, 1.07, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=20)
+    cb.ax.text(0.0, 1.02, r'$\mathrm{(learned)}$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=12)
+    cb.outline.set_edgecolor('white')
     # cb = plt.colorbar(ct, ax=ax, shrink=0.75, pad=0.01, aspect=8, anchor=(0.0, 0.1))
 
     legend_elements = [
@@ -395,9 +396,8 @@ def plot_multi_feasibility_region(args):
         FancyArrowPatch((0, 0), (20, 0), arrowstyle='-|>', color='#969693', label='AV Velocity Vector')
     ]
 
-    fig.legend(handles=legend_elements, loc='lower center', ncol=6, bbox_to_anchor=(0, 0.08, 0.965, 1), handler_map={FancyArrowPatch: HandlerArrow()}, mode='expand', fontsize=13)
+    fig.legend(handles=legend_elements, loc='upper center', ncol=3, bbox_to_anchor=(0.0, 0.92, 0.935, 0.08), handler_map={FancyArrowPatch: HandlerArrow()}, mode='expand', fontsize=13)
     # fig.tight_layout()
-    fig.subplots_adjust(bottom=0.2, top=0.99, left=0.005)
     save_dir = osp.join(args.ROOT_DIR, f'frea/feasibility/figures/feasibility_region_{args.min_dis_threshold}.png')
     plt.savefig(save_dir, dpi=600)
     plt.show()
@@ -485,14 +485,14 @@ def plot_learning_curve(args):
 
                 # merge the smoothed data
                 smoothed_df = pd.concat(smoothed_dfs)
-                each_label = f'{scene}  min distance:{algorithm} m'
+                each_label = f'{scene}, $d_{{th}}$:{algorithm}m'
                 # plot the mean value and the trust region
                 sns.lineplot(ax=ax, data=smoothed_df, x='step', y='smoothed_value',
                              estimator='mean', errorbar=('ci', 95), label=each_label,
                              err_kws={"alpha": 0.2, "linewidth": 0.1})  # error_kws: the parameter for the trust region
 
             handles, labels = ax.get_legend_handles_labels()
-            ax.legend(handles=handles[0:], labels=labels[0:], title="Collision_distance_threshold", loc="best", fontsize=8, title_fontsize=10)
+            ax.legend(handles=handles[0:], labels=labels[0:], title=r"Safety Distance Threshold ($d_{th}$)", loc="best", fontsize=8, title_fontsize=10)
 
             ax.set_xlabel('Step')
             ax.set_ylabel(format_label(label))
