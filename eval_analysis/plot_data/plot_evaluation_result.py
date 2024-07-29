@@ -95,7 +95,7 @@ def draw_data(All_data, data_name, ROOT_DIR, bins, baseline_CBV='Standard', dens
         clean_string = re.sub(r'\(.*?\)', '', data_name)
         clean_string = clean_string.strip()
         data_save_name = clean_string.replace(' ', '_')
-        save_dir = osp.join(ROOT_DIR, f'eval_analysis/figures/{data_save_name}.png')
+        save_dir = osp.join(ROOT_DIR, f'eval_analysis/figures/{ego_type}-{data_save_name}.png')
         plt.savefig(save_dir, dpi=600)
         plt.show()
 
@@ -119,10 +119,10 @@ def process_record(args):
     PET_all_data = {}
     TTC_all_data = {}
     ego_dis_data = {}
-    unfeasible_ratio = {}
+    infeasible_ratio = {}
     feasibility_Vs = {}
-    fea_boundary_dis = {}
-    fea_boundary_dis_mean = {}
+    infeasible_distance = {}
+    all_infeasible_distance = {}
     collision_ratio = {}
     collision_vel = {}
     collision_impulse = {}
@@ -140,6 +140,8 @@ def process_record(args):
                 # the specific ego and CBV method
                 if str(ego) == 'expert':
                     Ego_name = 'Expert'
+                elif str(ego) == 'plant':
+                    Ego_name = 'PlanT'
                 else:
                     Ego_name = str(ego)
                 if str(cbv) == 'fppo-adv':
@@ -150,7 +152,7 @@ def process_record(args):
                     CBV_name = 'PPO'
                 else:
                     CBV_name = 'Standard'
-                algorithm_title = f"AV:{Ego_name} CBV:{CBV_name}"
+                algorithm_title = f"AV:{Ego_name}  CBV:{CBV_name}"
 
                 PET_all_data[algorithm_title] = {}
                 TTC_all_data[algorithm_title] = {}
@@ -159,10 +161,10 @@ def process_record(args):
                     collision_ratio[algorithm_title] = {}
                     collision_vel[algorithm_title] = {}
                     collision_impulse[algorithm_title] = {}
-                    unfeasible_ratio[algorithm_title] = {}
+                    infeasible_ratio[algorithm_title] = {}
                     feasibility_Vs[algorithm_title] = {}
-                    fea_boundary_dis[algorithm_title] = {}
-                    fea_boundary_dis_mean[algorithm_title] = {}
+                    infeasible_distance[algorithm_title] = {}
+                    all_infeasible_distance[algorithm_title] = {}
 
                 for scenario_map in scenario_map_files:
                     scenario_map_path = osp.join(algorithm_path, scenario_map)
@@ -176,49 +178,51 @@ def process_record(args):
                                 collision_ratio[algorithm_title][scenario_map] = all_collision_data['collision_ratio']
                                 collision_impulse[algorithm_title][scenario_map] = all_collision_data['collision_impulse']
                                 collision_vel[algorithm_title][scenario_map] = all_collision_data['collision_vel']
-                                fea_boundary_dis[algorithm_title][scenario_map] = all_collision_data['fea_boundary_dis']
-                                fea_boundary_dis_mean[algorithm_title][scenario_map] = all_collision_data['fea_boundary_dis_mean']
-                            if file == 'miss_traj_info.pkl' and 'miss_traj' in args.data:
+
+                            if file == 'all_traj_info.pkl' and 'all_traj' in args.data:
                                 file_path = os.path.join(scenario_map_path, file)
                                 with open(file_path, 'rb') as pickle_file:
-                                    all_miss_data = pickle.load(pickle_file)
-                                PET_all_data[algorithm_title][scenario_map] = all_miss_data['PET']
-                                TTC_all_data[algorithm_title][scenario_map] = all_miss_data['TTC']
-                                ego_dis_data[algorithm_title][scenario_map] = all_miss_data['ego_dis']
+                                    all_data = pickle.load(pickle_file)
+                                PET_all_data[algorithm_title][scenario_map] = all_data['PET']
+                                TTC_all_data[algorithm_title][scenario_map] = all_data['TTC']
+                                ego_dis_data[algorithm_title][scenario_map] = all_data['ego_dis']
                                 if cbv != 'standard':
-                                    unfeasible_ratio[algorithm_title][scenario_map] = all_miss_data['unfeasible_ratio']
-                                    feasibility_Vs[algorithm_title][scenario_map] = all_miss_data['feasibility_Vs']
+                                    infeasible_ratio[algorithm_title][scenario_map] = all_data['infeasible_ratio']
+                                    feasibility_Vs[algorithm_title][scenario_map] = all_data['feasibility_Vs']
+                                    infeasible_distance[algorithm_title][scenario_map] = all_data['infeasible_distance']
+                                    all_infeasible_distance[algorithm_title][scenario_map] = all_data['all_infeasible_distance']
 
     if 'collision_traj' in args.data:
         # collision ratio info
-        plot_metric(collision_ratio, 'collision ratio')
+        plot_metric(collision_ratio, 'Collision Ratio (%)')
         # collision impulse info
         collision_impulse_bins = np.linspace(0, 20, 10)
-        draw_data(collision_impulse, 'Collision impulse (kN·s)', ROOT_DIR, bins=collision_impulse_bins, baseline_CBV='PPO')
+        draw_data(collision_impulse, 'Collision Impulse (kN·s)', ROOT_DIR, bins=collision_impulse_bins, baseline_CBV='PPO')
         # collision velocity info
         collision_vel_bins = np.linspace(0, 10, 20)
-        draw_data(collision_vel, 'Collision velocity (m/s)', ROOT_DIR, bins=collision_vel_bins, baseline_CBV='PPO')
-        # feasibility_boundary_dis
-        plot_metric(fea_boundary_dis_mean, 'feasibility boundary mean distance (m)', activate_per=False)
-        fea_boundary_dis_bins = np.linspace(0, 20, 10)
-        draw_data(fea_boundary_dis, 'feasibility boundary distance (m)', ROOT_DIR, bins=fea_boundary_dis_bins, baseline_CBV='PPO')
+        draw_data(collision_vel, 'Collision Velocity (m/s)', ROOT_DIR, bins=collision_vel_bins, baseline_CBV='PPO')
 
-    if 'miss_traj' in args.data:
+    if 'all_traj' in args.data:
         # PET distribution
         PET_bins = np.linspace(0, 3, 30)
-        draw_data(PET_all_data, 'Post encroachment time (s)', ROOT_DIR, bins=PET_bins, baseline_CBV='Standard')
+        draw_data(PET_all_data, 'Post Encroachment Time (s)', ROOT_DIR, bins=PET_bins, baseline_CBV='Standard')
 
         # TTC distribution
         TTC_bins = np.linspace(0, 5, 20)
-        draw_data(TTC_all_data, 'Time to collision (s)', ROOT_DIR, bins=TTC_bins, baseline_CBV='Standard')
+        draw_data(TTC_all_data, 'Time to Collision (s)', ROOT_DIR, bins=TTC_bins, baseline_CBV='Standard')
 
         # ego distance distribution
         ego_dis_bins = np.linspace(0, 10, 30)
-        draw_data(ego_dis_data, 'Distance to ego vehicle (m)', ROOT_DIR, bins=ego_dis_bins, baseline_CBV='Standard')
+        draw_data(ego_dis_data, 'Distance to Ego Vehicle (m)', ROOT_DIR, bins=ego_dis_bins, baseline_CBV='Standard')
 
-        plot_metric(unfeasible_ratio, 'near-miss unfeasible ratio')
+        plot_metric(infeasible_ratio, 'Infeasible Ratio (%)')
         fea_bins = np.linspace(0, 10, 20)
-        draw_data(feasibility_Vs, 'Near-miss Feasibility Values', ROOT_DIR, bins=fea_bins, baseline_CBV='PPO')
+        draw_data(feasibility_Vs, 'Feasibility Values', ROOT_DIR, bins=fea_bins, baseline_CBV='PPO')
+
+        # infeasible distance
+        plot_metric(infeasible_distance, 'Infeasible Distance (m)', activate_per=False)
+        infeasible_distance_bins = np.linspace(0, 20, 10)
+        draw_data(all_infeasible_distance, 'Infeasible Distance Distribution (m)', ROOT_DIR, bins=infeasible_distance_bins, baseline_CBV='PPO')
 
 
 def process_result(args):
@@ -238,6 +242,8 @@ def process_result(args):
                 # the specific ego and CBV method
                 if str(ego) == 'expert':
                     Ego_name = 'Expert'
+                elif str(ego) == 'plant':
+                    Ego_name = 'PlanT'
                 else:
                     Ego_name = str(ego)
                 if str(cbv) == 'fppo-adv':
@@ -276,7 +282,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
-    parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'miss_traj'])
+    parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'all_traj'])
     args = parser.parse_args()
 
     process_record(args)

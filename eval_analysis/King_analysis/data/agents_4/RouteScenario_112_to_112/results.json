@@ -1,0 +1,87 @@
+{
+    "meta_data": {
+        "name": "RouteScenario_112",
+        "index": 0,
+        "town": "Town03",
+        "Num_agents": 4
+    },
+    "is_terminated": true,
+    "tot": 73,
+    "adv_collision": false,
+    "adv_rel_pos_at_collision": [
+        0.9857138991355896,
+        -0.16842825710773468
+    ],
+    "adv_rel_yaw_at_collision": -3.1716067790985107,
+    "Loss": 22.128002166748047,
+    "ego_col": 24.125383377075195,
+    "adv_rd": 0.08763089030981064,
+    "adv_col": 1.25,
+    "Collision Metric": 1.0,
+    "Time of Termination": 73.0,
+    "Cumulative OOB": 0.0,
+    "Time spent OOB": 0.0,
+    "iteration": 3,
+    "first_metrics": {
+        "Loss": 22.128002166748047,
+        "ego_col": 24.125383377075195,
+        "adv_rd": 0.08763089030981064,
+        "adv_col": 1.25,
+        "Collision Metric": 1.0,
+        "Time of Termination": 73.0,
+        "Cumulative OOB": 0.0,
+        "Time spent OOB": 0.0,
+        "adv_collision": false,
+        "iteration": 3
+    },
+    "all_iterations": {
+        "0": {
+            "Loss": 23.86518096923828,
+            "ego_col": 25.35990333557129,
+            "adv_rd": 0.10556945949792862,
+            "adv_col": 1.2020368576049805,
+            "Collision Metric": 0.0,
+            "Time of Termination": -1.0,
+            "Cumulative OOB": 0.0,
+            "Time spent OOB": 0.0,
+            "adv_collision": false,
+            "iteration": 0
+        },
+        "1": {
+            "Loss": 25.236143112182617,
+            "ego_col": 24.812211990356445,
+            "adv_rd": 0.20869658887386322,
+            "adv_col": 1.25,
+            "Collision Metric": 0.0,
+            "Time of Termination": -1.0,
+            "Cumulative OOB": 0.07500000298023224,
+            "Time spent OOB": 0.07500000298023224,
+            "adv_collision": false,
+            "iteration": 1
+        },
+        "2": {
+            "Loss": 23.56658935546875,
+            "ego_col": 24.247882843017578,
+            "adv_rd": 0.15343527495861053,
+            "adv_col": 1.25,
+            "Collision Metric": 0.0,
+            "Time of Termination": -1.0,
+            "Cumulative OOB": 0.07500000298023224,
+            "Time spent OOB": 0.07500000298023224,
+            "adv_collision": false,
+            "iteration": 2
+        },
+        "3": {
+            "Loss": 22.128002166748047,
+            "ego_col": 24.125383377075195,
+            "adv_rd": 0.08763089030981064,
+            "adv_col": 1.25,
+            "Collision Metric": 1.0,
+            "Time of Termination": 73.0,
+            "Cumulative OOB": 0.0,
+            "Time spent OOB": 0.0,
+            "adv_collision": false,
+            "iteration": 3
+        }
+    }
+}
