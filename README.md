@@ -209,4 +209,5 @@ This implementation is based on code from several repositories. We sincerely tha
 - [PlanT](https://github.com/autonomousvision/plant/tree/1bfb695910d816e70f53521aa263648072edea8e)
 - [ElegantRL](https://github.com/AI4Finance-Foundation/ElegantRL/tree/master)
 - [distance3d](https://github.com/AlexanderFabisch/distance3d)
+- [King](https://github.com/autonomousvision/king/tree/main)
 - [Two-Dimensional-Time-To-Collision](https://github.com/Yiru-Jiao/Two-Dimensional-Time-To-Collision)

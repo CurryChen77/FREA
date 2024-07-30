@@ -12,10 +12,13 @@ ego_state_dim: 24  # (3 vehicle + 1 route) * 6 dimensions state
 ego_state_shape: [4, 6]
 ego_action_limit: 1.0
 
-train_episode: 2000
 dims: [256, 256]
 
-save_freq: 20
+train_episode:
+  Town05: 2000
+  Town02: 1000
+
+save_freq: 50
 buffer_capacity: 2048
 
 clip_epsilon: 0.2

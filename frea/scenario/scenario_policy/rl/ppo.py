@@ -51,9 +51,13 @@ class PPO(BasePolicy):
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         self.scenario_id = config['scenario_id']
         if config['mode'] == 'eval':
-            self.agent_info = config['pretrain_ego'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
+            self.load_agent_info = config['pretrain_ego'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
+        elif config['mode'] == 'train_agent':
+            self.load_agent_info = 'expert_' + str(self.CBV_selection) + '_seed' + str(self.seed)
         else:
-            self.agent_info = config['agent_policy'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
+            self.load_agent_info = config['agent_policy'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
+
+        self.save_agent_info = config['agent_policy'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
 
         self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr, eps=1e-5)  # trick about eps
@@ -210,7 +214,7 @@ class PPO(BasePolicy):
             'value_optim': self.value_optim.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, self.agent_info, scenario_name+"_"+map_name)
+        save_dir = os.path.join(self.model_path, self.save_agent_info, scenario_name+"_"+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.{self.name}.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving scenario policy {self.name} model to {os.path.basename(filepath)}', 'yellow')
@@ -220,7 +224,7 @@ class PPO(BasePolicy):
     def load_model(self, map_name, episode=None):
         self.map_train_episode = self.train_episode_list[map_name]
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, self.agent_info, scenario_name+"_"+map_name)
+        load_dir = os.path.join(self.model_path, self.load_agent_info, scenario_name+"_"+map_name)
         if episode is None:
             episode = 0
             for _, _, files in os.walk(load_dir):
@@ -231,7 +235,7 @@ class PPO(BasePolicy):
                             episode = cur_episode
         filepath = os.path.join(load_dir, f'model.{self.name}.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading scenario policy {self.name} model from {self.agent_info}', 'yellow')
+            self.logger.log(f'>> Loading scenario policy {self.name} model from {self.load_agent_info}', 'yellow')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy.load_state_dict(checkpoint['policy'])
