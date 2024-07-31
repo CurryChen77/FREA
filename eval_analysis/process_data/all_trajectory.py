@@ -202,7 +202,7 @@ def get_all_BV_trajectory(sequence):
     return all_trajectories
 
 
-def get_closest_trajectory(sequence, threshold=2):
+def get_closest_trajectory(sequence, threshold=5):
     # convert id list to set
     for step in sequence:
         step['CBVs_id_set'] = set(step['CBVs_id'])

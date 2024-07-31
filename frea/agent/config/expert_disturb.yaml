@@ -12,7 +12,9 @@ throttle_disturb: [-0.5, 0.5]
 steer_disturb: [-0.2, 0.2]
 brake_disturb: [-0.5, 0.5]
 
-train_episode: 2000
+train_episode:
+  Town05: 2000
+  Town02: 2000
 
 save_freq: 10
 buffer_capacity: 10000

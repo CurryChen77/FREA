@@ -8,7 +8,9 @@ obs_type: 'no_obs'
 ego_action_dim: 3
 behavior: 'aggressive'  # ["cautious", "normal", "aggressive"]
 
-train_episode: 2000
+train_episode:
+  Town05: 2000
+  Town02: 2000
 
 save_freq: 10
 buffer_capacity: 10000

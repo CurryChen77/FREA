@@ -16,7 +16,7 @@ dims: [256, 256]
 
 train_episode:
   Town05: 2000
-  Town02: 1000
+  Town02: 2000
 
 save_freq: 50
 buffer_capacity: 2048

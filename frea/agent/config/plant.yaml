@@ -9,7 +9,9 @@ ego_state_dim: 3
 ego_action_dim: 3
 
 
-train_episode: 200
+train_episode:
+  Town05: 2000
+  Town02: 2000
 
 save_freq: 10
 buffer_capacity: 10000
