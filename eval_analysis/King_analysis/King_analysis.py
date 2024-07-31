@@ -48,18 +48,17 @@ def find_negative_transition(fea_V):
 
 
 def get_feasibility_metric(collision_fea_dis, feasibility_policy):
-    fea_boundary_dis = []
-    feasibility_Vs = None
+    all_infeasible_distance = []
+    all_feasibility_Vs = []
     for all_fea_dis in collision_fea_dis.values():
         fea_obs = CUDA(torch.stack([torch.FloatTensor(row[0]) for row in all_fea_dis]))
         feasibility_Vs = feasibility_policy.get_feasibility_Vs(fea_obs)
-        reversed_fea_V = torch.flip(feasibility_Vs, dims=[0])
-        negative_index = find_negative_transition(reversed_fea_V)
+        negative_index = find_negative_transition(feasibility_Vs)
         if negative_index:
             distance = torch.tensor([row[1] for row in all_fea_dis])
-            reversed_distance = torch.flip(distance, dims=[0])
-            fea_boundary_dis.append(reversed_distance[negative_index].item())
-    return fea_boundary_dis, feasibility_Vs
+            all_infeasible_distance.append(distance[negative_index].item())
+            all_feasibility_Vs.extend(CPU(feasibility_Vs))
+    return all_infeasible_distance, all_feasibility_Vs
 
 
 def get_collision_severity(all_sequence, all_file_ego_bv_dis_list, feasibility_policy):
@@ -70,24 +69,44 @@ def get_collision_severity(all_sequence, all_file_ego_bv_dis_list, feasibility_p
         for step, ego_obs_state in enumerate(sequence):
             ego_BV_min_dis = all_file_ego_bv_dis_list[i][step]
             collision_fea_dis[i].append([ego_obs_state, ego_BV_min_dis])
+    all_infeasible_distance, all_feasibility_Vs = get_feasibility_metric(collision_fea_dis, feasibility_policy)
 
-    fea_boundary_dis, feasibility_Vs = get_feasibility_metric(collision_fea_dis, feasibility_policy)
-
-    return fea_boundary_dis, feasibility_Vs
+    return all_infeasible_distance, all_feasibility_Vs
 
 
-def get_final_closest_BV_index(final_step_state, num_agents):
+def get_final_closest_BV_index(sequences_data, num_agents):
+    final_step_state = sequences_data[-1]
+    sequences_length = len(sequences_data)
     min_dis = 25
-    BV_index = None
+    closest_BV = {}
     ego_coords, ego_yaw, ego_velocity = final_step_state['pos'][0], final_step_state['yaw'][0][0], final_step_state['vel'][0]
     for agent_index in range(1, num_agents + 1):
         vehicle_coords, vehicle_yaw, vehicle_velocity = final_step_state['pos'][agent_index], final_step_state['yaw'][agent_index][0], final_step_state['vel'][agent_index]
         ego_bv_dis = get_min_distance_across_boxes(ego_coords, vehicle_coords, ego_yaw, vehicle_yaw)
         if ego_bv_dis < min_dis:
             min_dis = ego_bv_dis
-            BV_index = agent_index
+            closest_BV[agent_index] = [ego_bv_dis, sequences_length-1]
 
-    return BV_index
+    return closest_BV
+
+
+def get_closest_BV_indexes(sequences_data, num_agents):
+    # init the BV index dict
+    closest_BV = {}
+    for i in range(1, num_agents + 1):
+        closest_BV[i] = [25.0, 0]
+    # find the closest step index for all BVs
+    for step_index, step_state in enumerate(sequences_data):
+        ego_coords = step_state['pos'][0]
+        ego_yaw = step_state['yaw'][0][0]
+        for agent_index in range(1, num_agents + 1):
+            vehicle_coords = step_state['pos'][agent_index]
+            vehicle_yaw = step_state['yaw'][agent_index][0]
+            distance = get_min_distance_across_boxes(ego_coords, vehicle_coords, ego_yaw, vehicle_yaw)
+            if distance < closest_BV[agent_index][0]:
+                closest_BV[agent_index] = [distance, step_index]
+
+    return closest_BV
 
 
 def main(args_dict):
@@ -134,13 +153,16 @@ def main(args_dict):
                         sequences_data = record_data["states"][iteration]
 
                         # find the closest BV index at the final step
-                        agent_index = get_final_closest_BV_index(sequences_data[-1], num_agents)
+                        closest_BV = get_final_closest_BV_index(sequences_data, num_agents)
+                        # closest_BV = get_closest_BV_indexes(sequences_data, num_agents)
 
-                        if agent_index:
+                        for agent_index, data in closest_BV.items():
+                            closest_dis, final_step_index = data
+
                             ego_obs_list = []
                             ego_bv_dis_list = []
-                            for i, step_state in enumerate(sequences_data):
-                                # only using the closest BV to calculate infeasible distance and infeasible ratio
+                            for step_index in range(final_step_index, -1, -1):
+                                step_state = sequences_data[step_index]
                                 ego_info = [step_state['pos'][0], step_state['yaw'][0][0], step_state['vel'][0], [4.4, 1.8]]
                                 vehicle_info = [step_state['pos'][agent_index], step_state['yaw'][agent_index][0], step_state['vel'][agent_index], [4.4, 1.8]]
                                 ego_obs, ego_bv_dis = form_ego_obs(ego_info, vehicle_info)
@@ -151,9 +173,10 @@ def main(args_dict):
                             all_file_ego_bv_dis_list.append(ego_bv_dis_list)
 
     # get the collision severity of the King trajectories
-    all_infeasible_dis, feasibility_Vs = get_collision_severity(all_file_ego_obs_list, all_file_ego_bv_dis_list, feasibility_policy)
+    all_infeasible_dis, all_feasibility_Vs = get_collision_severity(all_file_ego_obs_list, all_file_ego_bv_dis_list, feasibility_policy)
+    np_feasibility_Vs = np.array(all_feasibility_Vs)
     print("Infeasible Distance (m):", round(np.mean(all_infeasible_dis), 2))
-    print("Infeasible Ratio (%) :", round((feasibility_Vs > 0).float().mean().item() * 100, 2))
+    print("Infeasible Ratio (%) :", round(np.mean(np_feasibility_Vs > 0) * 100, 2))
     print(f"Collision Rate (%): ", round(collision_count/total_count * 100, 2))
 
 

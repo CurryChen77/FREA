@@ -202,7 +202,7 @@ def get_all_BV_trajectory(sequence):
     return all_trajectories
 
 
-def get_closest_trajectory(sequence, threshold=3):
+def get_closest_trajectory(sequence, threshold=2):
     # convert id list to set
     for step in sequence:
         step['CBVs_id_set'] = set(step['CBVs_id'])
@@ -278,8 +278,8 @@ def process_all_trajectory_from_one_pkl(pkl_path, algorithm, save_folder, feasib
         # get overall infeasible_ratio
         infeasible_ratio, feasibility_Vs = get_all_infeasible_ratio(closest_trajectory_list, feasibility_policy)
         infeasible_distance, all_infeasible_distance = get_all_infeasible_distance(closest_trajectory_list, feasibility_policy)
-        # print("infeasible distance", infeasible_distance)
-        # print("infeasible_ratio", infeasible_ratio)
+        print("infeasible distance", infeasible_distance)
+        print("infeasible_ratio", infeasible_ratio)
 
         all_traj_info.update({
             'infeasible_ratio': infeasible_ratio,

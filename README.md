@@ -29,6 +29,7 @@
     - [Collect Off-line Data](#Collect-Off-line-Data)
     - [Train optimal feasible value function of AV](#Train-optimal-feasible-value-function-of-AV)
     - [Train adversarial policy of CBV](#Train-adversarial-policy-of-CBV)
+    - [Train ego agent](#Train-ego-agent)
     - [Evaluation](#Evaluation)
     - [Results Analysis](#Results-Analysis)
     - [Visualization](#Visualization)
@@ -68,7 +69,7 @@ pip install -e .
 
 ```bash
 # Launch CARLA
-./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Launch in another terminal
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_train.yaml --mode collect_feasibility_data
@@ -89,7 +90,7 @@ python train_feasibility.py
 
 ``````bash
 # Launch CARLA
-./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Train FREA
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg fppo_adv_train.yaml --mode train_scenario
@@ -99,7 +100,7 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg fppo_adv_train.yaml
 
 ```bash
 # Launch CARLA
-./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Train FPPO-RS
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg fppo_rs_train.yaml --mode train_scenario
@@ -109,10 +110,32 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg fppo_rs_train.yaml 
 
 ```bash
 # Launch CARLA
-./CarlaUE4.sh -prefernvidia -windowed -carla-port=2000
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
 
 # Train PPO
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
+```
+
+### Train ego agent
+
+#### Train PPO ego agent based on FREA scenarios
+
+```bash
+# Launch CARLA
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
+
+# Train FREA
+python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg fppo_adv_train.yaml --mode train_agent
+```
+
+#### Train PPO ego agent based on standard scenarios
+
+```bash
+# Launch CARLA
+./CarlaUE4.sh -prefernvidia -RenderOffScreen -carla-port=2000
+
+# Train FREA
+python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --mode train_agent
 ```
 
 ### Evaluation
