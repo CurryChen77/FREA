@@ -114,7 +114,8 @@ def plot_metric(result, name, activate_per=True):
 
 def process_record(args):
     ROOT_DIR = args.ROOT_DIR
-    base_dir = osp.join(ROOT_DIR, 'eval_analysis/processed_data')
+    # only plot the CBV evaluation pretrained with expert ego
+    base_dir = osp.join(ROOT_DIR, 'eval_analysis/processed_data/eval_cbv_pretrained_with_expert')
     algorithm_files = os.listdir(base_dir)
     PET_all_data = {}
     TTC_all_data = {}
@@ -225,46 +226,58 @@ def process_record(args):
         draw_data(all_infeasible_distance, 'Infeasible Distance Distribution (m)', ROOT_DIR, bins=infeasible_distance_bins, baseline_CBV='PPO')
 
 
+def list_directories(path):
+    items = os.listdir(path)
+    directories = [item for item in items if os.path.isdir(os.path.join(path, item))]
+    return directories
+
+
 def process_result(args):
     ROOT_DIR = args.ROOT_DIR
-    base_dir = osp.join(ROOT_DIR, 'log/eval')
-    algorithm_files = os.listdir(base_dir)
-    for algorithm in algorithm_files:
-        if osp.isdir(osp.join(base_dir, algorithm)):
-            split_name = algorithm.split('_')
-            ego = split_name.pop(0)
-            seed = split_name.pop(-1)
-            select = split_name.pop(-1)
-            cbv = '-'.join(split_name) if len(split_name) > 1 else split_name[0]
-            algorithm_path = osp.join(base_dir, algorithm)
-            if osp.isdir(algorithm_path):
-                scenario_map_files = os.listdir(algorithm_path)
-                # the specific ego and CBV method
-                if str(ego) == 'expert':
-                    Ego_name = 'Expert'
-                elif str(ego) == 'plant':
-                    Ego_name = 'PlanT'
-                else:
-                    Ego_name = str(ego)
-                if str(cbv) == 'fppo-adv':
-                    CBV_name = 'FREA'
-                elif str(cbv) == 'fppo-rs':
-                    CBV_name = 'FPPO-RS'
-                elif str(cbv) == 'ppo':
-                    CBV_name = 'PPO'
-                else:
-                    CBV_name = 'Standard'
-                algorithm_title = "AV:{:<8} CBV:{:<10}".format(str(Ego_name), CBV_name)
-                for scenario_map in scenario_map_files:
-                    scenario_map_path = osp.join(algorithm_path, scenario_map)
-                    if osp.isdir(scenario_map_path):
-                        files = os.listdir(scenario_map_path)
-                        for file in files:
-                            if file == 'results.pkl':
-                                file_path = os.path.join(scenario_map_path, file)
-                                with open(file_path, 'rb') as pickle_file:
-                                    all_results = pickle.load(pickle_file)
-                                    plot_results(algorithm_title, all_results, scenario_map)
+    eval_dirs = list_directories(osp.join(ROOT_DIR, 'log/eval'))
+    for eval_dir in eval_dirs:
+        # plot all the result of in the evaluation dir
+        print(f'>> --------------------Processing {eval_dir}--------------------')
+        base_dir = os.path.join(osp.join(ROOT_DIR, 'log/eval', eval_dir))
+
+        algorithm_files = os.listdir(base_dir)
+        for algorithm in algorithm_files:
+            if osp.isdir(osp.join(base_dir, algorithm)):
+                split_name = algorithm.split('_')
+                ego = split_name.pop(0)
+                seed = split_name.pop(-1)
+                select = split_name.pop(-1)
+                cbv = '-'.join(split_name) if len(split_name) > 1 else split_name[0]
+                algorithm_path = osp.join(base_dir, algorithm)
+                if osp.isdir(algorithm_path):
+                    scenario_map_files = os.listdir(algorithm_path)
+                    # the specific ego and CBV method
+                    if str(ego) == 'expert':
+                        Ego_name = 'Expert'
+                    elif str(ego) == 'plant':
+                        Ego_name = 'PlanT'
+                    else:
+                        Ego_name = str(ego)
+                    if str(cbv) == 'fppo-adv':
+                        CBV_name = 'FREA'
+                    elif str(cbv) == 'fppo-rs':
+                        CBV_name = 'FPPO-RS'
+                    elif str(cbv) == 'ppo':
+                        CBV_name = 'PPO'
+                    else:
+                        CBV_name = 'Standard'
+                    algorithm_title = "AV:{:<8} CBV:{:<10}".format(str(Ego_name), CBV_name)
+                    for scenario_map in scenario_map_files:
+                        scenario_map_path = osp.join(algorithm_path, scenario_map)
+                        if osp.isdir(scenario_map_path):
+                            files = os.listdir(scenario_map_path)
+                            for file in files:
+                                if file == 'results.pkl':
+                                    file_path = os.path.join(scenario_map_path, file)
+                                    with open(file_path, 'rb') as pickle_file:
+                                        all_results = pickle.load(pickle_file)
+                                        plot_results(algorithm_title, all_results, scenario_map)
+        print(f'>> --------------------Finishing {eval_dir}--------------------')
 
 
 def plot_results(name, results, scenario_map, activate_per=True):
@@ -283,11 +296,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--ROOT_DIR', type=str, default=osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))))
     parser.add_argument('--data', '-d', nargs='*', type=str, default=['collision_traj', 'all_traj'])
+    parser.add_argument('--mode', '-m', type=str, default=['record', 'result'], nargs='+', choices=['record', 'result'])
+
     args = parser.parse_args()
+    # the analysis of the record
+    if 'record' in args.mode:
+        process_record(args)
 
-    process_record(args)
-
-    process_result(args)
+    # the evaluation results
+    if 'result' in args.mode:
+        process_result(args)
 
 
 

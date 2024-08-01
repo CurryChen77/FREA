@@ -131,6 +131,9 @@ class CarlaRunner:
             scenario=scenario_config['policy_type'],
             CBV_selection=self.CBV_selection,
             all_map_name=self.all_map,
+            eval_obj=agent_config['eval_obj'],
+            pretrained_ego=agent_config['pretrain_ego'],
+            pretrained_cbv=agent_config['pretrain_cbv']
         )
         self.logger = Logger(**logger_kwargs)
 

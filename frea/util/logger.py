@@ -25,13 +25,19 @@ from frea.util.run_util import VideoRecorder
 DEFAULT_DATA_DIR = osp.abspath(osp.dirname(osp.dirname(osp.dirname(__file__))))
 
 
-def setup_logger_kwargs(output_dir, seed, mode, agent=None, scenario=None, CBV_selection=None, all_map_name=None):
+def setup_logger_kwargs(output_dir, seed, mode, agent=None, scenario=None, CBV_selection=None, all_map_name=None, eval_obj=None, pretrained_ego=None, pretrained_cbv=None):
 
     # Make a base path
     relpath = mode
 
     # specify agent policy and scenario policy in the experiment directory.
     exp_name = agent + '_' + scenario + '_' + CBV_selection
+
+    if mode == 'eval':
+        if eval_obj == 'ego':
+            relpath = osp.join(relpath, f'eval_ego_pretrained_with_{pretrained_cbv}')
+        elif eval_obj == 'cbv':
+            relpath = osp.join(relpath, f'eval_cbv_pretrained_with_{pretrained_ego}')
 
     # Make a seed-specific subfolder in the experiment directory.
     subfolder = ''.join([exp_name, '_seed', str(seed)])

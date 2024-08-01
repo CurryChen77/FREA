@@ -51,7 +51,14 @@ class PPO(BasePolicy):
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         self.scenario_id = config['scenario_id']
         self.obs_type = config['obs_type']
-        self.scenario_policy_type = config['scenario_policy_type']
+        self.save_scenario_policy_type = config['scenario_policy_type']
+        if config['mode'] == 'eval' and config['eval_obj'] == 'cbv':
+            # when evaluating the scenario agent, the ppo agent is pretrained with standard traffic (usually not needed)
+            self.load_scenario_policy_type = 'standard'
+        elif config['mode'] == 'eval' and config['eval_obj'] == 'ego':
+            self.load_scenario_policy_type = config['pretrain_cbv']
+        else:
+            self.load_scenario_policy_type = config['scenario_policy_type']
 
         self.policy = CUDA(ActorPPO(dims=self.dims, state_dim=self.state_dim, action_dim=self.action_dim))
         self.policy_optim = torch.optim.Adam(self.policy.parameters(), lr=self.policy_lr, eps=1e-5)  # trick about eps
@@ -185,7 +192,7 @@ class PPO(BasePolicy):
             'value_optim': self.value_optim.state_dict()
         }
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
-        save_dir = os.path.join(self.model_path, self.scenario_policy_type, scenario_name+'_'+map_name)
+        save_dir = os.path.join(self.model_path, self.save_scenario_policy_type, scenario_name+'_'+map_name)
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, f'model.{self.name}.{self.model_type}.{episode:04}.torch')
         self.logger.log(f'>> Saving {self.name} model to {filepath}', 'yellow')
@@ -195,7 +202,7 @@ class PPO(BasePolicy):
     def load_model(self, map_name, episode=None):
         self.map_train_episode = self.train_episode_list[map_name]
         scenario_name = "all" if self.scenario_id is None else 'Scenario' + str(self.scenario_id)
-        load_dir = os.path.join(self.model_path, self.scenario_policy_type, scenario_name+'_'+map_name)
+        load_dir = os.path.join(self.model_path, self.load_scenario_policy_type, scenario_name+'_'+map_name)
         if episode is None:
             episode = 0
             for _, _, files in os.walk(load_dir):
@@ -206,7 +213,7 @@ class PPO(BasePolicy):
                             episode = cur_episode
         filepath = os.path.join(load_dir, f'model.{self.name}.{self.model_type}.{episode:04}.torch')
         if os.path.isfile(filepath):
-            self.logger.log(f'>> Loading {self.name} model from {os.path.basename(filepath)}', 'yellow')
+            self.logger.log(f'>> Loading {self.name} model from {filepath}', 'yellow')
             with open(filepath, 'rb') as f:
                 checkpoint = torch.load(f)
             self.policy.load_state_dict(checkpoint['policy'])
