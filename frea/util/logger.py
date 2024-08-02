@@ -123,6 +123,10 @@ def colorize(string, color, bold=False, highlight=False):
     return '\x1b[%sm%s\x1b[0m' % (';'.join(attr), string)
 
 
+def colorprint(string, color):
+    print(colorize(string, color, bold=True))
+
+
 class Logger:
     """
         A general-purpose logger.
