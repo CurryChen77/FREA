@@ -116,7 +116,7 @@ def main(args_dict):
     feasibility_config.update(args_dict)
     feasibility_policy = get_feasibility_policy(feasibility_config, ROOT_DIR)
 
-    base_dir = "eval_analysis/King_analysis/data"
+    base_dir = osp.join(ROOT_DIR, "eval_analysis/King_analysis/data")
     collision_count = 0
     total_count = 0
     all_file_ego_obs_list = []

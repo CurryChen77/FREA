@@ -138,6 +138,7 @@ def process_record(args):
                 PET_all_data = {}
                 TTC_all_data = {}
                 ego_dis_data = {}
+                ego_acc_data = {}
                 infeasible_ratio = {}
                 feasibility_Vs = {}
                 infeasible_distance = {}
@@ -176,6 +177,7 @@ def process_record(args):
                             PET_all_data[algorithm_title] = {}
                             TTC_all_data[algorithm_title] = {}
                             ego_dis_data[algorithm_title] = {}
+                            ego_acc_data[algorithm_title] = {}
                             if cbv != 'standard':
                                 collision_ratio[algorithm_title] = {}
                                 collision_vel[algorithm_title] = {}
@@ -205,6 +207,7 @@ def process_record(args):
                                             PET_all_data[algorithm_title][scenario_map] = all_data['PET']
                                             TTC_all_data[algorithm_title][scenario_map] = all_data['TTC']
                                             ego_dis_data[algorithm_title][scenario_map] = all_data['ego_dis']
+                                            ego_acc_data[algorithm_title][scenario_map] = all_data['ego_acc']
                                             if cbv != 'standard':
                                                 infeasible_ratio[algorithm_title][scenario_map] = all_data['infeasible_ratio']
                                                 feasibility_Vs[algorithm_title][scenario_map] = all_data['feasibility_Vs']
@@ -242,6 +245,9 @@ def process_record(args):
                     plot_metric(infeasible_distance, 'Infeasible Distance (m)', activate_per=False)
                     infeasible_distance_bins = np.linspace(0, 20, 10)
                     draw_data(all_infeasible_distance, 'Infeasible Distance Distribution (m)', save_dir, bins=infeasible_distance_bins, baseline_CBV='PPO', show=show)
+
+                    # ego acc data
+                    plot_metric(ego_acc_data, 'Ego Average Acc (m/s^2)', activate_per=False)
 
 
 def list_directories(path):

@@ -19,6 +19,13 @@ from eval_analysis.process_data.feasibility import get_all_infeasible_ratio, get
 from distance3d import gjk, colliders
 
 
+def get_etiquette_level(trajectory):
+    origin_ego_acc = np.array(trajectory['ego']['acc'])
+    ego_acc = np.sqrt(np.sum(origin_ego_acc ** 2, axis=1))
+    average_acc = np.mean(ego_acc)
+    return average_acc
+
+
 def compute_R(yaw):
     R = np.array([
         [np.cos(yaw), -np.sin(yaw), 0],
@@ -169,6 +176,7 @@ def get_all_BV_trajectory(sequence):
         'extent': [],
         'yaw': [],
         'vel': [],
+        'acc': []
     }}
     for step in sequence:
         # store the ego info every step
@@ -177,6 +185,8 @@ def get_all_BV_trajectory(sequence):
         all_trajectories['ego']['extent'].append(step['ego_extent'])
         all_trajectories['ego']['yaw'].append(step['ego_yaw'])
         all_trajectories['ego']['vel'].append(step['ego_vel'])
+        all_trajectories['ego']['acc'].append(step['ego_acc'])
+
         for BV_id in step['BVs_id']:
             BV_index = step['BVs_id'].index(BV_id)
             if BV_id not in all_trajectories:
@@ -251,6 +261,7 @@ def process_all_trajectory_from_one_pkl(pkl_path, algorithm, save_folder, feasib
     PET = []
     ego_dis = []
     TTC = []
+    Ego_Acc = []
 
     for sequence in tqdm(data.values()):
         # use all BV trajectories
@@ -261,11 +272,16 @@ def process_all_trajectory_from_one_pkl(pkl_path, algorithm, save_folder, feasib
         ego_dis.extend(get_ego_dis(all_BV_trajectory))
         # get TTC per trajectory
         TTC.extend(get_trajectory_ttc(all_BV_trajectory))
+        # get Ego Acc
+        Ego_Acc.append(get_etiquette_level(all_BV_trajectory))
+
+    np_ego_acc = np.array(Ego_Acc)
 
     all_traj_info = {
         'PET': PET,
         'ego_dis': ego_dis,
         'TTC': TTC,
+        'ego_acc': np.mean(np_ego_acc)
     }
 
     # the feasible metric
