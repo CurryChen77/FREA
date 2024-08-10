@@ -44,6 +44,9 @@ log/train_scenario/*
 log/train_agent/*
 **/train_log/*
 **/model_ckpt/*
+docker
+frea/scenario/scenario_data/scenic_data
+.readthedocs.yaml
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
