@@ -10,33 +10,40 @@
     </td>
   </tr>
 </table>
+<a href="https://arxiv.org/abs/2406.02983"><img src="https://img.shields.io/badge/Paper-Arxiv-b31b1b?logo=arxiv&logoColor=white?style=flat-square" alt="Custom badge" style="width: 120px;"></a>     <a href="https://arxiv.org/abs/2406.02983"><img src="https://img.shields.io/badge/Project%20Page-white?logo=GitHub&color=green?style=flat-square" alt="Custom badge" style="width: 120px;"></a>     <a href="https://github.com/CurryChen77/FREA/stargazers"><img src="https://img.shields.io/github/stars/CurryChen77/FREA?style=social" style="width: 180px;"></a>
 
-[![Static Badge](https://img.shields.io/badge/Arxiv-pdf-2be22f?logo=arxiv)](https://arxiv.org/abs/2406.02983)
+## :sparkles: News
 
 <pre name="code" class="html">
 <font color="red">[2024.6.05] <b>New: We release FREA paper on Arxiv. </b></font>
-<font color="red">[2024.6.07] <b>New: The code is now released. </b></font></font>
+<font color="red">[2024.8.10] <b>New: The code is now released. </b></font></font>
 </pre>
 
-🌟FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.🌟
+This repository contains the implementation of the paper.
+
+If you find our work useful, Please give us a star 🌟!
+
+> FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality<br>[Keyu Chen](https://currychen77.github.io/)<sup>1</sup> , [Yuheng Lei](https://sites.google.com/view/yuhenglei)<sup>2</sup>, [Hao Cheng](https://orcid.org/0009-0009-9401-2937)<sup>1</sup>, [Haoran Wu](https://scholar.google.com/citations?user=5hmsPUYAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Wenchao Sun](https://scholar.google.com/citations?user=yd-sMoQAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Sifa Zheng](http://www.svm.tsinghua.edu.cn/essay/80/1835.html)<sup>1</sup><br><sup>1</sup>Tsinghua University <sup>2</sup>The University of Hong Kong
+
+*FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.*
 
 <div style="text-align: center;">   <img style="border: 3px solid gray; width: 100%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
 
 ## :page_with_curl: Outline
 
-  - :art: [Setup](#Setup)
+  - 🛠️ [Setup](#Setup)
   - :books: [Usage](#Usage)
-    - [Collect Off-line Data](#Collect-Off-line-Data)
-    - [Train optimal feasible value function of AV](#Train-optimal-feasible-value-function-of-AV)
-    - [Train adversarial policy of CBV](#Train-adversarial-policy-of-CBV)
-    - [Train ego agent](#Train-ego-agent)
-    - [Evaluation](#Evaluation)
-    - [Results Analysis](#Results-Analysis)
-    - [Visualization](#Visualization)
+    - :open_file_folder: [Collect Off-line Data](#Collect-Off-line-Data)
+    - :fire: [Train optimal feasible value function of AV](#Train-optimal-feasible-value-function-of-AV)
+    - :fire: [Train adversarial policy of CBV](#Train-adversarial-policy-of-CBV)
+    - :fire: [Train ego agent](#Train-ego-agent)
+    - :snowflake: [Evaluation](#Evaluation)
+    - :chart_with_upwards_trend: [Results Analysis](#Results-Analysis)
+    - :clapper: [Visualization](#Visualization)
   - :bookmark: [Citation](#citation)
   - :clipboard: [Acknowledgement](#Acknowledgement)
 
-## :art: Setup
+## 🛠️ Setup
 
 **Recommended system: Ubuntu 20.04 or 22.04**
 
@@ -65,7 +72,7 @@ pip install -e .
 
 ## :books: Usage
 
-### Collect Off-line Data
+### 1. :open_file_folder: Collect Offline Data
 
 ```bash
 # Launch CARLA
@@ -75,7 +82,7 @@ pip install -e .
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_train.yaml --mode collect_feasibility_data
 ```
 
-### Train optimal feasible value function of AV
+### 2. :fire: Train optimal feasible value function of AV
 
 ```bash
 cd frea/feasibility/
@@ -84,7 +91,7 @@ cd frea/feasibility/
 python train_feasibility.py
 ```
 
-### Train adversarial policy of CBV
+### 3. :fire: Train adversarial policy of CBV
 
 #### Train FREA
 
@@ -116,7 +123,7 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg fppo_rs_train.yaml 
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
 ```
 
-### Train ego agent
+### 4. :fire: Train ego agent (optional)
 
 #### Train PPO ego agent based on FREA scenarios
 
@@ -138,7 +145,7 @@ python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg fppo_adv_train.yaml --
 python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --mode train_agent
 ```
 
-### Evaluation
+### 5. :snowflake: Evaluation
 
 #### Evaluation for data analysis (recording results)
 
@@ -160,7 +167,7 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg FPPO_adv_eval.yaml 
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg FPPO_adv_eval.yaml --mode eval --eval_mode render
 ```
 
-### Results Analysis
+### 6. :chart_with_upwards_trend: Results Analysis
 
 #### Results analysis of the paper
 
@@ -180,7 +187,7 @@ python eval_analysis/process_data/process_all_data.py
 python eval_analysis/plot_data/plot_evaluation_result.py
 ```
 
-### Visualization
+### 7. :clapper: Visualization
 
 #### World spectator
 
