@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Meta tags for social media banners, these should be filled in appropriatly as they are your "business card" -->
+  <!-- Replace the content tag with appropriate information -->
+  <meta name="description" content="DESCRIPTION META TAG">
+  <meta property="og:title" content="SOCIAL MEDIA TITLE TAG"/>
+  <meta property="og:description" content="SOCIAL MEDIA DESCRIPTION TAG TAG"/>
+  <meta property="og:url" content="URL OF THE WEBSITE"/>
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X630-->
+  <meta property="og:image" content="static/image/your_banner_image.png" />
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+
+
+  <meta name="twitter:title" content="TWITTER BANNER TITLE META TAG">
+  <meta name="twitter:description" content="TWITTER BANNER DESCRIPTION META TAG">
+  <!-- Path to banner image, should be in the path listed below. Optimal dimenssions are 1200X600-->
+  <meta name="twitter:image" content="static/images/your_twitter_banner_image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- Keywords for your paper to be indexed by-->
+  <meta name="keywords" content="KEYWORDS SHOULD BE PLACED HERE">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+  <title>FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality</title>
+  <link rel="icon" type="image/x-icon" href="static/images/car.ico">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+  rel="stylesheet">
+
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+  href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script src="static/js/bulma-carousel.min.js"></script>
+  <script src="static/js/bulma-slider.min.js"></script>
+  <script src="static/js/index.js"></script>
+</head>
+<body>
+
+
+<section class="hero">
+  <div class="hero-body" style="padding-bottom: 0;margin-bottom: 0;">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality</h1>
+          <div class="is-size-5 publication-authors">
+            <!-- Paper authors -->
+            <span class="author-block">
+              <a href="https://currychen77.github.io/" target="_blank">Keyu Chen</a><sup>1</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://sites.google.com/view/yuhenglei" target="_blank">Yuheng Lei</a><sup>2</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://orcid.org/0009-0009-9401-2937" target="_blank">Hao Cheng</a><sup>1</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=5hmsPUYAAAAJ&hl=zh-CN&oi=ao" target="_blank">Haoran Wu</a><sup>1</sup>,
+            </span><br>
+            <span class="author-block">
+              <a href="https://scholar.google.com/citations?user=yd-sMoQAAAAJ&hl=zh-CN&oi=ao" target="_blank">Wenchao Sun</a><sup>1</sup>,
+            </span>
+            <span class="author-block">
+              <a href="http://www.svm.tsinghua.edu.cn/essay/80/1835.html" target="_blank">Sifa Zheng</a><sup>1</sup>
+            </span>
+          </div>
+
+                <div class="is-size-5 publication-authors">
+                  <span class="author-block"><sup>1</sup> School of Vehicle and Mobility, Tsinghua University<br><sup>2</sup> The University of Hong Kong</span>
+                </div>
+
+                <div class="column has-text-centered">
+                  <div class="publication-links">
+                       <!-- Arxiv PDF link -->
+                    <span class="link-block">
+                      <a href="https://arxiv.org/abs/2406.02983" target="_blank"
+                      class="external-link button is-normal is-rounded is-dark">
+                      <span class="icon">
+                        <i class="fas fa-file-pdf"></i>
+                      </span>
+                      <span>Paper</span>
+                    </a>
+                  </span>
+                <!-- Github link -->
+                <span class="link-block">
+                  <a href="https://github.com/CurryChen77/FREA" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                </a>
+              </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section class="section" id="Paradigm">
+  <div class="container is-max-desktop">
+    <div class="hero-body" style="padding-top: 0; margin-top: 0;padding-bottom: 0;margin-bottom: 0;">
+      <center>
+        <img src="static/images/FREA.jpg" width="100%">
+      </center>
+      <h2 class="subtitle has-text-justified">
+       FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.
+      </h2>
+    </div>
+  </div>
+</section>
+
+<!-- Paper abstract -->
+<section class="section hero is-light">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            Generating safety-critical scenarios, which are essential yet difficult to collect at scale, offers an effective method to evaluate the robustness of autonomous vehicles (AVs). Existing methods focus on optimizing adversariality while preserving the naturalness of scenarios, aiming to achieve a balance through data-driven approaches. However, without an appropriate upper bound for adversariality, the scenarios might exhibit excessive adversariality, potentially leading to unavoidable collisions. In this paper, we introduce FREA, a novel safety-critical scenarios generation method that incorporates the Largest Feasible Region (LFR) of AV as guidance to ensure the REasonableness of the Adversarial scenarios. Concretely, FREA initially pre-calculates the LFR of AV from offline datasets. Subsequently, it learns a reasonable adversarial policy that controls critical background vehicles (CBVs) in the scene to generate adversarial yet AV-feasible scenarios by maximizing a novel feasibility-dependent objective function. Extensive experiments illustrate that FREA can effectively generate safety-critical scenarios, yielding considerable near-miss events while ensuring AV's feasibility. Generalization analysis also confirms the robustness of FREA in AV testing across various surrogate AV methods and traffic environments.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End paper abstract -->
+
+<section class="section" id="Paradigm">
+  <div class="container is-max-desktop">
+    <h2 class="title">Largest Feasible Region Visualization</h2>
+    <div class="hero-body" style="padding-top: 0; margin-top: 0;padding-bottom: 0;margin-bottom: 0;">
+      <center>
+        <img src="static/images/feasibility_region_0.1.png" width="100%">
+      </center>
+      <h2 class="subtitle has-text-justified">
+       FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.
+      </h2>
+    </div>
+  </div>
+</section>
+
+
+<!-- Image carousel -->
+<section class="hero is-small">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <h2 class="title">Near-miss Results</h2>
+      <div id="results-carousel" class="carousel results-carousel">
+       <div class="item">
+        <!-- Your image here -->
+        <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Time_to_Collision.png" alt="MY ALT TEXT" width="90%"/>
+        <h2 class="subtitle has-text-centered">
+          Time to Collision.
+        </h2>
+      </div>
+      <div class="item">
+        <!-- Your image here -->
+        <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Post_Encroachment_Time.png" alt="MY ALT TEXT" width="90%"/>
+        <h2 class="subtitle has-text-centered">
+          Post Encroachment Time.
+        </h2>
+      </div>
+      <div class="item">
+        <!-- Your image here -->
+        <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Distance_to_Ego_Vehicle.png" alt="MY ALT TEXT" width="90%"/>
+        <h2 class="subtitle has-text-centered">
+          Minimum Distance to AV.
+        </h2>
+      </div>
+  </div>
+</div>
+</div>
+</section>
+<!-- End image carousel -->
+
+
+<!-- Image carousel -->
+<section class="hero is-small">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <h2 class="title">Feasibility Results</h2>
+      <div id="results-carousel" class="carousel results-carousel">
+      <div class="item">
+        <!-- Your image here -->
+        <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Collision_Impulse.png" alt="MY ALT TEXT" width="80%"/>
+        <h2 class="subtitle has-text-centered">
+         Collision Impulse.
+       </h2>
+     </div>
+     <div class="item">
+      <!-- Your image here -->
+      <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Collision_Velocity.png" alt="MY ALT TEXT" width="80%"/>
+      <h2 class="subtitle has-text-centered">
+        Collision Velocity.
+      </h2>
+    </div>
+    <div class="item">
+      <!-- Your image here -->
+      <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Infeasible_Distance_Distribution.png" alt="MY ALT TEXT" width="80%"/>
+      <h2 class="subtitle has-text-centered">
+        Infeasible Distance Distribution.
+      </h2>
+    </div>
+  </div>
+</div>
+</div>
+</section>
+<!-- End image carousel -->
+
+
+<section class="hero teaser">
+  <div class="container is-max-desktop" style="margin-top: 2rem;">
+    <h2 class="title">Representative Scenarios</h2>
+    <div class="row g-3">
+      <div class="col">
+        <video poster="" id="v1" autoplay controls muted loop height="100%">
+          <!-- Your video here -->
+          <source src="static/videos/Scenario1.mp4" type="video/mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          4 lane with medium traffic
+        </h2>
+      </div>
+      <div class="col">
+        <video poster="" id="v2" autoplay controls muted loop height="100%">
+          <source src="static/videos/Scenario2.mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          5 lane with medium traffic
+        </h2>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col">
+        <video poster="" id="v2" autoplay controls muted loop height="100%">
+          <source src="static/videos/Scenario3.mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          5 lane with heavy traffic
+        </h2>
+      </div>
+      <div class="col">
+        <video poster="" id="v2" autoplay controls muted loop height="100%">
+          <source src="static/videos/Scenario4.mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          Directly use expe
+        </h2>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col">
+        <video poster="" id="v2" autoplay controls muted loop height="100%">
+          <source src="static/videos/Scenario5.mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          5 lane with heavy traffic
+        </h2>
+      </div>
+      <div class="col">
+        <video poster="" id="v2" autoplay controls muted loop height="100%">
+          <source src="static/videos/Scenario6.mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          Directly use expe
+        </h2>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col">
+        <video poster="" id="v2" autoplay controls muted loop height="100%">
+          <source src="static/videos/Scenario7.mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          5 lane with heavy traffic
+        </h2>
+      </div>
+      <div class="col">
+        <video poster="" id="v2" autoplay controls muted loop height="100%">
+          <source src="static/videos/Scenario8.mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          Directly use expe
+        </h2>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col">
+        <video poster="" id="v2" autoplay controls muted loop height="100%">
+          <source src="static/videos/Scenario9.mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          5 lane with heavy traffic
+        </h2>
+      </div>
+      <div class="col">
+        <video poster="" id="v2" autoplay controls muted loop height="100%">
+          <source src="static/videos/Scenario10.mp4">
+        </video>
+        <h2 class="subtitle has-text-centered">
+          Directly use expe
+        </h2>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--BibTex citation -->
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <div style="position: relative;">
+      <button id="copyButton" style="position: absolute; top: 0; right: 0;">Copy</button>
+      <pre><code id="bibtexCode">@article{chen2024frea,
+  title={FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality},
+  author={Chen, Keyu and Lei, Yuheng and Cheng, Hao and Wu, Haoran and Sun, Wenchao and Zheng, Sifa},
+  journal={arXiv preprint arXiv:2406.02983},
+  year={2024}
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<script>
+  var copyButton = document.getElementById("copyButton");
+
+  copyButton.addEventListener("click", function () {
+    var codeElement = document.getElementById("bibtexCode");
+    var textToCopy = codeElement.textContent;
+
+    var textarea = document.createElement("textarea");
+    textarea.value = textToCopy;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+
+    copyButton.textContent = "✓ Copied!";
+
+    setTimeout(function () {
+      copyButton.textContent = "Copy";
+    }, 2000); // Reset the button text after 2 seconds (adjust as needed)
+  });
+</script>
+<!--End BibTex citation -->
+
+
+
+  <footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+
+          <p style="text-align: center;"><i class="fa-solid fa-heart fa-beat-fade" style="color: #ff8787;"></i>
+              This page was built using the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template"
+                target="_blank">Academic Project Page Template</a> <i class="fa-solid fa-heart fa-beat-fade"
+                style="color: #ff8787;"></i>
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Statcounter tracking code -->
+  
+<!-- You can add a tracker to track page visits by creating an account at statcounter.com -->
+
+    <!-- End of Statcounter Code -->
+
+  </body>
+  </html>
