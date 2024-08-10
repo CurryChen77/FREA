@@ -22,14 +22,17 @@
 <font color="red">[2024.6.05] <b>New: We release FREA paper on Arxiv. </b></font>
 <font color="red">[2024.8.10] <b>New: The code is now released. </b></font></font>
 </pre>
-
 This repository contains the implementation of the paper.
+
+> FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality<br>
+>
+> [Keyu Chen](https://currychen77.github.io/)<sup>1</sup> , [Yuheng Lei](https://sites.google.com/view/yuhenglei)<sup>2</sup>, [Hao Cheng](https://orcid.org/0009-0009-9401-2937)<sup>1</sup>, [Haoran Wu](https://scholar.google.com/citations?user=5hmsPUYAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Wenchao Sun](https://scholar.google.com/citations?user=yd-sMoQAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Sifa Zheng](http://www.svm.tsinghua.edu.cn/essay/80/1835.html)<sup>1</sup><br>
+>
+> <sup>1</sup>Tsinghua University <sup>2</sup>The University of Hong Kong<br>
 
 If you find our work useful, Please give us a star 🌟!
 
-> FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality<br>[Keyu Chen](https://currychen77.github.io/)<sup>1</sup> , [Yuheng Lei](https://sites.google.com/view/yuhenglei)<sup>2</sup>, [Hao Cheng](https://orcid.org/0009-0009-9401-2937)<sup>1</sup>, [Haoran Wu](https://scholar.google.com/citations?user=5hmsPUYAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Wenchao Sun](https://scholar.google.com/citations?user=yd-sMoQAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Sifa Zheng](http://www.svm.tsinghua.edu.cn/essay/80/1835.html)<sup>1</sup><br><sup>1</sup>Tsinghua University <sup>2</sup>The University of Hong Kong
-
-*FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.*
+:dizzy: *FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios.*
 
 <div style="text-align: center;">   <img style="border: 3px solid gray; width: 100%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
 
