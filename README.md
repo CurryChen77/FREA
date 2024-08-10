@@ -10,7 +10,10 @@
     </td>
   </tr>
 </table>
-<a href="https://arxiv.org/abs/2406.02983"><img src="https://img.shields.io/badge/Paper-Arxiv-b31b1b?logo=arxiv&logoColor=white?style=flat-square" alt="Custom badge" style="width: 120px;"></a>     <a href="https://arxiv.org/abs/2406.02983"><img src="https://img.shields.io/badge/Project%20Page-white?logo=GitHub&color=green?style=flat-square" alt="Custom badge" style="width: 120px;"></a>     <a href="https://github.com/CurryChen77/FREA/stargazers"><img src="https://img.shields.io/github/stars/CurryChen77/FREA?style=social" style="width: 180px;"></a>
+<div align="center">
+    <a href="https://arxiv.org/abs/2406.02983"><img src="https://img.shields.io/badge/Paper-Arxiv-b31b1b?logo=arxiv&logoColor=white?style=flat-square" alt="Custom badge" style="width: 120px;"></a>     
+    <a href="https://currychen77.github.io/FREA/"><img src="https://img.shields.io/badge/Project%20Page-white?logo=GitHub&color=green?style=flat-square" alt="Custom badge" style="width: 120px;"></a>     
+    <a href="https://github.com/CurryChen77/FREA/stargazers"><img src="https://img.shields.io/github/stars/CurryChen77/FREA?style=social" style="width: 90px;"></a>
 
 ## :sparkles: News
 
