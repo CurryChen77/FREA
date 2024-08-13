@@ -8,7 +8,6 @@
 *.h5
 *.zip
 *.npy
-*.pkl
 *.csv
 
 # Byte-compiled / optimized / DLL files
@@ -39,7 +38,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-log/eval/*
 log/train_scenario/*
 log/train_agent/*
 **/train_log/*
