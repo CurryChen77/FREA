@@ -40,11 +40,13 @@ share/python-wheels/
 MANIFEST
 log/train_scenario/*
 log/train_agent/*
+log/collect_feasibility_data/*
 **/train_log/*
 **/model_ckpt/*
 docker
 frea/scenario/scenario_data/scenic_data
 .readthedocs.yaml
+.requirements-concise.txt
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
