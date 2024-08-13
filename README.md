@@ -16,6 +16,7 @@
     </td>
   </tr>
 </table>
+
 ## :sparkles: News
 
 <pre name="code" class="html">
