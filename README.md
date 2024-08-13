@@ -42,13 +42,13 @@ If you find our work useful, Please give us a star 🌟!
 
   - 🛠️ [Setup](#🛠️ Setup)
   - :books: [Usage](#:books: Usage)
-    - :open_file_folder: [Collect Offline Data](##1.:open_file_folder: Collect Offline Data)
-    - :fire: [Train optimal feasible value function of AV](##2. :fire: Train optimal feasible value function of AV)
-    - :fire: [Train adversarial policy of CBV](##3. :fire: Train adversarial policy of CBV)
-    - :fire: [Train AV (optional)](##4. :fire: Train AV (optional))
-    - :snowflake: [Evaluation](##5. :snowflake: Evaluation)
-    - :chart_with_upwards_trend: [Results Analysis](##6. :chart_with_upwards_trend: Results Analysis)
-    - :clapper: [Visualization](##7. :clapper: Visualization)
+    - :open_file_folder: [Collect Offline Data](##:open_file_folder: Collect-Offline-Data)
+    - :fire: [Train optimal feasible value function of AV](##:fire: Train-optimal-feasible-value-function-of-AV)
+    - :fire: [Train adversarial policy of CBV](##:fire: Train-adversarial-policy-of-CBV)
+    - :fire: [Train AV (optional)](##:fire: Train-AV-(optional))
+    - :snowflake: [Evaluation](##:snowflake: Evaluation)
+    - :chart_with_upwards_trend: [Results Analysis](##:chart_with_upwards_trend: Results-Analysis)
+    - :clapper: [Visualization](##:clapper: Visualization)
   - :bookmark: [Citation](#:bookmark: Citation)
   - :clipboard: [Acknowledgement](#:clipboard: Acknowledgement)
 
@@ -81,7 +81,7 @@ pip install -e .
 
 ## :books: Usage
 
-### 1.:open_file_folder: Collect Offline Data
+### :open_file_folder: Collect Offline Data
 
 #### Collect data from specific AV and CBV
 
@@ -102,14 +102,14 @@ python frea/feasibility/unify_offline_data.py
 
 To use the offline dataset in our paper download from [here](https://cloud.tsinghua.edu.cn/d/2a294f680b7844cb8248/) put them into the `feasibility` folder.
 
-### 2. :fire: Train optimal feasible value function of AV
+### :fire: Train optimal feasible value function of AV
 
 ```bash
 # Train optimal feasible value function of AV
 python train_feasibility.py
 ```
 
-### 3. :fire: Train adversarial policy of CBV
+### :fire: Train adversarial policy of CBV
 
 #### Train FREA (need well-trained LFR)
 
@@ -141,7 +141,7 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg fppo_rs_train.yaml 
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
 ```
 
-### 4. :fire: Train AV (optional)
+### :fire: Train AV (optional)
 
 #### Train PPO AV based on FREA scenarios
 
@@ -163,7 +163,7 @@ python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg fppo_adv_train.yaml --
 python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --mode train_agent
 ```
 
-### 5. :snowflake: Evaluation
+### :snowflake: Evaluation
 
 #### Evaluation for data analysis (recording results)
 
@@ -185,7 +185,7 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg FPPO_adv_eval.yaml 
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg FPPO_adv_eval.yaml --mode eval --eval_mode render
 ```
 
-### 6. :chart_with_upwards_trend: Results Analysis
+### :chart_with_upwards_trend: Results Analysis
 
 #### Results analysis of the paper
 
@@ -205,7 +205,7 @@ python eval_analysis/process_data/process_all_data.py
 python eval_analysis/plot_data/plot_evaluation_result.py
 ```
 
-### 7. :clapper: Visualization
+### :clapper: Visualization
 
 #### World spectator
 
