@@ -46,10 +46,8 @@ If you find our work useful, Please give us a star 🌟!
     - :snowflake: [5. Evaluation](#snowflake-5.-Evaluation)
     - :chart_with_upwards_trend: [6. Results Analysis](#chart_with_upwards_trend-6.-Results-Analysis)
     - :clapper: [7. Visualization](#clapper-7.-Visualization)
-  - :clipboard: [Survey](#clipboard-survey)
-  - :mortar\_board: [Tutorial](#mortar_board-tutorial)
   - :bookmark: [Citation](#bookmark-citation)
-  - :memo: [License](#memo-license)
+  - :clipboard: [Acknowledgement](#clipboard-Acknowledgement)
 
 ## :wrench: Setup
 
