@@ -38,20 +38,6 @@ If you find our work useful, Please give us a star 🌟!
 
 <div style="text-align: center;">   <img style="border: 3px solid gray; width: 100%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
 
-## :page_with_curl: Outline
-
-  - 🛠️ [Setup](#🛠️ Setup)
-  - :books: [Usage](#:books: Usage)
-    - :open_file_folder: [Collect Offline Data](##:open_file_folder: Collect-Offline-Data)
-    - :fire: [Train optimal feasible value function of AV](##:fire: Train-optimal-feasible-value-function-of-AV)
-    - :fire: [Train adversarial policy of CBV](##:fire: Train-adversarial-policy-of-CBV)
-    - :fire: [Train AV (optional)](##:fire: Train-AV-(optional))
-    - :snowflake: [Evaluation](##:snowflake: Evaluation)
-    - :chart_with_upwards_trend: [Results Analysis](##:chart_with_upwards_trend: Results-Analysis)
-    - :clapper: [Visualization](##:clapper: Visualization)
-  - :bookmark: [Citation](#:bookmark: Citation)
-  - :clipboard: [Acknowledgement](#:clipboard: Acknowledgement)
-
 ## 🛠️ Setup
 
 **Recommended system: Ubuntu 20.04 or 22.04**
@@ -79,9 +65,9 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-## :books: Usage
+##  :books: Usage
 
-### :open_file_folder: Collect Offline Data
+### :open_file_folder: 1. Collect Offline Data
 
 #### Collect data from specific AV and CBV
 
@@ -102,14 +88,14 @@ python frea/feasibility/unify_offline_data.py
 
 To use the offline dataset in our paper download from [here](https://cloud.tsinghua.edu.cn/d/2a294f680b7844cb8248/) put them into the `feasibility` folder.
 
-### :fire: Train optimal feasible value function of AV
+### :fire: 2. Train optimal feasible value function of AV
 
 ```bash
 # Train optimal feasible value function of AV
 python train_feasibility.py
 ```
 
-### :fire: Train adversarial policy of CBV
+### :fire: 3. Train adversarial policy of CBV
 
 #### Train FREA (need well-trained LFR)
 
@@ -141,7 +127,7 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg fppo_rs_train.yaml 
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg ppo_train.yaml --mode train_scenario
 ```
 
-### :fire: Train AV (optional)
+### :fire: 4. Train AV (optional)
 
 #### Train PPO AV based on FREA scenarios
 
@@ -163,7 +149,7 @@ python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg fppo_adv_train.yaml --
 python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --mode train_agent
 ```
 
-### :snowflake: Evaluation
+### :snowflake: 5. Evaluation
 
 #### Evaluation for data analysis (recording results)
 
@@ -185,7 +171,7 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg FPPO_adv_eval.yaml 
 python scripts/run.py --agent_cfg expert.yaml --scenario_cfg FPPO_adv_eval.yaml --mode eval --eval_mode render
 ```
 
-### :chart_with_upwards_trend: Results Analysis
+### :chart_with_upwards_trend: 6. Results Analysis
 
 #### Results analysis of the paper
 
@@ -205,7 +191,7 @@ python eval_analysis/process_data/process_all_data.py
 python eval_analysis/plot_data/plot_evaluation_result.py
 ```
 
-### :clapper: Visualization
+### :clapper: 7. Visualization
 
 #### World spectator
 
