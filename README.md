@@ -16,8 +16,6 @@
     </td>
   </tr>
 </table>
-
-
 ## :sparkles: News
 
 <pre name="code" class="html">
@@ -38,7 +36,22 @@ If you find our work useful, Please give us a star 🌟!
 
 <div style="text-align: center;">   <img style="border: 3px solid gray; width: 100%;" src="./eval_analysis/figures/FREA.jpg"/> </div>
 
-## 🛠️ Setup
+## :page_with_curl: Outline
+  -  :wrench: [Setup](#wrench-Setup)
+  - :books: [Usage](#books-Usage)
+    - :open_file_folder: [1. Collect Offline Data](#open_file_folder-1.-Collect-Offline-Data)
+    - :fire: [2. Train optimal feasible value function of AV](#fire-2.-Train-optimal-feasible-value-function-of-AV)
+    - :fire: [3. Train adversarial policy of CBV](#fire-3.-Train-adversarial-policy-of-CBV)
+    - :fire: [4. Train AV (optional)](#fire-4.-Train-AV-(optional))
+    - :snowflake: [5. Evaluation](#snowflake-5.-Evaluation)
+    - :chart_with_upwards_trend: [6. Results Analysis](#chart_with_upwards_trend-6.-Results-Analysis)
+    - :clapper: [7. Visualization](#clapper-7.-Visualization)
+  - :clipboard: [Survey](#clipboard-survey)
+  - :mortar\_board: [Tutorial](#mortar_board-tutorial)
+  - :bookmark: [Citation](#bookmark-citation)
+  - :memo: [License](#memo-license)
+
+## :wrench: Setup
 
 **Recommended system: Ubuntu 20.04 or 22.04**
 
