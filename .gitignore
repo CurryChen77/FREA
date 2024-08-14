@@ -46,7 +46,7 @@ log/collect_feasibility_data/*
 docker
 frea/scenario/scenario_data/scenic_data
 .readthedocs.yaml
-.requirements-all.txt
+requirements-all.txt
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
