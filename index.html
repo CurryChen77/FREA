@@ -116,7 +116,7 @@
         <img src="static/images/FREA.jpg" width="100%">
       </center>
       <h2 class="subtitle has-text-justified">
-       FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.
+        <a style="color:#800080">FREA</a> incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.
       </h2>
     </div>
   </div>
@@ -130,7 +130,7 @@
         <h2 class="title is-3">Abstract</h2>
         <div class="content has-text-justified">
           <p>
-            Generating safety-critical scenarios, which are essential yet difficult to collect at scale, offers an effective method to evaluate the robustness of autonomous vehicles (AVs). Existing methods focus on optimizing adversariality while preserving the naturalness of scenarios, aiming to achieve a balance through data-driven approaches. However, without an appropriate upper bound for adversariality, the scenarios might exhibit excessive adversariality, potentially leading to unavoidable collisions. In this paper, we introduce FREA, a novel safety-critical scenarios generation method that incorporates the Largest Feasible Region (LFR) of AV as guidance to ensure the REasonableness of the Adversarial scenarios. Concretely, FREA initially pre-calculates the LFR of AV from offline datasets. Subsequently, it learns a reasonable adversarial policy that controls critical background vehicles (CBVs) in the scene to generate adversarial yet AV-feasible scenarios by maximizing a novel feasibility-dependent objective function. Extensive experiments illustrate that FREA can effectively generate safety-critical scenarios, yielding considerable near-miss events while ensuring AV's feasibility. Generalization analysis also confirms the robustness of FREA in AV testing across various surrogate AV methods and traffic environments.
+            Generating safety-critical scenarios, which are essential yet difficult to collect at scale, offers an effective method to evaluate the robustness of autonomous vehicles (AVs). Existing methods focus on optimizing adversariality while preserving the naturalness of scenarios, aiming to achieve a balance through data-driven approaches. However, without an appropriate upper bound for adversariality, the scenarios might exhibit excessive adversariality, potentially leading to unavoidable collisions. In this paper, we introduce <a style="color:#800080">FREA</a>, a novel safety-critical scenarios generation method that incorporates the Largest Feasible Region (LFR) of AV as guidance to ensure the REasonableness of the Adversarial scenarios. Concretely, <a style="color:#800080">FREA</a> initially pre-calculates the LFR of AV from offline datasets. Subsequently, it learns a reasonable adversarial policy that controls critical background vehicles (CBVs) in the scene to generate adversarial yet AV-feasible scenarios by maximizing a novel feasibility-dependent objective function. Extensive experiments illustrate that <a style="color:#800080">FREA</a> can effectively generate safety-critical scenarios, yielding considerable near-miss events while ensuring AV's feasibility. Generalization analysis also confirms the robustness of <a style="color:#800080">FREA</a> in AV testing across various surrogate AV methods and traffic environments.
           </p>
         </div>
       </div>
@@ -147,7 +147,7 @@
         <img src="static/images/feasibility_region_0.1.png" width="100%">
       </center>
       <h2 class="subtitle has-text-justified">
-       FREA incorporates feasibility as guidance to generate adversarial yet AV-feasible, safety-critical scenarios for autonomous driving.
+        These cases show the well-trained LFR's reliability under various scenarios, providing a solid basis for CBV training.
       </h2>
     </div>
   </div>
@@ -164,24 +164,27 @@
         <!-- Your image here -->
         <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Time_to_Collision.png" alt="MY ALT TEXT" width="90%"/>
         <h2 class="subtitle has-text-centered">
-          Time to Collision.
+          <b>Time to Collision.</b>
         </h2>
       </div>
       <div class="item">
         <!-- Your image here -->
         <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Post_Encroachment_Time.png" alt="MY ALT TEXT" width="90%"/>
         <h2 class="subtitle has-text-centered">
-          Post Encroachment Time.
+          <b>Post Encroachment Time.</b>
         </h2>
       </div>
       <div class="item">
         <!-- Your image here -->
         <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Distance_to_Ego_Vehicle.png" alt="MY ALT TEXT" width="90%"/>
         <h2 class="subtitle has-text-centered">
-          Minimum Distance to AV.
+          <b>Minimum Distance to AV.</b>
         </h2>
       </div>
   </div>
+  <h2 class="subtitle has-text-justified" style="padding-top: 1rem;" style="width: 80%;">
+    There figures show the distributions of TTC and PET and minimum vehicle distance across different CBV methods. The PPO produces the most adversarial scenarios across all maps. Conversely, FPPO-RS and <a style="color:#800080">FREA</a> present similar near-miss metrics but with a higher frequency of near-miss than Standard traffic flow. Given our focus on AV-feasible near-miss events, further analysis of AV's feasibility is required.
+  </h2>
 </div>
 </div>
 </section>
@@ -198,24 +201,27 @@
         <!-- Your image here -->
         <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Collision_Impulse.png" alt="MY ALT TEXT" width="80%"/>
         <h2 class="subtitle has-text-centered">
-         Collision Impulse.
+          <b>Collision Impulse.</b>
        </h2>
      </div>
      <div class="item">
       <!-- Your image here -->
       <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Collision_Velocity.png" alt="MY ALT TEXT" width="80%"/>
       <h2 class="subtitle has-text-centered">
-        Collision Velocity.
+        <b>Collision Velocity.</b>
       </h2>
     </div>
     <div class="item">
       <!-- Your image here -->
       <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Infeasible_Distance_Distribution.png" alt="MY ALT TEXT" width="80%"/>
       <h2 class="subtitle has-text-centered">
-        Infeasible Distance Distribution.
+        <b>Infeasible Distance Distribution.</b>
       </h2>
     </div>
   </div>
+  <h2 class="subtitle has-text-justified" style="padding-top: 1rem;" style="width: 80%;">
+    Without the feasibility constraint, the PPO method lead to many severe collisions with high infeasible rates, indicating excessive adversarial behavior. Conversely, under the feasibility constraint, both FPPO-RS and <a style="color:#800080">FREA</a> mitigate the severity of these events. However, as for AV's feasibility, FPPO-RS struggles with hard constraints, causing many infeasible events. In contrast, <a style="color:#800080">FREA</a> strikes a better balance between adversarial and AV-feasible, resulting in the least severe collisions.
+  </h2>
 </div>
 </div>
 </section>
