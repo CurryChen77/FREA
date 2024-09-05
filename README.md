@@ -16,7 +16,7 @@
     </td>
   </tr>
 </table>
-## :sparkles: News
+##  :sparkles: News
 
 - **`2024-09-05`** Exciting news! **FREA is accepted by CoRL 2024 🎉🎉!** 
 - **`2024-08-10`** Explore our project page, now live [here](https://currychen77.github.io/FREA/)🔗!
