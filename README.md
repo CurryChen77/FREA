@@ -29,7 +29,7 @@ This repository contains the implementation of the paper.
 >
 > [Keyu Chen](https://currychen77.github.io/)<sup>1</sup> , [Yuheng Lei](https://sites.google.com/view/yuhenglei)<sup>2</sup>, [Hao Cheng](https://orcid.org/0009-0009-9401-2937)<sup>1</sup>, [Haoran Wu](https://scholar.google.com/citations?user=5hmsPUYAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Wenchao Sun](https://scholar.google.com/citations?user=yd-sMoQAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Sifa Zheng](http://www.svm.tsinghua.edu.cn/essay/80/1835.html)<sup>1</sup><br>
 >
-> <sup>1</sup>Schoole of Vehicle and Mobility, Tsinghua University <sup>2</sup>The University of Hong Kong<br>
+> <sup>1</sup>School of Vehicle and Mobility, Tsinghua University <sup>2</sup>The University of Hong Kong<br>
 
 If you find our work useful, Please give us a star 🌟!
 
