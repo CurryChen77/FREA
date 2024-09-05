@@ -16,6 +16,7 @@
     </td>
   </tr>
 </table>
+
 ##  :sparkles: News
 
 - **`2024-09-05`** Exciting news! **FREA is accepted by CoRL 2024 🎉🎉!** 
