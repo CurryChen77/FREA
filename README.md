@@ -16,20 +16,20 @@
     </td>
   </tr>
 </table>
-
 ## :sparkles: News
 
-<pre name="code" class="html">
-<font color="red">[2024.6.05] <b>New: We release FREA paper on Arxiv. </b></font>
-<font color="red">[2024.8.10] <b>New: The code is now released. </b></font></font>
-</pre>
+- **`2024-09-05`** Exciting news! **FREA is accepted by CoRL 2024 🎉🎉!** 
+- **`2024-08-10`** Explore our project page, now live [here](https://currychen77.github.io/FREA/)🔗!
+- **`2024-08-10`** Codes are now release!
+- **`2024-06-05`** Our paper is available on [Arxiv](https://arxiv.org/abs/2406.02983)📄!
+
 This repository contains the implementation of the paper.
 
 > FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality<br>
 >
 > [Keyu Chen](https://currychen77.github.io/)<sup>1</sup> , [Yuheng Lei](https://sites.google.com/view/yuhenglei)<sup>2</sup>, [Hao Cheng](https://orcid.org/0009-0009-9401-2937)<sup>1</sup>, [Haoran Wu](https://scholar.google.com/citations?user=5hmsPUYAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Wenchao Sun](https://scholar.google.com/citations?user=yd-sMoQAAAAJ&hl=zh-CN&oi=ao)<sup>1</sup>, [Sifa Zheng](http://www.svm.tsinghua.edu.cn/essay/80/1835.html)<sup>1</sup><br>
 >
-> <sup>1</sup>Tsinghua University <sup>2</sup>The University of Hong Kong<br>
+> <sup>1</sup>Schoole of Vehicle and Mobility, Tsinghua University <sup>2</sup>The University of Hong Kong<br>
 
 If you find our work useful, Please give us a star 🌟!
 
