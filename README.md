@@ -19,7 +19,7 @@
 
 ##  :sparkles: News
 
-- **`2024-09-05`** Exciting news! **FREA is accepted by CoRL 2024 🎉🎉!** 
+- **`2024-09-05`** Exciting news! **FREA is accepted by CoRL 2024 for <span style="color:red">Oral Presentation</span>🎉🎉!** 
 - **`2024-08-10`** Explore our project page, now live [here](https://currychen77.github.io/FREA/)🔗!
 - **`2024-08-10`** Codes are now release!
 - **`2024-06-05`** Our paper is available on [Arxiv](https://arxiv.org/abs/2406.02983)📄!
