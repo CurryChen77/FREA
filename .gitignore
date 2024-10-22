@@ -38,6 +38,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+log/eval/*
 log/train_scenario/*
 log/train_agent/*
 log/collect_feasibility_data/*
