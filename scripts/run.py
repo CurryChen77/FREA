@@ -29,8 +29,10 @@ if __name__ == '__main__':
     parser.add_argument('--viz_route', '-vr', action='store_true')
     parser.add_argument('--mode', '-m', type=str, default='eval', choices=['train_agent', 'train_scenario', 'eval', 'collect_feasibility_data'])
     parser.add_argument('--eval_mode', '-em', type=str, default='analysis', choices=['analysis', 'render'])
+    parser.add_argument('--eval_obj', '-eo', type=str, default='cbv', choices=['cbv', 'ego'])
     parser.add_argument('--agent_cfg', nargs='*', type=str, default='expert.yaml')
     parser.add_argument('--pretrain_ego', '-pre_ego', type=str, default='expert', choices=['expert', 'plant'])
+    parser.add_argument('--pretrain_cbv', '-pre_cbv', type=str, default='standard', choices=['ppo', 'standard', 'fppo_adv', 'fppo_rs'])
     parser.add_argument('--scenario_cfg', nargs='*', type=str, default='standard_eval.yaml')
     parser.add_argument('--feasibility_cfg', nargs='*', type=str, default='HJR.yaml')
 

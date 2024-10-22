@@ -8,8 +8,7 @@
 """
 import h5py
 import os
-
-import numpy as np
+import os.path as osp
 from tqdm import tqdm
 from typing import Dict
 
@@ -48,8 +47,9 @@ def find_h5_files(directory):
 if __name__ == '__main__':
 
     output_filename = 'merged_data.hdf5'
+    ROOT_DIR = osp.abspath(osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__)))))
 
-    base_directory = './data'
+    base_directory = osp.join(ROOT_DIR, 'frea/feasibility/data')
 
     for folder in os.listdir(base_directory):
         folder_path = os.path.join(base_directory, folder)

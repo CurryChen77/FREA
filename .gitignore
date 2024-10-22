@@ -8,7 +8,6 @@
 *.h5
 *.zip
 *.npy
-*.pkl
 *.csv
 
 # Byte-compiled / optimized / DLL files
@@ -39,11 +38,16 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-log/eval/*
 log/train_scenario/*
+log/train_agent/*
+log/collect_feasibility_data/*
 log/train_agent/*
 **/train_log/*
 **/model_ckpt/*
+docker
+frea/scenario/scenario_data/scenic_data
+.readthedocs.yaml
+requirements-all.txt
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

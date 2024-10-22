@@ -21,7 +21,7 @@ from frea.util.run_util import load_config
 
 
 def get_feasibility_policy(feasibility_config, ROOT_DIR):
-    logger_path = osp.join(ROOT_DIR, 'eval_analysis/King_result')
+    logger_path = osp.join(ROOT_DIR, 'eval_analysis/King_analysis')
     logger = Logger(logger_path, all_map_name=['Town05, Town02'])
     feasibility_policy = FEASIBILITY_LIST[feasibility_config['type']](feasibility_config, logger=logger)
     feasibility_policy.load_model(map_name='Town05')
@@ -116,7 +116,7 @@ def main(args_dict):
     feasibility_config.update(args_dict)
     feasibility_policy = get_feasibility_policy(feasibility_config, ROOT_DIR)
 
-    base_dir = "eval_analysis/King_analysis/data"
+    base_dir = osp.join(ROOT_DIR, "eval_analysis/King_analysis/data")
     collision_count = 0
     total_count = 0
     all_file_ego_obs_list = []
@@ -175,9 +175,11 @@ def main(args_dict):
     # get the collision severity of the King trajectories
     all_infeasible_dis, all_feasibility_Vs = get_collision_severity(all_file_ego_obs_list, all_file_ego_bv_dis_list, feasibility_policy)
     np_feasibility_Vs = np.array(all_feasibility_Vs)
-    print("Infeasible Distance (m):", round(np.mean(all_infeasible_dis), 2))
-    print("Infeasible Ratio (%) :", round(np.mean(np_feasibility_Vs > 0) * 100, 2))
-    print(f"Collision Rate (%): ", round(collision_count/total_count * 100, 2))
+    print('>> ' + '-' * 20, 'King analysis results', '-' * 20)
+    print(">> Infeasible Distance:", round(np.mean(all_infeasible_dis), 2), "(m)")
+    print(">> Infeasible Ratio:", round(np.mean(np_feasibility_Vs > 0) * 100, 2), "(%)")
+    print(">> Collision Rate: ", round(collision_count/total_count * 100, 2), "(%)")
+    print('>> ' + '-' * 20, 'King analysis results', '-' * 20)
 
 
 if __name__ == "__main__":

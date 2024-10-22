@@ -50,8 +50,12 @@ class PPO(BasePolicy):
         self.CBV_selection = config['CBV_selection']
         self.model_path = os.path.join(config['ROOT_DIR'], config['model_path'])
         self.scenario_id = config['scenario_id']
-        if config['mode'] == 'eval':
+        if config['mode'] == 'eval' and config['eval_obj'] == 'cbv':
+            # evaluation the different scenario agent (CBV)
             self.load_agent_info = config['pretrain_ego'] + '_' + str(self.CBV_selection) + '_seed' + str(self.seed)
+        elif config['mode'] == 'eval' and config['eval_obj'] == 'ego':
+            # evaluation the different ego method pretrained with different cbv(pretrained with expert)
+            self.load_agent_info = 'expert_' + str(self.CBV_selection) + '_seed' + str(self.seed)
         elif config['mode'] == 'train_agent':
             self.load_agent_info = 'expert_' + str(self.CBV_selection) + '_seed' + str(self.seed)
         else:
