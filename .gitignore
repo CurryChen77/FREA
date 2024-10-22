@@ -41,6 +41,7 @@ share/python-wheels/
 MANIFEST
 log/eval/*
 log/train_scenario/*
+log/train_agent/*
 **/train_log/*
 **/model_ckpt/*
 

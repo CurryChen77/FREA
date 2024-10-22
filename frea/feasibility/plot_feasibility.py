@@ -232,21 +232,26 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     array_value = np.asarray(feasibility_value).reshape(x_grid.shape)
     array_value = np.clip(array_value, a_min=None, a_max=10)
 
-    norm = colors.Normalize(vmin=-8, vmax=4)
+    cmap = colors.ListedColormap(['#D9D9D9', '#CFE0F0'])
+
+    bounds = [-8, 0, 4]
+    norm = colors.BoundaryNorm(bounds, cmap.N)
 
     ct = ax.contourf(
         x_grid, y_grid, array_value,
         norm=norm,
-        levels=15,
-        cmap='rainbow',
-        alpha=0.5
+        levels=[-8, 0, 4],
+        cmap=cmap,
+        alpha=0.5,
+        extend='both'
     )
     # draw the '0' contour line
     if np.any(array_value <= 0):
         ct_line = ax.contour(
             x_grid, y_grid, array_value,
-            levels=[0], colors='#32ABD6',
-            linewidths=2.0, linestyles='solid'
+            levels=[0], colors='#2e66a0',
+            linewidths=2.0, linestyles='solid',
+            alpha=0.4
         )
         ax.clabel(ct_line, inline=True, fontsize=10, fmt=r'0')
 
@@ -254,14 +259,14 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     for i, Vehicle in enumerate(ego_obs):
         # the x,y in Rectangle in the bottom left corner
         if i >= 1:
-            color = (0.30, 0.52, 0.74)
+            color = '#7d569e'
             # the angle of the Rectangle is under right-handed coordinate system, but the yaw angle in carla is left-handed coordinate system
             rectangle = Rectangle((Vehicle[0]-Vehicle[2] / 2, Vehicle[1]-Vehicle[3] / 2), width=Vehicle[2], height=Vehicle[3], angle=-np.degrees(Vehicle[4]), rotation_point='center', fill=True, alpha=0.5, color=color)
             angle_rad = Vehicle[4]
             speed = Vehicle[5]
             # the angle of the Rectangle is under right-handed coordinate system, but the yaw angle in carla is left-handed coordinate system
             direction = [np.cos(angle_rad) * speed, - np.sin(angle_rad) * speed]
-            arrow = Arrow(x=Vehicle[0], y=Vehicle[1], dx=direction[0], dy=direction[1], width=1.5)
+            arrow = Arrow(x=Vehicle[0], y=Vehicle[1], dx=direction[0], dy=direction[1], width=1.5, color=color)
             ax.add_patch(rectangle)
             ax.add_patch(arrow)
     # plot all the arrows
@@ -272,7 +277,7 @@ def plot_feasibility_region(ax, agent, ego_obs, ego_speed, spatial_interval=10, 
     arrow_dir = [np.cos(ego_angle_rad) * ego_speed, - np.sin(ego_angle_rad) * ego_speed]
     for arrow_x in arrow_xs:
         for arrow_y in arrow_ys:
-            arrow = Arrow(x=arrow_x, y=arrow_y, dx=arrow_dir[0], dy=arrow_dir[1], width=1, color='k', alpha=0.2)
+            arrow = Arrow(x=arrow_x, y=arrow_y, dx=arrow_dir[0], dy=arrow_dir[1], width=1, color='#a4a4a4')
             ax.add_patch(arrow)
 
     ax.set_xlim([-24, 24])
@@ -378,22 +383,24 @@ def plot_multi_feasibility_region(args):
     fig.subplots_adjust(left=0.005, right=0.93, top=0.85, bottom=0.07, wspace=0.05)
     cbar_ax = fig.add_axes([0.935, 0.07, 0.025, 0.78])
     cb = fig.colorbar(ct4, cax=cbar_ax, shrink=0.18, pad=0.0, aspect=30, anchor=(0.0, 0.1))
-    cb.locator = MaxNLocator(nbins=5)
+
+    cb.locator = MaxNLocator(nbins=3, integer=True)
     cb.update_ticks()
+
     cb.ax.tick_params(labelsize=14)
-    cb.ax.text(0.3, 1.07, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=20)
-    cb.ax.text(0.0, 1.02, r'$\mathrm{(learned)}$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=12)
+    cb.ax.text(0.3, 1.14, r'$V^*_h$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=20)
+    cb.ax.text(0.0, 1.08, r'$\mathrm{(learned)}$', ha='left', va='bottom', transform=cb.ax.transAxes, fontsize=12)
     cb.outline.set_edgecolor('white')
     # cb = plt.colorbar(ct, ax=ax, shrink=0.75, pad=0.01, aspect=8, anchor=(0.0, 0.1))
 
     legend_elements = [
-        Patch(facecolor='#c0fcdc', edgecolor='#c0fcdc', label='Largest Feasible Region (learned)'),
-        Patch(facecolor='#ff7777', edgecolor='#ff7777', label='Infeasible Region (learned)'),
+        Patch(facecolor='#D9D9D9', edgecolor='#D9D9D9', label='Largest Feasible Region (learned)'),
+        Patch(facecolor='#CFE0F0', edgecolor='#CFE0F0', label='Infeasible Region (learned)'),
         Line2D([0], [0], marker='o', color='none', label='Feasibility boundary (learned)',
-               markerfacecolor='none', markeredgecolor='#32ABD6', markersize=10, markeredgewidth=1.5),
-        Rectangle((0, 0), width=4.9, height=2.12, rotation_point='center', label='Background Vehicle (BV)', fill=True, alpha=0.5, color=(0.30, 0.52, 0.74)),
-        FancyArrowPatch((0, 0), (20, 0), arrowstyle='-|>', color=(0.30, 0.52, 0.74), label='BV Velocity Vector'),
-        FancyArrowPatch((0, 0), (20, 0), arrowstyle='-|>', color='#969693', label='AV Velocity Vector')
+               markerfacecolor='none', markeredgecolor='#2e66a0', markersize=10, markeredgewidth=1.5, alpha=0.4),
+        Rectangle((0, 0), width=4.9, height=2.12, rotation_point='center', label='Background Vehicle (BV)', fill=True, alpha=0.5, color='#7d569e'),
+        FancyArrowPatch((0, 0), (20, 0), arrowstyle='-|>', color='#7d569e', label='BV Velocity Vector'),
+        FancyArrowPatch((0, 0), (20, 0), arrowstyle='-|>', color='#a4a4a4', label='AV Velocity Vector')
     ]
 
     fig.legend(handles=legend_elements, loc='upper center', ncol=3, bbox_to_anchor=(0.0, 0.92, 0.935, 0.08), handler_map={FancyArrowPatch: HandlerArrow()}, mode='expand', fontsize=13)
