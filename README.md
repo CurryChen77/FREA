@@ -240,11 +240,13 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_eval.yaml 
 
 If you find our paper useful, please kindly cite us via:
 ```
-@article{chen2024frea,
-  title={FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality},
-  author={Chen, Keyu and Lei, Yuheng and Cheng, Hao and Wu, Haoran and Sun, Wenchao and Zheng, Sifa},
-  journal={arXiv preprint arXiv:2406.02983},
-  year={2024}
+@inproceedings{
+  chen2024frea,
+  title={{FREA}: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality},
+  author={Keyu Chen and Yuheng Lei and Hao Cheng and Haoran Wu and Wenchao Sun and Sifa Zheng},
+  booktitle={8th Annual Conference on Robot Learning},
+  year={2024},
+  url={https://openreview.net/forum?id=3bcujpPikC}
 }
 ```
 
