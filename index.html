@@ -60,7 +60,7 @@
           </h1>
           <br>
           <h2 class="subtitle has-text-centered">
-            <span style="font-size: 32px; font-weight: bold; font-family: Kalam; color: #b31b1b;">CoRL 2024 (Oral)</span><br>
+            <span style="font-size: 32px; font-weight: bold; color: #b31b1b;">CoRL 2024 (Oral)</span><br>
           </h2>
           <div class="is-size-4 publication-authors">
             <!-- Paper authors -->
@@ -123,6 +123,26 @@
               <span>arXiv</span>
             </a>
             </span>
+            <!-- Slides link -->
+            <span class="link-block">
+              <a href="static/pdfs/slides.pdf" target="_blank"
+                class="external-link button is-normal is-rounded is-dark">
+                <span class="icon">
+                  <i class="fas fa-file-pdf"></i>
+                </span>
+                <span>Slides</span>
+              </a>
+            </span>
+            <!-- Arxiv PDF link -->
+            <span class="link-block">
+              <a href="https://openreview.net/forum?id=3bcujpPikC"
+                class="external-link button is-normal is-rounded is-dark">
+                <span class="icon">
+                  <i class="fas fa-file-pdf"></i>
+                </span>
+                <span>OpenReview</span>
+              </a>
+            </span>
           </div>
         </div>
       </div>
@@ -161,9 +181,47 @@
 </section>
 <!-- End paper abstract -->
 
-<section class="section" id="Paradigm">
+<section class="section">
+  <!-- Results. -->
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-six-fifths">
+      <h2 class="title is-3"><img id="painting_icon" width="3%" src="static/images/framework.png"> Feasibility-dependent Objective </h2>
+    </div>
+  </div>
   <div class="container is-max-desktop">
-    <h2 class="title">Largest Feasible Region Visualization</h2>
+    <div class="columns is-centered">
+      <div class="column is-full-width">
+        <div class="content has-text-justified"> 
+          <p>
+            The training objective of the proposed <a style="color:#800080">FREA</a> method, which consists of two different objetive:
+          </p>
+            <ol>
+                <li><strong>AV-feasible:</strong> Follow the original goal-based adversarial objective.</li>
+                <li><strong>AV-infeasible:</strong> Minimize the severity of infeasibility.</li>
+            </ol>
+        </div>
+        <centering>
+          <div style="text-align: center; margin: 0; padding: 0;">
+            <img id="teaser" width="100%" src="static/images/Feasibility-depend objective.png">     
+          </div>
+        </centering>           
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<section class="section" id="Paradigm">
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-six-fifths">
+      <h2 class="title is-3">
+        <img id="painting_icon" width="3%" src="https://cdn-icons-png.flaticon.com/512/3515/3515174.png">
+        Experiment Results
+      </h2>
+    </div>
+  </div>
+  <div class="container is-max-desktop">
+    <h4><strong>Largest Feasible Region Visualization</strong></h4>
     <div class="hero-body" style="padding-top: 0; margin-top: 0;padding-bottom: 0;margin-bottom: 0;">
       <center>
         <img src="static/images/feasibility_region_0.1.png" width="100%">
@@ -173,51 +231,51 @@
       </h2>
     </div>
   </div>
-</section>
-
-
-<!-- Image carousel -->
-<section class="hero is-small">
-  <div class="hero-body">
-    <div class="container is-max-desktop">
-      <h2 class="title">Near-miss Results</h2>
-      <div id="results-carousel" class="carousel results-carousel">
-       <div class="item">
-        <!-- Your image here -->
-        <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Time_to_Collision.png" alt="MY ALT TEXT" width="90%"/>
-        <h2 class="subtitle has-text-centered">
-          <b>Time to Collision.</b>
-        </h2>
-      </div>
-      <div class="item">
-        <!-- Your image here -->
-        <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Post_Encroachment_Time.png" alt="MY ALT TEXT" width="90%"/>
-        <h2 class="subtitle has-text-centered">
-          <b>Post Encroachment Time.</b>
-        </h2>
-      </div>
-      <div class="item">
-        <!-- Your image here -->
-        <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Distance_to_Ego_Vehicle.png" alt="MY ALT TEXT" width="90%"/>
-        <h2 class="subtitle has-text-centered">
-          <b>Minimum Distance to AV.</b>
-        </h2>
-      </div>
+  <br>
+  <div class="container is-max-desktop">
+      <h4><strong>Near-miss Metrics</strong></h4>
+        <div id="results-carousel" class="carousel results-carousel">
+          <div class="item">
+          <!-- Your image here -->
+          <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Time_to_Collision.png" alt="MY ALT TEXT" width="90%"/>
+          <h2 class="subtitle has-text-centered">
+            <b>Time to Collision.</b>
+          </h2>
+          </div>
+          <div class="item">
+            <!-- Your image here -->
+            <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Post_Encroachment_Time.png" alt="MY ALT TEXT" width="90%"/>
+            <h2 class="subtitle has-text-centered">
+              <b>Post Encroachment Time.</b>
+            </h2>
+          </div>
+          <div class="item">
+            <!-- Your image here -->
+            <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Distance_to_Ego_Vehicle.png" alt="MY ALT TEXT" width="90%"/>
+            <h2 class="subtitle has-text-centered">
+              <b>Minimum Distance to AV.</b>
+            </h2>
+          </div>
+        </div>
+      <h2 class="subtitle has-text-justified" style="padding-top: 1rem;" style="width: 80%;">
+        There figures show the distributions of TTC and PET and minimum vehicle distance across different CBV methods. The PPO produces the most adversarial scenarios across all maps. Conversely, FPPO-RS and <a style="color:#800080">FREA</a> present similar near-miss metrics but with a higher frequency of near-miss than Standard traffic flow. Given our focus on AV-feasible near-miss events, further analysis of AV's feasibility is required.
+      </h2>
   </div>
-  <h2 class="subtitle has-text-justified" style="padding-top: 1rem;" style="width: 80%;">
-    There figures show the distributions of TTC and PET and minimum vehicle distance across different CBV methods. The PPO produces the most adversarial scenarios across all maps. Conversely, FPPO-RS and <a style="color:#800080">FREA</a> present similar near-miss metrics but with a higher frequency of near-miss than Standard traffic flow. Given our focus on AV-feasible near-miss events, further analysis of AV's feasibility is required.
-  </h2>
-</div>
-</div>
-</section>
-<!-- End image carousel -->
-
-
-<!-- Image carousel -->
-<section class="hero is-small">
-  <div class="hero-body">
-    <div class="container is-max-desktop">
-      <h2 class="title">Feasibility Results</h2>
+  <br>
+  <div class="container is-max-desktop">
+    <h4><strong>Near-miss Events</strong></h4>
+    <br>
+    <div style="display: flex; justify-content: center; gap: 10px;">
+      <img src="static/images/best1.jpg" alt="Image 1" width="45%">
+      <img src="static/images/best2.jpg" alt="Image 2" width="45%">
+    </div>
+    <h2 class="subtitle has-text-justified" style="padding-top: 1rem;" style="width: 80%;">
+       <a style="color:#800080">FREA</a> generates consecutive near-miss events, enhancing scenario adversariality without causing collisions.
+    </h2>
+  </div>
+  <br>
+  <div class="container is-max-desktop">
+    <h4><strong>Feasibility Metrics</strong></h4>
       <div id="results-carousel" class="carousel results-carousel">
       <div class="item">
         <!-- Your image here -->
@@ -225,34 +283,66 @@
         <h2 class="subtitle has-text-centered">
           <b>Collision Impulse.</b>
        </h2>
-     </div>
-     <div class="item">
+      </div>
+      <div class="item">
       <!-- Your image here -->
       <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Collision_Velocity.png" alt="MY ALT TEXT" width="80%"/>
       <h2 class="subtitle has-text-centered">
         <b>Collision Velocity.</b>
       </h2>
-    </div>
-    <div class="item">
+      </div>
+      <div class="item">
       <!-- Your image here -->
       <img src="static/images/eval_cbv_pretrained_with_expert/Expert-Infeasible_Distance_Distribution.png" alt="MY ALT TEXT" width="80%"/>
       <h2 class="subtitle has-text-centered">
         <b>Infeasible Distance Distribution.</b>
       </h2>
-    </div>
+      </div>
+      </div>
+      <h2 class="subtitle has-text-justified" style="padding-top: 1rem;" style="width: 80%;">
+        Without the feasibility constraint, the PPO method lead to many severe collisions with high infeasible rates, indicating excessive adversarial behavior. Conversely, under the feasibility constraint, both FPPO-RS and <a style="color:#800080">FREA</a> mitigate the severity of these events. However, as for AV's feasibility, FPPO-RS struggles with hard constraints, causing many infeasible events. In contrast, <a style="color:#800080">FREA</a> strikes a better balance between adversarial and AV-feasible, resulting in the least severe collisions.
+      </h2>
   </div>
-  <h2 class="subtitle has-text-justified" style="padding-top: 1rem;" style="width: 80%;">
-    Without the feasibility constraint, the PPO method lead to many severe collisions with high infeasible rates, indicating excessive adversarial behavior. Conversely, under the feasibility constraint, both FPPO-RS and <a style="color:#800080">FREA</a> mitigate the severity of these events. However, as for AV's feasibility, FPPO-RS struggles with hard constraints, causing many infeasible events. In contrast, <a style="color:#800080">FREA</a> strikes a better balance between adversarial and AV-feasible, resulting in the least severe collisions.
-  </h2>
-</div>
-</div>
+  <br>
+  <div class="container is-max-desktop">
+    <h4><strong>AV Testing Performance</strong></h4>
+      <br>
+      <centering>
+        <div style="text-align: center;">
+          <img id="teaser" width="90%" src="static/images/AV-testing.png">     
+        </div>
+      </centering> 
+      <h2 class="subtitle has-text-justified" style="padding-top: 1rem;" style="width: 80%;">
+        <a style="color:#800080">FREA</a> generalizes well in AV testing due to its AV-independent training objective.
+      </h2>
+  </div>
+  <br>
+  <div class="container is-max-desktop">
+    <h4><strong>AV Training Performance</strong></h4>
+      <br>
+      <centering>
+        <div style="text-align: center;">
+          <img id="teaser" width="90%" src="static/images/AV-training.png">     
+        </div>
+      </centering> 
+      <h2 class="subtitle has-text-justified" style="padding-top: 1rem;" style="width: 80%;">
+        AV pretrained with <a style="color:#800080">FREA</a> demonstrate improved performance and robustness, benefiting from the AV-feasible near-miss data generated by <a style="color:#800080">FREA</a>.
+      </h2>
+  </div>
 </section>
-<!-- End image carousel -->
+
 
 
 <section class="hero teaser">
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-six-fifths">
+      <h2 class="title is-3">
+        <img id="painting_icon" width="3%" src="static/images/demo.png">
+        Demos
+      </h2>
+    </div>
+  </div>
   <div class="container is-max-desktop" style="margin-top: 2rem;">
-    <h2 class="title">Representative Scenarios</h2>
     <div class="row g-3">
       <div class="col">
         <video poster="" id="v1" autoplay controls muted loop height="100%">
@@ -347,17 +437,33 @@
   </div>
 </section>
 
+<section class="hero is-small is-light">
+  <div class="hero-body">
+    <div class="container">
+      <!-- Paper poster -->
+
+      <h2 class="title">CoRL Poster</h2>
+
+      <iframe  src="static/pdfs/FREA-Poster.pdf" width="100%" height="1200">
+          </iframe>
+        <!--/ Paper poster -->
+    </div>
+  </div>
+</section>
+
 <!--BibTex citation -->
 <section class="section" id="BibTeX">
   <div class="container is-max-desktop content">
     <h2 class="title">BibTeX</h2>
     <div style="position: relative;">
       <button id="copyButton" style="position: absolute; top: 0; right: 0;">Copy</button>
-      <pre><code id="bibtexCode">@article{chen2024frea,
-  title={FREA: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality},
-  author={Chen, Keyu and Lei, Yuheng and Cheng, Hao and Wu, Haoran and Sun, Wenchao and Zheng, Sifa},
-  journal={arXiv preprint arXiv:2406.02983},
-  year={2024}
+      <pre><code id="bibtexCode">@inproceedings{
+  chen2024frea,
+  title={{FREA}: Feasibility-Guided Generation of Safety-Critical Scenarios with Reasonable Adversariality},
+  author={Keyu Chen and Yuheng Lei and Hao Cheng and Haoran Wu and Wenchao Sun and Sifa Zheng},
+  booktitle={8th Annual Conference on Robot Learning},
+  year={2024},
+  url={https://openreview.net/forum?id=3bcujpPikC}
 }</code></pre>
     </div>
   </div>
