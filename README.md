@@ -99,7 +99,7 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_train.yaml
 python frea/feasibility/unify_offline_data.py
 ```
 
-To use the offline dataset in our paper download from [here](https://cloud.tsinghua.edu.cn/d/2a294f680b7844cb8248/) put them into the `feasibility` folder.
+To use the offline dataset in our paper download from [here](https://cloud.tsinghua.edu.cn/d/2a294f680b7844cb8248/) (data.zip) put them into the `feasibility` folder.
 
 ### :fire: Train optimal feasible value function of AV
 
@@ -163,6 +163,8 @@ python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --
 ```
 
 ### :snowflake: Evaluation
+
+To use the learning-based method **PlanT**, you need to extract the checkpoint of PlanT from [here](https://cloud.tsinghua.edu.cn/d/2a294f680b7844cb8248/) (PlanT_medium.zip) and put the them [here](./frea/agent/model_ckpt).
 
 #### Evaluation for data analysis (recording results)
 
