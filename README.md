@@ -16,8 +16,9 @@
     </td>
   </tr>
 </table>
-
 ##  :sparkles: News
+
+* **`2025-05-08`** Checkout our latest work [RIFT](https://github.com/CurryChen77/RIFT), which conducts **realistic and controllable traffic simulation in CARLA via closed-loop RL fine-tuning.**
 
 - **`2024-09-05`** Exciting news! **FREA is accepted by CoRL 2024 for <span style="color:red">Oral Presentation</span>🎉🎉!** 
 - **`2024-08-10`** Explore our project page, now live [here](https://currychen77.github.io/FREA/)🔗!
@@ -78,6 +79,27 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+**Data and Ckpt**
+
+* **Feasibility Data**
+
+|       Name       |                         Google Drive                         | Approx. Size |              Storage Place              |
+| :--------------: | :----------------------------------------------------------: | :----------: | :-------------------------------------: |
+| Offline Dataset  | [Link](https://drive.google.com/drive/folders/1IHze_WFyJUts0NuEfDV10BYZyW_BB6Iy?usp=drive_link) |    140 MB    |    [Folder](./frea/feasibility/data)    |
+| Feasibility Ckpt | [Link](https://drive.google.com/drive/folders/1f-HxmXF1o4sYcCLLAoV7RewcLYChHzRF?usp=drive_link) |    36 MB     | [Folder](./frea/feasibility/model_ckpt) |
+
+* **CBV Ckpt**
+
+|     Name     |                         Google Drive                         | Approx. Size |                   Storage Place                    |
+| :----------: | :----------------------------------------------------------: | :----------: | :------------------------------------------------: |
+| All CBV Ckpt | [Link](https://drive.google.com/drive/folders/1lGaVqaXcNSpKXqOTRWgIKWAF69wQlobN?usp=drive_link) |    422 MB    | [Folder](./frea/scenario/scenario_data/model_ckpt) |
+
+* **AV Ckpt**
+
+|    Name    |                         Google Drive                         | Approx. Size |                 Storage Place                  |
+| :--------: | :----------------------------------------------------------: | :----------: | :--------------------------------------------: |
+| PlanT Ckpt | [Link](https://drive.google.com/drive/folders/1-45xsa_65zkFpkX1NDnegAtagcrgByYO?usp=drive_link) |    695 MB    | [Folder](./frea/agent/model_ckpt/PlanT_medium) |
+
 ##  :books: Usage
 
 ### :open_file_folder: Collect Offline Data
@@ -99,7 +121,7 @@ python scripts/run.py --agent_cfg expert.yaml --scenario_cfg standard_train.yaml
 python frea/feasibility/unify_offline_data.py
 ```
 
-To use the offline dataset in our paper download from [here](https://cloud.tsinghua.edu.cn/d/2a294f680b7844cb8248/) (data.zip) put them into the `feasibility` folder.
+To use the offline dataset in our paper download from [here](https://drive.google.com/drive/folders/1IHze_WFyJUts0NuEfDV10BYZyW_BB6Iy?usp=drive_link) put them into the [Folder](./frea/feasibility/data).
 
 ### :fire: Train optimal feasible value function of AV
 
@@ -163,8 +185,6 @@ python scripts/run.py --agent_cfg ppo.yaml --scenario_cfg standard_train.yaml --
 ```
 
 ### :snowflake: Evaluation
-
-To use the learning-based method **PlanT**, you need to extract the checkpoint of PlanT from [here](https://cloud.tsinghua.edu.cn/d/2a294f680b7844cb8248/) (PlanT_medium.zip) and put the them [here](./frea/agent/model_ckpt).
 
 #### Evaluation for data analysis (recording results)
 
