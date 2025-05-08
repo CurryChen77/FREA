@@ -16,10 +16,10 @@
     </td>
   </tr>
 </table>
-##  :sparkles: News
 
-* **`2025-05-08`** Checkout our latest work [RIFT](https://github.com/CurryChen77/RIFT), which conducts **realistic and controllable traffic simulation in CARLA via closed-loop RL fine-tuning.**
+## :sparkles: News
 
+- **`2025-05-08`** Checkout our latest work [RIFT](https://github.com/CurryChen77/RIFT), which conducts **realistic and controllable traffic simulation in CARLA via closed-loop RL fine-tuning.**
 - **`2024-09-05`** Exciting news! **FREA is accepted by CoRL 2024 for <span style="color:red">Oral Presentation</span>🎉🎉!** 
 - **`2024-08-10`** Explore our project page, now live [here](https://currychen77.github.io/FREA/)🔗!
 - **`2024-08-10`** Codes are now release!
