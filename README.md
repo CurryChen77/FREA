@@ -87,17 +87,6 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-The `PYTHONPATH` entry supplies CARLA's `agents` modules.
-Pillow 13.0.0 fixes the October 2026 image-processing advisories and requires
-Python 3.11 or later. Scikit-image 0.20.0 is the first release with Python 3.11
-wheels; the other direct dependency pins are retained. Use a fresh environment:
-the Python/CARLA change is not a claim of identical closed-loop experiment scores.
-Keep existing experiment environments and checkpoints for historical reproduction.
-Use the default Epic rendering quality with this CARLA installation: the bounded
-closed-loop smoke passed there, while Low quality crashed in native Vulkan camera
-initialization. Actor autopilot calls honor the configured Traffic Manager port.
-See [the security audit](PILLOW_SECURITY_AUDIT.md) for evidence, tests and limitations.
-
 **Data and Ckpt**
 
 * **Feasibility Data**
