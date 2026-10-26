@@ -7,7 +7,8 @@ reported October advisories. Because it requires Python >=3.11, new installation
 use Python 3.11 and the matching CARLA 0.9.16 client. Existing experiment
 environments must be preserved separately. This is a dependency remediation;
 closed-loop numerical equivalence with Python 3.8 / CARLA 0.9.13 is not established.
-Dependabot alerts remain open on main until this change is merged and rescanned.
+Dependabot must rescan the updated main branch to confirm alert closure; no alerts
+are manually dismissed by this remediation.
 
 ## Alert inventory and official fixes
 
@@ -55,8 +56,13 @@ Requires-Python would leave the actual runtime vulnerable and is not used here.
   the environment actually validated, rather than promising untested interpreters.
 - README: install a fresh environment and matching CARLA 0.9.16 cp311 wheel.
   No simulator binaries, drivers, system CUDA or shared environments are changed.
+  Four actor autopilot control-transfer calls now pass the configured Traffic
+  Manager port, avoiding an implicit fallback to shared port 8000.
 
-All other direct requirement pins are retained, including NumPy 1.24.4, SciPy
+The closed-loop entrypoint also exposed an undeclared dependency: `CarlaRunner`
+imports TensorBoard unconditionally. `tensorboard==2.14.0` is now explicit, matching
+the historical local snapshot; its OSV query returned no known records. All other
+direct requirement pins are retained, including NumPy 1.24.4, SciPy
 1.10.1, matplotlib 3.6.3, moviepy 1.0.3, torch 2.4.1 and Lightning 2.4.0.
 The server's `requirements-all.txt` is an old untracked local snapshot, not a
 manifest on GitHub main; it is not modified or presented as a supported install.
@@ -105,9 +111,12 @@ absolute floating-point error and require identical dtypes.
 with the real CARLA 0.9.16 client, then exercises imageio/native codec round trips,
 matplotlib PNG output and actual FREA FFmpeg video export with frame decoding.
 It does not connect to a simulator or load a checkpoint.
-All six full-module imports, four image codec round trips, matplotlib PNG output
+All seven full-module imports (including `CarlaRunner`), four image codec round trips, matplotlib PNG output
 and three-frame FREA video export/decode passed. `pip check` passed for all 126
-installed packages, including editable FREA. The tested Linux CPU environment is
+installed packages in the initial image-only validation, including editable FREA.
+After adding the entrypoint dependency, all 142 installed packages passed `pip check`;
+the 14 pixel snapshots, six resize arrays, full runtime smoke and four new actor
+Traffic Manager port regression cases all passed again. The tested Linux CPU environment is
 recorded in `tests/fixtures/pillow-validation-environment.txt`.
 
 The official Pillow 13.0.0 test tree at
@@ -138,5 +147,61 @@ For historical experiment reproduction use the original code revision, environme
 and CARLA release in isolation. Before interpreting new training/evaluation scores,
 run fixed-seed scenes and checkpoint inference in the new environment; CPU image
 regressions do not establish identical vehicle physics, semantic labels, planner
-behavior or GPU numerics across CARLA/Python versions. No training or simulator
-experiment was performed for this security change.
+behavior or GPU numerics across CARLA/Python versions. No training, checkpoint inference or comparative benchmark was performed. The
+bounded functional smoke below verifies execution, not old/new score equivalence.
+
+
+## Real CARLA closed-loop smoke (2026-10-26)
+
+`tests/carla_closed_loop_smoke.py` starts its own existing CARLA 0.9.16 binary,
+reserves common per-GPU and per-port flock leases, refuses busy GPUs/ports, checks
+the actual Vulkan GPU UUID, and holds leases until its simulator and client exit.
+The client is CPU-only and calls the real `CarlaRunner`, `VectorWrapper`,
+`CarlaEnv`, behavior policy and scenario policy in evaluation mode. No learned
+policy, checkpoint or training call is used. It uses Town05, Scenario9 route 8,
+seed 2026, 0.1-second synchronous ticks and 128x128 RGB/semantic cameras.
+FREA creates its usual minimum of five background vehicles even at traffic
+intensity zero; these and the ego remain confined to the owned simulator.
+
+Successful configuration: **default Epic quality**, GPU 4, RPC/stream/secondary/TM
+ports 24000/24001/24002/24006, four CPU cores for the simulator, a two-thread CPU
+client, and a 60-second client RPC timeout for cold starts.
+
+- 60 observation/control/tick steps, 6.0 simulated seconds, frame delta 60.
+- Ego path length 30.9009 m, maximum speed 8.4320 m/s, no ego collision.
+- 55 distinct RGB image hashes; real semantic frames and Pillow mask compositing.
+- Camera/mask PNG decoded pixels matched the saved arrays; video decoded 60 frames.
+- Scene vehicle/sensor cleanup left zero actors. Both owned child processes exited
+  before GPU/port leases were released; the simulator shutdown needed the bounded
+  SIGKILL fallback after SIGTERM. Other tasks' processes were not signalled.
+- All four actor control-transfer port regressions passed, covering background
+  activation, controlled-vehicle selection, truncation and goal completion.
+
+The earlier **Low-quality** profile crashed at the first camera warm-up tick on
+this installation. GDB on a second idle GPU reproduced a native null
+`VertexDeclaration` in `FVulkanVertexInputStateInfo::Generate`, called by Vulkan
+PSO creation. This happened before Pillow image handling. The same full functional
+smoke passed using Epic quality. This is a per-instance launch-profile limitation,
+not evidence requiring a host driver change. Do not use this test result to claim
+Low quality is supported or that historical sensor semantics/scores are identical.
+No shared CARLA files, drivers, CUDA installations or other environments were
+modified to obtain the pass.
+
+The successful command, after setting project-owned TMP/XDG/cache paths and
+CARLA's PythonAPI/carla in PYTHONPATH, was:
+
+```bash
+python tests/carla_closed_loop_smoke.py \
+  --carla-root /home/keyuchen/data/carla_0.9.16 \
+  --gpu 4 --port 24000 --quality Epic --steps 60 \
+  --output-dir "$PWD/runs/carla-smoke-20261026/attempt-08-epic"
+python -m unittest discover -s tests -p test_traffic_manager_ports.py
+```
+
+Use a **new** output directory on every invocation. The launcher never attaches to
+an existing simulator and requires the shared coordination lock files used on
+this server. It is intentionally opt-in and is not part of automatic unit-test
+discovery. Failed-run diagnostics and the successful JSON/configuration, two PNGs,
+short video, environment list and logs are retained locally under the run directory.
+Temporary debugger/runtime homes, shader/build caches and intermediate files are
+removed after all workload processes exit.

@@ -23,5 +23,6 @@ Shapely==1.8.5
 six==1.16.0
 torch==2.4.1
 torchmetrics==0.7.2
+tensorboard==2.14.0
 tqdm==4.66.5
 transformers==4.46.3

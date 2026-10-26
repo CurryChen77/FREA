@@ -169,7 +169,7 @@ class RouteScenario():
         unactivated_actors = list(self.unactivated_actors)  # for safer remove
         for actor in unactivated_actors:
             if CarlaDataProvider.get_location(actor).distance(ego_location) < activate_threshold:
-                actor.set_autopilot(True)
+                actor.set_autopilot(True, CarlaDataProvider.get_traffic_manager_port())
                 self.unactivated_actors.remove(actor)
 
     def get_running_status(self, running_record):

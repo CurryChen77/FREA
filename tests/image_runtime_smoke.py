@@ -27,6 +27,7 @@ def main():
         'frea.agent.expert.nav_planner',
         'frea.gym_carla.envs.carla_env',
         'frea.util.run_util',
+        'frea.carla_runner',
     ):
         importlib.import_module(name)
         print('Imported', name)
