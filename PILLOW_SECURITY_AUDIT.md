@@ -1,126 +1,142 @@
-# Pillow security remediation: blocked by the Python 3.8 environment
+# Pillow security remediation and environment migration
 
-Audit date: 2026-10-26. Source revision: `455c5d078c240d81fb11902c0c47c3e7aef9facc`.
+Audit date: 2026-10-26. Main revision: `455c5d078c240d81fb11902c0c47c3e7aef9facc`.
 
-**Status: vulnerabilities remain unresolved. This change adds an audit and regression
-coverage, not a dependency fix. Do not dismiss Dependabot alerts on this basis.**
+This change pins Pillow to 13.0.0, the first official fixed release for the
+reported October advisories. Because it requires Python >=3.11, new installations
+use Python 3.11 and the matching CARLA 0.9.16 client. Existing experiment
+environments must be preserved separately. This is a dependency remediation;
+closed-loop numerical equivalence with Python 3.8 / CARLA 0.9.13 is not established.
+Dependabot alerts remain open on main until this change is merged and rescanned.
 
-## Official findings
+## Alert inventory and official fixes
 
-| CVE | Upstream affected range | First upstream fix | Trigger / impact |
-| --- | --- | --- | --- |
-| CVE-2026-112403 | <=12.3.0 | 13.0.0 | JPEG draft/thumbnail downscaling with lossless SOF3 and libjpeg-turbo >=3; native heap overflow |
-| CVE-2026-112897 | <=12.3.0 | 13.0.0 | Short JPEG-compressed TIFF strips/tiles decoded through libtiff can expose uninitialized heap bytes as pixels |
-| CVE-2026-112895 | 5.1.0–12.3.0 | 13.0.0 | Parsing an existing PDF during append can exhaust stack/CPU/memory through page trees or trailer chains |
+Seven GitHub notification emails were verified for FREA on October 24–25 (Asia/Shanghai).
+All name `requirements.txt`. Private Dependabot API state is unavailable through
+the connected tools, so notification evidence is not a claim that these are all
+currently open alerts. The public advisory database was also queried through OSV:
+Pillow 13.0.0 returned no known vulnerability records on the audit date. The old
+10.3.0 query returned additional advisories beyond the seven notifications.
 
-Pillow 10.3.0 falls in all three published version ranges. The JPEG issue's actual
-reachability also depends on the linked JPEG library and use of scaling before load.
-Its individual advisory is rated **High**; the 13.0.0 release notes group JPEG
-decoder overflows under Critical. The reported alert rating should therefore be
-kept distinct from the individual upstream advisory's rating.
+| Alert | CVE | GitHub reviewed affected range | First fix | Trigger / impact |
+| --- | --- | --- | --- | --- |
+| [168](https://github.com/CurryChen77/FREA/security/dependabot/168) | [CVE-2026-112403](https://github.com/python-pillow/Pillow/security/advisories/GHSA-8g5g-8vmr-9782) | <=12.3.0 | 13.0.0 | Lossless SOF3 JPEG with draft/thumbnail scaling and libjpeg-turbo >=3: native heap overflow |
+| [169](https://github.com/CurryChen77/FREA/security/dependabot/169) | [CVE-2026-112404](https://github.com/python-pillow/Pillow/security/advisories/GHSA-c6hw-5grf-ff96) | >=8.1.0,<13.0.0 | 13.0.0 | TIFF tile/RGBA decode row-size mismatch: out-of-bounds reads, heap disclosure or crash |
+| [170](https://github.com/CurryChen77/FREA/security/dependabot/170) | [CVE-2026-112397](https://github.com/python-pillow/Pillow/security/advisories/GHSA-58r4-6rv3-gfh8) | <=12.3.0 | 13.0.0 | Zero-width image passed to native morphology: out-of-bounds access/crash |
+| [171](https://github.com/CurryChen77/FREA/security/dependabot/171) | [CVE-2026-112896](https://github.com/python-pillow/Pillow/security/advisories/GHSA-pchr-8j38-3x4p) | <=12.3.0 | 13.0.0 | Saving TIFF with retained ColorMap incompatible with sample depth: heap out-of-bounds read |
+| [173](https://github.com/CurryChen77/FREA/security/dependabot/173) | [CVE-2026-112400](https://github.com/python-pillow/Pillow/security/advisories/GHSA-65qm-jvmh-6pqg) | >=9.2.0,<13.0.0 | 13.0.0 | Reusing GIF after catching decompression-bomb error: rejected frame size persists, causing memory exhaustion |
+| [174](https://github.com/CurryChen77/FREA/security/dependabot/174) | [CVE-2026-112895](https://github.com/python-pillow/Pillow/security/advisories/GHSA-p4wg-p73j-c528) | >=5.1.0,<13.0.0 | 13.0.0 | PDF append parses deep/cyclic page trees or long trailer chains: stack/CPU/memory exhaustion |
+| [175](https://github.com/CurryChen77/FREA/security/dependabot/175) | [CVE-2026-112897](https://github.com/python-pillow/Pillow/security/advisories/GHSA-q45j-58j2-45rg) | >=5.3.0,<13.0.0 | 13.0.0 | Short JPEG/fax TIFF decode: uninitialized buffer tail returned as pixels; strip path since 6.0.0, tile path since 5.3.0 |
 
-Primary sources:
+The upstream repository pages sometimes use broader affected ranges and lower
+severity than GitHub's reviewed advisory database. In particular, email #168 says
+Critical, while its upstream report says High; #170 and #173 emails say High,
+while upstream reports say Low. The differences do not change the fixed version.
+The table uses reviewed version ranges where they are more precise.
 
-- https://github.com/python-pillow/Pillow/security/advisories/GHSA-8g5g-8vmr-9782
-- https://github.com/python-pillow/Pillow/security/advisories/GHSA-q45j-58j2-45rg
-- https://github.com/python-pillow/Pillow/security/advisories/GHSA-p4wg-p73j-c528
-- https://pillow.readthedocs.io/en/stable/releasenotes/13.0.0.html
-- https://pillow.readthedocs.io/en/stable/installation/python-support.html
-- https://github.com/python-pillow/Pillow/blob/13.0.0/pyproject.toml
+Official release and interpreter metadata:
 
-The connected GitHub tools do not expose private Dependabot alert endpoints; the
-provided alert URL was rejected as an unsupported endpoint. The three CVEs above
-were verified against public upstream advisories, not against the repository's
-complete alert inventory. Other Pillow alerts must be reconciled before claiming
-complete remediation. No existing Pillow PR was returned by repository PR search.
+- [Pillow 13 release notes](https://pillow.readthedocs.io/en/stable/releasenotes/13.0.0.html)
+- [Pillow 13 PyPI metadata](https://pypi.org/pypi/pillow/13.0.0/json): `Requires-Python >=3.11`
+- [Pillow Python support](https://pillow.readthedocs.io/en/stable/installation/python-support.html)
 
-## Why a one-line dependency upgrade cannot safely be applied
+Pillow 10.4 still supports Python 3.8 but does not resolve these advisories.
+Pillow 11/12 also remain affected. An old-Python fallback or ignoring
+Requires-Python would leave the actual runtime vulnerable and is not used here.
 
-`README.md` creates Python 3.8 and `setup.py` enforces `>=3.8,<3.9`.
-Pillow 13.0.0 declares `requires-python = ">=3.11"`. Pillow 10.4 is the last
-series supporting Python 3.8 and does not fix these advisories. Pillow 11/12 also
-do not fix all three. Upstream says fixes should not be expected to be backported.
+## Smallest supported dependency change
 
-The minimum version-only candidate would be:
+- `Pillow==10.3.0` -> `Pillow==13.0.0`.
+- `scikit_image==0.19.3` -> `scikit_image==0.20.0`: the old pin has no CPython
+  3.11 wheel. The candidate uses the next release with a matching wheel, avoiding
+  a resource-intensive unsupported source build. Existing resize calls are covered
+  by legacy/candidate comparisons.
+- `setup.py` Python range: `>=3.8,<3.9` -> `>=3.11,<3.12`. The narrow range reflects
+  the environment actually validated, rather than promising untested interpreters.
+- README: install a fresh environment and matching CARLA 0.9.16 cp311 wheel.
+  No simulator binaries, drivers, system CUDA or shared environments are changed.
 
-```diff
--Pillow==10.3.0
-+Pillow==13.0.0
-```
+All other direct requirement pins are retained, including NumPy 1.24.4, SciPy
+1.10.1, matplotlib 3.6.3, moviepy 1.0.3, torch 2.4.1 and Lightning 2.4.0.
+The server's `requirements-all.txt` is an old untracked local snapshot, not a
+manifest on GitHub main; it is not modified or presented as a supported install.
+The validation environment uses the CPU build of the same torch version to avoid
+CUDA downloads and GPU allocation. Its complete resolved package list is retained
+with the task evidence; this is not a general upgrade of transitive dependencies
+in an existing experiment environment.
 
-**This diff is intentionally not applied.** There is no compatible intersection
-between the project's declared Python range and the fixed upstream Pillow release.
-An environment-marker fallback to 10.x would leave the actual experiment runtime
-vulnerable. Ignoring Requires-Python is not a supported remediation.
+## Code reachability and compatibility
 
-A Python migration also requires reviewing CARLA 0.9.13's Python client and the
-existing NumPy 1.24.4, SciPy 1.10.1, scikit-image 0.19.3, moviepy 1.0.3,
-matplotlib 3.6.3 and torch 2.4.1 pins. Native wheels and removed Pillow APIs in
-transitive image paths need validation. The project installation itself rejects
-Python 3.11. No broad dependency upgrade or packaging-range change is included.
+Four tracked Python files import PIL:
 
-## Code reachability
-
-The four Python files importing PIL use:
-
-- `frea/agent/agent_utils/viz_tokens_bev.py`: in-memory L/RGB images, polygon/line
-  drawing, NumPy conversion and PNG output; imported by the PlanT dataset.
-- `frea/agent/agent_utils/explainability_utils.py`: BGRA/RGB conversion, RGBA
-  masks and alpha paste; called by the CARLA environment.
+- `frea/agent/agent_utils/viz_tokens_bev.py`: L/RGB images, polygon/line drawing,
+  NumPy conversion and PNG output; imported by the PlanT dataset.
+- `frea/agent/agent_utils/explainability_utils.py`: BGRA/RGB conversion, RGBA masks
+  and alpha paste; called by the CARLA environment.
 - `frea/agent/PlanT/PlanT_agent.py`: BEV drawing, ImageOps borders and PNG output.
-- `frea/agent/expert/nav_planner.py`: in-memory route debug drawing.
+- `frea/agent/expert/nav_planner.py`: route debug drawing.
 
 No direct production `Image.open`, `draft`, `thumbnail`, TIFF decode or PDF append
-call was found in tracked Python source. This reduces demonstrated direct exposure;
-it does not make the installed dependency safe. Plotting/imageio/scikit-image and
-user scripts can introduce indirect file decoding. `run_util.py` imports moviepy's
-FFmpeg writer, not its image-resize helper. Those complete transitive paths were
-not executed. Treat external images/documents as untrusted even if their extension
-looks like a supported format; extension checks alone are insufficient.
+call was found in tracked Python source. This limits demonstrated direct exposure,
+not the vulnerable dependency's impact through extensions, tools or indirect
+image decoding. Used APIs do not rely on removed Image.ANTIALIAS, font-size APIs,
+or saving 32-bit I-mode PNGs. The repository imports moviepy's FFmpeg writer,
+not its old Pillow resize helper (which references removed Image.ANTIALIAS).
+Unrelated moviepy editor/resize workflows are not claimed compatible.
 
-## Regression evidence and reproduction
+## Regression validation
 
-`tests/pillow_regression.py` extracts and executes the actual image helper bodies
-with AST, avoiding unrelated CARLA/torch imports. No helper logic is reimplemented.
-It compares 14 deterministic output-array fingerprints: BEV extent/speed modes,
-semantic-mask foreground/background compositing, route dots, and PlanT red/green
-borders with PNG save/reload. Compare decoded pixels rather than compressed PNG
-bytes, which may change with encoder versions.
+`tests/pillow_regression.py` reuses PR #15's 14 decoded-array fingerprints. It
+executes the actual helper bodies via AST, avoiding simulator/torch imports;
+these are not full-module or closed-loop tests. All 14 passed in the legacy
+Python 3.8.20 environment and the Python 3.11.14/Pillow 10.3.0 reference.
+The Python 3.11.14/Pillow 13.0.0 candidate also passed all 14 with identical hashes.
+Compressed PNG bytes are not
+compared because encoder versions may legitimately change them.
 
-Baseline: Python 3.11.17, Pillow 10.3.0, NumPy 1.24.4, OpenCV 4.10.0.84.
-Candidate: same environment, only Pillow changed to 13.0.0.
-Result: **all 14 snapshots passed and matched byte-for-byte**.
-The same fingerprints also passed in Python 3.8.20 with Pillow 10.3.0 and the
-same NumPy/OpenCV pins, establishing the legacy image-helper baseline.
+`tests/resize_regression.py` records six arrays with Python 3.8.20, scikit-image
+0.19.3, Pillow 10.3.0, NumPy 1.24.4, SciPy 1.10.1 and pygame 2.3.0. It covers the
+actual display conversion helpers and the camera observation resize expression,
+with both downsampling and upsampling. All six candidate arrays matched the
+legacy fixture. Candidate comparisons allow only 1e-12
+absolute floating-point error and require identical dtypes.
+
+`tests/image_runtime_smoke.py` imports the complete image-related FREA modules
+with the real CARLA 0.9.16 client, then exercises imageio/native codec round trips,
+matplotlib PNG output and actual FREA FFmpeg video export with frame decoding.
+It does not connect to a simulator or load a checkpoint.
+All six full-module imports, four image codec round trips, matplotlib PNG output
+and three-frame FREA video export/decode passed. `pip check` passed for all 126
+installed packages, including editable FREA. The tested Linux CPU environment is
+recorded in `tests/fixtures/pillow-validation-environment.txt`.
+
+The official Pillow 13.0.0 test tree at
+`293218ad059d994baf1777d882911bed6a49704a` was tested against its released wheel:
+JPEG, libtiff, TIFF, PDF, PDF parser, GIF and morphology modules. Result:
+**492 passed, 6 skipped**, with a 2 GiB address-space limit and 20-second per-test
+timeouts. Skips concern optional djpeg, WEBP-in-TIFF support, Windows and extra
+image files. These include security regressions for PDF trees/trailers,
+TIFF ColorMap and zero-width morphology. This is not an ASan build or a test of
+every possible codec/library combination.
+
+Run project tests from the repository after installing its dependencies and client:
 
 ```bash
-# Use disposable environments, never an existing experiment environment.
-python3.11 -m venv /tmp/frea-pillow-check
-/tmp/frea-pillow-check/bin/pip install Pillow==10.3.0 numpy==1.24.4 opencv-python==4.10.0.84
-/tmp/frea-pillow-check/bin/python tests/pillow_regression.py --compare tests/fixtures/pillow-10.3.0.json
-/tmp/frea-pillow-check/bin/pip install --no-deps Pillow==13.0.0
-/tmp/frea-pillow-check/bin/python tests/pillow_regression.py --compare tests/fixtures/pillow-10.3.0.json
+mkdir -p runs/pillow-check/tmp runs/pillow-check/cache
+export TMPDIR="$PWD/runs/pillow-check/tmp" TMP="$PWD/runs/pillow-check/tmp" TEMP="$PWD/runs/pillow-check/tmp"
+export XDG_CACHE_HOME="$PWD/runs/pillow-check/cache"
+export MPLCONFIGDIR="$XDG_CACHE_HOME/matplotlib"
+export PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES=''
+export SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+export PYTHONPATH="$PWD:$CARLA_ROOT/PythonAPI/carla${PYTHONPATH:+:$PYTHONPATH}"
+python tests/pillow_regression.py --compare tests/fixtures/pillow-10.3.0.json
+python tests/resize_regression.py --compare tests/fixtures/resize-0.19.3.npz
+python tests/image_runtime_smoke.py
 ```
 
-A pip binary-download compatibility check for Python 3.8 rejected Pillow 13.0.0,
-consistent with its official Python metadata. Passing image helper tests does not
-establish full application compatibility or security coverage. No CARLA closed-loop
-run, checkpoint inference, full dependency resolution, GPU test, or native security
-regression suite was run.
-
-## Required path to a complete fix
-
-1. Preserve the original environment and record its packages/native codec versions
-   and baseline experiment outputs before any migration.
-2. In a separate environment, validate Python 3.11 and a matching CARLA client,
-   then resolve the existing pins with the fewest necessary changes. Pin Pillow
-   exactly to 13.0.0 after that compatibility work, rather than using an open range.
-3. Run these pixel regressions, full-module imports, plotting/video export, and a
-   fixed-seed CARLA/checkpoint smoke evaluation with the same input scenes. Check
-   numerical outputs as well as execution success.
-4. Reconcile the complete Dependabot inventory and rescan the resulting environment.
-
-If Python 3.8 must be retained, a separately maintained and tested native backport
-is needed. This audit does not supply or validate such a fork. Until a complete fix
-is available, keep experiments isolated and restrict processing to trusted local
-data; these are temporary exposure controls, not vulnerability fixes.
+For historical experiment reproduction use the original code revision, environment
+and CARLA release in isolation. Before interpreting new training/evaluation scores,
+run fixed-seed scenes and checkpoint inference in the new environment; CPU image
+regressions do not establish identical vehicle physics, semantic labels, planner
+behavior or GPU numerics across CARLA/Python versions. No training or simulator
+experiment was performed for this security change.

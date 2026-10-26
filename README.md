@@ -56,28 +56,44 @@ If you find our work useful, Please give us a star 🌟!
 
 **Recommended system: Ubuntu 20.04 or 22.04**
 
-Step 1: Install [Carla](https://carla.readthedocs.io/en/latest/start_quickstart/) (0.9.13 recommended)
+Step 1: Install [CARLA 0.9.16](https://github.com/carla-simulator/carla/releases/tag/0.9.16)
+and its Python 3.11 client wheel. The client and simulator must use the same release.
 
-Step 2: Setup conda environment
-
-```bash
-conda create -n frea python=3.8
-conda activate frea
-```
-
-Step 3: Clone this git repo in an appropriate folder
+Step 2: Clone this git repo in an appropriate folder
 
 ```bash
 git clone git@github.com:CurryChen77/FREA.git
+cd FREA
 ```
 
-Step 4: Enter the repo root folder and install the packages:
+Step 3: Create a fresh project environment and local temporary/cache directories:
 
 ```bash
-cd FREA
+mkdir -p runs/setup/tmp runs/setup/cache
+export TMPDIR="$PWD/runs/setup/tmp" TMP="$PWD/runs/setup/tmp" TEMP="$PWD/runs/setup/tmp"
+export PIP_CACHE_DIR="$PWD/runs/setup/cache/pip" XDG_CACHE_HOME="$PWD/runs/setup/cache"
+export MPLCONFIGDIR="$PWD/runs/setup/cache/matplotlib"
+export CONDA_PKGS_DIRS="$PWD/runs/setup/cache/conda"
+conda create --prefix "$PWD/runs/setup/env" python=3.11
+conda activate "$PWD/runs/setup/env"
+```
+
+Step 4: Set `CARLA_ROOT` to your CARLA 0.9.16 installation, then install packages:
+
+```bash
+pip install "$CARLA_ROOT/PythonAPI/carla/dist/carla-0.9.16-cp311-cp311-manylinux_2_31_x86_64.whl"
+export PYTHONPATH="$CARLA_ROOT/PythonAPI/carla${PYTHONPATH:+:$PYTHONPATH}"
 pip install -r requirements.txt
 pip install -e .
 ```
+
+The `PYTHONPATH` entry supplies CARLA's `agents` modules.
+Pillow 13.0.0 fixes the October 2026 image-processing advisories and requires
+Python 3.11 or later. Scikit-image 0.20.0 is the first release with Python 3.11
+wheels; the other direct dependency pins are retained. Use a fresh environment:
+the Python/CARLA change is not a claim of identical closed-loop experiment scores.
+Keep existing experiment environments and checkpoints for historical reproduction.
+See [the security audit](PILLOW_SECURITY_AUDIT.md) for evidence, tests and limitations.
 
 **Data and Ckpt**
 

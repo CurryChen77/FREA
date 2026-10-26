@@ -1,7 +1,7 @@
 """Compare actual FREA image helpers without importing CARLA/torch.
 
-Run from any directory: python tests/pillow_regression.py --record /tmp/baseline.json
-Then, in the candidate environment: python tests/pillow_regression.py --compare /tmp/baseline.json
+Run from any directory: python tests/pillow_regression.py --compare tests/fixtures/pillow-10.3.0.json
+Set TMPDIR/TMP/TEMP to a task directory inside the project before running.
 AST extraction executes the original function/class bodies; it does not test simulator
 imports, end-to-end behavior, or whether security vulnerabilities are fixed.
 """
