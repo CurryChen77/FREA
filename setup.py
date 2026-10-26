@@ -14,5 +14,5 @@ setup(name='frea',
       packages=["frea"],
       include_package_data=True,
       version='1.0.0',
-      python_requires='>=3.8,<3.9',
+      python_requires='>=3.11,<3.12',
       install_requires=['gym==0.23.1', 'pygame==2.3.0'])

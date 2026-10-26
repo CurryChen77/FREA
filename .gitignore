@@ -1,4 +1,6 @@
 *.DS_Store
+/runs/
+/.worktrees/
 *./vscode
 .idea
 .vscode

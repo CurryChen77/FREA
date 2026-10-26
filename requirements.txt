@@ -10,12 +10,12 @@ moviepy==1.0.3
 numpy==1.24.4
 opencv_python==4.10.0.84
 pandas==1.5.3
-Pillow==10.3.0
+Pillow==13.0.0
 pygame==2.3.0
 pytorch_lightning==2.4.0
 PyYAML==6.0.2
 rdp==0.8
-scikit_image==0.19.3
+scikit_image==0.20.0
 scipy==1.10.1
 seaborn==0.12.2
 setuptools==75.3.4
@@ -23,5 +23,6 @@ Shapely==1.8.5
 six==1.16.0
 torch==2.4.1
 torchmetrics==0.7.2
+tensorboard==2.14.0
 tqdm==4.66.5
 transformers==4.46.3

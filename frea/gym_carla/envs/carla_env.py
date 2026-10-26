@@ -220,7 +220,7 @@ class CarlaEnv(gym.Env):
                     # if CBV not in the CBVs list, put the new one in
                     if CBV.id not in self.CBVs:
                         self.CBVs[CBV.id] = CBV
-                        CBV.set_autopilot(enabled=False)  # prepared to be controlled
+                        CBV.set_autopilot(enabled=False, tm_port=CarlaDataProvider.get_traffic_manager_port())  # prepared to be controlled
                         self.register_CBV_sensor(CBV)
                         CarlaDataProvider.add_CBV(self.ego_vehicle, CBV)
 
@@ -710,7 +710,7 @@ class CarlaEnv(gym.Env):
                     # remove the CBV collision sensor
                     self._remove_CBV_sensor(CBV_id)
                     # remove the truncated CBV from existing CBV lists
-                    CBV.set_autopilot(enabled=True)  # set the original CBV to normal bvs
+                    CBV.set_autopilot(enabled=True, tm_port=CarlaDataProvider.get_traffic_manager_port())  # set the original CBV to normal bvs
                     self.CBVs_nearby_vehicles.pop(CBV_id)
                     CarlaDataProvider.CBV_back_to_BV(self.ego_vehicle, CBV)
 
@@ -724,7 +724,7 @@ class CarlaEnv(gym.Env):
                     self._remove_CBV_sensor(CBV_id)
                     if CBV_id in CarlaDataProvider.get_CBVs_reach_goal_by_ego(self.ego_vehicle).keys():
                         # set the goal reaching CBV free
-                        CBV.set_autopilot(enabled=True)
+                        CBV.set_autopilot(enabled=True, tm_port=CarlaDataProvider.get_traffic_manager_port())
                     else:
                         CarlaDataProvider.CBV_terminate(self.ego_vehicle, CBV)
                         # clean the CBV from the environment
